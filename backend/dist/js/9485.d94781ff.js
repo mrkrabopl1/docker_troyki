@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunksamura_snikers=self.webpackChunksamura_snikers||[]).push([[9485],{19485:function(e,n,s){s.r(n);var t=s(67294),u=s(60145);n.default=function(e){return(0,t.useEffect)((function(){(0,u.getCdekDeliveryData)({},(function(){}))})),t.createElement("div",{style:{display:"flex"}})}}}]);

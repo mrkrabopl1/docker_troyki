@@ -1,0 +1,16 @@
+.wrapper{
+    background: no-repeat center;
+    background-size: contain;
+}
+
+.button{
+    color: white;
+    font-family: "Roboto";
+    font-size: 25px;
+}
+
+.title{
+    color: white;
+    font-family: "Roboto";
+    font-size: 25px;
+}

@@ -1,0 +1,23 @@
+.input{
+    color: red;
+    border: none;
+    width: 100%;
+}
+
+.input:focus{
+  outline: none;
+}
+
+
+.search{
+    display: flex;
+    border: solid 2px black;
+    position: relative;
+    box-sizing: border-box;
+    width: 200px;
+}
+.img{
+    width: 20px;
+    position: relative;
+    right: 0;
+}

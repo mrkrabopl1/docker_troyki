@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunksamura_snikers=self.webpackChunksamura_snikers||[]).push([[7781],{97781:function(e,r,s){s.r(r),r.default={priceWrapper:"priceWrapper--E1uQV"}}}]);

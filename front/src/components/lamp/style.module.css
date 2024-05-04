@@ -1,0 +1,83 @@
+.lampHolder {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    flex-wrap: nowrap;
+  
+    margin: 12px 0;
+  
+    cursor: pointer;
+    position: relative;
+  }
+  
+  
+  /* input */
+  .lamp {
+    opacity: 0;
+    position: absolute;
+    z-index: -1;
+  }
+
+  
+  
+  /* .design */
+  .design {
+    width: 16px;
+    height: 16px;
+  
+    border: 1px solid black;
+    border-radius: 100%;
+    margin-right: 8px;
+  
+    position: relative;
+    box-sizing: content-box;
+  }
+  
+  .design::before{
+    content: "";
+    display: block;
+  
+    width: inherit;
+    height: inherit;
+  
+    border-radius: inherit;
+  
+    position: absolute;
+    transform: scale(0);
+    transform-origin: center center;
+  }
+  
+  .design:before {
+    background: black;
+    opacity: 0;
+    transition: .3s;
+  }
+  
+  /* .text */
+  .text {
+    color: black;
+    font-weight: bold;
+  }
+  
+  
+  /* checked state */
+  .lamp:checked+.design::before {
+    opacity: 1;
+    transform: scale(.6);
+  }
+  
+  
+  /* other states */
+  .lamp:hover+.design,
+  .lamp:focus+.design {
+    border: 1px solid black;
+  }
+  
+  .lamp:hover+.design:before,
+  .lamp:focus+.design:before {
+    background: black;
+  }
+  
+  .lamp:hover~.text {
+    color:black;
+  }

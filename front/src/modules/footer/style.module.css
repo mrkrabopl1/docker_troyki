@@ -1,0 +1,10 @@
+.link {
+    color:rgb(53, 53, 65);
+    display: block;
+}
+
+.link_active{
+    color:black;
+    display: block;
+    text-decoration: underline;
+}

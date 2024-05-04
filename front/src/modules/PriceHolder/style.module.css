@@ -1,0 +1,40 @@
+.priceBlock{
+    border:solid 1px grey;
+    text-align:center;
+    padding: 10px;
+    position: relative;
+    width: 25%;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
+.priceHolder{
+   display: flex;
+   flex-wrap: wrap;
+}
+.priceWrapper{
+    width: 20%;
+ }
+
+ .priceUnderline{
+    position: absolute;
+    bottom: 4px;
+    width: 80%;
+    height: 2px;
+    background-color: silver;
+    margin: auto;
+    left: 0;
+    right: 0;
+ }
+
+ .avelibleHolder{
+   display:flex;
+   justify-content: center;
+ }
+ .done{
+   width:17px;
+   margin-left:3px
+ }
+ .sizeHolder{
+   font-weight: bold;
+ }

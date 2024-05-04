@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    // basic configuration
+    "target": "ES5",                          // Which version of ES is compiled?
+    "module": "ESNext",                       // Specify which module system code generated
+    "lib": ["dom", "dom.iterable", "esnext"], // Require list of library files that need to be introduced during compilation
+    "allowJs": true,                          // Allow compilation JS files
+    "jsx": "react",                           // Support JSX in .tsx file
+    "isolatedModules": true,				  // Provide additional syntax check, such as the file does not have a module export
+    "strict": false,                           // Enable all strict type check options
+
+    // Module parsing option
+    "moduleResolution": "node",               // Specify the module parsing policy
+    "esModuleInterop": true,                  // Support interoperability between CommonJS and ES modules
+    "resolveJsonModule": true,                // Support import JSON module
+    "baseUrl": "./",                          // Root path
+    "paths": {								  // Path mapping, associated with BaseURL
+      "src/*": ["src/*"],
+      "components/*": ["src/components/*"],
+      "utils/*": ["src/utils/*"]
+    },
+
+    // Experimental options
+    "experimentalDecorators": true,           //  Enable experimentalESDecorator
+    "emitDecoratorMetadata": true,            //  Add the decorator declaration in the source code plus design type metadata
+
+    //  other options
+    "forceConsistentCasingInFileNames": true, //  Prohibit inconsistent references to the same file
+    "skipLibCheck": true,                     //  Ignore all statement files ( *.d.Type check
+    "allowSyntheticDefaultImports": true,     //  Allows the default import from the module without setting the default export
+    "noEmit": true							  //  Just want to use TSC type check as a function (when other tools (such as Babel actually compile))
+  },
+  "include": ["src","global.d.ts"],
+  "exclude": ["node_modules"]
+}

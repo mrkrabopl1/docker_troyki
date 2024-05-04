@@ -1,0 +1,8 @@
+.checkbox{
+    width: 15px;
+    height: 15px;
+    border: solid black 2px;
+    background-position:center;
+    background-repeat: no-repeat;
+    background-size: contain;
+}

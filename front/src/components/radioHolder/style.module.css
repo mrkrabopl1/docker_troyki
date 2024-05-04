@@ -1,0 +1,6 @@
+.priceWrapper{
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    flex-shrink:1;
+}

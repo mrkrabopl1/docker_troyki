@@ -1,0 +1,29 @@
+ .loop{
+    opacity: 0.5;
+    position: absolute;
+    left: 0;
+    top: 0;
+ }
+
+ .imgCompponentWrap{
+    position: relative;
+    width: 100%;
+    height: 70%;
+ }
+
+ .expandingElement{
+   position: absolute;
+   width: 100vw;
+   height:100vh;
+   background-color: white;
+   top: 0; 
+   bottom: 0;
+   z-index:10;
+ }
+
+ .bottomFlexBlock{
+   display: flex;
+   height: 30%;
+   flex-wrap:wrap;
+   justify-content: space-between;
+ }

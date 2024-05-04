@@ -1,0 +1,6 @@
+.deleteBtn{
+    background: url("../../../public/bin.svg") center no-repeat;
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+}

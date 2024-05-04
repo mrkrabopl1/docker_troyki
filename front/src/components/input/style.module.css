@@ -1,0 +1,43 @@
+.inputWithLabel{
+    border: 0;
+    border-bottom: 2px solid gray;
+    outline: 0;
+    padding: 7px 0;
+    background: transparent;
+    transition: border-color 0.2s;
+}
+
+.label {
+    position: absolute;
+    top: 0px;
+    display: block;
+    transition: 0.2s;
+    font-size: 1.2rem;
+    color: black;
+}
+
+.inputWithLabel:placeholder-shown~.label {
+    position: absolute;
+    top: 20px;
+    display: block;
+    transition: 0.2s;
+    font-size: 1rem;
+    color: gray;
+    cursor: text;
+}
+
+.inputWithLabel:focus {
+    padding-bottom: 6px;  
+    border-image: linear-gradient(to right, black,red);
+    border-image-slice: 1;
+}
+
+.invalid{
+    border-bottom: solid 2px red;
+}
+
+.inputWithLabel:focus~.label {
+    top: 0px;
+    font-size: 1.2rem;
+    color: black
+  }

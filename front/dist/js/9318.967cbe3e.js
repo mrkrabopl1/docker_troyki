@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunksamura_snikers=self.webpackChunksamura_snikers||[]).push([[9318],{79318:function(e,s,r){r.r(s),s.default={buttonStyle:"buttonStyle--i32r0",wrapper:"wrapper--eXsU5"}}}]);

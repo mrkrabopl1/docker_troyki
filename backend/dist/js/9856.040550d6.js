@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunksamura_snikers=self.webpackChunksamura_snikers||[]).push([[9856],{49856:function(s,a,o){o.r(a),a.default={combobox:"combobox--dKu6x",list:"list--fB4Bx",mainBlock:"mainBlock--hItJM"}}}]);

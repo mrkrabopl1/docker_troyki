@@ -1,0 +1,49 @@
+.drop_list{
+    background-color: white;
+    z-index: 100;
+    width: 200px;
+    top:20px
+}
+.main{
+    display: flex;
+    width: 100%;
+    justify-content: center;
+}
+.settings_holder{
+    right: -300px;
+    position: absolute;
+    top: 0;
+    background-color: white;
+    z-index: 10;
+    transition:right 0.3s ease-out;
+    width: 300px;
+}
+
+.secondPage{
+    background-color: white;
+    padding-right: 10px;
+}
+
+
+.mainInfo{
+        height: calc(100%-200px);
+}
+.filterBtn{
+    position: absolute;
+    background-color:white;
+    border-radius: 3px;
+    top:0;
+    width: 32px;
+    height: 32px;
+    left:-32px;
+    background:no-repeat center url("../../public/filter.svg");
+    background-size: contain;
+    box-shadow: inset 0px 0px 10px rgba(112, 12, 12, 0.5);
+    z-index: 1000;
+}
+
+.filterBtn:active, 
+.filterBtn:focus{
+    border: 0;
+  padding: 0;
+}

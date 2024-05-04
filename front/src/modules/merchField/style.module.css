@@ -1,0 +1,40 @@
+.merchField{
+    display: flex;
+    position: relative;
+    flex-wrap: wrap;
+}
+
+.img{
+    width: 100%;
+    object-fit: contain;
+    height:90%;
+}
+.buyImg{
+    width: 100%;
+    object-fit: contain;
+}
+.imgName{
+    text-align: center;
+}
+.merchWrap{
+    position: relative;
+    flex-shrink: 0;
+    height: 100%;
+    flex-direction: column;
+     margin-top: auto;
+}
+.discount{
+    text-decoration: line-through;
+    color :gray;
+}
+
+.discountMarker{
+    position: absolute;
+    bottom: 0;
+    left:0;
+    background-color: red;
+    z-index: 200;
+    color:white;
+    border-radius: 200px ;
+    padding: 5px;
+}

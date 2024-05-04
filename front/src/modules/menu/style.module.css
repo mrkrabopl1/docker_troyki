@@ -1,0 +1,47 @@
+.menuWrap{
+    box-shadow: 0px -23px 33px 1px red;
+    width: 100%;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 100px;
+    z-index: 1000;
+    background-color: white;
+}
+
+.modalWrap{
+  position: absolute;
+  width: 100%;
+  top: 0;
+  right:0;
+  left:0;
+  bottom: 0;
+  height: 100px;
+  background-color: white;
+  font-family: 'Open Sans', 'Helvetica Neue', 'Segoe UI', 'Calibri', 'Arial', sans-serif;
+}
+.is_hidden {
+ 
+  transform: translateY(-200%);
+}
+
+
+.shopCounter{
+  bottom:5px;
+  position:absolute;
+  right:3px;
+  background-color: red;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  text-align: center;
+}
+.spanShop{
+
+  font-size: 12px;
+
+  position: absolute;
+  margin: auto;
+  left: 0;
+  right: 0;
+}

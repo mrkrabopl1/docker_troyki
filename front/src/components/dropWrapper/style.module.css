@@ -1,0 +1,6 @@
+.secondPage{
+    position: absolute;
+    transition:left 2s ;
+    top:0;
+    width: 100%;
+}
