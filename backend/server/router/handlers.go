@@ -6,8 +6,10 @@ import (
 	_ "image/jpeg"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/render"
 	"github.com/mrkrabopl1/go_db/logger"
 	"github.com/mrkrabopl1/go_db/types"
@@ -304,6 +306,137 @@ func (s *Server) handleGetSizes(w http.ResponseWriter, r *http.Request) {
 	var data interface{}
 	json.Unmarshal(file, &data)
 	render.JSON(w, r, data)
+}
+
+type Claims struct {
+	Login string `json:"login"`
+	jwt.StandardClaims
+}
+
+var jwtKey = []byte("my_secret_key")
+
+func SetPartitionedCookie(w http.ResponseWriter, cookie *http.Cookie) {
+	// Use the standard SetCookie method to add the cookie
+	http.SetCookie(w, cookie)
+
+	// Append the Partitioned attribute manually
+	header := w.Header()
+	cookies := header["Set-Cookie"]
+	for i, c := range cookies {
+		if strings.Contains(c, cookie.Name+"=") {
+			cookies[i] = c + "; Partitioned"
+		}
+	}
+	header["Set-Cookie"] = cookies
+}
+
+func (s *Server) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
+	//fmt.Println(cookie, "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg")
+	var postData types.PostDataRegisterUser
+	err := json.NewDecoder(r.Body).Decode(&postData)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	fmt.Println(postData, "vsvflkfnslkfm;sld")
+	s.store.RegisterUser(r.Context(), postData.Login, postData.Password, postData.Mail)
+
+	//render.JSON(w, r, data)
+}
+
+func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	var postData types.PostDataRegisterUser
+	err := json.NewDecoder(r.Body).Decode(&postData)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err1 := s.store.Login(r.Context(), postData.Login, postData.Password)
+
+	if err1 != nil {
+		render.JSON(w, r, false)
+	} else {
+		expirationTime := time.Now().Add(200 * time.Minute)
+		claims := &jwt.StandardClaims{
+			Issuer:    postData.Login,
+			ExpiresAt: expirationTime.Unix(),
+		}
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+		tokenString, _ := token.SignedString(jwtKey)
+
+		fmt.Println(tokenString, "bbbbbbbbbbbbbbbbbbbbbbbbbbb")
+		myCookie := http.Cookie{
+			Name:    "token",
+			Value:   tokenString,
+			Expires: expirationTime,
+			// Path:     "/",
+			// MaxAge:   86372,
+			HttpOnly: false,
+			Secure:   false,
+			SameSite: http.SameSiteNoneMode,
+		}
+		//SetPartitionedCookie(w, &myCookie)
+		http.SetCookie(w, &myCookie)
+
+		// Render the response as JSON
+		render.JSON(w, r, true)
+	}
+}
+
+func (s *Server) handleGetUserData(w http.ResponseWriter, r *http.Request) {
+
+	cookie, _ := r.Cookie("token")
+
+	fmt.Println(cookie.Value, "dlamdkasmldnsalkdmmasldm")
+
+	token1, _ := jwt.ParseWithClaims(cookie.Value, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(jwtKey), nil
+	})
+
+	fmt.Println(token1)
+
+	// if err3 != nil {
+	// 	fmt.Println(err3)
+	// }
+
+	claims1 := token1.Claims.(*jwt.StandardClaims)
+
+	response, err := s.store.GetUserData(r.Context(), claims1.Issuer)
+	if err != nil {
+		fmt.Println(err)
+	}
+	render.JSON(w, r, response)
+}
+
+func (s *Server) handleJwtAutorise(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("token")
+
+	if err != nil {
+		fmt.Println(err, cookie)
+		render.JSON(w, r, false)
+	} else {
+		render.JSON(w, r, true)
+	}
+
+	// token1, _ := jwt.ParseWithClaims(cookie.Value, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+	// 	return []byte(jwtKey), nil
+	// })
+
+	// fmt.Println(token1)
+
+	// // if err3 != nil {
+	// // 	fmt.Println(err3)
+	// // }
+
+	// claims1 := token1.Claims.(*jwt.StandardClaims)
+	// // if err1 != nil {
+	// // 	fmt.Println(err1)
+	// // }
+	// fmt.Println(claims1.Issuer, "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg0-=0g")
 }
 
 func (s *Server) handleFAQ(w http.ResponseWriter, r *http.Request) {

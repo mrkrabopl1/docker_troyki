@@ -1,0 +1,15 @@
+ services:
+  front:
+      image: front-dev3-i
+      build:
+        context: ./front
+        dockerfile: Dockerfile.dev
+      container_name: front-dev3-c 
+      ports:
+      - "3000:3000"  
+      # environment:
+      #  - ID="here we need to enter backend server"
+      depends_on:
+        - goapp1
+      networks:
+        - front_networks

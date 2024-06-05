@@ -17,14 +17,12 @@ const ImagePresantation:React.FC<iconType>=(data)=>{
     let firstImage = images[0]
     return(
             <div ref={presentationRef} className={s.imgCompponentWrap}>
-                {expand? <ExpandedImagePresentation images={images}/>:null}
-                <ImagePresantationBlock image={firstImage}/>
+                {expand? <ExpandedImagePresentation onClose={()=>setExpand(false)} images={images}/>:null}
+                <ImagePresantationBlock onClick={()=>{setExpand(true)}} image={firstImage}/>
                 <div className={s.bottomFlexBlock}>
                     {images.map((val, index)=>{
-                        return   <div key={index} onClick={()=>{
-                            setExpand(true)
-                        }} style={{height:"100%"}}>
-                            <ImagePresantationBlock image={val}/>
+                        return   <div key={index}  style={{height:"100%"}}>
+                            <ImagePresantationBlock onClick={()=>{setExpand(true)}} image={val}/>
                         </div>
                     })}
                 </div>

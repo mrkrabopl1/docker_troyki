@@ -1,10 +1,28 @@
 .link {
     color:rgb(53, 53, 65);
     display: block;
+    font-family: "Quicksand";
 }
 
 .link_active{
     color:black;
     display: block;
     text-decoration: underline;
+    font-family: "Quicksand";
+}
+@font-face {
+    font-family: 'Quicksand';
+    src: url('../../../fonts/Quicksand-Regular.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+.footer{
+    font-family: "Quicksand";
+    padding: 5px 20px;
+}
+
+.footerColumn{
+    font-family: "Quicksand";
+    padding: 10px;
 }

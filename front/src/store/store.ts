@@ -9,6 +9,7 @@ import secondDropReducer from "./reducers/secondDropSlice"
 import menuReducer from "./reducers/menuSlice"
 import searchReducer from "./reducers/searchSlice"
 import formReducer from "./reducers/formSlice"
+import dispetcherReducer from "./reducers/dispetcherSlice"
 import listenerMiddleware from "./listenerMiddleware"
 const rootReducer = combineReducers({
     fieldReducer,
@@ -20,7 +21,8 @@ const rootReducer = combineReducers({
     secondDropReducer,
     menuReducer,
     formReducer,
-    searchReducer
+    searchReducer,
+    dispetcherReducer
 })
 export const setupStore = () =>{
     return configureStore({

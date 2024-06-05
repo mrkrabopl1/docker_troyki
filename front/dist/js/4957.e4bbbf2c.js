@@ -1,1 +1,0 @@
-(self.webpackChunksamura_snikers=self.webpackChunksamura_snikers||[]).push([[4957],{24957:function(){}}]);

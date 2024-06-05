@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/lib/pq"
@@ -31,10 +30,12 @@ func main() {
 
 	cfg := config.LoadConfig()
 
-	dbPath := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", "postgres_db", "5432", cfg.PgUser, cfg.PgPass, cfg.PgBase)
-	fmt.Println(dbPath, os.Getenv("DATABASE_URL"), "tggtttttttttttttttttttttttttttttttttttttttttttttttttt")
-	store := db.NewPostgresStore(os.Getenv("DATABASE_URL"))
+	//postgres_db
 
+	// dbPath := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", "localhost", "5432", cfg.PgUser, cfg.PgPass, cfg.PgBase)
+	// fmt.Println(dbPath, os.Getenv("DATABASE_URL"), "tggtttttttttttttttttttttttttttttttttttttttttttttttttt")
+	store := db.NewPostgresStore(os.Getenv("DATABASE_URL"))
+	// store := db.NewPostgresStore(dbPath)
 	//	store.CreateTables(ctx)
 
 	// store.UpdateTable(ctx)

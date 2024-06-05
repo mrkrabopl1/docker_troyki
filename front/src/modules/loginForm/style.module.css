@@ -1,7 +1,7 @@
 
 .main{
 	width: 350px;
-	height: 600px;
+	height: 460px;
 	background: white;
 	overflow: hidden;
 
@@ -57,7 +57,7 @@
 	background: #6d44b8;
 }
 .login{
-	height: 560px;
+	height: 360px;
 	background: #eee;
 	border-radius: 60% / 10%;
 	transform: translateY(-80px);
@@ -69,7 +69,7 @@
 }
 
 .chk:checked ~ .login{
-	transform: translateY(-550px);
+	transform: translateY(-380px);
 }
 .chk:checked ~ .login label{
 	transform: scale(1);	

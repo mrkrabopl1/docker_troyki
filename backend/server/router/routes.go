@@ -41,10 +41,15 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+type responseWriterWrapper struct {
+	http.ResponseWriter
+	statusCode int
+}
+
 func (s *Server) routes() {
 	s.router.Use(render.SetContentType(render.ContentTypeJSON))
 	corsOptions := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
+		AllowedOrigins:   []string{"http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		AllowCredentials: true,
@@ -75,4 +80,8 @@ func (s *Server) routes() {
 	s.router.Get("/getCartData", s.handleGetCart)
 	s.router.Post("/deleteCartData", s.handleDeleteCartData)
 
+	s.router.Post("/registerUser", s.handleRegisterUser)
+	s.router.Post("/login", s.handleLogin)
+	s.router.Get("/jwtAutorise", s.handleJwtAutorise)
+	s.router.Get("/getUserData", s.handleGetUserData)
 }

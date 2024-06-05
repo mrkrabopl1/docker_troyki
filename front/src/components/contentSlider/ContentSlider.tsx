@@ -31,7 +31,7 @@ const ContentSlider: React.FC<ContentSliderType> = (data) => {
         return () => {
           window.removeEventListener("resize", calculateStep);
         };
-    },[])
+    },[content])
 
     function calculateStep(){
         if(slider.current && mainContainer.current){

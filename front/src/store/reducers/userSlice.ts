@@ -39,6 +39,8 @@ export const userSlice = createSlice({
         setLog(state,action:actionType<typeof initialState.isLog>){
             state.isLog = action.payload
         }
+
+        
      
     }
 

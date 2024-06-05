@@ -9,22 +9,16 @@ type propsRowType = {
     className?: string,
     placeholder?: string,
     val?: string,
-    valid: boolean,
-    invalidEmpty: string,
-    invalidIncorrect: string
 }
 
 
 
 const PhoneInputWithLabel: React.FC<propsRowType> = (props) => {
     const inputRef = useRef<HTMLInputElement>(null)
-    let { valid, onBlur, onChange, onFocus, className, val, invalidEmpty, invalidIncorrect } = { ...props }
+    let { onBlur, onChange, onFocus, className, val} = { ...props }
     const [phoneVal, setPhoneVal] = useState<string>(val ? val : "+7")
     const cursorPositionRef = useRef<number>(2)
 
-
-
-    const [validState, setValid] = useState<boolean>(valid)
 
     useEffect(() => {
         inputRef.current.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current)
@@ -74,7 +68,6 @@ const PhoneInputWithLabel: React.FC<propsRowType> = (props) => {
                     finalStr = ""
                 }
                 setPhoneVal(finalStr);
-                setValid(true)
                 onChange(finalStr)
             }
         }
@@ -104,8 +97,7 @@ const PhoneInputWithLabel: React.FC<propsRowType> = (props) => {
                 const timeStrVal = (prefix + suffix).replace(/[-,\s]/g, "")
                 const finalStr = removeChar(timeStrVal)
                 cursorPositionRef.current = cursorPosition - 1
-                setPhoneVal(finalStr);
-                setValid(true)
+                setPhoneVal(finalStr)
                 onChange(finalStr)
             }
 
@@ -128,7 +120,6 @@ const PhoneInputWithLabel: React.FC<propsRowType> = (props) => {
                 }
                 cursorPositionRef.current = newVal.length
                 setPhoneVal(newVal)
-                setValid(true)
                 onChange(newVal)
             } else {
                 let prefix = ""
@@ -158,7 +149,6 @@ const PhoneInputWithLabel: React.FC<propsRowType> = (props) => {
                 let finalStr = removeChar(timeStrVal)
                 inputRef.current.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current)
                 setPhoneVal(finalStr);
-                setValid(true)
                 onChange(finalStr)
             }
         }
@@ -174,21 +164,17 @@ const PhoneInputWithLabel: React.FC<propsRowType> = (props) => {
                 }}
                 value={phoneVal}
                 style={{ boxSizing: 'border-box', width: "100%" }}
-                className={validState ? s.inputWithLabel : s.inputWithLabel + " " + s.invalid}
+                className={s.inputWithLabel }
                 ref={inputRef}
                 placeholder="+7 999 999-99-99"
                 type='tel'
                 onFocus={(e) => { if (onFocus) { onFocus(e.target.value) } }}
                 onBlur={(e) => {
-                    if (phoneVal.length < 16 && phoneVal.length !== 0) {
-                        setValid(false)
-                    }
                     if (onBlur) {
                         onBlur(e.target.value)
                     }
                 }}
             />
-            {!validState ? <label style={{ color: "red" }}>{phoneVal.length === 0 ? invalidEmpty : invalidIncorrect}</label> : null}
             {/* <label onClick={
                 ()=>inputRef.current && inputRef.current.focus()
                 }  className={s.label}>{placeholder}</label> */}

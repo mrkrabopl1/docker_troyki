@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"net/smtp"
 	"time"
 
 	"github.com/cespare/xxhash"
 	"github.com/mrkrabopl1/go_db/logger"
 	"github.com/mrkrabopl1/go_db/server/contextKeys"
 	"github.com/mrkrabopl1/go_db/types"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Snickers2 struct {
@@ -693,7 +695,10 @@ func (s *PostgresStore) GetCartData(ctx context.Context, hash string) ([]types.S
 	defer db.Close()
 	var snickersPreorder []types.SnickersPreorder
 	var dataQuery []types.SnickersCart
+
 	query := fmt.Sprintf(`SELECT id FROM preorder WHERE hashUrl = '%s'`, hash)
+
+	fmt.Println(query)
 	var idData int
 	err := db.GetContext(ctx, &idData, query)
 	if err != nil {
@@ -702,6 +707,7 @@ func (s *PostgresStore) GetCartData(ctx context.Context, hash string) ([]types.S
 	} else {
 		query := fmt.Sprintf("SELECT id, productid AS prid, size, quantity FROM  preorderItems WHERE  orderid=%d", idData)
 		err := db.SelectContext(ctx, &snickersPreorder, query)
+		fmt.Println(snickersPreorder)
 		if err != nil {
 			logger.Error(err.Error())
 			return dataQuery, err
@@ -714,6 +720,7 @@ func (s *PostgresStore) GetCartData(ctx context.Context, hash string) ([]types.S
 					conditionStr += fmt.Sprintf(`UNION ALL SELECT id, %d AS prid,firm, name , image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers  WHERE id = %d `, sn.Id, sn.Size, sn.Size, sn.Quantity, sn.PrId)
 				}
 			}
+			fmt.Println(conditionStr, "ddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
 			err := db.SelectContext(
 				ctx,
 				&dataQuery,
@@ -882,6 +889,116 @@ func (s *PostgresStore) CountTest(ctx context.Context) ([]Count, error) {
 	return data, nil
 }
 
+func (s *PostgresStore) RegisterUser(ctx context.Context, name string, pass string, mail string) (bool, error) {
+	db, _ := s.connect(ctx)
+	defer db.Close()
+	var exist bool
+	fmt.Println(mail)
+	queryExStr := fmt.Sprintf(`SELECT EXISTS (SELECT 1 FROM customers WHERE mail = '%s' )`, mail)
+
+	err := db.GetContext(ctx, &exist, queryExStr)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	if exist {
+		fmt.Println("Mail already exist")
+		return true, nil
+	} else {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(string(hashedPassword))
+		customerStr := fmt.Sprintf(`INSERT INTO customers (login, pass, mail, verified) VALUES 
+		('%s', '%s', '%s', %t) RETURNING id`, name, hashedPassword, mail, false)
+
+		var authorID int
+
+		err1 := db.QueryRow(customerStr).Scan(&authorID)
+		if err1 != nil {
+			fmt.Println("err1", err1)
+		}
+
+		from := "munhgauzen12@gmail.com"
+		password := "qlfqlqasjkrywvij"
+
+		// Receiver email address.
+		to := []string{"mr.krabopl12@gmail.com"}
+
+		// SMTP server configuration.
+		smtpHost := "smtp.gmail.com"
+		smtpPort := "587"
+
+		// Message.
+		message := []byte(
+			"MIME-Version: 1.0\r\n" +
+				"Content-Type: text/html; charset=\"UTF-8\";\r\n" +
+				"Subject: Test Email with Link\r\n" +
+				"\r\n" +
+				"<html><body>" +
+				"<p>This is a test email sent from Go! Click the link below:</p>" +
+				"<a href=\"https://www.example.com\">Visit Example.com</a>" +
+				"</body></html>\r\n")
+
+		// Authentication.
+
+		auth := smtp.PlainAuth("", from, password, smtpHost)
+
+		// Sending email.
+		err2 := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, to, message)
+		if err2 != nil {
+			log.Fatalf("smtp error: %s", err2)
+		}
+
+		fmt.Println("Email sent successfully!")
+
+	}
+
+	return true, nil
+}
+
+func (s *PostgresStore) GetUserData(ctx context.Context, login string) (types.CustimerInfo, error) {
+	db, _ := s.connect(ctx)
+	defer db.Close()
+	var userInfo types.CustimerInfo
+	queryExStr := fmt.Sprintf(`SELECT name, secondname, mail , phone, login FROM customers WHERE login = '%s'`, login)
+
+	err := db.GetContext(ctx, &userInfo, queryExStr)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(userInfo, "flksdnfksjdpfoskpfjsdpnobndfpgsognfpdgspfgdfpogpspfsops")
+
+	return userInfo, err
+}
+
+func (s *PostgresStore) Login(ctx context.Context, name string, pass string) error {
+	db, _ := s.connect(ctx)
+	defer db.Close()
+	var passDB []byte
+	queryExStr := fmt.Sprintf(`SELECT pass FROM customers WHERE login = '%s'`, name)
+
+	err := db.GetContext(ctx, &passDB, queryExStr)
+
+	if err != nil {
+		fmt.Println(err, name, "fldkshfosklfjlsdkflsdkj")
+		return err
+	} else {
+		fmt.Println(passDB, pass, "fpdsjfsjfsjdfskdp")
+		err2 := bcrypt.CompareHashAndPassword(passDB, []byte(pass))
+		if err2 != nil {
+			fmt.Println(err2, "rfsydufugjhjkj")
+			return err2
+		} else {
+			return nil
+		}
+	}
+}
+
 func (s *PostgresStore) CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int, error) {
 	db, _ := s.connect(ctx)
 	defer db.Close()
@@ -973,6 +1090,9 @@ type Interface interface {
 	UpdatePreorder(ctx context.Context, id int, info map[string]string, hash string) (int, error)
 	GetCartCount(ctx context.Context, hash string) (int, error)
 	DeleteCartData(ctx context.Context, preorderid int) error
+	RegisterUser(ctx context.Context, name string, pass string, mail string) (bool, error)
 	CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int, error)
 	GetSnickersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.SnickersPage, error)
+	Login(ctx context.Context, name string, pass string) error
+	GetUserData(ctx context.Context, login string) (types.CustimerInfo, error)
 }

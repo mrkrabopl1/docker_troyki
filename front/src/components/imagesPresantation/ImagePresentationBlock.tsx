@@ -5,14 +5,15 @@ import s from "./style.module.css"
 import loop from "../../../public/zoom.svg"
 
 type iconType = {
-    image: string
+    image: string,
+    onClick:()=>void
 }
 const ImagePresantationBlock: React.FC<iconType> = (data) => {
-    const { image } = { ...data }
+    const { image, onClick } = { ...data }
     let [hover,setHover] = useState<Boolean>(false)
 
     return (
-        <div style={{height:"100%"}}  onMouseOut={() => {setHover(false)}} onMouseOver={() => {setHover(true)}}>
+        <div onClick={()=>{onClick()}} style={{height:"100%"}}  onMouseOut={() => {setHover(false)}} onMouseOver={() => {setHover(true)}}>
             <img loading={"lazy"} onMouseDown={(e)=>{
                     e.preventDefault();
                 }} style={{display:hover?"block":"none"}} className={s.loop} src={loop} alt="React Logo" />

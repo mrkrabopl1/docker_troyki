@@ -1,0 +1,15 @@
+ services:
+  front:
+      image: front-prod-i
+      build:
+        context: ./front
+        dockerfile: Dockerfile.prod
+      container_name: front-prod-c 
+      ports:
+      - "80:80"  
+      # environment:
+      #  - ID="here we need to enter backend server"
+      depends_on:
+        - goapp1
+      networks:
+        - front_networks

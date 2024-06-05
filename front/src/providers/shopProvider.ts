@@ -21,7 +21,7 @@ const deleteCartData = function (preorderId, callback: (val: any) => void) {
     let json = JSON.stringify({preorderId})
     axios({
         method: 'post',
-        url: `${API_URL}//deleteCartData`,
+        url: `${API_URL}/deleteCartData`,
         headers: {
             'Content-Type': 'application/json'
         },

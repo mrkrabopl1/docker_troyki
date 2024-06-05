@@ -12,6 +12,12 @@ type UpdataPreorderType struct {
 	PreorderType
 	HashUrl string `json:"hashUrl"`
 }
+
+type PostDataRegisterUser struct {
+	Login    string `json:"login"`
+	Mail     string `json:"mail"`
+	Password string `json:"pass"`
+}
 type CreateOrderType struct {
 	PreorderId   string `json:"preorderId"`
 	PersonalData struct {

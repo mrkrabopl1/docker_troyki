@@ -1,18 +1,20 @@
 services:
   front:
-    image: front-prod-i
+    image: front-dev3-i
     build:
       context: ./front
       dockerfile: Dockerfile.prod
-    container_name: front-prod-c 
-    # volumes:
-    #   - nginx_images_volume:/usr/share/nginx/html/images
+    container_name: front-dev3-c
     ports:
-     - "80:80"  
-    environment:
-     - ID="here we need to enter backend server"
+      - "80:80"
+      # environment:
+      #  - ID="here we need to enter backend server"
     depends_on:
       - goapp1
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    networks:
+      - front_networks
   goapp1:
     container_name: goapp1
     image: goapp1:1.0.0
@@ -21,12 +23,15 @@ services:
       dockerfile: go.dockerfile
     environment:
       DATABASE_URL: 'postgres://postgres:s8121996@postgres_db:5432/troyki?sslmode=disable'
+    expose:
+      - "8100"
     ports:
       - '8100:8100'
     depends_on:
       - postgres_db
     networks:
       - postgres_bridge
+      - front_networks
   postgres_db:
     container_name: postgres_db
     image: postgres:16.1-alpine3.18
@@ -62,7 +67,7 @@ services:
       - "pg_stat_statements.track=all"
     environment:
       POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "s8121996"
+      POSTGRES_PASSWORD: "12345"
       POSTGRES_DB: troyki
       PGDATA: "/var/lib/postgresql/data/pgdata"
     volumes:
@@ -71,7 +76,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d troyki"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d troyki" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -89,7 +94,7 @@ services:
     image: dpage/pgadmin4:7.2
     environment:
       PGADMIN_DEFAULT_EMAIL: "mr.krabopl12@gmail.com"
-      PGADMIN_DEFAULT_PASSWORD: "s8121996"
+      PGADMIN_DEFAULT_PASSWORD: "12345"
       PGADMIN_CONFIG_SERVER_MODE: "False"
     volumes:
       - pgadmin-data:/var/lib/pgadmin
@@ -110,7 +115,7 @@ services:
 #     environment:
 #       DATA_SOURCE_URI: "postgres:5432/troyki?sslmode=disable"
 #       DATA_SOURCE_USER: "postgres"
-#       DATA_SOURCE_PASS: "s8121996"
+#       DATA_SOURCE_PASS: "12345"
 #       PG_EXPORTER_EXTEND_QUERY_PATH: "/etc/postgres_exporter/queries.yaml"
 #     volumes:
 #       - ./queries.yaml:/etc/postgres_exporter/queries.yaml:ro
@@ -129,8 +134,10 @@ volumes:
   troyki-data:
   pgadmin-data:
 
+
 networks:
   postgres_bridge:
     driver: bridge
-   
+  front_networks:
+
 

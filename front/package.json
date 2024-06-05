@@ -16,6 +16,7 @@
   "resolutions": {
     "styled-components": "^5"
   },
+  "proxy": "http://localhost:8100/",
   "dependencies": {
     "@babel/core": "^7.17.2",
     "@babel/plugin-transform-runtime": "^7.17.0",
@@ -38,6 +39,7 @@
     "css-minimizer-webpack-plugin": "^3.4.1",
     "dotenv": "^16.4.5",
     "dotenv-webpack": "^8.1.0",
+    "firebase": "^10.12.0",
     "fork-ts-checker-webpack-plugin": "^7.2.0",
     "html-webpack-plugin": "^5.5.0",
     "less": "^4.1.2",

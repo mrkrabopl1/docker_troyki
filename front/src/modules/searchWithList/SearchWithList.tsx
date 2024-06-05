@@ -14,7 +14,8 @@ type propsRowType = {
     searchCallback:(...args: any) => void | null,
     onDataRecieve?: (...args: any) => void ,
     onChange?: (...args: any) => void ,
-    val?:string
+    val?:string,
+    selectList?:(...args: any) => void 
 }
 const defaultStyle: any = {
     border: "2px solid blue",
@@ -29,15 +30,19 @@ let obj = { name: "string", imgs: "string",id:"string",firm:"string",price:"stri
 
 const SearchWithList: React.FC<propsRowType> = (props) => {
     let trottlingTimerId = useRef<ReturnType<typeof setTimeout> | null>(null)
-    let { val,className,onDataRecieve,searchCallback, onChange } = { ...props }
+    let { val,className,onDataRecieve,searchCallback, onChange, selectList } = { ...props }
     let [dropDownListData, setDropDownList] = useState<ReactElement[]>([])
     let mainRef = useRef<HTMLDivElement|null>(null)
+
+    const onChangeHandler=(data)=>{
+        selectList(data)
+    }
 
     const createDropList: (data: any) => void = (data) => {
         onDataRecieve && onDataRecieve(data)
         setDropDownList( data.map((value:any) =>
         {
-            return <MerchLine data={value}/>    
+            return <MerchLine  data={{...value, onChange:onChangeHandler}}/>    
         }
           
         ))
@@ -47,11 +52,14 @@ const SearchWithList: React.FC<propsRowType> = (props) => {
 
 
     const onFocus=()=>{
-        setActive(true)
+        setTimeout(()=>setActive(true),0)
     }
-    const onBlur=()=>{
+    const onBlur=(e)=>{
+        console.debug(e.relatedTarget)
         setActive(false)
     }
+
+
 
 
     const seatchProxy=(data:any)=>{
@@ -59,11 +67,18 @@ const SearchWithList: React.FC<propsRowType> = (props) => {
         searchCallback(data)
     }
 
+    const onClicks = ()=>{
+        console.debug("fmd;fms;dkfms;dm")
+    }
+
     return (
-        <div ref={mainRef} style = {{ position:"relative"}} className={className ? className.main : ""}>
-            <Search val={val} onChange={onChange} onBlur={onBlur} onFocus={onFocus} searchCallback={seatchProxy} onDataRecieve={createDropList}>
+        <div onClick={ onClicks}  onBlur={onBlur} ref={mainRef} style = {{position:"relative"}} className={className ? className.main : ""}>
+            <Search val={val} onChange={onChange}  onFocus={onFocus} searchCallback={seatchProxy} onDataRecieve={createDropList}>
 
             </Search>
+            {/* <div className={className ? className.dropList : ""} style={activeList?{position:"relative"}:{display:"none"}}>
+                {dropDownListData}
+            </div> */}
             <DropDownList  className={className ? className.dropList : ""} active={activeList}>
                 {dropDownListData}
             </DropDownList>

@@ -11,12 +11,6 @@ const Dotenv = require('dotenv-webpack');
 const { PROJECT_PATH } = require('../constant')
 const { isDevelopment, isProduction } = require('../env')
 
-
-setTimeout(()=>{
-    console.log(process.env.I,'kfljdnlgjfngjndfkjgnfkdjnkdng')
-  },10)
-console.log(process.env,'kfljdnlgjfngjndfkjgnfkdjnkdng')
-
 const getCssLoaders = () => {
     const cssLoaders = [
         isDevelopment ? 'style-loader' : MiniCssExtractPlugin.loader,
@@ -65,6 +59,9 @@ module.exports = {
     performance: {
         maxEntrypointSize: 512000,
         maxAssetSize: 512000
+    },
+    watchOptions: {
+        poll: 1000
     },
     module: {
         rules: [

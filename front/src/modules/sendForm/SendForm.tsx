@@ -3,7 +3,7 @@ import React, { useEffect, ReactElement, useState, useRef, memo, useCallback } f
 import Input from "src/components/input/Input"
 import InputWithLabel from "src/components/input/InputWithLabel"
 import InputWithLabelWithValidation from "src/components/input/InputWithLabelWithValidation"
-import PhoneInputWithLabel from "src/components/input/PhoneInput"
+import PhoneInputWithValidation from "src/components/input/PhoneInputWithValidation"
 import Combobox from "src/components/combobox/Combobox"
 import Checkbox from "src/components/checkbox/Checkbox"
 import s from './style.module.css'
@@ -64,7 +64,7 @@ const SendForm: React.FC<sendFormModuleInterface> = (props) => {
                 <InputWithLabelWithValidation valid={!validationObject.current.secondName} invalidText={"Введите фамилию."} className={className?.input} onChange={(data) => { setFormData(data, "secondName") }} placeholder={"Фамилия"} />
             </div>
             <InputWithLabelWithValidation valid={!validationObject.current.address} invalidText={"Введите адресс."} className={className?.input} onChange={(data) => { setFormData(data, "address") }} placeholder={"Адрес"} />
-            <PhoneInputWithLabel invalidIncorrect={"Неверный формат"} invalidEmpty={"Введите телефон"} valid={!validationObject.current.phone} className={className?.input} onChange={(data) => { setFormData(data, "phone") }} placeholder={"Телефон"} />
+            <PhoneInputWithValidation invalidIncorrect={"Неверный формат"} invalidEmpty={"Введите телефон"} valid={!validationObject.current.phone} className={className?.input} onChange={(data) => { setFormData(data, "phone") }} placeholder={"Телефон"} />
             <div style={{ display: "flex" }}>
                 <Checkbox activeData={false} enable={true} onChange={() => { }} />
                 <span>Сохранить эту информацию на будущее</span>

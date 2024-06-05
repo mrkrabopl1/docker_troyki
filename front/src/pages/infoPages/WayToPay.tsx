@@ -1,9 +1,9 @@
 import React, { ReactElement, useEffect, useRef, useState } from 'react'
-
+import s from "./style.module.css"
 const WayToPay: React.FC = () => {
 
     return (
-        <div>
+        <div className={s.infoPage}>
             <div>
                 Способы оплаты
             </div>

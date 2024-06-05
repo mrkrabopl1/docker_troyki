@@ -85,7 +85,7 @@ const TableWithComboboxColumn: React.FC<tableType> = (props) => {
         return rowArr
     }
     return (
-        <table className = {className}  style={{
+        <table onClick={(e)=>{e.stopPropagation()}} className = {className}  style={{
             borderCollapse: 'collapse',
             borderSpacing: '0px',
             width:"100%"

@@ -13,14 +13,16 @@ interface IField {
         id:number,
         size:string
     }[],
-    cartCount:number
+    cartCount:number,
+    verified:boolean
 }
 
 const initialState:IField  ={
    show:true,
    sticky:true,
    shop: [],
-   cartCount:0
+   cartCount:0,
+   verified:false
 }
 
 const menuSlice = createSlice({
@@ -39,10 +41,13 @@ const menuSlice = createSlice({
         cartCountAction(state,action){
             state.cartCount =action.payload
         },    
+        verified(state,action){
+            state.verified =action.payload
+        },
     }
 
 });
 
-export  const {  show, sticky, shopAction, cartCountAction } = menuSlice.actions
+export  const {  show, sticky, shopAction, cartCountAction, verified } = menuSlice.actions
 
 export default menuSlice.reducer

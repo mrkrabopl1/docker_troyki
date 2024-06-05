@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunksamura_snikers=self.webpackChunksamura_snikers||[]).push([[4798],{74798:function(s,e,a){a.r(e),e.default={secondPage:"secondPage--gVxDT"}}}]);

@@ -34,51 +34,55 @@ func (s *PostgresStore) CreateTables(ctx context.Context) {
 	// db.Exec(`INSERT INTO main_page (imagePath, mainText, subText, line)
 	// 	VALUES ('images/other/ajWallpaper.jpg', 'AIR JORDAN 1', 'BIGGEST COLLECTION', 'air_jordan_1')`)
 
-	db.Exec(`CREATE TABLE IF NOT EXISTS snickers (
-		id serial PRIMARY KEY NOT NULL ,
-		name TEXT NOT NULL UNIQUE,
-		info JSON NOT NULL,
-		firm TEXT NOT NULL,
-		line TEXT NOT NULL,
-		image_path TEXT NOT NULL,
-		minPrice INT NOT NULL,
-		maxPrice INT NOT NULL,
-		"3.5" INT,
-		"4" INT,
-		"4.5" INT,
-		"5" INT,
-		"5.5" INT,
-		"6" INT,
-		"6.5" INT,
-		"7" INT,
-		"7.5" INT,
-		"8" INT,
-		"8.5" INT,
-		"9" INT,
-		"9.5" INT,
-		"10" INT,
-		"10.5" INT,
-		"11" INT,
-		"11.5" INT,
-		"12" INT,
-		"12.5" INT,
-		"13" INT
-		)`)
+	// db.Exec(`CREATE TABLE IF NOT EXISTS snickers (
+	// 	id serial PRIMARY KEY NOT NULL ,
+	// 	name TEXT NOT NULL UNIQUE,
+	// 	info JSON NOT NULL,
+	// 	firm TEXT NOT NULL,
+	// 	line TEXT NOT NULL,
+	// 	image_path TEXT NOT NULL,
+	// 	minPrice INT NOT NULL,
+	// 	maxPrice INT NOT NULL,
+	// 	"3.5" INT,
+	// 	"4" INT,
+	// 	"4.5" INT,
+	// 	"5" INT,
+	// 	"5.5" INT,
+	// 	"6" INT,
+	// 	"6.5" INT,
+	// 	"7" INT,
+	// 	"7.5" INT,
+	// 	"8" INT,
+	// 	"8.5" INT,
+	// 	"9" INT,
+	// 	"9.5" INT,
+	// 	"10" INT,
+	// 	"10.5" INT,
+	// 	"11" INT,
+	// 	"11.5" INT,
+	// 	"12" INT,
+	// 	"12.5" INT,
+	// 	"13" INT
+	// 	)`)
 
 	// if e != nil {
 	// 	fmt.Println("fatal Error", e.Error())
 	// }
 
-	// s.dbx.Exec(`CREATE TABLE IF NOT EXISTS Customers (
-	// 	id serial PRIMARY KEY NOT NULL ,
-	// 	name TEXT NOT NULL,
-	// 	secondName TEXT,
-	// 	mail TEXT NOT NULL,
-	// 	phone TEXT NOT NULL,
-	// 	country TEXT NOT NULL,
-	// 	town TEXT NOT NULL,
-	// 	postIndex INT
-	// 	)`)
+	db.Exec(`CREATE TABLE IF NOT EXISTS Customers (
+		id serial PRIMARY KEY NOT NULL ,
+		name TEXT,
+		login TEXT NOT NULL,
+		secondName TEXT,
+		mail TEXT NOT NULL,
+		pass BYTEA NOT NULL,
+		phone TEXT,
+		country TEXT,
+		town TEXT,
+		sendMail BOOLEAN,
+		postIndex INT,
+		verified BOOLEAN NOT NULL
+		)`)
 
 	// s.dbx.Exec(`CREATE TABLE IF NOT EXISTS preorder (
 	// 		id serial PRIMARY KEY NOT NULL ,

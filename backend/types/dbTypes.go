@@ -103,3 +103,11 @@ type SnickersPreorder struct {
 	Id       int    `db:"id"`
 	PrId     int    `db:"prid"`
 }
+
+type CustimerInfo struct {
+	Name       string `db:"name"`
+	Login      string `db:"login"`
+	SecondName string `db:"secondName"`
+	Mail       string `db:"mail"`
+	Phone      string `db:"phone"`
+}
