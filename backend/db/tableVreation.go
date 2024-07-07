@@ -69,20 +69,27 @@ func (s *PostgresStore) CreateTables(ctx context.Context) {
 	// 	fmt.Println("fatal Error", e.Error())
 	// }
 
-	db.Exec(`CREATE TABLE IF NOT EXISTS Customers (
-		id serial PRIMARY KEY NOT NULL ,
-		name TEXT,
-		login TEXT NOT NULL,
-		secondName TEXT,
-		mail TEXT NOT NULL,
-		pass BYTEA NOT NULL,
-		phone TEXT,
-		country TEXT,
-		town TEXT,
-		sendMail BOOLEAN,
-		postIndex INT,
-		verified BOOLEAN NOT NULL
-		)`)
+	// db.Exec(`CREATE TABLE IF NOT EXISTS Customers (
+	// 	id serial PRIMARY KEY NOT NULL ,
+	// 	name TEXT,
+	// 	secondName TEXT,
+	// 	mail TEXT NOT NULL,
+	// 	pass BYTEA NOT NULL,
+	// 	phone TEXT,
+	// 	country TEXT,
+	// 	town TEXT,
+	// 	sendMail BOOLEAN,
+	// 	postIndex INT
+	// 	)`)
+
+	db.Exec(`CREATE TABLE IF NOT EXISTS verification (
+			id serial PRIMARY KEY NOT NULL ,
+			token TEXT NOT NULL,
+			CustomerID INT  NOT NULL,
+			expire TIMESTAMP NOT NULL,
+			deleteTime  TIMESTAMP NOT NULL,
+			FOREIGN KEY (CustomerID) REFERENCES Customers(id)
+			)`)
 
 	// s.dbx.Exec(`CREATE TABLE IF NOT EXISTS preorder (
 	// 		id serial PRIMARY KEY NOT NULL ,

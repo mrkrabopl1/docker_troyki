@@ -25,7 +25,7 @@ const DynamicElement: React.FC<propsRowType> = (props) => {
     }
    
     return (
-      <Suspense fallback={<div>Loading...</div>}>
+      <Suspense fallback={<div></div>}>
         <DynamicComponent onChange = {onChangeData}  {...propsData}/>
       </Suspense>
     );

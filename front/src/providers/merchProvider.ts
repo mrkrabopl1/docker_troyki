@@ -33,6 +33,7 @@ type collectionType = {
 
 const getCollections = function (collection: collectionType, callback: (val: any) => void) {
     let json = JSON.stringify(collection)
+    console.debug(API_URL)
     axios({
         method: 'post',
         url: `${API_URL}/collection`,

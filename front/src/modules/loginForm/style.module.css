@@ -26,6 +26,9 @@
 	cursor: pointer;
 	transition: .5s ease-in-out;
 }
+.warning{
+	color:red
+}
 .loginInput{
 	height: 24px;
 	border-bottom: 2px solid gray;

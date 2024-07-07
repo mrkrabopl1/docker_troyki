@@ -13,6 +13,7 @@ import Main from './pages/main/Main'
 import { getCookie } from './global'
 import WayToPay from './pages/infoPages/WayToPay'
 import ScrollToTop from './scrollToTop';
+import Refund from './pages/infoPages/Refund';
 import {
   Link, Route, BrowserRouter as Router, Routes,
   createBrowserRouter,
@@ -29,6 +30,7 @@ import Delivery from './pages/infoPages/Delivery'
 import Faq from './pages/infoPages/Faq'
 import User from './pages/user/User';
 import Verification from './pages/verification/Verification';
+import { jwtAutorise } from './providers/userProvider';
 setTimeout(() => {
   console.debug(API_URL, "f;lsdmf;ls,d;lf")
 }, 10)
@@ -58,14 +60,10 @@ const App: React.FC<any> = () => {
   }, [])
 
   useEffect(() => {
-      axios({
-        method: 'get',
-        url: 'http://127.0.0.1:8100/jwtAutorise',
-        headers: {}
-      }
-      ).then((res: any) => {
-        dispatch(verified(res.data))
-      })
+    jwtAutorise((res)=>{
+      console.debug(res)
+      dispatch(verified(res.data))
+    })
   }, [])
 
 
@@ -191,6 +189,10 @@ const App: React.FC<any> = () => {
 
           <Route path="/verification/:verHash" element={
             <Verification />
+          }>
+         </Route>
+         <Route path="/refund-policy" element={
+            <Refund />
           }>
           </Route>
 

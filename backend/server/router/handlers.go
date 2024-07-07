@@ -6,11 +6,13 @@ import (
 	_ "image/jpeg"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/render"
+	"github.com/mrkrabopl1/go_db/errorsType"
 	"github.com/mrkrabopl1/go_db/logger"
 	"github.com/mrkrabopl1/go_db/types"
 )
@@ -340,9 +342,41 @@ func (s *Server) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println(postData, "vsvflkfnslkfm;sld")
-	s.store.RegisterUser(r.Context(), postData.Login, postData.Password, postData.Mail)
+	index, err5 := s.store.RegisterUser(r.Context(), postData.Password, postData.Mail)
 
-	//render.JSON(w, r, data)
+	if err5 != nil {
+		fmt.Println(err5)
+	}
+
+	data := map[string]int{
+		"registerIndex": index,
+	}
+	render.JSON(w, r, data)
+}
+
+func createJwt(id int16) http.Cookie {
+	expirationTime := time.Now().Add(200 * time.Minute)
+	claims := &jwt.StandardClaims{
+		Issuer:    fmt.Sprint(id),
+		ExpiresAt: expirationTime.Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	tokenString, _ := token.SignedString(jwtKey)
+
+	fmt.Println(tokenString, "bbbbbbbbbbbbbbbbbbbbbbbbbbb")
+	myCookie := http.Cookie{
+		Name:    "token",
+		Value:   tokenString,
+		Expires: expirationTime,
+		// Path:     "/",
+		// MaxAge:   86372,
+		HttpOnly: false,
+		Secure:   false,
+		SameSite: http.SameSiteNoneMode,
+	}
+	return myCookie
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -353,32 +387,12 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err1 := s.store.Login(r.Context(), postData.Login, postData.Password)
-
+	id, err1 := s.store.Login(r.Context(), postData.Mail, postData.Password)
+	myCookie := createJwt(id)
 	if err1 != nil {
 		render.JSON(w, r, false)
 	} else {
-		expirationTime := time.Now().Add(200 * time.Minute)
-		claims := &jwt.StandardClaims{
-			Issuer:    postData.Login,
-			ExpiresAt: expirationTime.Unix(),
-		}
 
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-		tokenString, _ := token.SignedString(jwtKey)
-
-		fmt.Println(tokenString, "bbbbbbbbbbbbbbbbbbbbbbbbbbb")
-		myCookie := http.Cookie{
-			Name:    "token",
-			Value:   tokenString,
-			Expires: expirationTime,
-			// Path:     "/",
-			// MaxAge:   86372,
-			HttpOnly: false,
-			Secure:   false,
-			SameSite: http.SameSiteNoneMode,
-		}
 		//SetPartitionedCookie(w, &myCookie)
 		http.SetCookie(w, &myCookie)
 
@@ -387,13 +401,8 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) handleGetUserData(w http.ResponseWriter, r *http.Request) {
-
-	cookie, _ := r.Cookie("token")
-
-	fmt.Println(cookie.Value, "dlamdkasmldnsalkdmmasldm")
-
-	token1, _ := jwt.ParseWithClaims(cookie.Value, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+func getJwtIssuerId(coockieVal string) (int, error) {
+	token1, _ := jwt.ParseWithClaims(coockieVal, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(jwtKey), nil
 	})
 
@@ -403,9 +412,24 @@ func (s *Server) handleGetUserData(w http.ResponseWriter, r *http.Request) {
 	// 	fmt.Println(err3)
 	// }
 
-	claims1 := token1.Claims.(*jwt.StandardClaims)
+	claims := token1.Claims.(*jwt.StandardClaims)
+	i, err := strconv.Atoi(claims.Issuer)
+	if err != nil {
+		return 0, err
+	} else {
+		return i, nil
+	}
 
-	response, err := s.store.GetUserData(r.Context(), claims1.Issuer)
+}
+
+func (s *Server) handleGetUserData(w http.ResponseWriter, r *http.Request) {
+
+	cookie, _ := r.Cookie("token")
+
+	fmt.Println(cookie.Value, "dlamdkasmldnsalkdmmasldm")
+	issuer, _ := getJwtIssuerId(cookie.Value)
+
+	response, err := s.store.GetUserData(r.Context(), issuer)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -437,6 +461,30 @@ func (s *Server) handleJwtAutorise(w http.ResponseWriter, r *http.Request) {
 	// // 	fmt.Println(err1)
 	// // }
 	// fmt.Println(claims1.Issuer, "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg0-=0g")
+}
+
+func (s *Server) handleVerifyUser(w http.ResponseWriter, r *http.Request) {
+	var verData types.VerifyData
+	err := json.NewDecoder(r.Body).Decode(&verData)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	id, err := s.store.Verify(r.Context(), verData.Token)
+	myCookie := createJwt(id)
+	if err != nil {
+		fmt.Println(err)
+		render.JSON(w, r, false)
+	} else {
+
+		//SetPartitionedCookie(w, &myCookie)
+		http.SetCookie(w, &myCookie)
+
+		// Render the response as JSON
+		render.JSON(w, r, true)
+	}
 }
 
 func (s *Server) handleFAQ(w http.ResponseWriter, r *http.Request) {
@@ -530,18 +578,13 @@ func (s *Server) handleSearchMerch(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetCollection(w http.ResponseWriter, r *http.Request) {
 	var postData types.PostDataCollection
 	err := json.NewDecoder(r.Body).Decode(&postData)
-	fmt.Println(postData, "fnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	searchData, _ := s.store.GetCollection(r.Context(), postData.Name, postData.Size, postData.Page)
-
-	// Print the result and the time taken
 	response := NewSnickersSearchResponse1(searchData)
-
-	fmt.Println(response, "fnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn")
 	render.JSON(w, r, response)
 }
 
@@ -566,7 +609,6 @@ func (s *Server) handleCreatePreorder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("createOfdsfsd")
 	var orderData types.CreateOrderType
 	err := json.NewDecoder(r.Body).Decode(&orderData)
 	fmt.Println(orderData)
@@ -582,7 +624,6 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	data := map[string]int{
 		"orderId": orderId,
 	}
-	fmt.Println("sssssssdw", data)
 	render.JSON(w, r, data)
 }
 
@@ -636,7 +677,29 @@ func (s *Server) handleGetCart(w http.ResponseWriter, r *http.Request) {
 	logger.Info("Response get cart data")
 	render.JSON(w, r, responseData)
 }
+func (s *Server) handleChangePass(w http.ResponseWriter, r *http.Request) {
+	var passes types.ChangePassType
+	fmt.Println("chfnsdofndsokfpsdkfsknokd")
+	cookie, _ := r.Cookie("token")
+	fmt.Println(cookie, "chfnsdofndsokfpsdkfsknokd")
 
+	issuer, _ := getJwtIssuerId(cookie.Value)
+	err := json.NewDecoder(r.Body).Decode(&passes)
+	fmt.Println(passes)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err2 := s.store.ChangePass(r.Context(), passes.NewPass, passes.OldPass, issuer)
+	errorType := 0
+	if err2 == errorsType.PassCoincide {
+		errorType = 1
+	}
+	data := map[string]int{
+		"err": errorType,
+	}
+	render.JSON(w, r, data)
+}
 func (s *Server) handleDeleteCartData(w http.ResponseWriter, r *http.Request) {
 	var data types.DeleteCartData
 	err := json.NewDecoder(r.Body).Decode(&data)

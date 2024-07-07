@@ -57,9 +57,6 @@ const AddressForm: React.FC<sendFormModuleInterface> = (props) => {
 
         <div className={s.wrapper}>
                 <InputWithLabelWithValidation valid={!validationObject.current.town} invalidText={"Введите населенный пункт."} className={className?.input} onChange={(data) => { setFormData(data, "town") }} placeholder={"Город"} />
-                
-                
-
         </div>
 
     )

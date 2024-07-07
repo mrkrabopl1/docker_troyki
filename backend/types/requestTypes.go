@@ -53,3 +53,10 @@ type PostDataSnickersAndFiltersByString struct {
 	Filters     SnickersFilterStruct `json:"filters"`
 	OrderedType int                  `json:"orderedType"`
 }
+type VerifyData struct {
+	Token string `json:"token"`
+}
+type ChangePassType struct {
+	NewPass string `json:"newPass"`
+	OldPass string `json:"oldPass"`
+}

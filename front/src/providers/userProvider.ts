@@ -2,8 +2,7 @@ import axios from "axios";
 import { getCookie } from "src/global";
 
 type userDataType = {
-    name: string,
-    password: string,
+    pass: string,
     mail: string
 }
 
@@ -49,7 +48,7 @@ const verifyEmail= function (verHash: string, callback: (val: any) => void) {
     let json = JSON.stringify({token:verHash})
     axios({
         method: 'post',
-        url: `${API_URL}/verifyEmail`,
+        url: `${API_URL}/verify`,
         headers: {
             'Content-Type': 'application/json'
         },
@@ -109,5 +108,41 @@ const changeUserData= function (data: loginDataType, callback: (val: any) => voi
         console.warn(error)
     })
 }
+type changePassType = {
+    newPass: string,
+    oldPass: string
+}
+const changeUserPass= function (data: changePassType, callback: (val: any) => void) {
+    let json = JSON.stringify(data)
+    axios({
+        method: 'post',
+        url: `${API_URL}/changePass`,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        withCredentials:true,
+     
+        data: json
+    }
+    ).then((res: any) => {
+        console.log(res.data)
+        console.debug(getCookie("token"))
+        callback(res.data)
+    }, (error) => {
+        console.warn(error)
+    })
+}
 
-export { registerUser, getUserData, verifyEmail, loginUser, changeUserData }
+ const jwtAutorise =function(callback: (val: any) => void){
+    axios({
+        method: 'get',
+        url: `${API_URL}/jwtAutorise`,
+        headers: {}
+      }
+      ).then((res: any) => {
+       callback(res)
+      })
+ }
+
+
+export { registerUser, getUserData, verifyEmail, loginUser, changeUserData, changeUserPass, jwtAutorise }

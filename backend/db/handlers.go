@@ -2,7 +2,9 @@ package db
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -11,6 +13,7 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash"
+	"github.com/mrkrabopl1/go_db/errorsType"
 	"github.com/mrkrabopl1/go_db/logger"
 	"github.com/mrkrabopl1/go_db/server/contextKeys"
 	"github.com/mrkrabopl1/go_db/types"
@@ -888,8 +891,60 @@ func (s *PostgresStore) CountTest(ctx context.Context) ([]Count, error) {
 	}
 	return data, nil
 }
+func generateToken() (string, error) {
+	b := make([]byte, 32)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
+}
 
-func (s *PostgresStore) RegisterUser(ctx context.Context, name string, pass string, mail string) (bool, error) {
+func sendMail() (string, error) {
+	token, err := generateToken()
+	if err != nil {
+		log.Fatalf("Error generating token: %v", err)
+	}
+
+	from := "munhgauzen12@gmail.com"
+	password := "qlfqlqasjkrywvij"
+
+	// Receiver email address.
+	to := []string{"mr.krabopl12@gmail.com"}
+
+	// SMTP server configuration.
+	smtpHost := "smtp.gmail.com"
+	smtpPort := "587"
+
+	// Message.
+
+	verifiString := fmt.Sprintf(
+		"MIME-Version: 1.0\r\n"+
+			"Content-Type: text/html; charset=\"UTF-8\";\r\n"+
+			"Subject: Troyki profile verification\r\n"+
+			"\r\n"+
+			"<html><body>"+
+			"<p>Click the link below:</p>"+
+			"<a href=\"http://localhost:3000/verification/%s\">Troyki verifiaction</a>"+
+			"</body></html>\r\n", token)
+	message := []byte(verifiString)
+
+	// Authentication.
+
+	auth := smtp.PlainAuth("", from, password, smtpHost)
+
+	// Sending email.
+
+	err2 := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, to, message)
+	if err2 != nil {
+		log.Fatalf("smtp error: %s", err2)
+		return "", err2
+	}
+
+	return token, nil
+}
+
+func (s *PostgresStore) RegisterUser(ctx context.Context, pass string, mail string) (int, error) {
 	db, _ := s.connect(ctx)
 	defer db.Close()
 	var exist bool
@@ -904,15 +959,15 @@ func (s *PostgresStore) RegisterUser(ctx context.Context, name string, pass stri
 
 	if exist {
 		fmt.Println("Mail already exist")
-		return true, nil
+		return 1, nil
 	} else {
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
 		if err != nil {
 			panic(err)
 		}
 		fmt.Println(string(hashedPassword))
-		customerStr := fmt.Sprintf(`INSERT INTO customers (login, pass, mail, verified) VALUES 
-		('%s', '%s', '%s', %t) RETURNING id`, name, hashedPassword, mail, false)
+		customerStr := fmt.Sprintf(`INSERT INTO customers (pass, mail) VALUES 
+		('%s', '%s') RETURNING id`, hashedPassword, mail)
 
 		var authorID int
 
@@ -921,49 +976,32 @@ func (s *PostgresStore) RegisterUser(ctx context.Context, name string, pass stri
 			fmt.Println("err1", err1)
 		}
 
-		from := "munhgauzen12@gmail.com"
-		password := "qlfqlqasjkrywvij"
+		token, err3 := sendMail()
+		if err3 != nil {
+			fmt.Println("err1", err1)
+			return 0, err3
+		} else {
+			expire := time.Now().Add(30 * time.Minute).Format("2006-01-02 15:04:05")
+			deleteTime := time.Now().Add(720 * time.Hour).Format("2006-01-02 15:04:05")
+			verStr := fmt.Sprintf(`INSERT INTO verification (token, expire, customerId, deleteTime) VALUES 
+			('%s', '%s', %d, '%s')`, token, expire, authorID, deleteTime)
 
-		// Receiver email address.
-		to := []string{"mr.krabopl12@gmail.com"}
-
-		// SMTP server configuration.
-		smtpHost := "smtp.gmail.com"
-		smtpPort := "587"
-
-		// Message.
-		message := []byte(
-			"MIME-Version: 1.0\r\n" +
-				"Content-Type: text/html; charset=\"UTF-8\";\r\n" +
-				"Subject: Test Email with Link\r\n" +
-				"\r\n" +
-				"<html><body>" +
-				"<p>This is a test email sent from Go! Click the link below:</p>" +
-				"<a href=\"https://www.example.com\">Visit Example.com</a>" +
-				"</body></html>\r\n")
-
-		// Authentication.
-
-		auth := smtp.PlainAuth("", from, password, smtpHost)
-
-		// Sending email.
-		err2 := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, to, message)
-		if err2 != nil {
-			log.Fatalf("smtp error: %s", err2)
+			_, err5 := db.ExecContext(ctx, verStr)
+			if err5 != nil {
+				fmt.Println(err5, "fwdjfoiewjroiewjroiwe")
+			}
 		}
-
-		fmt.Println("Email sent successfully!")
 
 	}
 
-	return true, nil
+	return 2, nil
 }
 
-func (s *PostgresStore) GetUserData(ctx context.Context, login string) (types.CustimerInfo, error) {
+func (s *PostgresStore) GetUserData(ctx context.Context, id int) (types.CustimerInfo, error) {
 	db, _ := s.connect(ctx)
 	defer db.Close()
 	var userInfo types.CustimerInfo
-	queryExStr := fmt.Sprintf(`SELECT name, secondname, mail , phone, login FROM customers WHERE login = '%s'`, login)
+	queryExStr := fmt.Sprintf(`SELECT name, secondname, mail , phone FROM customers WHERE id = '%d'`, id)
 
 	err := db.GetContext(ctx, &userInfo, queryExStr)
 
@@ -976,25 +1014,50 @@ func (s *PostgresStore) GetUserData(ctx context.Context, login string) (types.Cu
 	return userInfo, err
 }
 
-func (s *PostgresStore) Login(ctx context.Context, name string, pass string) error {
+func (s *PostgresStore) Verify(ctx context.Context, token string) (int16, error) {
 	db, _ := s.connect(ctx)
 	defer db.Close()
-	var passDB []byte
-	queryExStr := fmt.Sprintf(`SELECT pass FROM customers WHERE login = '%s'`, name)
+
+	var verData types.VerInfo
+	verStr := fmt.Sprintf(`SELECT id, expire FROM verification WHERE token = '%s'`, token)
+
+	err := db.GetContext(ctx, &verData, verStr)
+
+	if err != nil {
+		return verData.CustomerId, err
+	}
+
+	if time.Now().After(verData.Expire) {
+		return verData.CustomerId, errorsType.ErrExpire
+	}
+	query := fmt.Sprintf(`DELETE FROM verification WHERE id = %d`, verData.Id)
+	_, err6 := db.ExecContext(ctx, query)
+	if err6 != nil {
+		return verData.CustomerId, err6
+	}
+	return verData.CustomerId, nil
+}
+
+func (s *PostgresStore) Login(ctx context.Context, mail string, pass string) (int16, error) {
+	db, _ := s.connect(ctx)
+	defer db.Close()
+	var passDB types.LoginInfo
+	var id int16
+	queryExStr := fmt.Sprintf(`SELECT id, pass FROM customers WHERE mail = '%s'`, mail)
 
 	err := db.GetContext(ctx, &passDB, queryExStr)
 
 	if err != nil {
-		fmt.Println(err, name, "fldkshfosklfjlsdkflsdkj")
-		return err
+		fmt.Println(mail, "test")
+		return id, err
 	} else {
 		fmt.Println(passDB, pass, "fpdsjfsjfsjdfskdp")
-		err2 := bcrypt.CompareHashAndPassword(passDB, []byte(pass))
+		err2 := bcrypt.CompareHashAndPassword(passDB.Pass, []byte(pass))
 		if err2 != nil {
 			fmt.Println(err2, "rfsydufugjhjkj")
-			return err2
+			return id, err2
 		} else {
-			return nil
+			return passDB.Id, nil
 		}
 	}
 }
@@ -1074,6 +1137,39 @@ func (s *PostgresStore) CreateOrder(ctx context.Context, orderData *types.Create
 	}
 }
 
+func (s *PostgresStore) ChangePass(ctx context.Context, newPass string, oldPass string, id int) error {
+	fmt.Println("chfnsdofndsokfpsdkfsknokd", id)
+	db, _ := s.connect(ctx)
+	defer db.Close()
+	var pass []byte
+	queryExStr := fmt.Sprintf(`SELECT pass FROM customers WHERE id = %d`, id)
+	err := db.GetContext(ctx, &pass, queryExStr)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	err2 := bcrypt.CompareHashAndPassword(pass, []byte(oldPass))
+	if err2 == bcrypt.ErrMismatchedHashAndPassword {
+		fmt.Println("The password does not match the hash")
+		return errorsType.PassCoincide
+	} else if err2 != nil {
+		fmt.Println(pass, oldPass, err2, "fuck")
+		return err2
+	}
+	hashedPassword, err4 := bcrypt.GenerateFromPassword([]byte(newPass), bcrypt.DefaultCost)
+	if err4 != nil {
+		panic(err4)
+	}
+	setNewPassStr := fmt.Sprintf(`UPDATE customers SET pass = '%s' WHERE id=%d`, hashedPassword, id)
+	_, err1 := db.ExecContext(ctx, setNewPassStr)
+	if err1 != nil {
+		fmt.Println(err1, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+		return err1
+	}
+	fmt.Println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz")
+	return nil
+}
+
 type Interface interface {
 	GetFirms(ctx context.Context) ([]types.FirmsResult, error)
 	GetSnickersByFirmName(ctx context.Context) ([]types.Snickers, error)
@@ -1090,9 +1186,11 @@ type Interface interface {
 	UpdatePreorder(ctx context.Context, id int, info map[string]string, hash string) (int, error)
 	GetCartCount(ctx context.Context, hash string) (int, error)
 	DeleteCartData(ctx context.Context, preorderid int) error
-	RegisterUser(ctx context.Context, name string, pass string, mail string) (bool, error)
+	RegisterUser(ctx context.Context, pass string, mail string) (int, error)
 	CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int, error)
 	GetSnickersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.SnickersPage, error)
-	Login(ctx context.Context, name string, pass string) error
-	GetUserData(ctx context.Context, login string) (types.CustimerInfo, error)
+	Login(ctx context.Context, name string, pass string) (int16, error)
+	GetUserData(ctx context.Context, id int) (types.CustimerInfo, error)
+	Verify(ctx context.Context, token string) (int16, error)
+	ChangePass(ctx context.Context, newPass string, oldPass string, id int) error
 }

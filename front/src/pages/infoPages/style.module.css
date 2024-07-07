@@ -1,4 +1,23 @@
 .infoPage{
-    padding:20px 40px;
+    padding:20px 300px;
+    font-size: 25px;
+}
+
+.mainHeader{
+    font-size: 60px;
+    margin:50px 0;
+    font-weight: bold;
+}
+
+.middleHeader{
     font-size: 30px;
+    margin:20px 0;
+    font-weight: bold;
+}
+
+.center{
+   text-align: center;
+}
+.infoPlace{
+    line-height: 50px;
 }

@@ -14,7 +14,7 @@ interface IField {
         size:string
     }[],
     cartCount:number,
-    verified:boolean
+    isVerified:boolean
 }
 
 const initialState:IField  ={
@@ -22,7 +22,7 @@ const initialState:IField  ={
    sticky:true,
    shop: [],
    cartCount:0,
-   verified:false
+   isVerified:false
 }
 
 const menuSlice = createSlice({
@@ -42,7 +42,7 @@ const menuSlice = createSlice({
             state.cartCount =action.payload
         },    
         verified(state,action){
-            state.verified =action.payload
+            state.isVerified =action.payload
         },
     }
 

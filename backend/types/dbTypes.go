@@ -1,6 +1,10 @@
 package types
 
-import "github.com/lib/pq"
+import (
+	"time"
+
+	"github.com/lib/pq"
+)
 
 type SnickersFilterStruct struct {
 	Firms []string  `json:"firms"`
@@ -106,8 +110,16 @@ type SnickersPreorder struct {
 
 type CustimerInfo struct {
 	Name       string `db:"name"`
-	Login      string `db:"login"`
 	SecondName string `db:"secondName"`
 	Mail       string `db:"mail"`
 	Phone      string `db:"phone"`
+}
+type LoginInfo struct {
+	Id   int16  `db:"id"`
+	Pass []byte `db:"pass"`
+}
+type VerInfo struct {
+	Id         int16     `db:"id"`
+	Expire     time.Time `db:"expire"`
+	CustomerId int16     `db:"customerId"`
 }

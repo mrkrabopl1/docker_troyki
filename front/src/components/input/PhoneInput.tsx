@@ -155,7 +155,7 @@ const PhoneInputWithLabel: React.FC<propsRowType> = (props) => {
     }
     const [valState, setVal] = useState<string>(val ? val : "")
     return (
-        <div style={{ width: "100%", position: "relative", padding: "15px 0", marginTop: "5px" }}>
+        <div className={s.inputContainer}>
             <span>Phone</span>
             <input
                 onKeyDown={(e) => {

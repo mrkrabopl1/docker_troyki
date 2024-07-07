@@ -13,7 +13,7 @@ const MerchFormBlock: React.FC<{ data: merchInterface,onChange:()=>void}> = (pro
     const navigate = useNavigate();
     return (
         <div style={{display:"flex"}}>
-            <div style={{width:"100%"}} onClick={() => navigate('product/' + data.id)} className={s.merchLine}>
+            <div style={{width:"100%"}} onClick={() => navigate('/product/' + data.id)} className={s.merchLine}>
                 <img className={s.buyImg} style={{height:"", width: "30%", flexShrink: 0 }} src={"/"+data.img} alt="" />
                 <div>{data.count}</div>
                 <div>

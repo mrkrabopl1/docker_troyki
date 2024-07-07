@@ -8,6 +8,7 @@ import Combobox from "src/components/combobox/Combobox"
 import Checkbox from "src/components/checkbox/Checkbox"
 import s from './style.module.css'
 import Button from 'src/components/Button';
+import { verified } from 'src/store/reducers/menuSlice'
 import DeliveryInfo from '../deliveryInfo/DeliveryInfo'
 
 interface sendFormModuleInterface {
@@ -65,16 +66,16 @@ const SendForm: React.FC<sendFormModuleInterface> = (props) => {
             </div>
             <InputWithLabelWithValidation valid={!validationObject.current.address} invalidText={"Введите адресс."} className={className?.input} onChange={(data) => { setFormData(data, "address") }} placeholder={"Адрес"} />
             <PhoneInputWithValidation invalidIncorrect={"Неверный формат"} invalidEmpty={"Введите телефон"} valid={!validationObject.current.phone} className={className?.input} onChange={(data) => { setFormData(data, "phone") }} placeholder={"Телефон"} />
-            <div style={{ display: "flex" }}>
+            {verified?<div style={{ display: "flex" }}>
                 <Checkbox activeData={false} enable={true} onChange={() => { }} />
                 <span>Сохранить эту информацию на будущее</span>
-            </div>
-            <div style={{ display: "flex" }}>
+            </div>:null}
+            {/* <div style={{ display: "flex" }}>
                 <Checkbox activeData={false} enable={true} onChange={() => { }} />
                 <span>Отправляйте мне SMS-сообщения о новостях и предложениях</span>
-            </div>
+            </div> */}
             {/* <DeliveryInfo/> */}
-            <Button text='Оформить заказ' onChange={() => {
+            <Button className={s.buttonConf} text='Оформить заказ' onChange={() => {
                 updateValidObj()
                 if (Object.values(validationObject.current).length > 0) {
                     setRefresh(!refresh)

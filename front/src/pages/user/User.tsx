@@ -1,8 +1,6 @@
-import React, { useEffect, ReactElement, useState, useRef, memo } from 'react'
+import React, {Suspense, useEffect, ReactElement, useState, useRef, memo ,lazy} from 'react'
 
-import MerchSliderField from '../../modules/merchField/MerchSliderField'
-import { getMainInfo } from "src/providers/merchProvider"
-import { useAppSelector } from 'src/store/hooks/redux'
+
 import { useNavigate } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
 import {getUserData} from 'src/providers/userProvider'
@@ -10,6 +8,9 @@ import BuyMerchField from 'src/modules/buyMerchField/BuyMerchField';
 import Input from 'src/components/input/Input';
 import PhoneInputWithValidation from 'src/components/input/PhoneInputWithValidation';
 import Button from 'src/components/Button';
+import UserForm from 'src/modules/sendForm/UserForm';
+const AddressForm = lazy(() => import('src/modules/sendForm/AddressForm'))
+
 import s from "./s.module.css"
 type urlParamsType = {
     login: string;
@@ -27,6 +28,9 @@ type userValType = {
 const User: React.FC<any> = () => { 
     let { login } = useParams<urlParamsType>();
     const navigate = useNavigate()
+
+    let [tab,setTab] = useState<number>(0)
+
     let [snickers, setSnickers] = useState<any>([])
     let [redact, setRedact] = useState<boolean>(false)
     let [userVal, setUserVal] = useState<userValType>({
@@ -47,25 +51,31 @@ const User: React.FC<any> = () => {
         })
     }, [])
     return (
-        <div>
-            <div>
-            <Input val={userVal.name} onChange={(name)=>{
-                    userVal.name = name
-                    setUserVal(userVal)
-                }}/>
-                 <Input val={userVal.secondName} onChange={(secondName)=>{
-                    userVal.secondName = secondName
-                    setUserVal(userVal)
-                }}/>
-                <PhoneInputWithValidation invalidIncorrect='Неверный формат номера' invalidEmpty='' valid={true} val={userVal.phone} onChange={(phone)=>{
-                    userVal.phone = phone
-                    setUserVal(userVal)
-                }}/>
-            </div>
-            <Button text='Сохранить данные.' onChange={()=>{
+        <div className={s.main}>
 
-            }} />
-            <BuyMerchField data={snickers} />
+            <div className={s.tabs}>
+                <div onClick={()=>{setTab(0)}}>
+                    Инфо
+                </div>
+                <div onClick={()=>{setTab(1)}}>
+                    Аддрес
+                </div>
+                <div onClick={()=>{setTab(1)}}>
+                    История покупок
+                </div>
+                <div onClick={()=>{setTab(1)}}>
+                    Выход
+                </div>
+
+            </div>
+            <div className={s.pages}>
+                { tab === 0 && <UserForm onChange={()=>{}}/>}
+                { tab === 1 &&
+                    <Suspense fallback={<div></div>}>
+                    <AddressForm onChange = {()=>{}}/>
+                  </Suspense>
+                }
+            </div>
         </div>
     )
 }

@@ -84,4 +84,6 @@ func (s *Server) routes() {
 	s.router.Post("/login", s.handleLogin)
 	s.router.Get("/jwtAutorise", s.handleJwtAutorise)
 	s.router.Get("/getUserData", s.handleGetUserData)
+	s.router.Post("/verify", s.handleVerifyUser)
+	s.router.Post("/changePass", s.handleChangePass)
 }

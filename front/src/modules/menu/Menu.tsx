@@ -62,11 +62,11 @@ const Menu: React.FC<any> = (props) => {
     let dispatch = useAppDispatch()
     const { isLog } = useAppSelector(state => state.userReducer)
     const { show, sticky } = useAppSelector(state => state.menuReducer)
+    const { isVerified } = useAppSelector(state => state.menuReducer)
     const menuWrap = useRef<HTMLDivElement>(null)
     const [active, setActive] = useState<boolean>(false)
     const [loginActive, setLoginActive] = useState<boolean>(false)
     const { setSearchData } = { ...searchSlice.actions }
-
     let className = s.menuWrap
 
     const navigate = useNavigate();
@@ -117,13 +117,13 @@ const Menu: React.FC<any> = (props) => {
 
 
             <div style={{ margin: "auto 20px", display: "flex", position: "relative" }}>
-                {verified ? <User className={global.link} onClick={() => navigate("/user")} /> : <SignIn className={global.link} onClick={() => setLoginActive(true)} />}
+                {isVerified ? <User className={global.link} onClick={() => navigate("/user")} /> : <SignIn className={global.link} onClick={() => setLoginActive(true)} />}
                 <Loupe onClick={() => setActive(true)} className={global.link} height={"24px"} width={"24px"} />
                 <BuyButton />
 
             </div>
 
-            {active ? <Modal onChange={setActive} active={true}>
+            {active ? <Modal onChange={setActive} active={active}>
                 <div onClick={(e) => { e.stopPropagation() }} className={s.modalWrap}>
                     <SearchWithList
                         onChange={(val) => { dispatch(setSearchData(val)) }}
@@ -134,9 +134,9 @@ const Menu: React.FC<any> = (props) => {
                 </div>
             </Modal> : null}
 
-            <Modal onChange={setLoginActive} active={loginActive}>
+            {loginActive ? <Modal onChange={setLoginActive} active={loginActive}>
                 < LoginForm onChange={(data) => {
-                    registerUser(data, () => { })
+                    
                 }}
                     onLogin={(data) => {
                         loginUser(data, (loged) => {
@@ -148,7 +148,7 @@ const Menu: React.FC<any> = (props) => {
                         })
                     }}
                 />
-            </Modal>
+            </Modal>: null}
 
         </div>
 

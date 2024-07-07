@@ -1,7 +1,6 @@
 import React, { ReactElement, useEffect, useRef, useState } from 'react'
 import { getQuestions } from 'src/providers/faqProvider'
 import DoubleInfoDrop from 'src/components/doubleInfoDrop/DoubleInfoDrop';
-import ReactHtmlParser from 'react-html-parser'
 const Faq: React.FC = () => {
 
     let [questions, setQuestions] = useState<any>([])

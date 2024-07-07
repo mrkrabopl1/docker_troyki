@@ -4,7 +4,7 @@ const WayToPay: React.FC = () => {
 
     return (
         <div className={s.infoPage}>
-            <div>
+            <div className={s.middleName +" "+ s.center} >
                 Способы оплаты
             </div>
             <div>

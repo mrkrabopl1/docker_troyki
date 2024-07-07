@@ -1,0 +1,11 @@
+.main{
+    display: flex;
+    width: 100%;
+}
+
+.tabs{
+    width: 400px;
+}
+.pages{
+    width: 100%;
+}
