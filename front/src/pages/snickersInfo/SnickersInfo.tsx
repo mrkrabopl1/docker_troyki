@@ -15,7 +15,9 @@ import DoubleInfoDrop from 'src/components/doubleInfoDrop/DoubleInfoDrop';
 import { createPreorder, updatePreorder } from 'src/providers/orderProvider';
 import s from "./style.module.css"
 import { setCookie, getCookie } from 'src/global';
-
+import { toPrice } from 'src/global';
+import ContentSlider from 'src/components/contentSlider/ContentSlider'
+import ImagePresantationBlock from "src/components/imagesPresantation/ImagePresentationBlock"
 
 import { sizes, getMerchPrice1 } from 'src/constFiles/size';
 
@@ -56,12 +58,13 @@ type tableType = {
 }
 const SnickersInfo: React.FC = () => {
     const { shop } = { ...useAppSelector(state => state.menuReducer) }
+    const { widthProps } = { ...useAppSelector(state => state.resizeReducer) }
     const navigate = useNavigate();
     let dispatch = useAppDispatch()
     let { snickers } = useParams<urlParamsType>();
     let [recalc, setRecalc] = useState<boolean>(true)
     let [merchInfo, setMerchInfo] = useState<any>({ imgs: [], name: "", info: {} })
-    let currentPrice = useRef<string>("")
+    let currentPrice = useRef<number>(0)
     let currentDiscount = useRef<string>("")
     let currentProiceDiscount = useRef<string>("")
     let pricesArr = useRef<any>([])
@@ -81,13 +84,13 @@ const SnickersInfo: React.FC = () => {
         }
         currentSize.current = Object.keys(info)[0]
         let dPr = 0;
-        if(discountParse){
+        if (discountParse) {
             let data = discountParse[currentSize.current]
-            if(data){
+            if (data) {
                 dPr = data
             }
         }
-        currentPrice.current = Number(Object.values(info)[0]) - dPr + "р"
+        currentPrice.current = Number(Object.values(info)[0]) - dPr
         let infoData = Object.entries(info)
         infoData.forEach(priceEl => {
             let price = priceEl[1]
@@ -131,7 +134,7 @@ const SnickersInfo: React.FC = () => {
 
     const priceChangeHandler = (indx: number) => {
         const priceBlock = pricesArr.current[indx]
-        currentPrice.current = priceBlock.price - priceBlock.discount + "Р"
+        currentPrice.current = priceBlock.price - priceBlock.discount
         currentDiscount.current = priceBlock.discount
         if (local === "ru") {
             currentSize.current = String(tableInfo.sizes["us"][tableInfo.sizes["ru"].indexOf(Number(priceBlock.size))])
@@ -139,20 +142,29 @@ const SnickersInfo: React.FC = () => {
         currentProiceDiscount.current = priceBlock.price
         setRecalc(!recalc)
     }
+    let arr: any = []
+    const createSliderContetn = () => {
+        for (let i = 0; i < merchInfo.imgs.length; i++) {
+            arr.push(<div style={{width:"100%", flexShrink:0}}>
+                <ImagePresantationBlock image={merchInfo.imgs[i]} />
+                </div>)
+
+        }
+        return arr
+    }
     return (
         <div>
-            <div className={s.mainWrap}>
+            <div className={widthProps ? "" : s.mainWrap}>
 
-                <div style={{ height: "100%", width: "70%" }}>
-                    <ImagePresantation images={merchInfo.imgs} />
+                <div style={widthProps ? { height: "100%", width: "100%" } : { height: "100%", width: "70%" }}>
+                   {widthProps?<ContentSlider content={createSliderContetn()} />:<ImagePresantation images={merchInfo.imgs} />}
                 </div>
-                <div style={{ height: "100%", width: "30%" }}>
+                <div style={widthProps ? { height: "100%", width: "100%" } : { height: "100%", width: "30%" }}>
                     <Button text={"размеры"} onChange={() => {
-
                         setActive(true)
                     }} />
                     <h1 className={s.merchName} >{merchInfo.name}</h1>
-                    <div>{currentDiscount.current ? <span>{currentProiceDiscount.current}</span> : null}<span>{currentPrice.current}</span></div>
+                    <div>{currentDiscount.current ? <span>{currentProiceDiscount.current}</span> : null}<span>{toPrice(currentPrice.current) + " ₽"}</span></div>
                     <PriceHolder onChange={priceChangeHandler} elems={pricesArr.current} />
                     <Button text='Купить' className={s.buyMerch} onChange={() => {
                         let data: any = {

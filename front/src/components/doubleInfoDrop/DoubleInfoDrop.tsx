@@ -23,7 +23,7 @@ const DoubleInfoDrop: React.FC<propsRowType> = (props) => {
       setChildren(children);
     }, [children]);
     let secondDropStyle1 = {
-        transition: "height 2s ",
+        transition: "height 0.5s ",
         height: "0px",
         overflow: "hidden"
 
@@ -48,9 +48,9 @@ const DoubleInfoDrop: React.FC<propsRowType> = (props) => {
                 onClick={() => {
                     setActive(!active)
                 }}
-                style={{ display: "flex" }} >
+                style={{ display: "flex", cursor:"pointer" }} >
                 <p>{info}</p>
-                <span style={{ position: "absolute", right: "0", paddingRight: "5px" }}>{active ? "\u1433" : "\u142F"}</span>
+                <span style={{ position: "absolute", right: "0", paddingRight: "5px", transition:"transform 0.5s", transform:active?"rotate(0deg)":"rotate(90deg)"}}>{ "\u142F"}</span>
             </div>
             <div style={active ? secondDropStyle : secondDropStyle1}>
                 <div ref={drop}>{initialChildren}</div>

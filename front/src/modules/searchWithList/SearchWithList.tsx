@@ -73,7 +73,7 @@ const SearchWithList: React.FC<propsRowType> = (props) => {
 
     return (
         <div onClick={ onClicks}  onBlur={onBlur} ref={mainRef} style = {{position:"relative"}} className={className ? className.main : ""}>
-            <Search val={val} onChange={onChange}  onFocus={onFocus} searchCallback={seatchProxy} onDataRecieve={createDropList}>
+            <Search className={className ? className.search : ""} val={val} onChange={onChange}  onFocus={onFocus} searchCallback={seatchProxy} onDataRecieve={createDropList}>
 
             </Search>
             {/* <div className={className ? className.dropList : ""} style={activeList?{position:"relative"}:{display:"none"}}>

@@ -22,6 +22,7 @@ func NewPostgresStore(databaseUrl string) *PostgresStore {
 const DriverName = "postgres"
 
 func (s *PostgresStore) connect(ctx context.Context) (*sqlx.DB, error) {
+	fmt.Println(";fldsflds;fdskfsldkflsdkflksdnflskdnf")
 	fmt.Println(s.databaseUrl)
 	dbx, err := sqlx.ConnectContext(ctx, DriverName, s.databaseUrl)
 	if err != nil {

@@ -23,6 +23,7 @@ const defaultStyle: any = {
 const Search: React.FC<propsRowType> = (props) => {
     let trottlingTimerId = useRef<ReturnType<typeof setTimeout> | null>(null)
     let { val,className, onDataRecieve,searchCallback, onChange,onBlur,onFocus } = { ...props }
+    let classNameSearch = className ? className : s.search
     let text = useRef<string>(val?val:"")
     const handleEnter =(e:React.KeyboardEvent<HTMLDivElement>) =>{
         if (e.key === 'Enter') {
@@ -41,7 +42,7 @@ const Search: React.FC<propsRowType> = (props) => {
     }
 
     return (
-        <div onKeyUp={handleEnter} className={className ? className : s.search}>
+        <div onKeyUp={handleEnter} className={s.baseSearch + " " + classNameSearch}>
             <Input val={val} onBlur={onBlur} onFocus={onFocus} className={s.input} onChange={createSearchRequest}>
             </Input>
             <img onClick={()=>searchCallback(text.current)} className={s.img} src={loupe} alt="" />

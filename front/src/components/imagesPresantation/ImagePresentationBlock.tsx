@@ -6,7 +6,7 @@ import loop from "../../../public/zoom.svg"
 
 type iconType = {
     image: string,
-    onClick:()=>void
+    onClick?:()=>void
 }
 const ImagePresantationBlock: React.FC<iconType> = (data) => {
     const { image, onClick } = { ...data }

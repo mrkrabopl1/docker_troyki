@@ -99,8 +99,9 @@ const Menu: React.FC<any> = (props) => {
         navigate('/settingsMenu', { state: text });
     }
     let styleData = {
-        main: ss.main,
-        dropList: ss.drop_list
+        main: ss.main+ " " + s.search,
+        dropList: ss.drop_list,
+        search:s.searchInput
     }
     const selectListHandler = (id: number) => {
         setActive(false)

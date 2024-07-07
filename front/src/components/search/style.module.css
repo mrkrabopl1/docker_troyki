@@ -10,11 +10,13 @@
 
 
 .search{
-    display: flex;
     border: solid 2px black;
+    width: 200px;
+}
+.baseSearch{
+    display: flex;
     position: relative;
     box-sizing: border-box;
-    width: 200px;
 }
 .img{
     width: 20px;

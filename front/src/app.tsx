@@ -4,6 +4,7 @@ import { cartCountAction } from 'src/store/reducers/menuSlice'
 import axios from "axios";
 import { show, sticky,verified } from 'src/store/reducers/menuSlice'
 import { setFooter } from 'src/store/reducers/dispetcherSlice'
+import {  setWidthProps } from 'src/store/reducers/resizeSlice'
 import DropZone from "src/develop/dropZone/DropZone"
 const SnickersInfo = lazy(() => import('./pages/snickersInfo/SnickersInfo'))
 import Form from './pages/formPage/FormPage'
@@ -42,7 +43,16 @@ const App: React.FC<any> = () => {
   const { chousenName } = useAppSelector(state => state.complexDropReducer)
   useEffect(() => {
     let coockie = getCookie("cart")
-
+    window.addEventListener("resize",(e)=>{
+      if(window.document.body.clientWidth<500){
+        dispatch(setWidthProps(1))
+      }else if (window.document.body.clientWidth<300){
+        dispatch(setWidthProps(2))
+      }else{
+        dispatch(setWidthProps(0))
+      }
+    }
+    )
     if (coockie) {
       axios({
         method: 'get',

@@ -1,7 +1,7 @@
 import React, { ReactElement, useRef, useState } from 'react'
 import s from "./style.module.css"
 import { useNavigate } from 'react-router-dom';
-
+import { toPrice } from 'src/global';
 import global from "src/global.css"
 
 
@@ -99,15 +99,17 @@ const MerchBlock: React.FC<{ width: string, data: merchInterface }> = (props) =>
             }}
             className={s.merchWrap}
         >
-            <div style={{ position: "relative", height: "90%" }}>
+            <div style={{ position: "relative" , height:"90%"}}>
                 <img loading={"lazy"} className={s.img} style={firstImgStyle} src={"/" + data.imgs[0]} alt="airJordan" />
                 {data.discount ? <div className={s.discountMarker}>
                     "Sale"
                 </div> : null}
             </div>
             {/* {data.imgs.length > 1 ? <img loading={"lazy"} className={s.img} style={secondImgStyle} src={"/" + data.imgs[1]} alt="airJordan" /> : null} */}
-            <div className={s.imgName}>{data.name}</div>
-            <div style={{ textAlign: "center" }}>{data.discount ? <span className={s.discount}>{data.discount}</span> : null}<span className={s.imgName}>{"От " + data.price}</span></div>
+            <div className={s.textContainer}>
+                <div className={s.imgName}>{data.name}</div>
+                <div style={{ textAlign: "center", marginTop:"auto"}}>{data.discount ? <span className={s.discount}>{toPrice(data.discount) + " ₽"}</span> : null}<span className={s.imgName}>{"От " + toPrice(data.price) + " ₽"}</span></div>
+            </div>
         </div>
     )
 }
