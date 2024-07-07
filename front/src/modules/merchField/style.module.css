@@ -7,7 +7,7 @@
 .img{
     width: 100%;
     object-fit: contain;
-    height:90%;
+    height:100%;
 }
 .buyImg{
     width: 100%;
@@ -19,9 +19,10 @@
 .merchWrap{
     position: relative;
     flex-shrink: 0;
-    height: 100%;
+    height: auto;
     flex-direction: column;
-     margin-top: auto;
+    display: flex;
+     /* margin-top: auto; */
 }
 .discount{
     text-decoration: line-through;
@@ -37,4 +38,10 @@
     color:white;
     border-radius: 200px ;
     padding: 5px;
+}
+
+.textContainer{
+    display: grid;
+    flex-grow: 1;
+    grid-template-rows: max-content minmax(0,1fr) max-content auto;
 }

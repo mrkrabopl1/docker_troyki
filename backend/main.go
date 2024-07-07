@@ -36,6 +36,7 @@ func main() {
 	// fmt.Println(dbPath, os.Getenv("DATABASE_URL"), "tggtttttttttttttttttttttttttttttttttttttttttttttttttt")
 	//store := db.NewPostgresStore(os.Getenv("DATABASE_URL"))
 	store := db.NewPostgresStore(dbPath)
+	//store := db.NewPostgresStore(os.Getenv("DATABASE_URL"))
 	//	store.CreateTables(ctx)
 
 	// store.UpdateTable(ctx)
