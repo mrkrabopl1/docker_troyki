@@ -1,4 +1,4 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
+import React, { ReactElement, useEffect, useRef, useState, } from 'react'
 import s from "./style.module.css"
 import InputWithLabelWithValidation from 'src/components/input/InputWithLabelWithValidation'
 import PhoneInputWithValidation from 'src/components/input/PhoneInputWithValidation'
@@ -7,7 +7,9 @@ import PasswordInput from 'src/components/input/PasswordInput'
 import PasswordInputWithValidation from 'src/components/input/PasswordInputWithValidation'
 import MailInputWithValidation from 'src/components/input/MailInputWithValidation'
 import { registerUser, loginUser } from 'src/providers/userProvider'
-
+import {
+    NavLink,
+} from "react-router-dom";
 interface loginFormModuleInterface {
     className?: {
         input?: string,
@@ -15,7 +17,7 @@ interface loginFormModuleInterface {
         combobox?: string
     }
     onChange: (data: any) => void
-    onLogin: (data: any) => void
+    onRegister: (data: any) => void
 }
 const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
     let validationObject = useRef<any>({})
@@ -28,12 +30,7 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
         mail: "",
         pass: ""
     })
-
-    type loginDataType = {
-        mail: string,
-        pass: string
-    }
-    let loginData = useRef<loginDataType>({
+    let loginData = useRef<{ [key: string]: string }>({
         mail: "",
         pass: ""
     })
@@ -45,7 +42,7 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
     let invalidPassText = useRef<string>("Пароли не совпадают")
     let invalidMailText = useRef<string>("Пустое поле ввода")
     let [refresh, setRefresh] = useState<boolean>(false)
-    let { onChange, onLogin } = { ...props }
+    let { onChange, onRegister } = { ...props }
     const setFormData = (data: string, name: string) => {
         formData.current[name] = data
     }
@@ -107,27 +104,35 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
     let checked = useRef<boolean>(false)
 
     return (
-        <div onClick={(e) => { e.stopPropagation() }} className={s.main}>
-
-            <div className={s.caption}>Login</div>
-            <MailInputWithValidation validRule={validRuleForMail} valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setLoginData(data, "mail") }} placeholder={"Электронный адрес"} />
-            <PasswordInput check={true} onChange={(data) => { setLoginData(data, "pass") }} className={s.loginInput} placeholder="" />
-            <Button className={s.loginButton} onChange={() => {
-
-                loginUser(loginData.current, (loged) => {
-                    if (loged) {
-                        onLogin(true)
-                    } else {
-                        onLogin(false)
-                    }
-                })
-            }} text='Log in' />
-            <div onClick={() => { setForgotPass(true) }}>
-                Забыли пароль
+        <div onClick={(e) => { e.stopPropagation() }} className={s.regPan}>
+            <div className={s.caption}>
+                Регистрация
             </div>
-
+            <div>
+                Продолжая, вы даете {<NavLink to={"/"}>согласие на обработку</NavLink>}
+                персональных данных.
+            </div>
+            <MailInputWithValidation validRule={validRuleForMail} valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
+            <PasswordInputWithValidation check={true} validRule={validRuleForPass} valid={!validationObject.current.pass} invalidText={invalidPassText.current} onChange={(data) => { setFormData(data, "pass") }} className={s.loginInput} placeholder="Password" />
+            <PasswordInput check={true} onChange={(data) => { passCheck.current = data }} className={s.loginInput} placeholder="Repeat password" />
+            <Button className={s.loginButton} onChange={() => {
+                updateValidObj()
+                if (Object.values(validationObject.current).length > 0) {
+                    setRefresh(!refresh)
+                } else {
+                    registerUser(formData.current, (info) => {
+                        switch (info.registerIndex) {
+                            case 0:
+                                onRegister("")
+                                break
+                            case 1:
+                                setValidRegister("Mail уже существует.")
+                                break
+                        }
+                    })
+                }
+            }} text='Sign up' />
         </div>
-
     )
 }
 

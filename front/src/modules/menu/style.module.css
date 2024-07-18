@@ -18,6 +18,11 @@
   z-index: 5;
   background-color: white;
 }
+.regPan{
+  display: flex;
+	padding-left: 10px;
+  padding-right: 10px;
+}
 
 .modalWrap{
   position: absolute;

@@ -63,10 +63,9 @@ const verifyEmail= function (verHash: string, callback: (val: any) => void) {
 }
 
 type loginDataType = {
-    name: string,
-    password: string
+    mail: string,
+    pass: string
 }
-
 const loginUser= function (data: loginDataType, callback: (val: any) => void) {
     let json = JSON.stringify(data)
     axios({

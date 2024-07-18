@@ -49,7 +49,7 @@ const DoubleInfoDrop: React.FC<propsRowType> = (props) => {
                     setActive(!active)
                 }}
                 style={{ display: "flex", cursor:"pointer" }} >
-                <p>{info}</p>
+                <p style={{paddingRight:"15px"}} className={active && className?className.second:""}>{info}</p>
                 <span style={{ position: "absolute", right: "0", paddingRight: "5px", transition:"transform 0.5s", transform:active?"rotate(0deg)":"rotate(90deg)"}}>{ "\u142F"}</span>
             </div>
             <div style={active ? secondDropStyle : secondDropStyle1}>

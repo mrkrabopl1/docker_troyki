@@ -21,3 +21,11 @@
 .infoPlace{
     line-height: 50px;
 }
+
+.dropInfo{
+    padding: 10px;
+}
+
+.chosenBlock{
+    font-weight: bold;
+}

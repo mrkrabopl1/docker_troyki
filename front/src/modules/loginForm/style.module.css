@@ -80,3 +80,11 @@
 .chk:checked ~ .signup label{
 	transform: scale(.6);
 }
+
+.caption{
+	text-align: center;
+}
+
+.regPan{
+	padding: 10px;
+}

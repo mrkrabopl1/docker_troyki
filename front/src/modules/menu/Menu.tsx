@@ -13,8 +13,8 @@ import { verified } from 'src/store/reducers/menuSlice'
 import { ReactComponent as Loupe } from "/public/loupe.svg";
 import { ReactComponent as SignIn } from "/public/sign.svg";
 import { ReactComponent as User } from "/public/user.svg";
-import LoginForm from '../loginForm/LoginForm'
-import { registerUser, loginUser } from 'src/providers/userProvider'
+import RegistrationPanel
+ from './RegistrationPanel'
 
 import SearchWithList from '../searchWithList/SearchWithList'
 import Modal from 'src/components/modal/Modal'
@@ -117,8 +117,8 @@ const Menu: React.FC<any> = (props) => {
             </div>
 
 
-            <div style={{ margin: "auto 20px", display: "flex", position: "relative" }}>
-                {isVerified ? <User className={global.link} onClick={() => navigate("/user")} /> : <SignIn className={global.link} onClick={() => setLoginActive(true)} />}
+            <div style={{paddingTop:"10px", margin: "auto 20px", display: "flex", position: "relative" }}>
+                {isVerified ? <User className={global.link} onClick={() => navigate("/user")} /> :  <RegistrationPanel/>}
                 <Loupe onClick={() => setActive(true)} className={global.link} height={"24px"} width={"24px"} />
                 <BuyButton />
 
@@ -135,21 +135,6 @@ const Menu: React.FC<any> = (props) => {
                 </div>
             </Modal> : null}
 
-            {loginActive ? <Modal onChange={setLoginActive} active={loginActive}>
-                < LoginForm onChange={(data) => {
-                    
-                }}
-                    onLogin={(data) => {
-                        loginUser(data, (loged) => {
-                            if(loged){
-                                dispatch(verified(true))
-                            }else{
-                                dispatch(verified(false))
-                            }
-                        })
-                    }}
-                />
-            </Modal>: null}
 
         </div>
 

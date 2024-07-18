@@ -28,7 +28,8 @@
 
 .link{
     text-decoration: none;
-    padding: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
     color: black;
     box-sizing:content-box;
     cursor: pointer;
