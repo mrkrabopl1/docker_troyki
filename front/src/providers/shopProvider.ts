@@ -5,6 +5,7 @@ import axios from "axios";
 const getCartData = function (cartHash:any, callback: (val: any) => void) {
     const data = new FormData();
     axios({
+        withCredentials: true,
         method: 'get',
         url: `${API_URL}/getCartData?hash=`+cartHash,
         headers: {}

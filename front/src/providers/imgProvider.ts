@@ -1,6 +1,6 @@
 import axios from "axios";
 
-
+const backUrl = process.env.BACKEND_URL
 
 const arrImgImport = function (files: File[], callback: (val: any) => void) {
     const data = new FormData();

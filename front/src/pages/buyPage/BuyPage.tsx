@@ -9,7 +9,7 @@ import { setSnickers } from '../../store/reducers/formSlice'
 import s from "./style.module.css"
 import { useNavigate } from 'react-router-dom'
 import { getCookie } from 'src/global'
-
+import MerchTable from 'src/modules/merchField/MerchTable'
 
 type respCartType = {
     id: number,
@@ -29,6 +29,7 @@ const BuyPage: React.FC<any> = () => {
     let [recalc, setRecalc] = useState<boolean>(true);
     let table = useRef<{ [key: string]: (dinamicElementType | string)[] }>({});
     const dispatch = useAppDispatch();
+    let [tableData,setTableData] = useState<Array<any>>([])
     let { shop } = { ...useAppSelector(state => state.menuReducer) }
     let cart = getCookie("cart")
     let refCopyShop = useRef<any>([...shop])
@@ -54,24 +55,20 @@ const BuyPage: React.FC<any> = () => {
     }
 
     const setMerchBuyBlock = (data: any) => {
-        let snickers = []
         data.forEach((el: any, ind: number) => {
             let totalPrice = 0
             let row = [];
             totalPrice += el.price * el.quantity
-            let soloSnickers = { id: el.id, firm: el.firm, price: el.size, name: el.name, img: el.img, count: el.quantity }
             row.push({ componentName: "modules/merchField/MerchBuyBlock", propsData: { data: { id: el.id, firm: el.firm, price: el.size, name: el.name, imgs: el.img } } })
             row.push( el.quantity)
             row.push(String(totalPrice))
             row.push({ componentName: "components/Button", propsData: { className: s.deleteBtn, onChange: updateList.bind(null, ind, el.prid, el.quantity) } })
             table.current[String(ind)] = row
-            snickers.push(soloSnickers)
         })
-        dispatch(setSnickers(snickers))
         setRecalc(recalc => !recalc)
     }
     useEffect(() => {
-        getCartData(cart, setMerchBuyBlock)
+        getCartData(cart, setTableData)
     }, [])
 
     const formBuyHandle = () => {
@@ -80,7 +77,7 @@ const BuyPage: React.FC<any> = () => {
 
     return (
         <div  >
-            <DynamicTable headers={["Товар", "Koличество", "Цена", ""]} table={Object.values(table.current)} />
+            <MerchTable tableData={tableData}/>
             <Button text='Оформить заказ' onChange={formBuyHandle} />
         </div>
     )

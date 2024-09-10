@@ -22,7 +22,7 @@ const Verification: React.FC<any> = () => {
        verifyEmail(verHash,(data)=>{
         if(data){
             dispatch(verified(true))
-            navigate("/main");
+            navigate("/");
         }
         else{
             setInfo("Ваш код верификации истек повторите попытку еще раз.")

@@ -121,5 +121,21 @@ type LoginInfo struct {
 type VerInfo struct {
 	Id         int16     `db:"id"`
 	Expire     time.Time `db:"expire"`
-	CustomerId int16     `db:"customerId"`
+	CustomerId int16     `db:"customerid"`
+}
+type Pass struct {
+	Pass string `db:"pass"`
+}
+
+type UnregisterCustomerType struct {
+	Name       string `db:"name"`
+	SecondName string `db:"secondname,omitempty"`
+	Phone      string `db:"phone"`
+	Mail       string `db:"mail"`
+	Town       string `db:"town"`
+	Street     string `db:"street"`
+	Region     string `db:"region"`
+	Index      string `db:"index"`
+	House       string `db:"house,omitempty"`
+	Flat       string `db:"flat,omitempty"`
 }

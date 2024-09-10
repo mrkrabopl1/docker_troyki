@@ -19,17 +19,35 @@ type propsRowType = {
 const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
     const inputRef = useRef<HTMLInputElement>(null)
     let { valid, onBlur, onChange, onFocus, className, val, invalidEmpty, invalidIncorrect } = { ...props }
+
     const [phoneVal, setPhoneVal] = useState<string>(val ? val : "+7")
     const cursorPositionRef = useRef<number>(2)
-
+    const startValidationOnBlur = useRef<boolean>(false)
 
 
     const [validState, setValid] = useState<boolean>(valid)
 
     useEffect(() => {
+        setPhoneVal(phoneVal)
         inputRef.current.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current)
     }, [phoneVal])
+    useEffect(() => {
+        setValid(valid)
+    }, [valid])
 
+
+    const formatVal = function (val: string) {
+        val.replace(/[-,\s]/g, "")
+        if (Number.isNaN(val) || val.length !== 11 || val) {
+            return null
+        }
+
+
+    }
+
+    const stringToVal = function (val) {
+        val.replace(/[-,\s]/g, "")
+    }
 
     const removeChar = (timeStrVal: string) => {
         let defaultPart = timeStrVal.slice(0, 2)
@@ -74,8 +92,12 @@ const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
                     finalStr = ""
                 }
                 setPhoneVal(finalStr);
-                setValid(true)
-                onChange(finalStr)
+                if (finalStr.length === 16) {
+                    setValid(true)
+                    onChange(finalStr)
+                }else{
+                    onChange("")
+                }
             }
         }
         if (val.key === "ArrowLeft") {
@@ -105,8 +127,12 @@ const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
                 const finalStr = removeChar(timeStrVal)
                 cursorPositionRef.current = cursorPosition - 1
                 setPhoneVal(finalStr);
-                setValid(true)
-                onChange(finalStr)
+                if (finalStr.length === 16) {
+                    setValid(true)
+                    onChange(finalStr)
+                }else{
+                    onChange("")
+                }
             }
 
         }
@@ -128,8 +154,12 @@ const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
                 }
                 cursorPositionRef.current = newVal.length
                 setPhoneVal(newVal)
-                setValid(true)
-                onChange(newVal)
+                if (newVal.length === 16) {
+                    setValid(true)
+                    onChange(newVal)
+                }else{
+                    onChange("")
+                }
             } else {
                 let prefix = ""
                 let suffix = ""
@@ -158,8 +188,12 @@ const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
                 let finalStr = removeChar(timeStrVal)
                 inputRef.current.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current)
                 setPhoneVal(finalStr);
-                setValid(true)
-                onChange(finalStr)
+                if (finalStr.length === 16) {
+                    setValid(true)
+                    onChange(finalStr)
+                }else{
+                    onChange("")
+                }
             }
         }
     }
@@ -169,6 +203,7 @@ const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
             <span>Phone</span>
             <input
                 onKeyDown={(e) => {
+                    startValidationOnBlur.current = true
                     e.preventDefault()
                     numberValidation(e)
                 }}
@@ -180,11 +215,13 @@ const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
                 type='tel'
                 onFocus={(e) => { if (onFocus) { onFocus(e.target.value) } }}
                 onBlur={(e) => {
-                    if (phoneVal.length < 16 && phoneVal.length !== 0) {
-                        setValid(false)
-                    }
-                    if (onBlur) {
-                        onBlur(e.target.value)
+                    if (startValidationOnBlur.current) {
+                        if (phoneVal.length < 16 && phoneVal.length !== 0) {
+                            setValid(false)
+                        }
+                        if (onBlur) {
+                            onBlur(e.target.value)
+                        }
                     }
                 }}
             />

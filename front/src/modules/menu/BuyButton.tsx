@@ -6,7 +6,6 @@ import LineSwitcher from 'src/components/switcher/LineSwitcher'
 import s from "./style.module.css"
 import loupe from "../../../public/vagabond.png";
 import {ReactComponent as Cart} from "/public/cart.svg";
-import global from "src/global.css"
 const BuyButton: React.FC<any> = (props) => {
 
     const {cartCount} = useAppSelector(state =>state.menuReducer)

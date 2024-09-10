@@ -76,26 +76,63 @@ func (s *PostgresStore) CreateTables(ctx context.Context) {
 	// 	mail TEXT NOT NULL,
 	// 	pass BYTEA NOT NULL,
 	// 	phone TEXT,
-	// 	country TEXT,
 	// 	town TEXT,
+	// 	index TEXT,
 	// 	sendMail BOOLEAN,
-	// 	postIndex INT
-	// 	)`)
+	// 	street TEXT,
+	// 	region TEXT,
+	// 	home TEXT,
+	// 	flat TEXT
+	// )`)
 
-	db.Exec(`CREATE TABLE IF NOT EXISTS verification (
-			id serial PRIMARY KEY NOT NULL ,
-			token TEXT NOT NULL,
-			CustomerID INT  NOT NULL,
-			expire TIMESTAMP NOT NULL,
-			deleteTime  TIMESTAMP NOT NULL,
-			FOREIGN KEY (CustomerID) REFERENCES Customers(id)
-			)`)
+	// db.Exec(`CREATE TABLE IF NOT EXISTS unregistercustomer (
+	// 	id serial PRIMARY KEY NOT NULL ,
+	// 	name TEXT NOT NULL,
+	// 	secondName TEXT,
+	// 	mail TEXT NOT NULL,
+	// 	phone TEXT NOT NULL,
+	// 	town TEXT NOT NULL,
+	// 	index TEXT NOT NULL,
+	// 	sendMail BOOLEAN,
+	// 	street TEXT NOT NULL,
+	// 	region TEXT NOT NULL,
+	// 	house TEXT,
+	// 	flat TEXT
+	// )`)
+
+	_,err:=db.Exec(`
+		CREATE TYPE status_enum AS ENUM ('pending', 'approved', 'rejected');
+		CREATE TYPE delivery_enum AS ENUM ('own', 'express', 'cdek');
+		CREATE TABLE Orders (
+			id serial PRIMARY KEY,
+			CustomerID INT,
+			UnregisterCustomerID INT,
+			OrderDate DATE  NOT NULL,
+			Status status_enum  NOT NULL,
+			DeliveryPrice INT  NOT NULL,
+			DeliveryType delivery_enum  NOT NULL,
+			FOREIGN KEY (CustomerID) REFERENCES Customers(id),
+			FOREIGN KEY (UnregisterCustomerID) REFERENCES unregistercustomer(id)
+
+		);
+		`)
+
+		fmt.Println(err)
+
+	// db.Exec(`CREATE TABLE IF NOT EXISTS verification (
+	// 		id serial PRIMARY KEY NOT NULL ,
+	// 		token TEXT NOT NULL,
+	// 		CustomerID INT  NOT NULL,
+	// 		expire TIMESTAMP NOT NULL,
+	// 		deleteTime  TIMESTAMP NOT NULL,
+	// 		FOREIGN KEY (CustomerID) REFERENCES Customers(id)
+	// )`)
 
 	// s.dbx.Exec(`CREATE TABLE IF NOT EXISTS preorder (
 	// 		id serial PRIMARY KEY NOT NULL ,
 	// 		hashUrl TEXT NOT NULL,
 	// 		updateTime DATE
-	// 		)`)
+	// )`)
 
 	// s.dbx.Exec(`CREATE TABLE IF NOT EXISTS preorderItems (
 	// 			id serial PRIMARY KEY NOT NULL ,
@@ -111,60 +148,62 @@ func (s *PostgresStore) CreateTables(ctx context.Context) {
 	// 	fmt.Println("fatal Error", e.Error())
 	// }
 
-	// done := make(chan bool)
-	// var wg sync.WaitGroup
-	// wg.Add(1)
-	// go func() {
-	// 	defer wg.Done()
-	// _, err := s.dbx.Exec(`
-	// CREATE TYPE status_enum AS ENUM ('pending', 'approved', 'rejected');
-	// CREATE TYPE delivery_enum AS ENUM ('own', 'express', 'cdek');
-	// CREATE TABLE Orders (
-	// 	id serial PRIMARY KEY,
-	// 	CustomerID INT  NOT NULL,
-	// 	OrderDate DATE  NOT NULL,
-	// 	Status status_enum  NOT NULL,
-	// 	DeliveryPrice INT  NOT NULL,
-	// 	DeliveryType delivery_enum  NOT NULL,
-	// 	FOREIGN KEY (CustomerID) REFERENCES Customers(id)
+	// 	done := make(chan bool)
+	// 	var wg sync.WaitGroup
+	// 	wg.Add(1)
+	// 	go func() {
+	// 		defer wg.Done()
+	// 		_, err := s.dbx.Exec(`
+	// 	CREATE TYPE status_enum AS ENUM ('pending', 'approved', 'rejected');
+	// 	CREATE TYPE delivery_enum AS ENUM ('own', 'express', 'cdek');
+	// 	CREATE TABLE Orders (
+	// 		id serial PRIMARY KEY,
+	// 		CustomerID INT,
+	// 		UregisterCustomerID INT,
+	// 		OrderDate DATE  NOT NULL,
+	// 		Status status_enum  NOT NULL,
+	// 		DeliveryPrice INT  NOT NULL,
+	// 		DeliveryType delivery_enum  NOT NULL,
+	// 		FOREIGN KEY (CustomerID) REFERENCES Customers(id)
+	// 		FOREIGN KEY (UregisterCustomerID) REFERENCES unregistercustomer(id)
 
-	// );
-	// `)
+	// 	);
+	// 	`)
 
-	// if err != nil {
-	// 	fmt.Println("Error creating table: ", err)
-	// 	//done <- true
-	// } else {
-	// 	fmt.Println("Table created successfully2")
-	// 	//done <- true
-	// }
-	// }()
-	// // if e1 != nil {
-	// // 	fmt.Println("fatal Error", e.Error())
-	// // }
-	// <-done
-	// fmt.Println("next step")
-	// wg.Add(1)
-	// go func() {
-	// 	defer wg.Done()
-	// 	_, err := s.dbx.Exec(`CREATE TABLE OrderItems (
-	// 	OrderItemID serial PRIMARY KEY NOT NULL,
-	// 	OrderID INT,
-	// 	ProductID INT,
-	// 	Quantity INT,
-	// 	Size TEXT,
-	// 	FOREIGN KEY (OrderID) REFERENCES Orders(id),
-	// 	FOREIGN KEY (ProductID) REFERENCES snickers(id)
-	// )`)
-	// 	if err != nil {
-	// 		fmt.Println("Error creating table: ", err)
-	// 	} else {
-	// 		done <- true
-	// 	}
-	// 	fmt.Println("Table created successfully1")
-	// }()
-	// <-done
-	// wg.Wait()
+	// 		if err != nil {
+	// 			fmt.Println("Error creating table: ", err)
+	// 			//done <- true
+	// 		} else {
+	// 			fmt.Println("Table created successfully2")
+	// 			//done <- true
+	// 		}
+	// 	}()
+	// 	// if e1 != nil {
+	// 	// 	fmt.Println("fatal Error", e.Error())
+	// 	// }
+	// 	// <-done
+	// 	// fmt.Println("next step")
+	// 	// wg.Add(1)
+	// 	// go func() {
+	// 	// 	defer wg.Done()
+	// 	// 	_, err := s.dbx.Exec(`CREATE TABLE OrderItems (
+	// 	// 	OrderItemID serial PRIMARY KEY NOT NULL,
+	// 	// 	OrderID INT,
+	// 	// 	ProductID INT,
+	// 	// 	Quantity INT,
+	// 	// 	Size TEXT,
+	// 	// 	FOREIGN KEY (OrderID) REFERENCES Orders(id),
+	// 	// 	FOREIGN KEY (ProductID) REFERENCES snickers(id)
+	// 	// )`)
+	// 	// 	if err != nil {
+	// 	// 		fmt.Println("Error creating table: ", err)
+	// 	// 	} else {
+	// 	// 		done <- true
+	// 	// 	}
+	// 	// 	fmt.Println("Table created successfully1")
+	// 	// }()
+	// 	<-done
+	// 	wg.Wait()
 }
 
 func (s *PostgresStore) FillTables(ctx context.Context, data []SnickersStruct) {

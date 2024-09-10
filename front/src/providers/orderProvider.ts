@@ -18,30 +18,41 @@ const updatePreorder = function (data: { id: number, hashUrl: string, info: { si
 }
 
 interface clientDataType {
-    personalData:{
-        name:string,
-        phone:string,
-        mail:string,
-        secondName?:string
+    personalData: {
+        name: string,
+        phone: string,
+        mail: string,
+        secondName?: string
     },
-    address:{
-        postIndex:number,
-        address:string
+    address: {
+        address: {
+            town: string,
+            index: string,
+            region: string,
+            street: string,
+            house?: string,
+            flat?: string
+        }
     },
-    delivery:{
-        deliveryPrice?:number,
-        type:number
+    delivery: {
+        deliveryPrice?: number,
+        type: number
     },
-    preorderId:string
-} 
+    save: boolean,
+    preorderId: string
+}
 
 const createOrder = function (data: clientDataType, callback: (val: any) => void) {
     let jsonData = JSON.stringify(data)
-    axios.post(`${API_URL}/createOrder`, jsonData, { headers: { "content-type": "application/json" } }).then((res) => {
+    axios({
+        withCredentials: true,
+        url: `${API_URL}/createOrder`,
+        headers: { "content-type": "application/json" },
+        data: jsonData,
+        method: 'post',
+    }).then((res) => {
         callback(res.data)
-    }
-    )
-
+    })
 }
 
 

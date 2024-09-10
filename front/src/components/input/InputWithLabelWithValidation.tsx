@@ -16,13 +16,24 @@ type propsRowType = {
 }
 
 
+const defaultValidRule = function(val: string){
+    return val != ""
+}
+
 
 const InputWithLabelWithValidation: React.FC<propsRowType> = (props) => {
     const inputRef = useRef(null)
+    const startValidationOnBlur = useRef<boolean>(false)
     let { onChange, onFocus, onBlur, className, placeholder, val, valid, invalidText, invalidClassName, validRule } = { ...props }
+    if (!validRule){
+        validRule = defaultValidRule
+    }
     useEffect(()=>{
+        setVal(val)
+     },[val])
+    useEffect(() => {
         setValid(valid)
-    },[valid])
+    }, [valid])
     let [validState, setValid] = useState<boolean>(true)
     const [valState, setVal] = useState<string>(val ? val : "")
     return (
@@ -35,14 +46,31 @@ const InputWithLabelWithValidation: React.FC<propsRowType> = (props) => {
                 placeholder=''
                 type='text'
                 onChange={(e) => {
+                    startValidationOnBlur.current = true
                     setValid(true)
                     if (onChange) {
-                        onChange(e.target.value)
+                        let val = e.target.value
+                        let valid = validRule(valState)
+                            if (!valid) {
+                                val = null
+                            }
+                        onChange(val)
                         setVal(e.target.value)
                     }
                 }}
                 onFocus={(e) => { if (onFocus) { onFocus(e.target.value) } }}
-                onBlur={(e) => { if (onBlur) { onBlur(e.target.value) } }}
+                onBlur={(e) => {
+                    if(startValidationOnBlur.current){
+                        let valid = validRule(valState)
+                        if (!valid) {
+                            setValid(false)
+                        }
+                        if (onBlur) {
+                            onBlur(e.target.value)
+                        }
+                    }
+                }
+                }
                 required
             />
             <label onClick={

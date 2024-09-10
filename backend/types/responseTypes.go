@@ -86,3 +86,19 @@ type RespSearchSnickersAndFiltersByString struct {
 	Pages    int                   `json:"pages"`
 	Filters  FiltersSearchResponse `json:"filters"`
 }
+type UnregisterCustomerResponse struct {
+	Name       string `json:"name"`
+	Phone      string `json:"phone"`
+	Mail       string `json:"mail"`
+	SecondName string `json:"secondName,omitempty"`
+	Address AddressTypeResp `json:"address"`
+}
+
+type AddressTypeResp struct {
+	Town   string `json:"town"`
+	Index  string `json:"index"`
+	Region string `json:"region"`
+	Street string `json:"street"`
+	House  string `json:"house,omitempty"`
+	Flat   string `json:"flat,omitempty"`
+} 

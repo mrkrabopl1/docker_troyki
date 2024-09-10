@@ -19,7 +19,7 @@ import RegistrationPanel
 import SearchWithList from '../searchWithList/SearchWithList'
 import Modal from 'src/components/modal/Modal'
 
-import global from "src/global.css"
+
 type propsRowType = {
     data: any,
     callback: (...args: any) => void | null

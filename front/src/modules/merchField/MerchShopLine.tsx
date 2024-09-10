@@ -3,8 +3,6 @@ import s from "./style.module.css"
 
 import { useNavigate } from 'react-router-dom';
 
-import global from "src/global.css"
-
 
 interface merchInterface {price:number,size:number, name: string, imgs: string[],id:string }
 

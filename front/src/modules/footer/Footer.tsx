@@ -3,7 +3,7 @@ import SearchWithList from '../searchWithList/SearchWithList'
 import Modal from 'src/components/modal/Modal'
 import ColumnWithChilds from 'src/components/table/simpleTable/ColumnWithChilds'
 import s from "./style.module.css"
-import global from "src/global.css"
+
 import { NavLink } from 'react-router-dom'
 type propsRowType = {
     data: any,

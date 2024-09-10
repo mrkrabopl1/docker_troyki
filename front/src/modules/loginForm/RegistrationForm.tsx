@@ -7,6 +7,7 @@ import PasswordInput from 'src/components/input/PasswordInput'
 import PasswordInputWithValidation from 'src/components/input/PasswordInputWithValidation'
 import MailInputWithValidation from 'src/components/input/MailInputWithValidation'
 import { registerUser, loginUser } from 'src/providers/userProvider'
+
 import {
     NavLink,
 } from "react-router-dom";
@@ -104,7 +105,7 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
     let checked = useRef<boolean>(false)
 
     return (
-        <div onClick={(e) => { e.stopPropagation() }} className={s.regPan}>
+        <div  className={s.main} onClick={(e) => { e.stopPropagation() }}>
             <div className={s.caption}>
                 Регистрация
             </div>
@@ -112,7 +113,7 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
                 Продолжая, вы даете {<NavLink to={"/"}>согласие на обработку</NavLink>}
                 персональных данных.
             </div>
-            <MailInputWithValidation validRule={validRuleForMail} valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
+            <MailInputWithValidation  valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
             <PasswordInputWithValidation check={true} validRule={validRuleForPass} valid={!validationObject.current.pass} invalidText={invalidPassText.current} onChange={(data) => { setFormData(data, "pass") }} className={s.loginInput} placeholder="Password" />
             <PasswordInput check={true} onChange={(data) => { passCheck.current = data }} className={s.loginInput} placeholder="Repeat password" />
             <Button className={s.loginButton} onChange={() => {

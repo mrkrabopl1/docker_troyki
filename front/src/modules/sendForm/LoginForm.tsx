@@ -109,7 +109,7 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
                     checkBox.current.checked = checked.current
                 }} aria-hidden="true">Sign up</label>
                 {validRegister?<div className={s.warning}>{validRegister}</div>:null}
-                <MailInputWithValidation validRule={validRuleForMail} valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
+                <MailInputWithValidation  valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
                 <PasswordInputWithValidation check={true} validRule={validRuleForPass} valid={!validationObject.current.pass} invalidText={invalidPassText.current} onChange={(data) => { setFormData(data, "pass") }} className={s.loginInput} placeholder="Password" />
                 <PasswordInput check={true} onChange={(data) => { passCheck.current = data }} className={s.loginInput} placeholder="Repeat password" />
                 <Button className={s.loginButton} onChange={() => {

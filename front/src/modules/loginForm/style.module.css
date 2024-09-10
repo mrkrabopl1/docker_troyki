@@ -1,7 +1,6 @@
 
 .main{
 	width: 350px;
-	height: 460px;
 	background: white;
 	overflow: hidden;
 
@@ -85,6 +84,10 @@
 	text-align: center;
 }
 
-.regPan{
-	padding: 10px;
+.forgetPass{
+	cursor: pointer;
+}
+
+.forgetPass:hover{
+	border-bottom: solid 2px black;
 }

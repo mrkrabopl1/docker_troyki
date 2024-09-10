@@ -2,7 +2,6 @@ import React, { ReactElement, useEffect, useRef, useState } from 'react'
 import MerchBlock from "./MerchBlock"
 import s from "./style.module.css"
 
-import global from "src/global.css"
 
 
 interface merchInterface { name: string, imgs: string[], id: string , price:string}

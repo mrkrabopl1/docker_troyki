@@ -16,6 +16,7 @@ interface loginFormModuleInterface {
     }
     onChange: (data: any) => void
     onLogin: (data: any) => void
+    forgetPass: (data: any) => void
 }
 const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
     let validationObject = useRef<any>({})
@@ -41,11 +42,11 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
 
     let [validRegister, setValidRegister] = useState<string>("")
     let [forgotPass, setForgotPass] = useState<boolean>(false)
-    let [validLogin, setValiLogin] = useState<string>("")
     let invalidPassText = useRef<string>("Пароли не совпадают")
     let invalidMailText = useRef<string>("Пустое поле ввода")
+    let [invalidRequest,setInvalidRequest] = useState<boolean>(false)
     let [refresh, setRefresh] = useState<boolean>(false)
-    let { onChange, onLogin } = { ...props }
+    let { onChange, onLogin, forgetPass } = { ...props }
     const setFormData = (data: string, name: string) => {
         formData.current[name] = data
     }
@@ -58,73 +59,28 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
         }
     }
 
-    const validRuleForMail = (data: string) => {
-        var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!re.test(data)) {
-            return "Некоректный email"
-        }
-    }
-    const updateValidObj = () => {
-        setValidRegister("")
-        let entries = Object.entries(formData.current)
-        for (let i = 0; i < entries.length; i++) {
-            if (entries[i][0] === "pass") {
-                if (entries[i][1] !== passCheck.current) {
-                    validationObject.current[entries[i][0]] = true
-                    invalidPassText.current = "Пароли не совпадают"
-                } else if (entries[i][1].length < 6) {
-                    validationObject.current[entries[i][0]] = true
-                    invalidPassText.current = "Пароль должен быть болше 6 символов"
-                }
-                else {
-                    delete validationObject.current[entries[i][0]]
-                }
-                continue
-            }
-            if (entries[i][0] === "mail") {
-                var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                re.test(entries[i][1]);
-                if (re.test(entries[i][1])) {
-                    delete validationObject.current[entries[i][0]];
-                } else {
-                    validationObject.current[entries[i][0]] = true
-                    invalidMailText.current = "Некоректный email"
-                }
-                continue
-            }
-            if (entries[i][1] == "") {
-                validationObject.current[entries[i][0]] = true
-            } else {
-                if (validationObject.current[entries[i][0]]) {
-                    delete validationObject.current[entries[i][0]]
-                }
-            }
-        }
-    }
-
-    let checkBox = useRef<HTMLInputElement>(null)
-
-    let checked = useRef<boolean>(false)
 
     return (
         <div onClick={(e) => { e.stopPropagation() }} className={s.main}>
 
             <div className={s.caption}>Login</div>
-            <MailInputWithValidation validRule={validRuleForMail} valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setLoginData(data, "mail") }} placeholder={"Электронный адрес"} />
-            <PasswordInput check={true} onChange={(data) => { setLoginData(data, "pass") }} className={s.loginInput} placeholder="" />
+            {invalidRequest?<div>Неверный mail или пароль</div>:null}
+            <MailInputWithValidation valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setLoginData(data, "mail") }} placeholder={"Электронный адрес"} />
+            <PasswordInputWithValidation check={true} validRule={validRuleForPass} valid={!validationObject.current.pass} invalidText={invalidPassText.current} onChange={(data) => { setLoginData(data, "pass") }} className={s.loginInput} placeholder="Password" />
             <Button className={s.loginButton} onChange={() => {
-
+                setInvalidRequest(false)
                 loginUser(loginData.current, (loged) => {
                     if (loged) {
                         onLogin(true)
                     } else {
+                        setInvalidRequest(true)
                         onLogin(false)
                     }
                 })
             }} text='Log in' />
-            <div onClick={() => { setForgotPass(true) }}>
+            <span className={s.forgetPass} onClick={forgetPass}>
                 Забыли пароль
-            </div>
+            </span>
 
         </div>
 

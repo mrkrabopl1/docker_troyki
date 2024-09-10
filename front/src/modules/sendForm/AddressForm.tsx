@@ -8,41 +8,84 @@ import Combobox from "src/components/combobox/Combobox"
 import Checkbox from "src/components/checkbox/Checkbox"
 import s from './style.module.css'
 import Button from 'src/components/Button';
+import  "src/global.css"
+import { extend } from 'src/global'
 
-interface sendFormModuleInterface {
-    className?: {
-        input?: string,
-        checkbox?: string,
-        combobox?: string
+interface addressFormModuleInterface {
+    memo?:boolean
+    valid:boolean,
+    onChange: (data: any) => void,
+    className:{
+        input?:string
+    },
+    formValue?:{
+        town:string,
+        region:string,
+        index:string,
+        street:string,
+        house?:string,
+        flat?:string,
     }
-    onChange: (data: any) => void
 }
 
 
-const AddressForm: React.FC<sendFormModuleInterface> = (props) => {
+const AddressForm: React.FC<addressFormModuleInterface> = (props) => {
+    let {onChange,valid, className,formValue} = {...props}
     let validationObject = useRef<any>({})
-
-    let formData = useRef<any>({
-        name: "",
-        secondName: "",
-        mail: "",
-        address: "",
+    let validFlag = useRef<boolean>(false)
+    let validationForm = useRef<any>({
         town: "",
-
-
+        region:"",
+        index:"",
+        street:""
     })
-    let [refresh, setRefresh] = useState<boolean>(false)
 
+    let unmandatoryData = useRef<any>({
+        house:"",
+        flat:""
+    })
 
-    let { className } = { ...props }
-
-
-    const setFormData = (data: string, name: string) => {
-        formData.current[name] = data
+    if(formValue){
+        extend(validationForm.current, formValue)
+        extend(unmandatoryData.current, formValue)
     }
 
+    const setUnmandatoryDataData = (data: string, name: string) => {
+        unmandatoryData.current[name] = data
+        if( Object.keys(validationObject.current).length === 0){
+            let copyObj:Object = Object.assign({},validationForm.current)
+            Object.assign(copyObj,validationForm.current)
+            onChange(Object.assign(copyObj,unmandatoryData.current))
+            validFlag.current = true
+        }
+    }
+
+    const firstUpdate = useRef(true);
+    let [refresh, setRefresh] = useState<boolean>(false)
+    const setFormData = (data: string, name: string) => {
+        validationForm.current[name] = data
+        updateValidObj();
+        if( Object.keys(validationObject.current).length === 0){
+            let copyObj:Object = Object.assign({},validationForm.current)
+            Object.assign(copyObj,validationForm.current)
+            onChange(Object.assign(copyObj,unmandatoryData.current))
+            validFlag.current = true
+        }else{
+            if(validFlag.current){
+                onChange(null)
+                validFlag.current = false
+            }
+        }
+    }
+    useEffect(()=>{
+        if (!firstUpdate.current) {
+            updateValidObj()
+            setRefresh(!refresh)
+        }
+        firstUpdate.current = false
+    },[valid])
     const updateValidObj = () => {
-        let entries = Object.entries(formData.current)
+        let entries = Object.entries(validationForm.current)
         for (let i = 0; i < entries.length; i++) {
             if (entries[i][1] == "") {
                 validationObject.current[entries[i][0]] = true
@@ -55,14 +98,55 @@ const AddressForm: React.FC<sendFormModuleInterface> = (props) => {
     }
     return (
 
-        <div className={s.wrapper}>
-                <InputWithLabelWithValidation valid={!validationObject.current.town} invalidText={"Введите населенный пункт."} className={className?.input} onChange={(data) => { setFormData(data, "town") }} placeholder={"Город"} />
+        <div>
+            <div className="flex">
+                <InputWithLabelWithValidation
+                    val={validationForm.current.town}
+                    valid={!validationObject.current.town}
+                    invalidText={"Введите город."}
+                    className={className?.input}
+                    onChange={(data) => { setFormData(data, "town") }}
+                    placeholder={"Город"} />
+                <InputWithLabelWithValidation
+                    val={validationForm.current.region}
+                    valid={!validationObject.current.region}
+                    invalidText={"Введите регион"}
+                    className={className?.input}
+                    onChange={(data) => { setFormData(data, "region") }}
+                    placeholder={"Регион"} />
+                <InputWithLabelWithValidation
+                    val={validationForm.current.index}
+                    valid={!validationObject.current.index}
+                    invalidText={"Введите почтовый индекс."}
+                    className={className?.input}
+                    onChange={(data) => { setFormData(data, "index") }}
+                    placeholder={"Почтовый индекс"} />
+            </div>
+            <div className='flex'>
+                <InputWithLabelWithValidation
+                    val={validationForm.current.street}
+                    valid={!validationObject.current.street}
+                    invalidText={"Введите улицу."}
+                    className={className?.input}
+                    onChange={(data) => { setFormData(data, "street") }}
+                    placeholder={"Улица"} />
+                <InputWithLabel
+                    val={unmandatoryData.current.house}
+                    className={className?.input}
+                    onChange={(data) => { setUnmandatoryDataData(data, "house") }}
+                    placeholder={"Дом"} />
+                <InputWithLabel
+                    val={unmandatoryData.current.flat}
+                    className={className?.input}
+                    onChange={(data) => { setUnmandatoryDataData(data, "flat") }}
+                    placeholder={"Квартира"} />
+            </div>
         </div>
 
     )
 }
 
 function checkMemo(oldData: any, newData: any) {
-    return (oldData.memo === newData.memo)
+    return (oldData.valid === newData.valid && oldData.memo === newData.memo)
 }
 export default memo(AddressForm, checkMemo)

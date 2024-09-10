@@ -32,6 +32,9 @@ import Faq from './pages/infoPages/Faq'
 import User from './pages/user/User';
 import Verification from './pages/verification/Verification';
 import { jwtAutorise } from './providers/userProvider';
+import Confirm from './pages/verification/Confirm';
+import ChangeForgetPass from './pages/verification/ChangeForgetPass';
+import global from "src/global.css"
 setTimeout(() => {
   console.debug(API_URL, "f;lsdmf;ls,d;lf")
 }, 10)
@@ -199,6 +202,14 @@ const App: React.FC<any> = () => {
 
           <Route path="/verification/:verHash" element={
             <Verification />
+          }>
+         </Route>
+         <Route path="/confirm/:verHash" element={
+            <Confirm />
+          }>
+         </Route>
+         <Route path="/changePass" element={
+            <ChangeForgetPass />
           }>
          </Route>
          <Route path="/refund-policy" element={

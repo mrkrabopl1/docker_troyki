@@ -5,7 +5,6 @@ import s from "./style.module.css"
 type propsRowType = {
     valid: boolean,
     invalidText: string,
-    validRule?: (valid: string) => string
     onChange: (...args: any) => void | null
     onFocus?: (...args: any) => void
     onBlur?: (...args: any) => void
@@ -15,16 +14,23 @@ type propsRowType = {
     val?: string
 }
 
-
+const validRuleForMail = (data: string) => {
+    var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(data)
+}
 
 const MailInputWithValidation: React.FC<propsRowType> = (props) => {
     const inputRef = useRef(null)
-    let { onChange, onFocus, onBlur, className, placeholder, val, valid, invalidText, invalidClassName, validRule } = { ...props }
+    let { onChange, onFocus, onBlur, className, placeholder, val, valid, invalidText, invalidClassName } = { ...props }
     const invalidTextRef = useRef<string>("")
     useEffect(()=>{
         invalidTextRef.current = invalidText
         setValid(valid)
     },[valid])
+    useEffect(()=>{
+       setVal(val)
+    },[val])
+    const startValidationOnBlur = useRef<boolean>(false)
     let [validState, setValid] = useState<boolean>(true)
     const [valState, setVal] = useState<string>(val ? val : "")
     return (
@@ -39,21 +45,26 @@ const MailInputWithValidation: React.FC<propsRowType> = (props) => {
                 onChange={(e) => {
                     setValid(true)
                     if (onChange) {
-                        onChange(e.target.value)
+                        startValidationOnBlur.current = true
+                        if(validRuleForMail(e.target.value)){
+                            onChange(e.target.value)
+                        }else{
+                            onChange(null)
+                        }
                         setVal(e.target.value)
                     }
                 }}
                 onFocus={(e) => { if (onFocus) { onFocus(e.target.value) } }}
                 onBlur={(e) => { 
-                    if(validRule)  {
-                        let invalidMessage = validRule(valState)
-                        if(invalidMessage){
-                            invalidTextRef.current = invalidMessage
+                    if(startValidationOnBlur.current){
+                        let valid = validRuleForMail(valState)
+                        if(!valid){
+                            invalidTextRef.current = "Введите корректный mail"
                             setValid(false)
                         }
-                      }
-                    if (onBlur) { 
-                    onBlur(e.target.value)
+                        if (onBlur) { 
+                        onBlur(e.target.value)
+                    }
                  } }}
                 required
             />

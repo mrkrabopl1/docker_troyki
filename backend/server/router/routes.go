@@ -82,8 +82,14 @@ func (s *Server) routes() {
 
 	s.router.Post("/registerUser", s.handleRegisterUser)
 	s.router.Post("/login", s.handleLogin)
+	s.router.Get("/unlogin", s.handleUnlogin)
 	s.router.Get("/jwtAutorise", s.handleJwtAutorise)
 	s.router.Get("/getUserData", s.handleGetUserData)
 	s.router.Post("/verify", s.handleVerifyUser)
 	s.router.Post("/changePass", s.handleChangePass)
+	s.router.Get("/forgetPass", s.handleForgetPass)
+	s.router.Post("/verifyChangePass", s.handleVerifyForgetPass)
+	s.router.Post("/changeForgetPass", s.handleChangeForgetPass)
+
+	s.router.Get("/checkCustomerData", s.handleCheckCustomerData)
 }

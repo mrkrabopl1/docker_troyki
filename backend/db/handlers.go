@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash"
+	"github.com/jmoiron/sqlx"
 	"github.com/mrkrabopl1/go_db/errorsType"
 	"github.com/mrkrabopl1/go_db/logger"
 	"github.com/mrkrabopl1/go_db/server/contextKeys"
@@ -32,9 +33,7 @@ type Snickers2 struct {
 
 func (s *PostgresStore) GetFirms(ctx context.Context) ([]types.FirmsResult, error) {
 	fmt.Println("connect db")
-
 	db, err1 := s.connect(ctx)
-	fmt.Println("connect(((((((((((((((((((((((())))))))))))))))))))))))", err1, db)
 	defer db.Close()
 
 	if err1 != nil {
@@ -723,7 +722,6 @@ func (s *PostgresStore) GetCartData(ctx context.Context, hash string) ([]types.S
 					conditionStr += fmt.Sprintf(`UNION ALL SELECT id, %d AS prid,firm, name , image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers  WHERE id = %d `, sn.Id, sn.Size, sn.Size, sn.Quantity, sn.PrId)
 				}
 			}
-			fmt.Println(conditionStr, "ddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
 			err := db.SelectContext(
 				ctx,
 				&dataQuery,
@@ -900,24 +898,11 @@ func generateToken() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-func sendMail() (string, error) {
+func createVerifyingString() ([]byte, string) {
 	token, err := generateToken()
 	if err != nil {
 		log.Fatalf("Error generating token: %v", err)
 	}
-
-	from := "munhgauzen12@gmail.com"
-	password := "qlfqlqasjkrywvij"
-
-	// Receiver email address.
-	to := []string{"mr.krabopl12@gmail.com"}
-
-	// SMTP server configuration.
-	smtpHost := "smtp.gmail.com"
-	smtpPort := "587"
-
-	// Message.
-
 	verifiString := fmt.Sprintf(
 		"MIME-Version: 1.0\r\n"+
 			"Content-Type: text/html; charset=\"UTF-8\";\r\n"+
@@ -928,8 +913,37 @@ func sendMail() (string, error) {
 			"<a href=\"http://localhost:3000/verification/%s\">Troyki verifiaction</a>"+
 			"</body></html>\r\n", token)
 	message := []byte(verifiString)
+	return message, token
+}
 
-	// Authentication.
+func createChangeForgetPass() ([]byte, string) {
+	token, err := generateToken()
+	if err != nil {
+		log.Fatalf("Error generating token: %v", err)
+	}
+	verifiString := fmt.Sprintf(
+		"MIME-Version: 1.0\r\n"+
+			"Content-Type: text/html; charset=\"UTF-8\";\r\n"+
+			"Subject: Troyki profile change pass\r\n"+
+			"\r\n"+
+			"<html><body>"+
+			"<p>Click the link below:</p>"+
+			"<a href=\"http://localhost:3000/confirm/%s\">http://localhost:3000/confirm/%s</a>"+
+			"</body></html>\r\n", token, token)
+	message := []byte(verifiString)
+	return message, token
+}
+
+func sendMail(message []byte) error {
+	from := "munhgauzen12@gmail.com"
+	password := "qlfqlqasjkrywvij"
+
+	// Receiver email address.
+	to := []string{"mr.krabopl12@gmail.com"}
+
+	// SMTP server configuration.
+	smtpHost := "smtp.gmail.com"
+	smtpPort := "587"
 
 	auth := smtp.PlainAuth("", from, password, smtpHost)
 
@@ -938,17 +952,35 @@ func sendMail() (string, error) {
 	err2 := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, to, message)
 	if err2 != nil {
 		log.Fatalf("smtp error: %s", err2)
-		return "", err2
+		return err2
 	}
 
-	return token, nil
+	return nil
+}
+
+func setVerification(db *sqlx.DB, ctx context.Context, token string, authorID int) {
+	deleteQuery := fmt.Sprintf(`DELETE FROM verification WHERE id = %d`, authorID)
+
+	_, err1 := db.ExecContext(ctx, deleteQuery)
+	if err1 != nil {
+		fmt.Println(err1)
+	}
+
+	expire := time.Now().Add(30 * time.Minute).Format("2006-01-02 15:04:05")
+	deleteTime := time.Now().Add(720 * time.Hour).Format("2006-01-02 15:04:05")
+	verStr := fmt.Sprintf(`INSERT INTO verification (token, expire, customerId, deleteTime) VALUES 
+			('%s', '%s', %d, '%s')`, token, expire, authorID, deleteTime)
+
+	_, err := db.ExecContext(ctx, verStr)
+	if err != nil {
+		fmt.Println(err, "fwdjfoiewjroiewjroiwe")
+	}
 }
 
 func (s *PostgresStore) RegisterUser(ctx context.Context, pass string, mail string) (int, error) {
 	db, _ := s.connect(ctx)
 	defer db.Close()
 	var exist bool
-	fmt.Println(mail)
 	queryExStr := fmt.Sprintf(`SELECT EXISTS (SELECT 1 FROM customers WHERE mail = '%s' )`, mail)
 
 	err := db.GetContext(ctx, &exist, queryExStr)
@@ -976,20 +1008,14 @@ func (s *PostgresStore) RegisterUser(ctx context.Context, pass string, mail stri
 			fmt.Println("err1", err1)
 		}
 
-		token, err3 := sendMail()
+		message, token := createVerifyingString()
+
+		err3 := sendMail(message)
 		if err3 != nil {
 			fmt.Println("err1", err1)
 			return 0, err3
 		} else {
-			expire := time.Now().Add(30 * time.Minute).Format("2006-01-02 15:04:05")
-			deleteTime := time.Now().Add(720 * time.Hour).Format("2006-01-02 15:04:05")
-			verStr := fmt.Sprintf(`INSERT INTO verification (token, expire, customerId, deleteTime) VALUES 
-			('%s', '%s', %d, '%s')`, token, expire, authorID, deleteTime)
-
-			_, err5 := db.ExecContext(ctx, verStr)
-			if err5 != nil {
-				fmt.Println(err5, "fwdjfoiewjroiewjroiwe")
-			}
+			setVerification(db, ctx, token, authorID)
 		}
 
 	}
@@ -1019,7 +1045,7 @@ func (s *PostgresStore) Verify(ctx context.Context, token string) (int16, error)
 	defer db.Close()
 
 	var verData types.VerInfo
-	verStr := fmt.Sprintf(`SELECT id, expire FROM verification WHERE token = '%s'`, token)
+	verStr := fmt.Sprintf(`SELECT id, expire, customerid FROM verification WHERE token = '%s'`, token)
 
 	err := db.GetContext(ctx, &verData, verStr)
 
@@ -1062,76 +1088,88 @@ func (s *PostgresStore) Login(ctx context.Context, mail string, pass string) (in
 	}
 }
 
-func (s *PostgresStore) CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int, error) {
+
+
+func (s *PostgresStore) CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int, int16, error) {
 	db, _ := s.connect(ctx)
 	defer db.Close()
 	fmt.Println("orderId")
-	customStr := fmt.Sprintf(`INSERT INTO customers (name, secondname, mail, phone, country, town, postindex) VALUES 
-	('%s', '%s', '%s', '%s','%s', '%s', '%d') RETURNING id`,
+
+	var unregisterID int16
+	unregisterStr := fmt.Sprintf(`INSERT INTO unregistercustomer (name, secondname, mail, phone, town, street, region, index, house, flat) VALUES 
+		( '%s', '%s', '%s','%s', '%s','%s', '%s','%s', '%s','%s') RETURNING id`,
 		orderData.PersonalData.Name,
 		orderData.PersonalData.SecondName,
 		orderData.PersonalData.Mail,
 		orderData.PersonalData.Phone,
-		"Russia",
-		orderData.Address.Address,
-		orderData.Address.PostIndex,
+		orderData.Address.Town,
+		orderData.Address.Street,
+		orderData.Address.Region,
+		orderData.Address.Index,
+		orderData.Address.House,
+		orderData.Address.Flat,
 	)
-	fmt.Println(customStr)
-	var customerID int
-	err := db.QueryRow(customStr).Scan(&customerID)
+	err := db.QueryRow(unregisterStr).Scan(&unregisterID)
 	if err != nil {
 		fmt.Println("err1", err)
-		return 0, err
+		return 0, 0, err
+	}
+
+	currentTime := time.Now()
+	orderStr := fmt.Sprintf(`INSERT INTO orders ( orderdate, status, deliveryPrice, deliveryType, unregistercustomerid) VALUES 
+		( '%s', '%s', '%d','%s', '%d') RETURNING id`,
+		currentTime.Format("2006-01-02"),
+		"pending",
+		orderData.Delivery.DeliveryPrice,
+		"cdek",
+		unregisterID,
+	)
+
+	var orderID int
+	err1 := db.QueryRow(orderStr).Scan(&orderID)
+	if err1 != nil {
+		fmt.Println("err1", err1)
+		return 0, 0, err1
 	} else {
-		currentTime := time.Now()
-		orderStr := fmt.Sprintf(`INSERT INTO orders (customerid, orderdate, status, deliveryPrice, deliveryType) VALUES 
-		('%d', '%s', '%s', '%d','%s') RETURNING id`,
-			customerID,
-			currentTime.Format("2006-01-02"),
-			"pending",
-			orderData.Delivery.DeliveryPrice,
-			"cdek",
-		)
-		var orderID int
-		err := db.QueryRow(orderStr).Scan(&orderID)
+		var preorderId int
+		query := fmt.Sprintf(`SELECT id FROM preorder WHERE hashUrl = '%s'`, orderData.PreorderId)
+		err := db.GetContext(ctx, &preorderId, query)
 		if err != nil {
-			fmt.Println("err1", err)
-			return 0, err
+			fmt.Println(err)
+			return 0, 0, err
 		} else {
-			var preorderId int
-			query := fmt.Sprintf(`SELECT id FROM preorder WHERE hashUrl = '%s'`, orderData.PreorderId)
-			err := db.GetContext(ctx, &preorderId, query)
+			type Products struct {
+				Size      string `db:"size"`
+				Quantity  int    `db:"quantity"`
+				Productid int    `db:"productid"`
+			}
+			query := fmt.Sprintf("SELECT productid, size, quantity FROM  preorderItems WHERE  orderid=%d", preorderId)
+			var products []Products
+			err := db.SelectContext(ctx, &products, query)
 			if err != nil {
-				fmt.Println(err)
-				return 0, err
+				fmt.Println("select null", err)
+				return 0, 0, err
 			} else {
-				type Products struct {
-					Size      string `db:"size"`
-					Quantity  int    `db:"quantity"`
-					Productid int    `db:"productid"`
-				}
-				query := fmt.Sprintf("SELECT productid, size, quantity FROM  preorderItems WHERE  orderid=%d", preorderId)
-				var products []Products
-				err := db.SelectContext(ctx, &products, query)
-				if err != nil {
-					fmt.Println("select null", err)
-					return 0, err
-				} else {
-					for _, product := range products {
-						orderItemStr := fmt.Sprintf(`INSERT INTO orderItems (productid, quantity, size, orderid) VALUES 
+				for _, product := range products {
+					orderItemStr := fmt.Sprintf(`INSERT INTO orderItems (productid, quantity, size, orderid) VALUES 
 						('%d', '%d', '%s', '%d')`,
-							product.Productid,
-							product.Quantity,
-							product.Size,
-							orderID,
-						)
-						_, err := db.Exec(orderItemStr)
-						if err != nil {
-							fmt.Println("select null", err)
-						}
+						product.Productid,
+						product.Quantity,
+						product.Size,
+						orderID,
+					)
+					_, err := db.Exec(orderItemStr)
+					if err != nil {
+						fmt.Println("select null", err)
+						return 0, 0, err
 					}
-					return orderID, nil
 				}
+				deleteQuery := fmt.Sprintf(`DELETE FROM preorderItems WHERE  orderid=%d`, preorderId)
+				_, err6 := db.ExecContext(ctx, deleteQuery)
+				if err6 != nil {
+					return 0, 0, err6
+				}
+				return orderID, unregisterID, nil
 			}
 		}
 	}
@@ -1169,6 +1207,66 @@ func (s *PostgresStore) ChangePass(ctx context.Context, newPass string, oldPass 
 	fmt.Println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz")
 	return nil
 }
+func (s *PostgresStore) ChangeForgetPass(ctx context.Context, newPass string, id int) error {
+	db, _ := s.connect(ctx)
+	defer db.Close()
+
+	hashedPassword, err4 := bcrypt.GenerateFromPassword([]byte(newPass), bcrypt.DefaultCost)
+	if err4 != nil {
+		panic(err4)
+	}
+	setNewPassStr := fmt.Sprintf(`UPDATE customers SET pass = '%s' WHERE id=%d`, hashedPassword, id)
+	_, err1 := db.ExecContext(ctx, setNewPassStr)
+	if err1 != nil {
+		return err1
+	}
+	return nil
+}
+func (s *PostgresStore) UpdateForgetPass(ctx context.Context, mail string) error {
+	db, _ := s.connect(ctx)
+	defer db.Close()
+	var exist bool
+	queryExStr := fmt.Sprintf(`SELECT EXISTS (SELECT 1 FROM customers WHERE mail = '%s' )`, mail)
+	err := db.GetContext(ctx, &exist, queryExStr)
+
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	if exist {
+		var id int16
+		queryExStr := fmt.Sprintf(`SELECT id FROM customers WHERE mail = '%s'`, mail)
+		err := db.GetContext(ctx, &id, queryExStr)
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			message, token := createChangeForgetPass()
+			err := sendMail(message)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				setVerification(db, ctx, token, int(id))
+			}
+		}
+	} else {
+		return errorsType.NotExist
+	}
+
+	return nil
+}
+
+func (s *PostgresStore) GetUnregisterCustomerData(ctx context.Context, id int) (types.UnregisterCustomerType, error){
+	db, _ := s.connect(ctx)
+	defer db.Close()
+	var unregisterCustomerData  types.UnregisterCustomerType
+	unregisterStr := fmt.Sprintf(`SELECT name, secondname, mail, phone, town, street, region, index, house, flat FROM unregistercustomer WHERE id=%d`,id)
+	err := db.GetContext(ctx, &unregisterCustomerData, unregisterStr)
+	if err != nil {
+		fmt.Println(err)
+		return unregisterCustomerData, err
+	}
+	return unregisterCustomerData, nil
+}
 
 type Interface interface {
 	GetFirms(ctx context.Context) ([]types.FirmsResult, error)
@@ -1187,10 +1285,13 @@ type Interface interface {
 	GetCartCount(ctx context.Context, hash string) (int, error)
 	DeleteCartData(ctx context.Context, preorderid int) error
 	RegisterUser(ctx context.Context, pass string, mail string) (int, error)
-	CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int, error)
+	CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int, int16, error)
 	GetSnickersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.SnickersPage, error)
 	Login(ctx context.Context, name string, pass string) (int16, error)
 	GetUserData(ctx context.Context, id int) (types.CustimerInfo, error)
 	Verify(ctx context.Context, token string) (int16, error)
 	ChangePass(ctx context.Context, newPass string, oldPass string, id int) error
+	UpdateForgetPass(ctx context.Context, mail string) error
+	ChangeForgetPass(ctx context.Context, newPass string, id int) error
+	GetUnregisterCustomerData(ctx context.Context, id int) (types.UnregisterCustomerType,error)
 }

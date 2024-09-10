@@ -24,16 +24,21 @@ type CreateOrderType struct {
 		Name       string `json:"name"`
 		Phone      string `json:"phone"`
 		Mail       string `json:"mail"`
-		SecondName string `json:"secondName"`
+		SecondName string `json:"secondName,omitempty"`
 	} `json:"personalData"`
 	Address struct {
-		PostIndex int    `json:"postIndex"`
-		Address   string `json:"address"`
+		Town   string `json:"town"`
+		Index  string `json:"index"`
+		Region string `json:"region"`
+		Street string `json:"street"`
+		House  string `json:"house,omitempty"`
+		Flat   string `json:"flat,omitempty"`
 	} `json:"address"`
 	Delivery struct {
 		DeliveryPrice int `json:"deliveryPrice"`
 		Type          int `json:"type"`
 	} `json:"delivery"`
+	Save bool `json:"save"`
 }
 type PostDataCollection struct {
 	// Define your struct to represent the JSON data

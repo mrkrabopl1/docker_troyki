@@ -62,6 +62,44 @@ const verifyEmail= function (verHash: string, callback: (val: any) => void) {
     })
 }
 
+const verifyChangePass= function (verHash: string, callback: (val: any) => void) {
+    let json = JSON.stringify({token:verHash})
+    axios({
+        withCredentials:true,
+        method: 'post',
+        url: `${API_URL}/verifyChangePass`,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        data: json
+    }
+    ).then((res: any) => {
+        console.log(res.data)
+        callback(res.data)
+    }, (error) => {
+        console.warn(error)
+    })
+}
+
+const changForgetPass= function (pass: string, callback: (val: any) => void) {
+    let json = JSON.stringify({pass})
+    axios({
+        withCredentials:true,
+        method: 'post',
+        url: `${API_URL}/changeForgetPass`,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        data: json
+    }
+    ).then((res: any) => {
+        console.log(res.data)
+        callback(res.data)
+    }, (error) => {
+        console.warn(error)
+    })
+}
+
 type loginDataType = {
     mail: string,
     pass: string
@@ -134,6 +172,7 @@ const changeUserPass= function (data: changePassType, callback: (val: any) => vo
 
  const jwtAutorise =function(callback: (val: any) => void){
     axios({
+        withCredentials:true,
         method: 'get',
         url: `${API_URL}/jwtAutorise`,
         headers: {}
@@ -144,4 +183,38 @@ const changeUserPass= function (data: changePassType, callback: (val: any) => vo
  }
 
 
-export { registerUser, getUserData, verifyEmail, loginUser, changeUserData, changeUserPass, jwtAutorise }
+ const updatePass =function(mail:string,callback: (val: any) => void){
+    axios({
+        method: 'get',
+        url: `${API_URL}/forgetPass` + "?" + "mail=" + mail,
+        headers: {}
+      }
+      ).then((res: any) => {
+       callback(res)
+      })
+ }
+
+ const unlogin =function(callback: (val: any) => void){
+    axios({
+        withCredentials:true,
+        method: 'get',
+        url: `${API_URL}/unlogin`,
+        headers: {}
+      }
+      ).then((res: any) => {
+       callback(res)
+      })
+ }
+ const checkCustomerData =function(callback: (val: any) => void){
+    axios({
+        withCredentials:true,
+        method: 'get',
+        url: `${API_URL}/checkCustomerData`,
+        headers: {}
+      }
+      ).then((res: any) => {
+       callback(res.data)
+      })
+ }
+
+export { registerUser, getUserData, verifyEmail, loginUser, changeUserData, changeUserPass, jwtAutorise, updatePass,verifyChangePass,changForgetPass, unlogin,checkCustomerData }

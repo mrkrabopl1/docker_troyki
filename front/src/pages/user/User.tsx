@@ -9,6 +9,9 @@ import Input from 'src/components/input/Input';
 import PhoneInputWithValidation from 'src/components/input/PhoneInputWithValidation';
 import Button from 'src/components/Button';
 import UserForm from 'src/modules/sendForm/UserForm';
+import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux'
+import { unlogin } from 'src/providers/userProvider';
+import { verified } from 'src/store/reducers/menuSlice'
 const AddressForm = lazy(() => import('src/modules/sendForm/AddressForm'))
 
 import s from "./s.module.css"
@@ -27,6 +30,7 @@ type userValType = {
 
 const User: React.FC<any> = () => { 
     let { login } = useParams<urlParamsType>();
+    let dispatch = useAppDispatch()
     const navigate = useNavigate()
 
     let [tab,setTab] = useState<number>(0)
@@ -63,7 +67,12 @@ const User: React.FC<any> = () => {
                 <div onClick={()=>{setTab(1)}}>
                     История покупок
                 </div>
-                <div onClick={()=>{setTab(1)}}>
+                <div onClick={()=>{
+                    unlogin(()=>{
+                        navigate("/")
+                        dispatch(verified(false))
+                    })
+                }}>
                     Выход
                 </div>
 
@@ -72,7 +81,7 @@ const User: React.FC<any> = () => {
                 { tab === 0 && <UserForm onChange={()=>{}}/>}
                 { tab === 1 &&
                     <Suspense fallback={<div></div>}>
-                    <AddressForm onChange = {()=>{}}/>
+                    <AddressForm valid= {true} className={{}} onChange = {()=>{}}/>
                   </Suspense>
                 }
             </div>

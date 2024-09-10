@@ -2,7 +2,7 @@ import React, { ReactElement, useRef, useState } from 'react'
 import s from "./style.module.css"
 import { useNavigate } from 'react-router-dom';
 import { toPrice } from 'src/global';
-import global from "src/global.css"
+
 
 
 interface merchInterface { name: string, imgs: string[], id: string, price: string, discount?: number }

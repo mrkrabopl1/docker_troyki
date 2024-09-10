@@ -10,6 +10,10 @@ import s from './style.module.css'
 import Button from 'src/components/Button';
 import { verified } from 'src/store/reducers/menuSlice'
 import DeliveryInfo from '../deliveryInfo/DeliveryInfo'
+import AddressForm from './AddressForm'
+import MailInputWithValidation from 'src/components/input/MailInputWithValidation'
+import { extend } from 'src/global'
+
 
 interface sendFormModuleInterface {
     className?: {
@@ -17,34 +21,76 @@ interface sendFormModuleInterface {
         checkbox?: string,
         combobox?: string
     }
-    onChange: (data: any) => void
+    onChange: (data: any) => void,
+    valid: boolean,
+    formValue?: {
+        name: string,
+        secondname?: string,
+        mail:string,
+        address: {
+            town: string,
+            region: string,
+            index: string,
+            street: string,
+            house?: string,
+            flat?: string,
+        },
+        phone: string
+    },
+    memo:boolean
 }
 
 const SendForm: React.FC<sendFormModuleInterface> = (props) => {
 
-    let validationObject = useRef<any>({})
 
+    let addressFormMemo = useRef<boolean>(true)
+    let validationObject = useRef<any>({})
+    const firstUpdate = useRef(true);
     let formData = useRef<any>({
         name: "",
-        secondName: "",
         mail: "",
-        address: "",
-        phone: "",
+        address: {
+            town: "",
+            region: "",
+            index: "",
+            street: "",
+            house: "",
+            flat: "",
+        },
+        phone: ""
     })
+
+    let unvalidFormData = useRef<any>({
+        secondName: ""
+    })
+
+    let saveData = useRef<boolean>(false)
     let [refresh, setRefresh] = useState<boolean>(false)
 
+    let invalidMailText = useRef<string>("Пустое поле ввода")
+    let { className, onChange, valid, formValue,memo } = { ...props }
 
-    let { className, onChange } = { ...props }
-
+    useEffect(()=>{
+        addressFormMemo.current = !addressFormMemo.current
+        extend(formData.current, formValue)
+        extend(unvalidFormData.current, formValue)
+        setRefresh(!refresh)
+    },[formValue])
 
     const setFormData = (data: string, name: string) => {
         formData.current[name] = data
     }
-
+    useEffect(() => {
+        if (!firstUpdate.current) {
+            updateValidObj()
+            setRefresh(!refresh)
+        }
+        firstUpdate.current = false
+    }, [valid])
     const updateValidObj = () => {
         let entries = Object.entries(formData.current)
         for (let i = 0; i < entries.length; i++) {
-            if (entries[i][1] == "") {
+            if (!entries[i][1]) {
                 validationObject.current[entries[i][0]] = true
             } else {
                 if (validationObject.current[entries[i][0]]) {
@@ -58,18 +104,27 @@ const SendForm: React.FC<sendFormModuleInterface> = (props) => {
 
         <div className={s.wrapper}>
             <div>Контактная информация</div>
-            <InputWithLabelWithValidation valid={!validationObject.current.mail} invalidText={"Введите адрес электронной почты."} className={className?.input} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
-            <Checkbox activeData={false} enable={true} onChange={() => { }} />
-            <div>
-                <InputWithLabelWithValidation valid={!validationObject.current.name} invalidText={"Введите имя."} className={className?.input} onChange={(data) => { setFormData(data, "name") }} placeholder={"Имя"} />
-                <InputWithLabelWithValidation valid={!validationObject.current.secondName} invalidText={"Введите фамилию."} className={className?.input} onChange={(data) => { setFormData(data, "secondName") }} placeholder={"Фамилия"} />
+            <MailInputWithValidation val={formData.current.mail} valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
+            <div className='flex pdn'>
+                <div style={{ marginTop: "auto", marginBottom: "auto", paddingRight: "5px" }}>
+                    <Checkbox activeData={false} enable={true} onChange={() => { }} />
+                </div>
+                <div>Отправляйте мне новости и предложения</div>
             </div>
-            <InputWithLabelWithValidation valid={!validationObject.current.address} invalidText={"Введите адресс."} className={className?.input} onChange={(data) => { setFormData(data, "address") }} placeholder={"Адрес"} />
-            <PhoneInputWithValidation invalidIncorrect={"Неверный формат"} invalidEmpty={"Введите телефон"} valid={!validationObject.current.phone} className={className?.input} onChange={(data) => { setFormData(data, "phone") }} placeholder={"Телефон"} />
-            {verified?<div style={{ display: "flex" }}>
-                <Checkbox activeData={false} enable={true} onChange={() => { }} />
+            <div className='flex'>
+                <InputWithLabelWithValidation val={formData.current.name} valid={!validationObject.current.name} invalidText={"Введите имя."} className={className?.input} onChange={(data) => { setFormData(data, "name") }} placeholder={"Имя"} />
+                <InputWithLabel val={unvalidFormData.current.secondName} className={className?.input} onChange={(data) => { setFormData(data, "secondName") }} placeholder={"Фамилия"} />
+            </div>
+            <AddressForm memo={addressFormMemo.current} formValue={formData.current.address} className={{}} valid={!validationObject.current.address} onChange={(data) => { setFormData(data, "address") }} />
+            <PhoneInputWithValidation val={formData.current.phone} invalidIncorrect={"Неверный формат"} invalidEmpty={"Введите телефон"} valid={!validationObject.current.phone} className={className?.input} onChange={(data) => { setFormData(data, "phone") }} placeholder={"Телефон"} />
+            {verified ? <div className='flex pdn'>
+                <div style={{ marginTop: "auto", marginBottom: "auto", paddingRight: "5px" }}>
+                    <Checkbox activeData={false} enable={true} onChange={(data) => {
+                        saveData.current = data
+                    }} />
+                </div>
                 <span>Сохранить эту информацию на будущее</span>
-            </div>:null}
+            </div> : null}
             {/* <div style={{ display: "flex" }}>
                 <Checkbox activeData={false} enable={true} onChange={() => { }} />
                 <span>Отправляйте мне SMS-сообщения о новостях и предложениях</span>
@@ -79,8 +134,10 @@ const SendForm: React.FC<sendFormModuleInterface> = (props) => {
                 updateValidObj()
                 if (Object.values(validationObject.current).length > 0) {
                     setRefresh(!refresh)
-                }else{
-                    onChange(formData.current)
+                } else {
+                    const finalObj = { ...formData.current }
+                    finalObj["save"] = saveData.current
+                    onChange(finalObj)
                 }
 
             }} />
