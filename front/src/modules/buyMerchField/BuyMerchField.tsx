@@ -6,28 +6,36 @@ import s from "./style.module.css"
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
 import Input from 'src/components/input/Input'
 import Button from 'src/components/Button'
+import { toPrice } from 'src/global';
 
+interface merchInterface {
+    cartData: {
+        name: string, img: string, id: string, firm: string, price: string, count: number, totalPrice: string
+    }[],
+    fullPrice: number
+}
 
-interface merchInterface { name: string, img: string, id: string, firm: string, price: string,  count:number }
-
-interface  dataType {
-   data:merchInterface[]
+interface dataType {
+    data: merchInterface
 }
 
 const BuyMerchField: React.FC<dataType> = (props) => {
-    let {data} = {...props}
+    let { data } = { ...props }
     let promoCode = useRef<string>("")
     return (
-        <div style={{ width:"100%"}}>
+        <div style={{ width: "100%" }}>
 
             {
-                data.map((data) => {
+                data.cartData.map((data) => {
                     return <MerchFormBlock data={data} onChange={() => { }} />
                 })
             }
 
-            <div style={{display:"flex"}}>
-                <Input placeholder='Промокод' onChange={(val)=>{promoCode.current = val}}/> <Button text='Применить' onChange={()=>{}}/>
+            <div style={{ display: "flex" }}>
+                <Input placeholder='Промокод' onChange={(val) => { promoCode.current = val }} /> <Button text='Применить' onChange={() => { }} />
+            </div>
+            <div>
+                Всего {toPrice(data.fullPrice)}
             </div>
         </div>
 

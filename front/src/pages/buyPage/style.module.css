@@ -4,3 +4,13 @@
     height: 30px;
     object-fit: contain;
 }
+
+.btn{
+    width: 300px;
+    padding: 5px;
+    margin-top: 15px;
+}
+
+.main{
+    padding:5px
+}

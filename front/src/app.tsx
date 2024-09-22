@@ -34,7 +34,9 @@ import Verification from './pages/verification/Verification';
 import { jwtAutorise } from './providers/userProvider';
 import Confirm from './pages/verification/Confirm';
 import ChangeForgetPass from './pages/verification/ChangeForgetPass';
+import OrderPage from './pages/orderPage/OrderPage';
 import global from "src/global.css"
+import OrderInfo from './components/orderInfo/orderInfo';
 setTimeout(() => {
   console.debug(API_URL, "f;lsdmf;ls,d;lf")
 }, 10)
@@ -160,12 +162,14 @@ const App: React.FC<any> = () => {
 
           <Route path="/form/:hash" element={
             <Form />
-
           }
           >
-
           </Route>
-
+          <Route path="/order/:hash" element={
+            <OrderPage />
+          }
+          >
+          </Route>
           <Route path="/settingsMenu" element={
             <SearchPage />
 

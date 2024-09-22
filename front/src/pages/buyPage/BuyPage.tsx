@@ -10,7 +10,6 @@ import s from "./style.module.css"
 import { useNavigate } from 'react-router-dom'
 import { getCookie } from 'src/global'
 import MerchTable from 'src/modules/merchField/MerchTable'
-
 type respCartType = {
     id: number,
     img: string,
@@ -76,9 +75,12 @@ const BuyPage: React.FC<any> = () => {
     }
 
     return (
-        <div  >
+        <div className={s.main} >
+            <h2>
+                  Корзина
+            </h2>
             <MerchTable tableData={tableData}/>
-            <Button text='Оформить заказ' onChange={formBuyHandle} />
+            <Button className={s.btn+ " btnStyle"} text='Оформить заказ' onChange={formBuyHandle} />
         </div>
     )
 }

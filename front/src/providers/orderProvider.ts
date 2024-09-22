@@ -55,6 +55,17 @@ const createOrder = function (data: clientDataType, callback: (val: any) => void
     })
 }
 
+const getOrderDataByHash = function (hash: string, callback: (val: any) => void) {
+    axios({
+        withCredentials: true,
+        url: `${API_URL}/getOrderDataByHash?hash=`+hash,
+        headers: { "content-type": "application/json" },
+        method: 'get',
+    }).then((res) => {
+        callback(res.data)
+    })
+}
 
 
-export { createPreorder, updatePreorder, createOrder }
+
+export { createPreorder, updatePreorder, createOrder, getOrderDataByHash }

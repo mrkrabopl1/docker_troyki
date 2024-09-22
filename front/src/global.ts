@@ -42,7 +42,7 @@ const toPrice = (num) => {
       formatedStringArr.push(stringData)
     }
   }
-  return formatedStringArr.reverse().join(".")
+  return formatedStringArr.reverse().join(".") + " ₽"
 };
 function getCookie(name) {
   let matches = document.cookie.match(new RegExp(

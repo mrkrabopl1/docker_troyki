@@ -2,7 +2,7 @@ import React, { ReactElement, useEffect, useRef, useState } from 'react'
 import MerchBlock from "./MerchBlock"
 import s from "./style.module.css"
 import { useNavigate } from 'react-router-dom';
-
+import { toPrice } from 'src/global';
 import {ReactComponent as Bin} from "../../../public/bin.svg";
 
 
@@ -24,7 +24,7 @@ const MerchFormBlock: React.FC<{ data: merchInterface,onChange:()=>void}> = (pro
                         {data.name}
                     </p>
                     <p>
-                        {data.price}
+                        {toPrice(data.price)}
                     </p>
                 </div>
             </div>

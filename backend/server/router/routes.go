@@ -78,6 +78,7 @@ func (s *Server) routes() {
 	s.router.Post("/updatePreorder", s.handleUpdatePreorder)
 	s.router.Get("/cartCount", s.handleGetCartCount)
 	s.router.Get("/getCartData", s.handleGetCart)
+	s.router.Get("/getOrderDataByHash", s.handleGetOrderDataByHash)
 	s.router.Post("/deleteCartData", s.handleDeleteCartData)
 
 	s.router.Post("/registerUser", s.handleRegisterUser)

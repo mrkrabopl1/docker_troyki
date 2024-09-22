@@ -64,9 +64,14 @@ type CartResponse struct {
 	Id       int    `json:"id"`
 	Size     string `json:"size"`
 	Quantity int    `json:"quantity"`
-	Price    string `json:"price"`
+	Price    int    `json:"price"`
 	Firm     string `json:"firm"`
 	PrId     int    `json:"prid"`
+}
+
+type FullCartRespone struct {
+	CartData []CartResponse `json:"cartData"`
+	FullPice int            `json:"fullPrice"`
 }
 
 type PostDataOrdreredSnickersByString struct {
@@ -87,11 +92,11 @@ type RespSearchSnickersAndFiltersByString struct {
 	Filters  FiltersSearchResponse `json:"filters"`
 }
 type UnregisterCustomerResponse struct {
-	Name       string `json:"name"`
-	Phone      string `json:"phone"`
-	Mail       string `json:"mail"`
-	SecondName string `json:"secondName,omitempty"`
-	Address AddressTypeResp `json:"address"`
+	Name       string          `json:"name"`
+	Phone      string          `json:"phone"`
+	Mail       string          `json:"mail"`
+	SecondName string          `json:"secondName,omitempty"`
+	Address    AddressTypeResp `json:"address"`
 }
 
 type AddressTypeResp struct {
@@ -101,4 +106,10 @@ type AddressTypeResp struct {
 	Street string `json:"street"`
 	House  string `json:"house,omitempty"`
 	Flat   string `json:"flat,omitempty"`
-} 
+}
+
+type OrderDataResp struct {
+	UserInfo     UnregisterCustomerResponse `json:"userInfo"`
+	State        string                     `json:"state"`
+	CartResponse FullCartRespone            `json:"cartResponse"`
+}

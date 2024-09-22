@@ -6,7 +6,7 @@ import MerchBuyBlock from './MerchBuyBlock'
 import { getCartData, deleteCartData } from 'src/providers/shopProvider'
 import { shopAction, cartCountAction } from 'src/store/reducers/menuSlice'
 import Button from 'src/components/Button'
-
+import { toPrice } from 'src/global';
 type dinamicElementType = {
     componentName: string,
     propsData: any
@@ -83,7 +83,7 @@ const MerchTable: React.FC<tableType> = (props) => {
     const updateList = (index: number, productId: number, quantity: number) => {
         deleteCartData(productId, () => {
             dispatch(cartCountAction(cartCountRef.current - quantity))
-            delete tableState.current[index]
+            delete tableState[index]
             setTableState(tableState)
             setRecalc(!recalc)
         })
@@ -93,8 +93,8 @@ const MerchTable: React.FC<tableType> = (props) => {
         let rowArr = []
         rowArr.push(<td style={{ width: "60%" }}>{<MerchBuyBlock onChange={() => { { } }} data={{ id: el.id, firm: el.firm, price: el.size, name: el.name, imgs: el.img }} />}</td>)
         rowArr.push(<td style={{textAlign: "center"}}>{el.quantity}</td>)
-        rowArr.push(<td style={{textAlign: "right"}}>{String(el.price * el.quantity)}</td>)
-        rowArr.push(<td><Button onChange={updateList.bind(null, ind, el.prid, el.quantity)} className={s.deleteBtn} /></td>)
+        rowArr.push(<td style={{textAlign: "right"}}>{toPrice(el.price * el.quantity)}</td>)
+        rowArr.push(<td style={{textAlign: "center"}}><Button onChange={updateList.bind(null, ind, el.prid, el.quantity)} className={s.deleteBtn} /></td>)
 
         return rowArr
     }

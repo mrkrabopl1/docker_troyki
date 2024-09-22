@@ -1,27 +1,43 @@
 package logger
 
 import (
-	"log/slog"
 	"os"
+	"runtime/debug"
+	"time"
+
+	"github.com/rs/zerolog"
 )
 
-var Logger *slog.Logger
+var Logger zerolog.Logger
 
 func init() {
-	opts := &slog.HandlerOptions{
-		AddSource: true,
-	}
+	buildInfo, _ := debug.ReadBuildInfo()
+	Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
+		Level(zerolog.TraceLevel).
+		With().
+		Timestamp().
+		Caller().
+		Int("pid", os.Getpid()).
+		Str("go_version", buildInfo.GoVersion).
+		Logger()
+}
 
-	var handler slog.Handler = slog.NewTextHandler(os.Stdout, opts)
+func Debug(msg string, keysAndValues ...interface{}) {
+	Logger.Debug().Fields(keysAndValues).Msg(msg)
+}
 
-	Logger = slog.New(handler)
+func Info(msg string, keysAndValues ...interface{}) {
+	Logger.Info().Fields(keysAndValues).Msg(msg)
 }
-func Info(message string) {
-	Logger.Info(message)
+
+func Warn(msg string, keysAndValues ...interface{}) {
+	Logger.Warn().Fields(keysAndValues).Msg(msg)
 }
-func Error(message string) {
-	Logger.Error(message)
+
+func Error(msg string, keysAndValues ...interface{}) {
+	Logger.Error().Fields(keysAndValues).Msg(msg)
 }
-func Debug(message string) {
-	Logger.Debug(message)
+
+func Fatal(msg string, keysAndValues ...interface{}) {
+	Logger.Fatal().Fields(keysAndValues).Msg(msg)
 }

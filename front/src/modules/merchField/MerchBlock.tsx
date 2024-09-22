@@ -108,7 +108,7 @@ const MerchBlock: React.FC<{ width: string, data: merchInterface }> = (props) =>
             {/* {data.imgs.length > 1 ? <img loading={"lazy"} className={s.img} style={secondImgStyle} src={"/" + data.imgs[1]} alt="airJordan" /> : null} */}
             <div className={s.textContainer}>
                 <div className={s.imgName}>{data.name}</div>
-                <div style={{ textAlign: "center", marginTop:"auto"}}>{data.discount ? <span className={s.discount}>{toPrice(data.discount) + " ₽"}</span> : null}<span className={s.imgName}>{"От " + toPrice(data.price) + " ₽"}</span></div>
+                <div style={{ textAlign: "center", marginTop:"auto"}}>{data.discount ? <span className={s.discount}>{toPrice(data.discount)}</span> : null}<span className={s.imgName}>{"От " + toPrice(data.price)}</span></div>
             </div>
         </div>
     )

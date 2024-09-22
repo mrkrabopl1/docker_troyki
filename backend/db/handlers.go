@@ -737,6 +737,40 @@ func (s *PostgresStore) GetCartData(ctx context.Context, hash string) ([]types.S
 	return dataQuery, nil
 }
 
+func (s *PostgresStore) GetCartDataFromOrder(ctx context.Context, id int) ([]types.SnickersCart, error) {
+	db, _ := s.connect(ctx)
+	defer db.Close()
+	var snickersPreorder []types.SnickersPreorder
+	var dataQuery []types.SnickersCart
+
+	query := fmt.Sprintf("SELECT id, productid AS prid, size, quantity FROM  orderItems WHERE  orderid=%d", id)
+	err := db.SelectContext(ctx, &snickersPreorder, query)
+	fmt.Println(snickersPreorder)
+	if err != nil {
+		logger.Error(err.Error())
+		return dataQuery, err
+	} else {
+		conditionStr := ""
+		for _, sn := range snickersPreorder {
+			if conditionStr == "" {
+				conditionStr += fmt.Sprintf(`SELECT id, %d AS prid, name ,firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers WHERE id = %d `, sn.Id, sn.Size, sn.Size, sn.Quantity, sn.PrId)
+			} else {
+				conditionStr += fmt.Sprintf(`UNION ALL SELECT id, %d AS prid,firm, name , image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers  WHERE id = %d `, sn.Id, sn.Size, sn.Size, sn.Quantity, sn.PrId)
+			}
+		}
+		err := db.SelectContext(
+			ctx,
+			&dataQuery,
+			conditionStr,
+		)
+		if err != nil {
+			logger.Error(err.Error())
+			return dataQuery, err
+		}
+	}
+	return dataQuery, nil
+}
+
 // type Count struct {
 // 	Data  int `db:"name_data"`
 // 	Data1 int `db:"name_data1"`
@@ -856,7 +890,7 @@ func (s *PostgresStore) GetCartCount(ctx context.Context, hash string) (int, err
 		logger.Error(err.Error())
 		return 0, err
 	} else {
-		query := fmt.Sprintf("SELECT coalesce(SUM(quantity),0) FROM  preorderItems WHERE  orderid=%d", idData)
+		query := fmt.Sprintf("SELECT  coalesce(SUM(quantity),0) FROM  preorderItems WHERE  orderid=%d", idData)
 		var quantity int
 		err := db.GetContext(ctx, &quantity, query)
 		if err != nil {
@@ -1088,9 +1122,7 @@ func (s *PostgresStore) Login(ctx context.Context, mail string, pass string) (in
 	}
 }
 
-
-
-func (s *PostgresStore) CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int, int16, error) {
+func (s *PostgresStore) CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int, int16, string, error) {
 	db, _ := s.connect(ctx)
 	defer db.Close()
 	fmt.Println("orderId")
@@ -1112,31 +1144,33 @@ func (s *PostgresStore) CreateOrder(ctx context.Context, orderData *types.Create
 	err := db.QueryRow(unregisterStr).Scan(&unregisterID)
 	if err != nil {
 		fmt.Println("err1", err)
-		return 0, 0, err
+		return 0, 0, "", err
 	}
 
 	currentTime := time.Now()
-	orderStr := fmt.Sprintf(`INSERT INTO orders ( orderdate, status, deliveryPrice, deliveryType, unregistercustomerid) VALUES 
-		( '%s', '%s', '%d','%s', '%d') RETURNING id`,
+	hashedStr := fmt.Sprint(xxhash.Sum64([]byte((currentTime.String() + fmt.Sprint(orderData.PreorderId)))))
+	orderStr := fmt.Sprintf(`INSERT INTO orders ( orderdate, status, deliveryPrice, deliveryType, unregistercustomerid, hash) VALUES 
+		( '%s', '%s', '%d','%s', '%d', '%s') RETURNING id`,
 		currentTime.Format("2006-01-02"),
 		"pending",
 		orderData.Delivery.DeliveryPrice,
 		"cdek",
 		unregisterID,
+		hashedStr,
 	)
 
 	var orderID int
 	err1 := db.QueryRow(orderStr).Scan(&orderID)
 	if err1 != nil {
 		fmt.Println("err1", err1)
-		return 0, 0, err1
+		return 0, 0, "", err1
 	} else {
 		var preorderId int
 		query := fmt.Sprintf(`SELECT id FROM preorder WHERE hashUrl = '%s'`, orderData.PreorderId)
 		err := db.GetContext(ctx, &preorderId, query)
 		if err != nil {
 			fmt.Println(err)
-			return 0, 0, err
+			return 0, 0, "", err
 		} else {
 			type Products struct {
 				Size      string `db:"size"`
@@ -1148,7 +1182,7 @@ func (s *PostgresStore) CreateOrder(ctx context.Context, orderData *types.Create
 			err := db.SelectContext(ctx, &products, query)
 			if err != nil {
 				fmt.Println("select null", err)
-				return 0, 0, err
+				return 0, 0, "", err
 			} else {
 				for _, product := range products {
 					orderItemStr := fmt.Sprintf(`INSERT INTO orderItems (productid, quantity, size, orderid) VALUES 
@@ -1161,15 +1195,16 @@ func (s *PostgresStore) CreateOrder(ctx context.Context, orderData *types.Create
 					_, err := db.Exec(orderItemStr)
 					if err != nil {
 						fmt.Println("select null", err)
-						return 0, 0, err
+						return 0, 0, "", err
 					}
 				}
 				deleteQuery := fmt.Sprintf(`DELETE FROM preorderItems WHERE  orderid=%d`, preorderId)
 				_, err6 := db.ExecContext(ctx, deleteQuery)
 				if err6 != nil {
-					return 0, 0, err6
+					return 0, 0, "", err6
 				}
-				return orderID, unregisterID, nil
+				fmt.Println("fldskfmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm", hashedStr)
+				return orderID, unregisterID, hashedStr, nil
 			}
 		}
 	}
@@ -1255,11 +1290,52 @@ func (s *PostgresStore) UpdateForgetPass(ctx context.Context, mail string) error
 	return nil
 }
 
-func (s *PostgresStore) GetUnregisterCustomerData(ctx context.Context, id int) (types.UnregisterCustomerType, error){
+func (s *PostgresStore) GetOrderData(ctx context.Context, hash string) (types.OrderData, error) {
 	db, _ := s.connect(ctx)
 	defer db.Close()
-	var unregisterCustomerData  types.UnregisterCustomerType
-	unregisterStr := fmt.Sprintf(`SELECT name, secondname, mail, phone, town, street, region, index, house, flat FROM unregistercustomer WHERE id=%d`,id)
+	var orderInfo types.OrderInfo
+	var orderData types.OrderData
+	//queryExStr := fmt.Sprintf(`SELECT EXISTS (SELECT 1 FROM orders WHERE hash = '%s' )`, hash)
+	query := fmt.Sprintf(`SELECT id, status, customerId, unregistercustomerid FROM orders WHERE hash = '%s'`, hash)
+
+	err := db.GetContext(ctx, &orderInfo, query)
+	fmt.Println(orderInfo, "fm;dlsmf;lsdmf;lmsd;fms;dfm;sdfm;sdmf;dsm")
+	if err != nil {
+		fmt.Println(err)
+		return orderData, err
+	} else {
+		fmt.Println(orderInfo, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+		snickers, err := s.GetCartDataFromOrder(ctx, orderInfo.Id)
+		fmt.Println(orderInfo, "vbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+		if err != nil {
+			fmt.Println(err)
+			return orderData, err
+		}
+		if orderInfo.UnregisterCostumerId != nil {
+			fmt.Println(*orderInfo.UnregisterCostumerId, "ddddddddddddddddddddddddddddddd")
+			var unregisterCustomerData types.UnregisterCustomerType
+			unregisterStr := fmt.Sprintf(`SELECT name, secondname, mail, phone, town, street, region, index, house, flat FROM unregistercustomer WHERE id=%d`, *orderInfo.UnregisterCostumerId)
+			err := db.GetContext(ctx, &unregisterCustomerData, unregisterStr)
+			if err != nil {
+				fmt.Println(err, "fldsflksdjfsd;lfksd;lfk;sldkf;lsdkf;ksmf;ladflsnf;lddfsm")
+				return orderData, err
+			}
+			orderData.State = orderInfo.Status
+			orderData.UserInfo = unregisterCustomerData
+			orderData.SnickersCart = snickers
+			return orderData, nil
+
+		} else {
+			return orderData, err
+		}
+	}
+}
+
+func (s *PostgresStore) GetUnregisterCustomerData(ctx context.Context, id int) (types.UnregisterCustomerType, error) {
+	db, _ := s.connect(ctx)
+	defer db.Close()
+	var unregisterCustomerData types.UnregisterCustomerType
+	unregisterStr := fmt.Sprintf(`SELECT name, secondname, mail, phone, town, street, region, index, house, flat FROM unregistercustomer WHERE id=%d`, id)
 	err := db.GetContext(ctx, &unregisterCustomerData, unregisterStr)
 	if err != nil {
 		fmt.Println(err)
@@ -1285,7 +1361,7 @@ type Interface interface {
 	GetCartCount(ctx context.Context, hash string) (int, error)
 	DeleteCartData(ctx context.Context, preorderid int) error
 	RegisterUser(ctx context.Context, pass string, mail string) (int, error)
-	CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int, int16, error)
+	CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int, int16, string, error)
 	GetSnickersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.SnickersPage, error)
 	Login(ctx context.Context, name string, pass string) (int16, error)
 	GetUserData(ctx context.Context, id int) (types.CustimerInfo, error)
@@ -1293,5 +1369,7 @@ type Interface interface {
 	ChangePass(ctx context.Context, newPass string, oldPass string, id int) error
 	UpdateForgetPass(ctx context.Context, mail string) error
 	ChangeForgetPass(ctx context.Context, newPass string, id int) error
-	GetUnregisterCustomerData(ctx context.Context, id int) (types.UnregisterCustomerType,error)
+	GetUnregisterCustomerData(ctx context.Context, id int) (types.UnregisterCustomerType, error)
+	GetOrderData(ctx context.Context, hash string) (types.OrderData, error)
+	GetCartDataFromOrder(ctx context.Context, id int) ([]types.SnickersCart, error)
 }

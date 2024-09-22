@@ -223,11 +223,38 @@ func NewSnickersResponse(firms []types.Snickers) []types.SnickersResponseD {
 	return list
 }
 
-func SnickersCartResponse(cart []types.SnickersCart) []types.CartResponse {
+func SnickersCartResponse(cart []types.SnickersCart) types.FullCartRespone {
+	data := types.FullCartRespone{}
+	fullPrice := 0
 	list := []types.CartResponse{}
 	for _, info := range cart {
 		img_path := info.Image + "/1.jpg"
 
+		fullPrice += info.Price
+
+		list = append(list, types.CartResponse{
+			Image:    img_path,
+			Id:       int(info.Id),
+			Name:     info.Name,
+			Size:     info.Size,
+			Quantity: info.Quantity,
+			Price:    info.Price,
+			Firm:     info.Firm,
+			PrId:     info.PrId,
+		})
+
+	}
+
+	data.CartData = list
+	data.FullPice = fullPrice
+
+	return data
+}
+
+func SnickersCartResponseWithourFullPrice(cart []types.SnickersCart) []types.CartResponse {
+	list := []types.CartResponse{}
+	for _, info := range cart {
+		img_path := info.Image + "/1.jpg"
 		list = append(list, types.CartResponse{
 			Image:    img_path,
 			Id:       int(info.Id),
@@ -244,19 +271,18 @@ func SnickersCartResponse(cart []types.SnickersCart) []types.CartResponse {
 	return list
 }
 
-
 func UnregisterCustomerDataResponse(customerInfo types.UnregisterCustomerType) types.UnregisterCustomerResponse {
 	data := types.UnregisterCustomerResponse{
-		Name:customerInfo.Name,
-		SecondName:customerInfo.SecondName,
-		Mail:customerInfo.Mail,
-		Phone:customerInfo.Phone,
-		Address:types.AddressTypeResp{
-			House:customerInfo.House,
-			Flat:customerInfo.Flat,
-			Index:customerInfo.Index,
-			Region:customerInfo.Region,
-			Town:customerInfo.Town,
+		Name:       customerInfo.Name,
+		SecondName: customerInfo.SecondName,
+		Mail:       customerInfo.Mail,
+		Phone:      customerInfo.Phone,
+		Address: types.AddressTypeResp{
+			House:  customerInfo.House,
+			Flat:   customerInfo.Flat,
+			Index:  customerInfo.Index,
+			Region: customerInfo.Region,
+			Town:   customerInfo.Town,
 		},
 	}
 
@@ -648,32 +674,71 @@ func (s *Server) handleCreatePreorder(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	var orderData types.CreateOrderType
 	err := json.NewDecoder(r.Body).Decode(&orderData)
-	
+
 	fmt.Println(orderData, "orderData")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	orderId, unregUserId, err := s.store.CreateOrder(r.Context(), &orderData)
+	_, unregUserId, hash, err := s.store.CreateOrder(r.Context(), &orderData)
 
 	if err != nil {
 		fmt.Println(err, "errrrrrrrrrrrrrrrrrrrrrrrrrrrr")
 		render.JSON(w, r, 0)
 	} else {
 		if orderData.Save {
-			fmt.Println("lkdsflksmkfdmsldkfnslkfnslkfndslkdnfl")
 			myCookie := createJwt(unregUserId, "saved")
 			http.SetCookie(w, &myCookie)
 		}
-		data := map[string]int{
-			"orderId": orderId,
+		data := map[string]interface{}{
+			"hash": hash,
 		}
 		render.JSON(w, r, data)
 	}
 
 	// Print the result and the time taken
 
+}
+
+func orderResponseFunc(orderData types.OrderData) types.OrderDataResp {
+	var orderResponse types.OrderDataResp
+	customerInfo := orderData.UserInfo
+	cartData := SnickersCartResponse(orderData.SnickersCart)
+	data := types.UnregisterCustomerResponse{
+		Name:       customerInfo.Name,
+		SecondName: customerInfo.SecondName,
+		Mail:       customerInfo.Mail,
+		Phone:      customerInfo.Phone,
+		Address: types.AddressTypeResp{
+			House:  customerInfo.House,
+			Flat:   customerInfo.Flat,
+			Index:  customerInfo.Index,
+			Region: customerInfo.Region,
+			Town:   customerInfo.Town,
+		},
+	}
+
+	orderResponse.UserInfo = data
+	orderResponse.State = orderData.State
+	orderResponse.CartResponse = cartData
+
+	return orderResponse
+}
+
+func (s *Server) handleGetOrderDataByHash(w http.ResponseWriter, r *http.Request) {
+	hashUrl := r.URL.Query().Get("hash")
+
+	orderData, err := s.store.GetOrderData(r.Context(), hashUrl)
+
+	orderResponse := orderResponseFunc(orderData)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	logger.Info("Response get cart data")
+	render.JSON(w, r, orderResponse)
 }
 
 func (s *Server) handleUpdatePreorder(w http.ResponseWriter, r *http.Request) {
@@ -715,9 +780,10 @@ func (s *Server) handleGetCartCount(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGetCart(w http.ResponseWriter, r *http.Request) {
 	hashUrl := r.URL.Query().Get("hash")
+
 	cartData, err := s.store.GetCartData(r.Context(), hashUrl)
 
-	responseData := SnickersCartResponse(cartData)
+	responseData := SnickersCartResponseWithourFullPrice(cartData)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -766,8 +832,8 @@ func (s *Server) handleDeleteCartData(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCheckCustomerData(w http.ResponseWriter, r *http.Request) {
 	cookie, errC := r.Cookie("saved")
 	cookie2, _ := r.Cookie("cart")
-	fmt.Println(cookie,"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",errC)
-	fmt.Println(cookie2,"fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+	fmt.Println(cookie, "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", errC)
+	fmt.Println(cookie2, "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 	if errC != nil {
 		if errC == http.ErrNoCookie {
 			fmt.Println("0 codsad")
@@ -778,12 +844,12 @@ func (s *Server) handleCheckCustomerData(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	issuer, err3 := getJwtIssuerId(cookie.Value)
-	fmt.Println(issuer,"fdsdflksdfksdp",err3)
-	costumerData,err := s.store.GetUnregisterCustomerData(r.Context(), issuer)
-	fmt.Println(err,"fdsdflksdfksdpfkdfsdfspkdfndfgsjf[s[odnfsdfppsd23-04i-25i-3424i-30]]")
-	if(err!=nil){
+	fmt.Println(issuer, "fdsdflksdfksdp", err3)
+	costumerData, err := s.store.GetUnregisterCustomerData(r.Context(), issuer)
+	fmt.Println(err, "fdsdflksdfksdpfkdfsdfspkdfndfgsjf[s[odnfsdfppsd23-04i-25i-3424i-30]]")
+	if err != nil {
 		render.JSON(w, r, 0)
-	}else{
+	} else {
 		render.JSON(w, r, UnregisterCustomerDataResponse(costumerData))
 	}
 }
@@ -826,7 +892,6 @@ func (s *Server) handleChangeForgetPass(w http.ResponseWriter, r *http.Request) 
 	fmt.Println(issuer, "f;lsdf;llkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk")
 	var newPass types.Pass
 	err2 := json.NewDecoder(r.Body).Decode(&newPass)
-	fmt.Println(newPass, "f;lsdf;llkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk")
 	if err2 != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

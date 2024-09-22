@@ -164,7 +164,7 @@ const SnickersInfo: React.FC = () => {
                         setActive(true)
                     }} />
                     <h1 className={s.merchName} >{merchInfo.name}</h1>
-                    <div>{currentDiscount.current ? <span>{currentProiceDiscount.current}</span> : null}<span>{toPrice(currentPrice.current) + " ₽"}</span></div>
+                    <div>{currentDiscount.current ? <span>{currentProiceDiscount.current}</span> : null}<span>{toPrice(currentPrice.current)}</span></div>
                     <PriceHolder onChange={priceChangeHandler} elems={pricesArr.current} />
                     <Button text='Купить' className={s.buyMerch} onChange={() => {
                         let data: any = {

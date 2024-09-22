@@ -92,7 +92,7 @@ type Filter struct {
 }
 type SnickersCart struct {
 	Name     string `db:"name"`
-	Price    string `db:"price"`
+	Price    int    `db:"price"`
 	Size     string `db:"size"`
 	Image    string `db:"image_path"`
 	Id       int16  `db:"id"`
@@ -127,6 +127,13 @@ type Pass struct {
 	Pass string `db:"pass"`
 }
 
+type OrderInfo struct {
+	Status               string `db:"status"`
+	Id                   int    `db:"id"`
+	CostumerId           *int   `db:"customerid"`
+	UnregisterCostumerId *int   `db:"unregistercustomerid"`
+}
+
 type UnregisterCustomerType struct {
 	Name       string `db:"name"`
 	SecondName string `db:"secondname,omitempty"`
@@ -136,6 +143,12 @@ type UnregisterCustomerType struct {
 	Street     string `db:"street"`
 	Region     string `db:"region"`
 	Index      string `db:"index"`
-	House       string `db:"house,omitempty"`
+	House      string `db:"house,omitempty"`
 	Flat       string `db:"flat,omitempty"`
+}
+
+type OrderData struct {
+	UserInfo     UnregisterCustomerType
+	State        string
+	SnickersCart []SnickersCart
 }
