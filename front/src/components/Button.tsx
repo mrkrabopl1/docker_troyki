@@ -14,7 +14,7 @@ const proxyClick=function(e:React.MouseEvent,clickMethod:(e:React.MouseEvent)=>a
 
 
 const Button:  React.FC<IButton> = ({ text,onChange,className }) => {
-    return (<button className={className} style={{display:"inine-block"}} 
+    return (<button style={{cursor:"pointer",display:"inine-block"}} className={className} 
         onMouseDown={e=>{proxyClick(e,onChange)}}>
         {text}
     </button>)

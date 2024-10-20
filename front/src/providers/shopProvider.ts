@@ -18,6 +18,22 @@ const getCartData = function (cartHash:any, callback: (val: any) => void) {
     })
 }
 
+const getOrderCartData = function (cartHash:any, callback: (val: any) => void) {
+    const data = new FormData();
+    axios({
+        withCredentials: true,
+        method: 'get',
+        url: `${API_URL}/getCartDataFromOrder?hash=`+cartHash,
+        headers: {}
+    }
+    ).then((res:any)=>{
+        console.log(res.data)
+        callback(res.data)
+    },(error)=>{
+        console.warn(error)
+    })
+}
+
 const deleteCartData = function (preorderId, callback: (val: any) => void) {
     let json = JSON.stringify({preorderId})
     axios({
@@ -38,4 +54,4 @@ const deleteCartData = function (preorderId, callback: (val: any) => void) {
 
 
 
-export { getCartData, deleteCartData }
+export { getCartData, deleteCartData ,getOrderCartData}

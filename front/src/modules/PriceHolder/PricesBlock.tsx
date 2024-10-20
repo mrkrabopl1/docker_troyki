@@ -16,7 +16,7 @@ const PricesBlock: React.FC<merchType> = (props) => {
             <div className={s.sizeHolder}>{"US "+size}</div>
             <div className={s.avelibleHolder}><div>{toPrice(price)}</div>{availability?<img className={s.done} src={doneSvg} alt="" />:null}</div> 
             {active?<div className={s.priceUnderline}></div>:null}
-            {discount?<div>test</div>:null}
+            {discount?<div className={s.discountLabel}></div>:null}
         </div>
             
     )

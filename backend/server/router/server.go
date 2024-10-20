@@ -3,7 +3,6 @@ package router
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -77,16 +76,16 @@ func (s *Server) Start(ctx context.Context) {
 
 	shutdownComplete := handleShutdown(func() {
 		if err := server.Shutdown(ctx); err != nil {
-			log.Printf("server.Shutdown failed: %v\n", err)
+			log.Error("server.Shutdown failed: %v\n", err)
 		}
 	})
 	if err := server.ListenAndServe(); err == http.ErrServerClosed {
 		<-shutdownComplete
 	} else {
-		log.Printf("http.ListenAndServe failed: %v\n", err)
+		log.Error("http.ListenAndServe failed: %v\n", err)
 	}
 
-	log.Println("Shutdown gracefully")
+	log.InfoFields("Shutdown gracefully")
 }
 
 func handleShutdown(onShutdownSignal func()) <-chan struct{} {

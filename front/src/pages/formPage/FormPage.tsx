@@ -33,14 +33,7 @@ const FormPage: React.FC = () => {
         name: "",
         mail: "",
         secondName:"",
-        address: {
-            town: "",
-            region: "",
-            index: "",
-            street: "",
-            house: "",
-            flat: "",
-        },
+        address: null,
         phone: ""
     })
     useEffect(() => {
@@ -59,7 +52,7 @@ const FormPage: React.FC = () => {
     }, [])
 
     return (
-        <div style={{ display: "flex" }}>
+        <div className='dependFlex'>
         <SendForm
                 memo={memoSendForm.current}
                 valid={true}

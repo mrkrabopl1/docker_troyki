@@ -1,5 +1,5 @@
 import React, { ReactElement, useEffect, useRef, useState } from 'react'
-
+import s from "./style.module.css"
 type propsRowType = {
     className?: {
         main: string,
@@ -42,6 +42,7 @@ const DoubleInfoDrop: React.FC<propsRowType> = (props) => {
         height: drop.current?.clientHeight + "px",
         overflow: "hidden"
     }
+
     return (
         <div style={{ position: "relative" }} className={className ? className.main : ""}>
             <div
@@ -50,7 +51,12 @@ const DoubleInfoDrop: React.FC<propsRowType> = (props) => {
                 }}
                 style={{ display: "flex", cursor:"pointer" }} >
                 <p style={{paddingRight:"15px"}} className={active && className?className.second:""}>{info}</p>
-                <span style={{ position: "absolute", right: "0", paddingRight: "5px", transition:"transform 0.5s", transform:active?"rotate(0deg)":"rotate(90deg)"}}>{ "\u142F"}</span>
+
+                <div className={s.arrowMain}>
+                    <span className={[s.arrowLeft , active?s.arrowLeftOpen:null].join(" ")}></span>
+                    <span className={[s.arrowRight , active?s.arrowRightOpen:null].join(" ")}></span>
+                </div>
+                {/* <span  transform:active?"rotate(0deg)":"rotate(90deg)"}}>{ "\u142F"}</span> */}
             </div>
             <div style={active ? secondDropStyle : secondDropStyle1}>
                 <div ref={drop}>{initialChildren}</div>

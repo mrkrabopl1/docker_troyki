@@ -65,3 +65,7 @@ type ChangePassType struct {
 	NewPass string `json:"newPass"`
 	OldPass string `json:"oldPass"`
 }
+type OrderRequest struct {
+	OrderId int    `json:"orderId"`
+	Mail    string `json:"mail"`
+}

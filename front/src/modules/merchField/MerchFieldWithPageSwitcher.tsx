@@ -29,6 +29,15 @@ const MerchFieldWithPageSwitcher: React.FC<merchFieldInterface> = (props) => {
         return 100 / size + "%"
     }
 
+    let heightClass = useRef<string>("")
+
+    if(size === 3){
+         heightClass.current = "dependetHeight"
+    }else{
+         heightClass.current = "dependetHeight1"
+    }
+
+
     const createBlocks = () => {
         let arr: any = []
         while (data.length) {
@@ -42,7 +51,7 @@ const MerchFieldWithPageSwitcher: React.FC<merchFieldInterface> = (props) => {
                 data.shift()
             }
 
-            arr.push(<div style={heightRow ? { height: heightRow + "px" } : {}} className={className ? className : s.merchField}>
+            arr.push(<div className={className ? className : s.merchField + " " + heightClass.current}>
                 {arrSm}
             </div>)
         }
@@ -51,7 +60,9 @@ const MerchFieldWithPageSwitcher: React.FC<merchFieldInterface> = (props) => {
     }
     return (
         <div>
-            {createBlocks()}
+            <div className={s.globalMerchField}>
+                 {createBlocks()}
+            </div>
             <PageController currentPosition={currentPage} positions={pages} callback={onChange} />
 
         </div>

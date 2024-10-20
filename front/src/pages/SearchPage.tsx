@@ -5,13 +5,14 @@ import Button from 'src/components/Button'
 import MerchSliderField from 'src/modules/merchField/MerchFieldWithPageSwitcher'
 import s from "./style.module.css"
 import { useAppDispatch } from 'src/store/hooks/redux'
-import { getSnickersByString , getSnickersAndFiltersByString} from "src/providers/searchProvider"
+import { getSnickersByString, getSnickersAndFiltersByString } from "src/providers/searchProvider"
 import { show, sticky } from 'src/store/reducers/menuSlice'
 import { ReactComponent as FoureGrid } from 'src/../public/foureGrid.svg';
 import { ReactComponent as SixGrid } from 'src/../public/sixGrid.svg';
 import { useLocation } from 'react-router-dom';
 import { sizes } from 'src/constFiles/size'
 import RadioGroup from 'src/components/radio/RadioGroup'
+import { ReactComponent as Sort } from 'src/../public/sort.svg';
 
 interface FiltersInfoRequest {
     sizes: string[],
@@ -33,7 +34,7 @@ interface FiltersState {
     }[]
 }
 const SearchPage: React.FC<any> = () => {
-   
+
     const { state } = useLocation();
     let filtersInfo = useRef<FiltersInfoRequest>({
         sizes: [],
@@ -42,13 +43,16 @@ const SearchPage: React.FC<any> = () => {
     })
 
     const emptyData = useRef<boolean>(false)
+    const [refresh, setRefresh] = useState(false)
     const test = useRef<boolean>(true)
     let activeSizes = useRef<string[]>([])
     let orderType = useRef<number>(0)
     let settingsModuleMemo = useRef<boolean>(true)
     let firms = useRef<string[]>([])
-    let searchWord = useRef<string>(state?state:"")
+    let searchWord = useRef<string>(state ? state : "")
     let dispatch = useAppDispatch()
+    let emtyText = useRef<string>("По запросу ничего не найдено. Проверьте правописание или выберите другие слова либо фразу.")
+
 
 
 
@@ -61,28 +65,32 @@ const SearchPage: React.FC<any> = () => {
             max: 0,
             min: 0,
         },
-        checboxsProps:[]
+        checboxsProps: []
     })
     const updatePage = (respData: any) => {
-        pages.current = respData.pages
-        if(respData.snickers.length === 0){
+        if (respData.snickers.length === 0) {
             emptyData.current = true
-        }else{
+            emtyText.current = "По запросу ничего не найдено. Проверьте правописание или выберите другие слова либо фразу."
+            setRefresh(!refresh)
+        } else {
             emptyData.current = false
+            pages.current = respData.pages
+            const data = convertFilterseData(respData.filters)
+            setFilters(data)
+            settingsModuleMemo.current = !settingsModuleMemo.current;
+            setMerchFieldData(respData.snickers)
         }
-        const data = convertFilterseData(respData.filters)
-        setFilters(data)
-        settingsModuleMemo.current = !settingsModuleMemo.current;
-        setMerchFieldData(respData.snickers)
     }
     const updatMerch = (respData: any) => {
         pages.current = respData.pages
-        if(respData.snickers.length === 0){
+        if (respData.snickers.length === 0) {
             emptyData.current = true
-        }else{
+            emtyText.current = "По запросу ничего не найдено. Сбросить фильтры"
+            setRefresh(!refresh)
+        } else {
             emptyData.current = false
+            setMerchFieldData(respData.snickers)
         }
-        setMerchFieldData(respData.snickers)
     }
     useEffect(() => {
         if (state) {
@@ -98,18 +106,18 @@ const SearchPage: React.FC<any> = () => {
 
     const searchCallback = (searchData: string) => {
         searchWord.current = searchData;
-        getSnickersByString(searchWord.current, updatMerch, currentPage.current, pageSize.current, filtersInfo.current,orderType.current )
+        getSnickersByString(searchWord.current, updatMerch, currentPage.current, pageSize.current, filtersInfo.current, orderType.current)
     }
     let [showSettings, setShowSettings] = useState<boolean>(false)
-
+    let [showFilters, setShowFilters] = useState<boolean>(false)
 
     const convertFilterseData = (resData: { price: number[], avalible: boolean, firmsCount: { [key: string]: string }, sizes: { [key: string]: number } }) => {
 
         let priceProps: any = {
             min: resData.price[0],
             max: resData.price[1],
-            dataLeft:  resData.price[0],
-            dataRight:  resData.price[1]
+            dataLeft: resData.price[0],
+            dataRight: resData.price[1]
         }
         if (filtersInfo.current.price.length !== 0) {
             priceProps.dataLeft = filtersInfo.current.price[0]
@@ -117,24 +125,24 @@ const SearchPage: React.FC<any> = () => {
         }
 
         let checkBoxPropsData: any = []
-        if(test.current){
+        if (test.current) {
             sizes.sizes.us.forEach(el => {
                 let strEl = String(el)
                 let size = resData.sizes[strEl]
-           
+
                 if (size != 0) {
                     activeSizes.current.push(strEl);
                     let active = filtersInfo.current.sizes.indexOf(strEl) !== -1
                     checkBoxPropsData.push({ enable: true, activeData: active, name: strEl + "(" + size + ")" })
                 }
             })
-            
+
         }
-    
+
 
         let sizeObj = {
             name: "sizes",
-            props:checkBoxPropsData
+            props: checkBoxPropsData
         }
 
         const entries = Object.entries(resData.firmsCount)
@@ -150,8 +158,8 @@ const SearchPage: React.FC<any> = () => {
             name: "firms",
             props: checkBoxPropsFirmData
         }
-        let settingsData:any = {
-            checboxsProps:[]
+        let settingsData: any = {
+            checboxsProps: []
         };
 
         settingsData["priceProps"] = priceProps
@@ -201,38 +209,40 @@ const SearchPage: React.FC<any> = () => {
                 filtersInfo.current.price = filter.data
                 break
             case "firms":
-                let firm = firms.current[filter.data.id];
-                index = filtersInfo.current.firms.indexOf(firm)
-                if (index !== -1 && !filter.data.active) {
-                    filtersInfo.current.firms.splice(index, 1)
-                } else {
-                    if (index === -1 && filter.data.active) {
-                        filtersInfo.current.firms.push(firm)
+                filter.data.forEach((data,index)=>{
+                    let firm = firms.current[index];
+                    index = filtersInfo.current.firms.indexOf(firm)
+                    if (index !== -1 && !data) {
+                        filtersInfo.current.firms.splice(index, 1)
+                    } else {
+                        if (index === -1 && data) {
+                            filtersInfo.current.firms.push(firm)
+                        }
                     }
-                }
+                })
                 break
         }
-        getSnickersByString(searchWord.current, updatMerch, currentPage.current, pageSize.current, filtersInfo.current,orderType.current )
+        getSnickersByString(searchWord.current, updatMerch, currentPage.current, pageSize.current, filtersInfo.current, orderType.current)
     }
 
 
     const pageChange = (page: number) => {
         currentPage.current = page;
-        getSnickersByString(searchWord.current, updatMerch, currentPage.current, pageSize.current, filtersInfo.current,orderType.current )
+        getSnickersByString(searchWord.current, updatMerch, currentPage.current, pageSize.current, filtersInfo.current, orderType.current)
     }
     const orderTypeChange = (ind: number) => {
         orderType.current = ind;
-        getSnickersByString(searchWord.current, updatMerch, currentPage.current, pageSize.current, filtersInfo.current,orderType.current )
+        getSnickersByString(searchWord.current, updatMerch, currentPage.current, pageSize.current, filtersInfo.current, orderType.current)
     }
 
 
-    const resetFilters = ()=>{
+    const resetFilters = () => {
         filtersInfo.current = {
             sizes: [],
             price: [],
             firms: []
         }
-        getSnickersByString(searchWord.current, updatMerch, currentPage.current, pageSize.current, filtersInfo.current,orderType.current )
+        getSnickersByString(searchWord.current, updatMerch, currentPage.current, pageSize.current, filtersInfo.current, orderType.current)
     }
 
 
@@ -240,32 +250,48 @@ const SearchPage: React.FC<any> = () => {
     return (
 
         <div ref={pageWrap} onWheel={(e) => manipulateMenu(e)}>
+
+
             <div style={{ position: "relative" }}>
-                <SearchWithList val={searchWord.current} className={styleData} searchCallback={searchCallback}  />
-                {emptyData.current?<div>
-                    "По запросу ничего не найдено. Сбросить "{<span onClick={()=>{resetFilters()}}>фильтры</span>}.
-                </div>:<MerchSliderField onChange={pageChange} currentPage={currentPage.current} pages={pages.current} heightRow={500} size={grid ? 2 : 3} data={merchFieldData} />}
-                <div onClick={() => {
-                    setGrid(!grid)
-                }} style={{ position: "absolute", top: 0, width: "50px", height: "50px" }}>
-                    {grid ? <FoureGrid /> : <SixGrid />}
+                <div className={s.head}>
+                    Результаты поиска.
                 </div>
-                <div onMouseLeave={() => { }} style={showSettings ? { right: "0" } : {}} className={s.settings_holder}>
-                    <Button className={s.filterBtn} text={''} onChange={() => setShowSettings(!showSettings)} />
-                    <SnickersSettings classNames={{ secondPage: s.secondPage }} memo={settingsModuleMemo.current} onChange={onFiltersChange}  {...filtersState} />
-                </div>
+                <SearchWithList val={searchWord.current} className={styleData} searchCallback={searchCallback} />
+                {emptyData.current ?
+                    <div className={s.emptyRow}>
+                        {emtyText.current}<span onClick={() => { resetFilters() }}></span>
+                    </div> :
+                    <div>
+
+
+                        <MerchSliderField onChange={pageChange} currentPage={currentPage.current} pages={pages.current} heightRow={300} size={grid ? 2 : 3} data={merchFieldData} />
+                        <div onClick={() => {
+                            setGrid(!grid)
+                        }} style={{ position: "absolute", top: 0, width: "50px", height: "50px" }}>
+                            {grid ? <FoureGrid /> : <SixGrid />}
+                        </div>
+                        
+
+                        <div onMouseLeave={() => { }} style={showSettings ? { right: "0" } : {}} className={s.settings_holder}>
+                            <Button className={s.settingsBtn} text={''} onChange={() => setShowSettings(!showSettings)} />
+                            <SnickersSettings classNames={{ secondPage: s.secondPage }} memo={settingsModuleMemo.current} onChange={onFiltersChange}  {...filtersState} />
+                        </div>
+                        <div  onMouseLeave={() => { }} style={showFilters ? { left: "0" } : {}} className={s.filters_holder}>
+                            <div className={ s.secondPage }>
+
+                            <RadioGroup onChange={(id) => { orderTypeChange(id) }} name={"ordered"} lampArray={["Без сортировки", "По возрастанию цены", "По убыванию цены"]} />
+                            </div>
+                            <Button className={s.filterBtn} text={''} onChange={() => setShowFilters(!showFilters)} />
+                        </div>
+
+                    </div>
+                }
             </div>
+            
+            
 
-
-
-            <RadioGroup onChange={(id)=>{orderTypeChange(id)}} name={"ordered"} lampArray={["Без сортировки", "По возрастанию цены", "По убыванию цены"]}/>
-
-            {/* <div onClick={()=>{ orderedSnickersByString(state, updatePage, currentPage.current, pageSize.current, filtersInfo.current,0)}}>
-                TEST
-            </div> */}
 
         </div>
-
 
     )
 }

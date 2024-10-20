@@ -45,6 +45,10 @@
     display:flex
 }
 
+:global(.dependFlex){
+  display:flex
+}
+
 :global(.pdn){
     padding-left: 15px;
 }
@@ -53,9 +57,120 @@
     margin-top: auto;
     margin-bottom: auto;
 }
-:global(.btnStyle){
+/* :global(.btnStyle){
     font-size: 20px;
     background-color: black;
     border-radius: 5px;
     color: white
+} */
+
+:global(.fs){
+  width:100%;
+  height:100%;
 }
+:global(.fontSizeH){
+  font-size: 18px;
+}
+
+:global(.fontSize){
+  font-size: 16px;
+}
+
+@media (max-width:600px) {
+  :global(.fontSize){
+    font-size: 12px;
+  }
+  :global(.fontSizeH){
+    font-size: 14px;
+  }
+  :global(.dependFlex){
+    display:block
+  }
+}
+
+:global(.dependetHeight){
+  height: 300px;
+}
+
+:global(.dependetHeight1){
+  height: 600px;
+}
+
+@media (min-width:600px) {
+  :global(.dependSize){
+    display:none
+  }
+}
+
+:global(.btnStyle){
+  background-color: transparent;
+  color: darken(red, 10%);
+  position: relative;
+  border: none;
+  overflow: hidden;
+  box-shadow: none;
+  position: relative;
+  border: none;
+  font-size: 18px;
+  transition: color 0.5s, transform 0.2s, background-color 0.2s;
+  outline: none;
+  border-radius: 3px;
+  margin: 0 10px;
+  padding: 23px 33px;
+  border: 3px solid transparent;
+  border-radius:5px ;
+}
+  
+ 
+:global(.btnStyle:hover){
+    color:white;
+  }
+   
+:global(.btnStyle::before){
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 3px solid darken(red, 10%);
+    transition: opacity 0.3s, border 0.3s;
+  }
+
+  :global(.btnStyle:active){
+    transform: translateY(3px)
+  }
+
+
+  :global(.btnStyle:hover::before){
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 3px solid darken(red, 10%);
+    transition: opacity 0.3s, border 0.3s;
+  }
+  :global(.btnStyle::after){
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 200px;
+    background-color: black;
+    border-color: transparent;
+    /* border-radius: 50%; */
+    transform: translate(0px, -70px) scale(0.1);
+    opacity: 0;
+    z-index: -1;
+    transition: transform 0.3s, opacity 0.3s, background-color 0.3s
+  }
+  
+   
+  :global(.btnStyle:hover::after){
+    opacity: 1;
+    transform-origin: 100px 100px;
+    transform: scale(1) translate(0px, -70px)
+  }

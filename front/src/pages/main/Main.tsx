@@ -4,7 +4,7 @@ import MerchSliderField from '../../modules/merchField/MerchSliderField'
 import { getMainInfo } from "src/providers/merchProvider"
 import { useAppSelector } from 'src/store/hooks/redux'
 import { useNavigate } from 'react-router-dom';
-import { getCollections } from 'src/providers/merchProvider'
+import { getCollections,getHistoryInfo } from 'src/providers/merchProvider'
 
 import StickyDispetcherButton from 'src/modules/stickyDispetcherButton/StickyDispetcherButton';
 import MerchBanner from 'src/modules/merchBanner/MerchBanner'
@@ -41,17 +41,20 @@ const Main: React.FC<any> = () => {
     getCollections (reqData, setMerchFieldData)
   }, [chousenName])
   useEffect(() => {
-    getMainInfo( createUrlImage)
+    getMainInfo(createUrlImage)
+    getHistoryInfo(setMerchHistoryFieldData )
   }, [])
   let [merchFieldData, setMerchFieldData] = useState<any>([])
+  let [merchHistoryFieldData, setMerchHistoryFieldData] = useState<any>([])
 
 
   return (
 
     <div style={{position:"relative"}}>
       <StickyDispetcherButton top='80%' left="80%"/>
-      <MerchBanner className={{main:s.banner}} onChange={onChangeBanner} id={imgBanner.id} title={imgBanner.name} img={"/"+imgBanner.image} />
+      <MerchBanner onChange={onChangeBanner} id={imgBanner.id} title={imgBanner.name} img={"/"+imgBanner.image} />
       <MerchSliderField name={"Air Jordan 1"} merchInfo={merchFieldData} />
+      {merchHistoryFieldData.length?<MerchSliderField name={"Your history"} merchInfo={merchHistoryFieldData} />:null}
     </div>
 
 

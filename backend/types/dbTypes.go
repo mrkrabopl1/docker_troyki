@@ -132,6 +132,7 @@ type OrderInfo struct {
 	Id                   int    `db:"id"`
 	CostumerId           *int   `db:"customerid"`
 	UnregisterCostumerId *int   `db:"unregistercustomerid"`
+	Hash                 string `db:"hash"`
 }
 
 type UnregisterCustomerType struct {
@@ -151,4 +152,5 @@ type OrderData struct {
 	UserInfo     UnregisterCustomerType
 	State        string
 	SnickersCart []SnickersCart
+	OrderId      int
 }

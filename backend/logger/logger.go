@@ -8,36 +8,48 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var Logger zerolog.Logger
+type ZeroLogger struct {
+	Log zerolog.Logger
+}
 
-func init() {
+func InitLogger() *ZeroLogger {
 	buildInfo, _ := debug.ReadBuildInfo()
-	Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
+	// logFile, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	// if err != nil {
+	// 	log.Fatal().Err(err).Msg("Failed to open log file")
+	// }
+	// defer logFile.Close()
+	zl := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
 		Level(zerolog.TraceLevel).
 		With().
 		Timestamp().
-		Caller().
 		Int("pid", os.Getpid()).
 		Str("go_version", buildInfo.GoVersion).
 		Logger()
+	return &ZeroLogger{Log: zl}
 }
 
-func Debug(msg string, keysAndValues ...interface{}) {
-	Logger.Debug().Fields(keysAndValues).Msg(msg)
+func (zl *ZeroLogger) Debug(msg string, keysAndValues ...interface{}) {
+	zl.Log.Debug().Fields(keysAndValues).Msg(msg)
 }
 
-func Info(msg string, keysAndValues ...interface{}) {
-	Logger.Info().Fields(keysAndValues).Msg(msg)
+func (zl *ZeroLogger) InfoFields(msg string, keysAndValues ...interface{}) {
+	zl.Log.Info().Fields(keysAndValues).Msg(msg)
 }
 
-func Warn(msg string, keysAndValues ...interface{}) {
-	Logger.Warn().Fields(keysAndValues).Msg(msg)
+func (zl *ZeroLogger) Warn(msg string, keysAndValues ...interface{}) {
+	zl.Log.Warn().Fields(keysAndValues).Msg(msg)
 }
 
-func Error(msg string, keysAndValues ...interface{}) {
-	Logger.Error().Fields(keysAndValues).Msg(msg)
+func (zl *ZeroLogger) Error(msg string, keysAndValues ...interface{}) {
+	zl.Log.Error().Fields(keysAndValues).Msg(msg)
 }
 
-func Fatal(msg string, keysAndValues ...interface{}) {
-	Logger.Fatal().Fields(keysAndValues).Msg(msg)
+func (zl *ZeroLogger) Fatal(msg string, keysAndValues ...interface{}) {
+	zl.Log.Fatal().Fields(keysAndValues).Msg(msg)
+}
+
+func (zl *ZeroLogger) WithCaller() *zerolog.Logger {
+	loger := zl.Log.With().Caller().Logger()
+	return &loger
 }

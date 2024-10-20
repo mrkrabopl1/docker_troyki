@@ -10,9 +10,9 @@ interface merchInterface { name: string, imgs: string[], id: string, price: stri
 
 
 
-const MerchBlock: React.FC<{ width: string, data: merchInterface }> = (props) => {
+const MerchBlock: React.FC<{ className?:string,width?:string, data: merchInterface }> = (props) => {
     const navigate = useNavigate();
-    let { data, width } = { ...props }
+    let { data, className, width } = { ...props }
     let [compOpacity, setOpacity] = useState(0)
 
     let [compScale, setScale] = useState(0.9)
@@ -85,7 +85,7 @@ const MerchBlock: React.FC<{ width: string, data: merchInterface }> = (props) =>
 
     return (
         <div
-            style={{ width: width }}
+            style={width&&{width:width}}
             onClick={() => navigate('/product/' + data.id)}
             onMouseEnter={() => {
                 // if (data.imgs.length > 1) {
@@ -97,18 +97,20 @@ const MerchBlock: React.FC<{ width: string, data: merchInterface }> = (props) =>
             onMouseLeave={() => {
                setScale(0.9)
             }}
-            className={s.merchWrap}
+            className={s.merchWrap + " " + className}
         >
-            <div style={{ position: "relative" , height:"90%"}}>
-                <img loading={"lazy"} className={s.img} style={firstImgStyle} src={"/" + data.imgs[0]} alt="airJordan" />
-                {data.discount ? <div className={s.discountMarker}>
-                    "Sale"
-                </div> : null}
-            </div>
-            {/* {data.imgs.length > 1 ? <img loading={"lazy"} className={s.img} style={secondImgStyle} src={"/" + data.imgs[1]} alt="airJordan" /> : null} */}
-            <div className={s.textContainer}>
-                <div className={s.imgName}>{data.name}</div>
-                <div style={{ textAlign: "center", marginTop:"auto"}}>{data.discount ? <span className={s.discount}>{toPrice(data.discount)}</span> : null}<span className={s.imgName}>{"От " + toPrice(data.price)}</span></div>
+            <div className={s.colorLayout}>
+                <div className={s.imageBlock}>
+                    <img loading={"lazy"} className={s.img} style={firstImgStyle} src={"/" + data.imgs[0]} alt="airJordan" />
+                    {data.discount ? <div className={s.discountMarker}>
+                        "Sale"
+                    </div> : null}
+                </div>
+                {/* {data.imgs.length > 1 ? <img loading={"lazy"} className={s.img} style={secondImgStyle} src={"/" + data.imgs[1]} alt="airJordan" /> : null} */}
+                <div className={s.textContainer}>
+                    <div className={s.imgName}>{data.name}</div>
+                    <div style={{ textAlign: "center", marginTop:"auto"}}>{data.discount ? <span className={s.discount}>{toPrice(data.discount)}</span> : null}<span className={s.imgName}>{"От " + toPrice(data.price)}</span></div>
+                </div>
             </div>
         </div>
     )

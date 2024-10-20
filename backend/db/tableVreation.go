@@ -100,14 +100,20 @@ func (s *PostgresStore) CreateTables(ctx context.Context) {
 	// 	flat TEXT
 	// )`)
 
-	_, err := db.Exec(`CREATE TABLE OrderItems (
+	// _, err := db.Exec(`CREATE TABLE OrderItems (
+	// 	id serial PRIMARY KEY NOT NULL,
+	// 	OrderID INT,
+	// 	ProductID INT,
+	// 	Quantity INT,
+	// 	Size TEXT,
+	// 	FOREIGN KEY (OrderID) REFERENCES Orders(id),
+	// 	FOREIGN KEY (ProductID) REFERENCES snickers(id)
+	// )`)
+
+	_, err := db.Exec(`CREATE TABLE UniqueCustomers (
 		id serial PRIMARY KEY NOT NULL,
-		OrderID INT,
-		ProductID INT,
-		Quantity INT,
-		Size TEXT,
-		FOREIGN KEY (OrderID) REFERENCES Orders(id),
-		FOREIGN KEY (ProductID) REFERENCES snickers(id)
+		creationTime DATE NOT NULL,
+		history INTEGER[] NOT NULL
 	)`)
 
 	// _, err := db.Exec(`

@@ -18,30 +18,32 @@ type propsLampType = {
         orderId:number ,
         index: string,
     }
+    orderId:number
 }
 
 
-let createString = (street, home, town) => {
-    let str = "";
-    if (street) {
-        str += street + " "
-    }
-    if (home) {
-        str += "дом" + home
-    }
-    str += town
-    return str
-}
+
 const OrderInfo: React.FC<propsLampType> = (props) => {
+    let createString = (street, home, town) => {
+        let str = "";
+        if (street) {
+            str += street + " "
+        }
+        if (home) {
+            str += "дом" + home
+        }
+        str += town
+        return str
+    }
 
     let { name, secondName, address, mail, price, orderId,index } = { ...props.orderData }
     return (
-        <div className=''>
-            <div>
+        <div style = {{width:"100%"}} className=''>
+            <h3>
                 Спасибо, {name}
-            </div>
+            </h3>
             <div>
-                Ваш заказ {orderId} подтвержден<br />
+                Ваш заказ №{props.orderId} подтвержден<br />
                 Ваш заказ поступил в обработку. В процессе обработки заказа с вами свяжется наш менеджер для уточнения деталей заказа и предоставления реквизитов для оплаты.
             </div>
             <div>

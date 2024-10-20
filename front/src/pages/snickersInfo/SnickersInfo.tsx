@@ -65,8 +65,8 @@ const SnickersInfo: React.FC = () => {
     let [recalc, setRecalc] = useState<boolean>(true)
     let [merchInfo, setMerchInfo] = useState<any>({ imgs: [], name: "", info: {} })
     let currentPrice = useRef<number>(0)
-    let currentDiscount = useRef<string>("")
-    let currentProiceDiscount = useRef<string>("")
+    let currentDiscount = useRef<number>(0)
+    let currentProiceDiscount = useRef<number>(0)
     let pricesArr = useRef<any>([])
 
 
@@ -156,17 +156,21 @@ const SnickersInfo: React.FC = () => {
         <div>
             <div className={widthProps ? "" : s.mainWrap}>
 
-                <div style={widthProps ? { height: "100%", width: "100%" } : { height: "100%", width: "70%" }}>
+                <div className={widthProps ?null:s.leftPart} style={widthProps ? { height: "100%", width: "100%" } : { height: "100%"}}>
                    {widthProps?<ContentSlider content={createSliderContetn()} />:<ImagePresantation images={merchInfo.imgs} />}
                 </div>
-                <div style={widthProps ? { height: "100%", width: "100%" } : { height: "100%", width: "30%" }}>
+                <div style={widthProps ? { height: "100%", width: "100%" } : { height: "100%", width: "100%" }}>
                     <Button text={"размеры"} onChange={() => {
                         setActive(true)
                     }} />
                     <h1 className={s.merchName} >{merchInfo.name}</h1>
-                    <div>{currentDiscount.current ? <span>{currentProiceDiscount.current}</span> : null}<span>{toPrice(currentPrice.current)}</span></div>
+                    <div>
+                        {currentDiscount.current ? <span className={s.discountPrice}>{toPrice(currentProiceDiscount.current)}</span> : null}
+                        <span>{toPrice(currentPrice.current)}</span>
+                        {currentDiscount.current ? <span className={s.discountPerce}>-{Math.round((currentDiscount.current/currentProiceDiscount.current)*100)}%</span> : null}
+                    </div>
                     <PriceHolder onChange={priceChangeHandler} elems={pricesArr.current} />
-                    <Button text='Купить' className={s.buyMerch} onChange={() => {
+                    <Button text='Купить' className={"btnStyle " + s.buyMerch } onChange={() => {
                         let data: any = {
                             id: Number(snickers),
                             info: {
@@ -175,14 +179,6 @@ const SnickersInfo: React.FC = () => {
                         }
 
                         createPreorder(data, (hash) => {
-                            let data: any = {
-                                id: Number(snickers),
-                                info: {
-                                    size: String(currentSize.current)
-                                }
-                            }
-                            setCookie('cart', hash.hashUrl, { 'max-age': 604800 })
-                            dispatch(cartCountAction(1))
                             navigate("/form/" + hash.hashUrl)
                         })
 
@@ -195,7 +191,7 @@ const SnickersInfo: React.FC = () => {
                         //     id: merchInfo.id
                         // }]))
                     }} />
-                    <Button text='Добавить в корзину' className={s.buyMerch} onChange={() => {
+                    <Button text='Добавить в корзину' className={"btnStyle " + s.buyMerch} onChange={() => {
                         let size = Number(currentSize.current)
                         // if (local === "ru") {
                         //     size = tableInfo.sizes["us"][tableInfo.sizes["ru"].indexOf(Number(currentSize.current))]

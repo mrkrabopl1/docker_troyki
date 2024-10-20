@@ -1,18 +1,16 @@
-import React, {SetStateAction,Dispatch,useEffect } from 'react';
+import React, {SetStateAction,Dispatch,useEffect, memo } from 'react';
 import s from "./style.module.css"
+import { setGlobalScroller } from 'src/global';
 
 interface ModalProps {
     active: boolean
     onChange: (data:boolean)=>void
+    children:any
 
 }
 
 const Modal: React.FC<ModalProps> = ({active, onChange,children}) => {
-    if(active){
-        document.body.style.overflow = 'hidden';
-    }else{
-        document.body.style.overflow = 'unset';
-    }
+    setGlobalScroller(active)
     useEffect(()=>{
         return()=>{
          console.debug("exit")
@@ -25,10 +23,15 @@ const Modal: React.FC<ModalProps> = ({active, onChange,children}) => {
                 e.stopPropagation()
             }} 
             className={active?s.modalBack:s.none}
-            onClick={()=>onChange(false)}>
+            onClick={()=>onChange(!active)}>
            {children}
         </div>
     )
 }
 
-export default Modal
+function arePropsEqual(oldProps:any, newProps:any) {
+
+    return (oldProps.active==newProps.active)
+}
+
+export default memo(Modal,arePropsEqual)

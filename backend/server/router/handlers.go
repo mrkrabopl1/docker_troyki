@@ -14,7 +14,6 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/render"
 	"github.com/mrkrabopl1/go_db/errorsType"
-	"github.com/mrkrabopl1/go_db/logger"
 	"github.com/mrkrabopl1/go_db/types"
 )
 
@@ -30,8 +29,8 @@ import (
 
 // 	d[m.Firm] = m.ArrayOfData
 
-// 	return d
-// }
+//		return d
+//	}
 
 func NewMainPageResponse(mp []types.MainPage) []types.MainPageResp {
 	var mpResp []types.MainPageResp
@@ -167,10 +166,7 @@ func NewSnickersInfoResponse(snInfo types.SnickersInfo) types.SnickersInfoRespon
 	var inf map[string]float64
 	var imgArr []string
 	files, _ := os.ReadDir(snInfo.Image_path)
-	fmt.Println(snInfo.Image_path)
-	fmt.Println(len(files))
 	for index, _ := range files {
-		fmt.Println(index)
 		str := fmt.Sprintf(snInfo.Image_path+"/%d.jpg", index+1)
 		imgArr = append(imgArr, str)
 	}
@@ -178,7 +174,7 @@ func NewSnickersInfoResponse(snInfo types.SnickersInfo) types.SnickersInfoRespon
 	// Use json.Unmarshal to parse the JSON string into the map
 	err2 := json.Unmarshal([]byte(snInfo.Info), &inf)
 	if err2 != nil {
-		fmt.Println(err2)
+		log.Log.Err(err2)
 	}
 
 	var discount interface{}
@@ -195,7 +191,7 @@ func NewSnickersInfoResponse(snInfo types.SnickersInfo) types.SnickersInfoRespon
 }
 
 func NewSnickersResponse(firms []types.Snickers) []types.SnickersResponseD {
-	logger.Debug("NewSnickersResponse")
+	log.Debug("NewSnickersResponse")
 	list := []types.SnickersResponseD{}
 	for _, firm := range firms {
 		var imgArr []string
@@ -223,7 +219,7 @@ func NewSnickersResponse(firms []types.Snickers) []types.SnickersResponseD {
 	return list
 }
 
-func SnickersCartResponse(cart []types.SnickersCart) types.FullCartRespone {
+func SnickersCartResponseWithourFullPrice(cart []types.SnickersCart) types.FullCartRespone {
 	data := types.FullCartRespone{}
 	fullPrice := 0
 	list := []types.CartResponse{}
@@ -251,7 +247,7 @@ func SnickersCartResponse(cart []types.SnickersCart) types.FullCartRespone {
 	return data
 }
 
-func SnickersCartResponseWithourFullPrice(cart []types.SnickersCart) []types.CartResponse {
+func SnickersCartResponse(cart []types.SnickersCart) []types.CartResponse {
 	list := []types.CartResponse{}
 	for _, info := range cart {
 		img_path := info.Image + "/1.jpg"
@@ -283,6 +279,7 @@ func UnregisterCustomerDataResponse(customerInfo types.UnregisterCustomerType) t
 			Index:  customerInfo.Index,
 			Region: customerInfo.Region,
 			Town:   customerInfo.Town,
+			Street: customerInfo.Street,
 		},
 	}
 
@@ -290,29 +287,25 @@ func UnregisterCustomerDataResponse(customerInfo types.UnregisterCustomerType) t
 }
 
 func (s *Server) handleGetFirms(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("invkdsjfkkjf'skd;fj;slfj;sdjfs;kjdf")
 	firms, err := s.store.GetFirms(r.Context())
-	fmt.Println("jgjgkjgkjgkhgkhgkhinvkdsjfkkjf'skd;fj;slfj;sdjfs;kjdf")
 	if err != nil {
+		log.WithCaller().Err(err)
+		render.JSON(w, r, nil)
 		return
 	}
 	firmsList := NewFirmListResponse(firms)
 
-	logger.Info("Response get firms")
+	log.WithCaller().Info().Interface("firms", firms)
 	render.JSON(w, r, firmsList)
 }
 
 func (s *Server) handleGetSnickersByFirmName(w http.ResponseWriter, r *http.Request) {
-	logger.Debug("handleGetSnickersByFirmName")
 	firms, err := s.store.GetSnickersByFirmName(r.Context())
 	if err != nil {
-
+		render.JSON(w, r, nil)
 		return
 	}
-
-	fmt.Println(firms)
 	firmsList := NewSnickersResponse(firms)
-	//mr := NewMovieResponse(movie)
 	render.JSON(w, r, firmsList)
 }
 
@@ -320,6 +313,8 @@ func (s *Server) handleGetSnickersByLineName(w http.ResponseWriter, r *http.Requ
 
 	firms, err := s.store.GetSnickersByLineName(r.Context())
 	if err != nil {
+		log.WithCaller().Err(err)
+		render.JSON(w, r, nil)
 		return
 	}
 	firmsList := NewSnickersLineResponse(firms)
@@ -327,19 +322,44 @@ func (s *Server) handleGetSnickersByLineName(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *Server) handleGetSnickersInfoById(w http.ResponseWriter, r *http.Request) {
-
-	snickersInfo, err := s.store.GetSnickersInfoById(r.Context())
+	id := r.URL.Query().Get("id")
+	snickersInfo, err := s.store.GetSnickersInfoById(r.Context(), id)
 	if err != nil {
+		log.WithCaller().Err(err).Msg("")
+		render.JSON(w, r, nil)
 		return
 	}
 	snickersInfoResp := NewSnickersInfoResponse(snickersInfo)
+	log.Log.Info().Interface("snickersInfo", snickersInfoResp).Msg("")
 	render.JSON(w, r, snickersInfoResp)
+	cookie, errC := r.Cookie("unique")
+	if errC != nil {
+		log.WithCaller().Err(errC).Msg("")
+		return
+	}
+	numId, err3 := strconv.Atoi(id)
+	if err3 != nil {
+		log.WithCaller().Err(err).Msg("Ошибка преобразования:")
+		return
+	} else {
+		user, err1 := getJwtIssuerId(cookie.Value)
+		if err1 != nil {
+
+		} else {
+			err := s.store.SetSnickersHistory(r.Context(), numId, user)
+			if err != nil {
+				log.WithCaller().Err(err).Msg("")
+			}
+		}
+	}
 }
 
 func (s *Server) handleGetMainPage(w http.ResponseWriter, r *http.Request) {
 
 	mp, err := s.store.GetMainPage(r.Context())
 	if err != nil {
+		log.WithCaller().Err(err)
+		render.JSON(w, r, nil)
 		return
 	}
 	firmsList := NewMainPageResponse(mp)
@@ -350,7 +370,9 @@ func (s *Server) handleGetMainPage(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetSizes(w http.ResponseWriter, r *http.Request) {
 	file, err := os.ReadFile("json/sizeTable.json")
 	if err != nil {
-		fmt.Println(err)
+		log.WithCaller().Err(err)
+		render.JSON(w, r, nil)
+		return
 	}
 	var data interface{}
 	json.Unmarshal(file, &data)
@@ -377,20 +399,23 @@ func SetPartitionedCookie(w http.ResponseWriter, cookie *http.Cookie) {
 		}
 	}
 	header["Set-Cookie"] = cookies
+	log.Log.Info().Interface("coockie", cookies)
+	log.Log.Info().Msg("coockie")
 }
 
 func (s *Server) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 	var postData types.PostDataRegisterUser
 	err := json.NewDecoder(r.Body).Decode(&postData)
 	if err != nil {
-		fmt.Println(err)
+		log.WithCaller().Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	index, err5 := s.store.RegisterUser(r.Context(), postData.Password, postData.Mail)
 
 	if err5 != nil {
-		fmt.Println(err5)
+		log.WithCaller().Err(err5)
+		return
 	}
 
 	data := map[string]int{
@@ -399,7 +424,7 @@ func (s *Server) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, data)
 }
 
-func createJwt(id int16, name string) http.Cookie {
+func createJwt(id int, name string, expiredTime int) (http.Cookie, error) {
 	fmt.Println(id, name)
 	expirationTime := time.Now().Add(200 * time.Minute)
 	claims := &jwt.StandardClaims{
@@ -410,9 +435,17 @@ func createJwt(id int16, name string) http.Cookie {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	tokenString, err := token.SignedString(jwtKey)
+	var myCookie http.Cookie
 	if err != nil {
-		fmt.Println("error JWT")
+
+		log.WithCaller().Err(err)
+		return myCookie, err
 	}
+	myCookie = createCoockie(name, tokenString, expiredTime)
+	return myCookie, nil
+}
+
+func createCoockie(name string, tokenString string, expiredTime int) http.Cookie {
 	myCookie := http.Cookie{
 		Name:  name,
 		Value: tokenString,
@@ -431,15 +464,21 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var postData types.PostDataRegisterUser
 	err := json.NewDecoder(r.Body).Decode(&postData)
 	if err != nil {
-		fmt.Println(err)
+		log.WithCaller().Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	id, err1 := s.store.Login(r.Context(), postData.Mail, postData.Password)
-	myCookie := createJwt(id, "token")
 	if err1 != nil {
+		log.WithCaller().Err(err1)
 		render.JSON(w, r, false)
 	} else {
+		myCookie, err := createJwt(int(id), "token", 3600000)
+		if err != nil {
+			log.WithCaller().Err(err)
+			render.JSON(w, r, nil)
+			return
+		}
 		http.SetCookie(w, &myCookie)
 		render.JSON(w, r, true)
 	}
@@ -460,6 +499,7 @@ func getJwtIssuerId(coockieVal string) (int, error) {
 	claims := token1.Claims.(*jwt.StandardClaims)
 	i, err := strconv.Atoi(claims.Issuer)
 	if err != nil {
+		log.WithCaller().Err(err)
 		return 0, err
 	} else {
 		return i, nil
@@ -476,7 +516,7 @@ func (s *Server) handleGetUserData(w http.ResponseWriter, r *http.Request) {
 
 	response, err := s.store.GetUserData(r.Context(), issuer)
 	if err != nil {
-		fmt.Println(err)
+		log.WithCaller().Err(err)
 	}
 	render.JSON(w, r, response)
 }
@@ -486,6 +526,7 @@ func (s *Server) handleJwtAutorise(w http.ResponseWriter, r *http.Request) {
 	_, err := r.Cookie("token")
 
 	if err != nil {
+		log.WithCaller().Err(err)
 		render.JSON(w, r, false)
 	} else {
 		render.JSON(w, r, true)
@@ -512,41 +553,47 @@ func (s *Server) handleVerifyUser(w http.ResponseWriter, r *http.Request) {
 	var verData types.VerifyData
 	err := json.NewDecoder(r.Body).Decode(&verData)
 	if err != nil {
-		fmt.Println(err)
+		log.WithCaller().Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	id, err := s.store.Verify(r.Context(), verData.Token)
-	myCookie := createJwt(id, "token")
 	if err != nil {
-		fmt.Println(err)
-		render.JSON(w, r, false)
+		log.WithCaller().Err(err)
+		render.JSON(w, r, nil)
 	} else {
+		myCookie, err1 := createJwt(int(id), "token", 3600000)
+		if err1 != nil {
+			log.WithCaller().Err(err1)
+			render.JSON(w, r, nil)
+		} else {
+			http.SetCookie(w, &myCookie)
 
-		//SetPartitionedCookie(w, &myCookie)
-		http.SetCookie(w, &myCookie)
-
-		// Render the response as JSON
-		render.JSON(w, r, true)
+			// Render the response as JSON
+			render.JSON(w, r, true)
+		}
 	}
 }
 func (s *Server) handleVerifyForgetPass(w http.ResponseWriter, r *http.Request) {
 	var verData types.VerifyData
 	err := json.NewDecoder(r.Body).Decode(&verData)
 	if err != nil {
-		fmt.Println(err)
+		log.WithCaller().Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	id, err := s.store.Verify(r.Context(), verData.Token)
 	if err != nil {
-		fmt.Println(err)
+		log.WithCaller().Err(err).Msg("error")
 		render.JSON(w, r, false)
 	} else {
-		fmt.Println("setJwtfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
-		myCookie := createJwt(id, "changePass")
+		myCookie, err := createJwt(int(id), "changePass", 3600)
+		if err != nil {
+			log.WithCaller().Err(err).Msg("error")
+			render.JSON(w, r, false)
+		}
 		http.SetCookie(w, &myCookie)
 
 		// Render the response as JSON
@@ -556,7 +603,7 @@ func (s *Server) handleVerifyForgetPass(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleFAQ(w http.ResponseWriter, r *http.Request) {
 	file, err := os.ReadFile("json/faq.json")
 	if err != nil {
-		fmt.Println(err)
+		log.WithCaller().Err(err).Msg("error")
 	}
 	var data interface{}
 	json.Unmarshal(file, &data)
@@ -569,7 +616,7 @@ func (s *Server) handleSearchSnickersAndFiltersByString(w http.ResponseWriter, r
 	var postData types.PostDataSnickersAndFiltersByString
 	err := json.NewDecoder(r.Body).Decode(&postData)
 	if err != nil {
-		fmt.Println(err)
+		log.WithCaller().Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -597,7 +644,7 @@ func (s *Server) handleSearchSnickersByString(w http.ResponseWriter, r *http.Req
 	var postData types.PostDataOrdreredSnickersByString
 	err := json.NewDecoder(r.Body).Decode(&postData)
 	if err != nil {
-		fmt.Println(err)
+		log.WithCaller().Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -617,6 +664,7 @@ func (s *Server) handleSearchMerch(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&postData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.WithCaller().Err(err)
 		return
 	}
 	searchData, _ := s.store.GetSnickersByName(r.Context(), postData.Name, postData.Max)
@@ -642,6 +690,7 @@ func (s *Server) handleGetCollection(w http.ResponseWriter, r *http.Request) {
 	var postData types.PostDataCollection
 	err := json.NewDecoder(r.Body).Decode(&postData)
 	if err != nil {
+		log.WithCaller().Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -657,6 +706,7 @@ func (s *Server) handleCreatePreorder(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&preorderData)
 	fmt.Println(preorderData)
 	if err != nil {
+		log.WithCaller().Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -677,6 +727,7 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println(orderData, "orderData")
 	if err != nil {
+		log.WithCaller().Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -684,11 +735,17 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	_, unregUserId, hash, err := s.store.CreateOrder(r.Context(), &orderData)
 
 	if err != nil {
-		fmt.Println(err, "errrrrrrrrrrrrrrrrrrrrrrrrrrrr")
+		log.WithCaller().Err(err)
 		render.JSON(w, r, 0)
 	} else {
+		myCookie := createCoockie(hash, hash, 36000)
+		http.SetCookie(w, &myCookie)
 		if orderData.Save {
-			myCookie := createJwt(unregUserId, "saved")
+			myCookie, err := createJwt(int(unregUserId), "saved", 36000)
+			if err != nil {
+				log.WithCaller().Err(err)
+				render.JSON(w, r, 0)
+			}
 			http.SetCookie(w, &myCookie)
 		}
 		data := map[string]interface{}{
@@ -704,7 +761,7 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 func orderResponseFunc(orderData types.OrderData) types.OrderDataResp {
 	var orderResponse types.OrderDataResp
 	customerInfo := orderData.UserInfo
-	cartData := SnickersCartResponse(orderData.SnickersCart)
+	cartData := SnickersCartResponseWithourFullPrice(orderData.SnickersCart)
 	data := types.UnregisterCustomerResponse{
 		Name:       customerInfo.Name,
 		SecondName: customerInfo.SecondName,
@@ -722,22 +779,58 @@ func orderResponseFunc(orderData types.OrderData) types.OrderDataResp {
 	orderResponse.UserInfo = data
 	orderResponse.State = orderData.State
 	orderResponse.CartResponse = cartData
+	orderResponse.OrderId = orderData.OrderId
 
 	return orderResponse
 }
+func (s *Server) handleGetOrderDataByMail(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("1faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	var orderReq types.OrderRequest
+	err := json.NewDecoder(r.Body).Decode(&orderReq)
+	fmt.Println(err, "faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	if err != nil {
+		fmt.Println(err, "fdsfdskfds")
+		log.WithCaller().Err(err).Msg("error")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	orderData, hash, err1 := s.store.GetOrderDataByMail(r.Context(), orderReq.Mail, orderReq.OrderId)
 
+	orderResponse := orderResponseFunc(orderData)
+
+	if err1 != nil {
+		fmt.Println(err1, "fdsfdskfds")
+		log.WithCaller().Err(err1).Msg("error")
+		http.Error(w, err1.Error(), http.StatusBadRequest)
+		return
+	}
+	myCookie := createCoockie(hash, hash, 360000)
+	http.SetCookie(w, &myCookie)
+	log.Log.Info().Interface("orders", orderResponse)
+	render.JSON(w, r, orderResponse)
+}
 func (s *Server) handleGetOrderDataByHash(w http.ResponseWriter, r *http.Request) {
 	hashUrl := r.URL.Query().Get("hash")
-
+	_, errC := r.Cookie(hashUrl)
+	if errC != nil {
+		if errC == http.ErrNoCookie {
+			fmt.Println("0 codsad")
+			render.JSON(w, r, 0)
+			return
+		} else {
+			panic(errC)
+		}
+	}
 	orderData, err := s.store.GetOrderData(r.Context(), hashUrl)
 
 	orderResponse := orderResponseFunc(orderData)
 
 	if err != nil {
+		log.WithCaller().Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	logger.Info("Response get cart data")
+	log.Log.Info().Interface("orders", orderResponse)
 	render.JSON(w, r, orderResponse)
 }
 
@@ -746,6 +839,7 @@ func (s *Server) handleUpdatePreorder(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&preorderData)
 	fmt.Println(preorderData)
 	if err != nil {
+		log.WithCaller().Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -765,6 +859,7 @@ func (s *Server) handleGetCartCount(w http.ResponseWriter, r *http.Request) {
 	quantity, err := s.store.GetCartCount(r.Context(), hashUrl)
 
 	if err != nil {
+		log.WithCaller().Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -773,11 +868,26 @@ func (s *Server) handleGetCartCount(w http.ResponseWriter, r *http.Request) {
 		"count": quantity,
 	}
 
-	logger.Info("Response get cart count")
+	log.InfoFields(fmt.Sprintf("count %d", quantity))
 
 	render.JSON(w, r, data)
 }
+func (s *Server) handleGetCartFromOrder(w http.ResponseWriter, r *http.Request) {
+	hashUrl := r.URL.Query().Get("hash")
 
+	cartData, err := s.store.GetCartDataFromOrderByHash(r.Context(), hashUrl)
+	fmt.Println(cartData)
+	responseData := SnickersCartResponseWithourFullPrice(cartData)
+
+	if err != nil {
+		log.WithCaller().Err(err).Msg("")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	log.Log.Info().Interface("snickers", responseData)
+	log.Log.Info().Msg("snickers")
+	render.JSON(w, r, responseData)
+}
 func (s *Server) handleGetCart(w http.ResponseWriter, r *http.Request) {
 	hashUrl := r.URL.Query().Get("hash")
 
@@ -786,11 +896,30 @@ func (s *Server) handleGetCart(w http.ResponseWriter, r *http.Request) {
 	responseData := SnickersCartResponseWithourFullPrice(cartData)
 
 	if err != nil {
+		log.WithCaller().Err(err).Msg("")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	logger.Info("Response get cart data")
+	log.Log.Info().Interface("snickers", responseData)
+	log.Log.Info().Msg("snickers")
 	render.JSON(w, r, responseData)
+}
+func (s *Server) handleSetUniqueCustomer(w http.ResponseWriter, r *http.Request) {
+	uniqueCustomerId, err := s.store.CreateUniqueCustomer(r.Context())
+	if err != nil {
+		log.WithCaller().Err(err).Msg("")
+		render.JSON(w, r, 0)
+	} else {
+		myCookie, err := createJwt(uniqueCustomerId, "unique", 36000)
+		if err != nil {
+			log.WithCaller().Err(err).Msg("")
+			render.JSON(w, r, nil)
+			return
+		}
+		http.SetCookie(w, &myCookie)
+		render.JSON(w, r, 1)
+	}
+
 }
 func (s *Server) handleChangePass(w http.ResponseWriter, r *http.Request) {
 	var passes types.ChangePassType
@@ -818,6 +947,7 @@ func (s *Server) handleDeleteCartData(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&data)
 
 	if err != nil {
+		log.WithCaller().Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -882,6 +1012,7 @@ func (s *Server) handleChangeForgetPass(w http.ResponseWriter, r *http.Request) 
 	cookie, errC := r.Cookie("changePass")
 	if errC != nil {
 		if errC == http.ErrNoCookie {
+			log.WithCaller().Err(errC)
 			render.JSON(w, r, 1)
 			return
 		} else {
@@ -918,4 +1049,27 @@ func (s *Server) handleForgetPass(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Println(err)
 	render.JSON(w, r, 0)
+}
+
+func (s *Server) handleGetHistory(w http.ResponseWriter, r *http.Request) {
+	cookie, errC := r.Cookie("unique")
+	if errC != nil {
+		render.JSON(w, r, 1)
+		return
+	}
+	user, err1 := getJwtIssuerId(cookie.Value)
+	if err1 != nil {
+		render.JSON(w, r, 1)
+	}
+	snickers, err := s.store.GetSnickersHistory(r.Context(), user)
+	if errors.Is(err, errorsType.NotExist) {
+		render.JSON(w, r, 1)
+		return
+	}
+	if err != nil {
+		render.JSON(w, r, 2)
+		return
+	}
+	response := NewSnickersSearchResponse1(snickers)
+	render.JSON(w, r, response)
 }

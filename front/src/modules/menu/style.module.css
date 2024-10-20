@@ -24,6 +24,31 @@
   padding-right: 10px;
 }
 
+.horizontalList{
+  display: block;
+}
+
+@media (max-width: 600px) {
+  .horizontalList{
+    display: none;
+  }
+  .complexVertical{
+    display: block;
+  }
+}
+
+@media (min-width: 600px) {
+  .complexVertical{
+    display: none;
+  }
+}
+
+
+.complexVertical{
+  position: absolute;
+  top:100%;
+}
+
 .modalWrap{
   position: absolute;
   width: 100%;
@@ -69,7 +94,7 @@
 .searchInput{
   padding:10px;
   border: solid 1px black;
-  width: 600px;
+  width: 75%;
 }
 
 .signButton{

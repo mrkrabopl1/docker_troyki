@@ -1,6 +1,6 @@
 import React, { useEffect, ReactElement, useState, useRef, memo } from 'react'
 import { getCartData, deleteCartData } from 'src/providers/shopProvider'
-import { shopAction ,cartCountAction} from 'src/store/reducers/menuSlice'
+import { shopAction, cartCountAction } from 'src/store/reducers/menuSlice'
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
 import MerchBuyBlock from 'src/modules/merchField/MerchBuyBlock'
 import DynamicTable from 'src/components/table/simpleTable/DynamicTable'
@@ -10,6 +10,7 @@ import s from "./style.module.css"
 import { useNavigate } from 'react-router-dom'
 import { getCookie } from 'src/global'
 import MerchTable from 'src/modules/merchField/MerchTable'
+import { toPrice } from 'src/global'
 type respCartType = {
     id: number,
     img: string,
@@ -28,12 +29,15 @@ const BuyPage: React.FC<any> = () => {
     let [recalc, setRecalc] = useState<boolean>(true);
     let table = useRef<{ [key: string]: (dinamicElementType | string)[] }>({});
     const dispatch = useAppDispatch();
-    let [tableData,setTableData] = useState<Array<any>>([])
+    let [tableData, setTableData] = useState<Array<any>>([])
     let { shop } = { ...useAppSelector(state => state.menuReducer) }
     let cart = getCookie("cart")
     let refCopyShop = useRef<any>([...shop])
     let requestSizes = useRef<any>({})
-   
+    let fullPrice = useRef<number>(0)
+    const { cartCount } = useAppSelector(state => state.menuReducer)
+    let [active, setActive] = useState<boolean>(!!cartCount)
+
     // let arrData:propsRowType[]=[
     //     {componentName:"modules/merchBuyBlock", propsData:{data:dataRef.current.sizes.map(val=>{
     //        return {enable:true,activeData:false,name:val}
@@ -42,45 +46,47 @@ const BuyPage: React.FC<any> = () => {
     //     {componentName:"modules/sliderValueSetter/ZoneSliderValueSetter",propsData:{min:dataRef.current.price[0],max:dataRef.current.price[1]}}
 
     // ]
-    const {cartCount} = useAppSelector(state =>state.menuReducer)
     let cartCountRef = useRef<number>(0)
     cartCountRef.current = cartCount
-    const updateList = (index: number,productId:number,  quantity: number) => {
-        deleteCartData(productId,()=>{
-            dispatch(cartCountAction(cartCountRef.current-quantity))
-            delete table.current[index]
-            setRecalc(recalc => !recalc)
-        })
-    }
-
-    const setMerchBuyBlock = (data: any) => {
-        data.forEach((el: any, ind: number) => {
-            let totalPrice = 0
-            let row = [];
-            totalPrice += el.price * el.quantity
-            row.push({ componentName: "modules/merchField/MerchBuyBlock", propsData: { data: { id: el.id, firm: el.firm, price: el.size, name: el.name, imgs: el.img } } })
-            row.push( el.quantity)
-            row.push(String(totalPrice))
-            row.push({ componentName: "components/Button", propsData: { className: s.deleteBtn, onChange: updateList.bind(null, ind, el.prid, el.quantity) } })
-            table.current[String(ind)] = row
-        })
-        setRecalc(recalc => !recalc)
-    }
+    let activeRef = useRef<boolean>(active)
+    activeRef.current = !!cartCount
+   // setActive(!!cartCountRef.current)
     useEffect(() => {
-        getCartData(cart, setTableData)
-    }, [])
+        setActive(activeRef.current)
+        if (!cartCountRef.current) return
+        getCartData(cart, (data) => {
+            fullPrice.current = 0;
+            data.cartData.forEach(val=>{
+                fullPrice.current +=val.price*val.quantity
+            })
+            setTableData(data.cartData)
+        })
+        
+    }, [cartCountRef.current])
 
     const formBuyHandle = () => {
-        navigate("/form/"+cart)
+        navigate("/form/" + cart)
     }
 
     return (
-        <div className={s.main} >
-            <h2>
-                  Корзина
-            </h2>
-            <MerchTable tableData={tableData}/>
-            <Button className={s.btn+ " btnStyle"} text='Оформить заказ' onChange={formBuyHandle} />
+        <div>
+            {!active ? <div className={s.emptyCart}>
+                <div>Корзинга пуста</div>
+                <Button className={s.btn + " btnStyle"} text='Продолжить покупки' onChange={formBuyHandle} />
+            </div> :
+                <div className={s.main} >
+                    <h2>
+                        Корзина
+                    </h2>
+                    <MerchTable tableData={tableData} />
+                    <div>
+                        <div>
+                            Промежуточный итог {toPrice(fullPrice.current) }
+                        </div>
+                        <Button className={s.btn + " btnStyle"} text='Оформить заказ' onChange={formBuyHandle} />
+                    </div>
+                </div>
+            }
         </div>
     )
 }
@@ -90,4 +96,4 @@ function arePropsEqual(oldProps: any, newProps: any) {
     return false
 }
 
-export default memo( BuyPage, arePropsEqual)
+export default memo(BuyPage, arePropsEqual)

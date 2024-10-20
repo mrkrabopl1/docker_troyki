@@ -1,5 +1,5 @@
 import React, { ReactElement, useEffect, useRef, useState } from 'react'
-
+import s from "./style.module.css" 
 type propsScrollerThumbType = {
     callback: (scroll: any, prop?: boolean) => void,
     kSize: number,
@@ -78,9 +78,10 @@ const ScrollerThumb: React.FC<propsScrollerThumbType> = (props) => {
       };
     const styleScroller: any = {
         zIndex: 10,
-
-        backgroundColor: "green",
+        overscrollBehavior:"none",
+        backgroundColor: "transparent",
         display: " flex",
+         marginRight:"1px"
 
     }
 
@@ -88,19 +89,18 @@ const ScrollerThumb: React.FC<propsScrollerThumbType> = (props) => {
         backgroundColor: "red",
         width: "100%",
         height: "20px"
-
     }
 
 
 
     let thumbWrapVericalStyle = {
-        width: "20px",
+        width: "3px",
         height: "100%"
     }
 
     let thumbWrapHorizontalStyle = {
         width: "100%",
-        height: "20px"
+        height: "3px"
     }
 
 
@@ -117,8 +117,7 @@ const ScrollerThumb: React.FC<propsScrollerThumbType> = (props) => {
     }
 
     let thumbStyle: any = {
-        position: "absolute",
-        backgroundColor: "yellow"
+        position:"absolute"
     }
 
     if (isVertical) {
@@ -174,13 +173,17 @@ const ScrollerThumb: React.FC<propsScrollerThumbType> = (props) => {
     }
 
     return (
-        <div onWheel={(e) => {
+        <div  onScroll={(e)=>{
             e.stopPropagation()
+            e.preventDefault()
+        }} onWheel={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
             let delta = e.deltaY > 0 ? -10 : 10
             callback(delta)
         }}
             id={"Thumb"} ref={scroller} style={styleScroller}>
-            <button
+            {/* <button
 
                 onMouseDown={(e)=>{
                     let interval = 0
@@ -197,9 +200,9 @@ const ScrollerThumb: React.FC<propsScrollerThumbType> = (props) => {
                     }
                     
                 }}
-                style={buttonStyle}></button>
-            <div ref={thumbWrapper} style={wrapThumbStyle}>
-                <div onMouseUp={() => {
+                style={buttonStyle}></button> */}
+            <div onWheel={(e)=>{e.preventDefault()}} ref={thumbWrapper} style={wrapThumbStyle}>
+                <div className={s.thumb}  onMouseUp={() => {
                     setMoveThumb(false)
                 }}
                     onMouseDown={(e) => {
@@ -216,7 +219,7 @@ const ScrollerThumb: React.FC<propsScrollerThumbType> = (props) => {
                         moveDraw
                     } ref={thumb} style={thumbStyle}></div>
             </div>
-            <button
+            {/* <button
                 onMouseDown={(e)=>{
                     let interval = 0
                     intervalRef.current = setInterval(() => {
@@ -231,7 +234,7 @@ const ScrollerThumb: React.FC<propsScrollerThumbType> = (props) => {
                         intervalRef.current = null;
                     }
                 }}
-                style={buttonStyle}></button>
+                style={buttonStyle}></button> */}
         </div>
     )
 }

@@ -24,7 +24,7 @@ const isObject = (object: any) => {
 };
 const toPrice = (num) => {
   let formatedStringArr = []
-  while (num > 1) {
+  while (num >= 1) {
     let remain = num % 1000
     num = num / 1000
     if (num < 1) {
@@ -60,6 +60,14 @@ function extend(obj1: Object, obj2: Object) {
   }
 }
 
+function setGlobalScroller(active){
+  if(active){
+    document.body.style.overflow = 'hidden';
+}else{
+    document.body.style.overflow = 'unset';
+}
+}
+
 function setCookie(name, value, options: { [key: string]: any } = {}) {
 
   options = {
@@ -86,4 +94,4 @@ function setCookie(name, value, options: { [key: string]: any } = {}) {
 }
 
 
-export { isDeepEqual, getCookie, setCookie, toPrice, extend }
+export { isDeepEqual, getCookie, setCookie, toPrice, extend, setGlobalScroller }

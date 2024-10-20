@@ -1,0 +1,65 @@
+.arrowMain{
+    position: absolute;
+    right: 0;
+    padding-right: 5px; 
+    transition:transform 0.5s;
+    cursor: pointer;
+    width: 25px;
+    height: 10px;
+}
+
+.arrowLeft {
+    position: absolute;
+    background-color: transparent;
+    top: 8px;
+    left: 0;
+    width: 12px;
+    height: 3px;
+    display: block;
+    transform: rotate(35deg);
+    float: right;
+    border-radius: 2px;
+}
+.arrowLeft:after {
+    content: "";
+    background-color: #020507;
+    width: 12px;
+    height: 3px;
+    display: block;
+    float: right;
+    border-radius: 3px 5px 5px 3px;
+    transition: all 0.5s cubic-bezier(0.25, 1.7, 0.35, 0.8);
+    z-index: -1;
+}
+ 
+.arrowRight {
+    position: absolute;
+    background-color: transparent;
+    top: 8px;
+    left: 8px;
+    width: 12px;
+    height: 3px;
+    display: block;
+    transform: rotate(-35deg);
+    float: right;
+    border-radius: 2px;
+}
+.arrowRight:after {
+    content: "";
+    background-color: #020507;
+    width: 12px;
+    height: 3px;
+    display: block;
+    float: right;
+    border-radius: 10px 6px 6px 10px;
+    transition: all 0.5s cubic-bezier(0.25, 1.7, 0.35, 0.8);
+    z-index: -1;
+}
+.arrowLeftOpen:after {
+    transform-origin: center center;
+    transform: rotate(-70deg);
+}
+.arrowRightOpen:after {
+    transform-origin: center center;
+    transform: rotate(70deg);
+}

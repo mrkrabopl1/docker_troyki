@@ -14,6 +14,7 @@ import Main from './pages/main/Main'
 import { getCookie } from './global'
 import WayToPay from './pages/infoPages/WayToPay'
 import ScrollToTop from './scrollToTop';
+import { setUniqueCustomer } from './providers/userProvider';
 import Refund from './pages/infoPages/Refund';
 import {
   Link, Route, BrowserRouter as Router, Routes,
@@ -49,9 +50,10 @@ const App: React.FC<any> = () => {
 
   const { chousenName } = useAppSelector(state => state.complexDropReducer)
   useEffect(() => {
-    let coockie = getCookie("cart")
+    let coockieCart = getCookie("cart")
+    let coockieUnique= getCookie("unique")
     window.addEventListener("resize",(e)=>{
-      if(window.document.body.clientWidth<500){
+      if(window.document.body.clientWidth<700){
         dispatch(setWidthProps(1))
       }else if (window.document.body.clientWidth<300){
         dispatch(setWidthProps(2))
@@ -60,10 +62,13 @@ const App: React.FC<any> = () => {
       }
     }
     )
-    if (coockie) {
+    if (!coockieUnique) {
+      setUniqueCustomer(()=>{})
+    }
+    if (coockieCart) {
       axios({
         method: 'get',
-        url: 'http://127.0.0.1:8100/cartCount?hash=' + coockie,
+        url: 'http://127.0.0.1:8100/cartCount?hash=' + coockieCart,
         headers: {}
       }
       ).then((res: any) => {

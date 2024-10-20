@@ -3,14 +3,16 @@ package router
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"reflect"
 
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
+	"github.com/mrkrabopl1/go_db/logger"
 	"github.com/mrkrabopl1/go_db/server/contextKeys"
 )
+
+var log = logger.InitLogger()
 
 func querySelectionMiddleware(param string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -36,7 +38,8 @@ func querySelectionMiddleware(param string) func(next http.Handler) http.Handler
 
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		slog.Info(r.Method, " ", r.URL.Path)
+		log.InfoFields(r.Method, " ", r.URL.Path)
+		log.Log.Info().Msg(r.RemoteAddr)
 		next.ServeHTTP(w, r)
 	})
 }
@@ -72,14 +75,17 @@ func (s *Server) routes() {
 	s.router.Post("/getSnickersAndFiltersByString", s.handleSearchSnickersAndFiltersByString)
 	s.router.Post("/getSnickersByString", s.handleSearchSnickersByString)
 	s.router.Post("/collection", s.handleGetCollection)
-
+	s.router.Get("/setUniqueCustomer", s.handleSetUniqueCustomer)
 	s.router.Post("/createPreorder", s.handleCreatePreorder)
 	s.router.Post("/createOrder", s.handleCreateOrder)
 	s.router.Post("/updatePreorder", s.handleUpdatePreorder)
 	s.router.Get("/cartCount", s.handleGetCartCount)
 	s.router.Get("/getCartData", s.handleGetCart)
+	s.router.Get("/getCartDataFromOrder", s.handleGetCartFromOrder)
 	s.router.Get("/getOrderDataByHash", s.handleGetOrderDataByHash)
+	s.router.Post("/getOrderDataByMail", s.handleGetOrderDataByMail)
 	s.router.Post("/deleteCartData", s.handleDeleteCartData)
+	s.router.Get("/historyInfo", s.handleGetHistory)
 
 	s.router.Post("/registerUser", s.handleRegisterUser)
 	s.router.Post("/login", s.handleLogin)

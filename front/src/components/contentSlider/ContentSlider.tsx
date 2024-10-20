@@ -6,11 +6,12 @@ import PageController from './slidersSwitchers/PageController'
 
 
 type ContentSliderType = {
-    content: ReactElement[]
+    content: ReactElement[],
+    className?: string
 }
 
 const ContentSlider: React.FC<ContentSliderType> = (data) => {
-    let { content } = { ...data }
+    let { content, className } = { ...data }
 
     let mainContainer = useRef<HTMLDivElement | null>(null)
     let slider = useRef<HTMLDivElement | null>(null)
@@ -38,9 +39,12 @@ const ContentSlider: React.FC<ContentSliderType> = (data) => {
             let wrapperWidth =  mainContainer.current.clientWidth
             let sliderWidth =  slider.current.scrollWidth
             unseenWidth.current = sliderWidth - wrapperWidth
-            let elemWidth = sliderWidth/content.length
+            let elemWidth = Math.floor(sliderWidth/content.length)
             let fullContentInSlider = Math.floor(wrapperWidth/elemWidth)
             let unseenElements= content.length - fullContentInSlider
+            if(unseenElements + 1 < currentStep.current){
+                currentStep.current = unseenElements + 1
+            }
             step.current = (sliderWidth-wrapperWidth)/unseenElements
             setSliderPosition(-(currentStep.current-1)*step.current)
             setStepCount(unseenElements+1)
@@ -91,7 +95,7 @@ const ContentSlider: React.FC<ContentSliderType> = (data) => {
 
     return (
         <div ref={mainContainer} style={{overflow:"hidden", width: "100%" }}>
-            <div ref={slider} style={{left:sliderPosition+"px",display:"flex", position:"relative" }}>
+            <div className= {className} ref={slider} style={{left:sliderPosition+"px",display:"flex", position:"relative" }}>
                {content}
             </div>
             <PageController currentPosition={currentStep.current} positions={stepCount} callback={moveSlider}/>

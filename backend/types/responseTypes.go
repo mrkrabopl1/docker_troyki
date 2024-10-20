@@ -4,6 +4,11 @@ type FirmResponse map[string][]string
 
 type SnickersLineResponse map[string][]SnickersResponse
 
+type FullResponse struct {
+	ErrCode int         `json:"errCode"`
+	Data    interface{} `json:"data"`
+}
+
 type SnickersResponse struct {
 	Name  string   `json:"name"`
 	Id    int32    `json:"id"`
@@ -112,4 +117,5 @@ type OrderDataResp struct {
 	UserInfo     UnregisterCustomerResponse `json:"userInfo"`
 	State        string                     `json:"state"`
 	CartResponse FullCartRespone            `json:"cartResponse"`
+	OrderId      int                        `json:"orderId"`
 }

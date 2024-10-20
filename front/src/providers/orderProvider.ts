@@ -66,6 +66,18 @@ const getOrderDataByHash = function (hash: string, callback: (val: any) => void)
     })
 }
 
+const getOrderDataByMail = function (mail: string,orderId:string, callback: (val: any) => void) {
+    let jsonData = JSON.stringify({mail,orderId:Number(orderId)})
+    axios({
+        withCredentials: true,
+        url: `${API_URL}/getOrderDataByMail`,
+        headers: { "content-type": "application/json" },
+        data: jsonData,
+        method: 'post',
+    }).then((res) => {
+        callback(res.data)
+    })
+}
 
 
-export { createPreorder, updatePreorder, createOrder, getOrderDataByHash }
+export { createPreorder, updatePreorder, createOrder, getOrderDataByHash, getOrderDataByMail }

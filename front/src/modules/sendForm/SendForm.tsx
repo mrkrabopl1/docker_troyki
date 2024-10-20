@@ -49,14 +49,7 @@ const SendForm: React.FC<sendFormModuleInterface> = (props) => {
     let formData = useRef<any>({
         name: "",
         mail: "",
-        address: {
-            town: "",
-            region: "",
-            index: "",
-            street: "",
-            house: "",
-            flat: "",
-        },
+        address: null,
         phone: ""
     })
 

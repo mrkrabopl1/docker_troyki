@@ -11,7 +11,7 @@
 
 .search{
     border: solid 2px black;
-    width: 200px;
+    width: 30%;
 }
 .baseSearch{
     display: flex;

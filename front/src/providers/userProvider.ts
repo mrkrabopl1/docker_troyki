@@ -205,6 +205,19 @@ const changeUserPass= function (data: changePassType, callback: (val: any) => vo
        callback(res)
       })
  }
+
+ const setUniqueCustomer = function(callback: (val: any) => void){
+    axios({
+        withCredentials:true,
+        method: 'get',
+        url: `${API_URL}/setUniqueCustomer`,
+        headers: {}
+      }
+      ).then((res: any) => {
+       callback(res.data)
+      })
+ }
+
  const checkCustomerData =function(callback: (val: any) => void){
     axios({
         withCredentials:true,
@@ -217,4 +230,4 @@ const changeUserPass= function (data: changePassType, callback: (val: any) => vo
       })
  }
 
-export { registerUser, getUserData, verifyEmail, loginUser, changeUserData, changeUserPass, jwtAutorise, updatePass,verifyChangePass,changForgetPass, unlogin,checkCustomerData }
+export { registerUser, getUserData, verifyEmail, loginUser, changeUserData, changeUserPass, jwtAutorise, updatePass,verifyChangePass,changForgetPass, unlogin,checkCustomerData, setUniqueCustomer }

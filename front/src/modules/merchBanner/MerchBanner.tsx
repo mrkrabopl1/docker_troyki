@@ -28,8 +28,9 @@ const MerchBanner: React.FC< merchBannerInterface> = (props) => {
   
     return (
 
-        <div className={className?className.main?className.main:s.main:s.main} style = {{display:"flex",backgroundImage:"url('"+img+"')"}}>
-            <div style={{display:"flex", margin:"auto"}}>
+        <div className={className?className.main?className.main:s.main:s.main} style = {{display:"flex"}}>
+            <img className={"fs"} src= {img} alt="" />
+            <div style={{display:"flex", margin:"auto", position:"absolute"}}>
                 <p className={s.title}>{title}</p>
                 <Button className={s.buton} onChange={onChangeButton} text={"К колекции"}></Button>
             </div>

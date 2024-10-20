@@ -22,11 +22,21 @@
     height: auto;
     flex-direction: column;
     display: flex;
-     /* margin-top: auto; */
+    height:100%;
 }
 .discount{
     text-decoration: line-through;
     color :gray;
+}
+.colorLayout{
+    border-radius:5px;
+    background-color: white;
+     position: relative;
+    flex-shrink: 0;
+    height: auto;
+    flex-direction: column;
+    display: flex;
+    height:100%;
 }
 
 .discountMarker{
@@ -42,10 +52,34 @@
 
 .textContainer{
     display: grid;
-    flex-grow: 1;
     grid-template-rows: max-content minmax(0,1fr) max-content auto;
+    flex-shrink: 0;
+}
+.mbwd{
+    width:25%
+}
+@media(max-width:900px){
+    .mbwd{
+        width:33%
+    }
+}
+@media(max-width:700px){
+    .mbwd{
+        width:50%
+    }
 }
 
+.globalMerchField{
+   
+    margin-bottom: 10px;
+}
+
+.imageBlock{
+    flex-shrink:1;
+    position: relative; 
+    height:"100%";
+    min-height: 80%;
+}
 .deleteBtn{
     background: url("../../../public/bin.svg") center no-repeat;
     width: 30px;

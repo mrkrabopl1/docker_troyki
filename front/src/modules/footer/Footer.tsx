@@ -36,10 +36,10 @@ const Footer: React.FC<any> = (props) => {
         с 10:00 до 22:00 по МСК.</div> , 
      ]
     return (
-        <div className={s.footer}  style={{display:"flex",width:"100%", justifyContent:"space-between"}}>
-            <ColumnWithChilds className={s.footerColumn}  header={"Помощь"} rows={ aboutUsArr} />
-            <ColumnWithChilds className={s.footerColumn} header={"Политики и условия"} rows={policyArr} />
-            <ColumnWithChilds className={s.footerColumn} header={"Служба клиентской поддержки"} rows={clientHelpArr} />
+        <div className={s.footer + " fontSize"}  style={{display:"flex",width:"100%", justifyContent:"space-between"}}>
+            <ColumnWithChilds headerClassName={"fontSizeH"} className={s.footerColumn}  header={"Помощь"} rows={ aboutUsArr} />
+            <ColumnWithChilds headerClassName={"fontSizeH"} className={s.footerColumn} header={"Политики и условия"} rows={policyArr} />
+            <ColumnWithChilds headerClassName={"fontSizeH"} className={s.footerColumn} header={"Служба клиентской поддержки"} rows={clientHelpArr} />
         </div>
 
     )

@@ -20,13 +20,15 @@ const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
     const inputRef = useRef<HTMLInputElement>(null)
     let { valid, onBlur, onChange, onFocus, className, val, invalidEmpty, invalidIncorrect } = { ...props }
 
-    const [phoneVal, setPhoneVal] = useState<string>(val ? val : "+7")
+    let [phoneVal, setPhoneVal] = useState<string>(val ? val : "+7")
     const cursorPositionRef = useRef<number>(2)
     const startValidationOnBlur = useRef<boolean>(false)
 
-
     const [validState, setValid] = useState<boolean>(valid)
-
+    useEffect(() => {
+        setPhoneVal(val)
+        inputRef.current.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current)
+    }, [val])
     useEffect(() => {
         setPhoneVal(phoneVal)
         inputRef.current.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current)

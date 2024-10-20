@@ -13,8 +13,11 @@ import { verified } from 'src/store/reducers/menuSlice'
 import { ReactComponent as Loupe } from "/public/loupe.svg";
 import { ReactComponent as SignIn } from "/public/sign.svg";
 import { ReactComponent as User } from "/public/user.svg";
+import Burger from 'src/components/burger/Burger'
 import RegistrationPanel
  from './RegistrationPanel'
+
+ import {setGlobalScroller} from "src/global"
 
 import SearchWithList from '../searchWithList/SearchWithList'
 import Modal from 'src/components/modal/Modal'
@@ -48,7 +51,6 @@ let imgStyle: any = {
 
 let logoWrapStyle: any = {
     left: "5%",
-    position: "absolute",
     display: "flex",
     cursor: "pointer"
 }
@@ -58,7 +60,11 @@ let textLogo: any = {
     fontSize: "38px"
 }
 
-const Menu: React.FC<any> = (props) => {
+interface dataType {
+    onChange: (data:any)=>void
+}
+const Menu: React.FC<dataType> = (props) => {
+    const {onChange} = {...props}
     let dispatch = useAppDispatch()
     const { isLog } = useAppSelector(state => state.userReducer)
     const { show, sticky } = useAppSelector(state => state.menuReducer)
@@ -81,9 +87,15 @@ const Menu: React.FC<any> = (props) => {
     //         transition:"none"
     //     }
     // },[])
+
+    const turnActive = (active)=>{
+            setGlobalScroller(active)
+            setActive(active)
+    }
+
     let menuStyle: any = {
         display: "flex",
-        justifyContent: "right",
+        justifyContent: "space-between",
         height: "100px",
         position: "relative",
         transition: "none"
@@ -95,7 +107,7 @@ const Menu: React.FC<any> = (props) => {
     // }
 
     const searchCallback = (text: string) => {
-        setActive(false)
+        turnActive(false)
         navigate('/settingsMenu', { state: text });
     }
     let styleData = {
@@ -109,13 +121,18 @@ const Menu: React.FC<any> = (props) => {
     }
     return (
         <div ref={menuWrap} style={menuStyle}>
+            <div className={"dependSize vrtCntr"}>
+                <Burger activeProps = {false} onChange={(data)=>{
+                    onChange(data)
+                }}/>
+            </div>
+
             <div onClick={() => { navigate("/") }} style={logoWrapStyle}>
                 <div style={imgWrapStyle}>
                     <img style={imgStyle} src={loupe} alt="samura_snikers" />
                 </div>
                 <div style={textLogo}>TROYKI</div>
             </div>
-
 
             <div style={{paddingTop:"10px", margin: "auto 20px", display: "flex", position: "relative" }}>
                 {isVerified ? <User className={global.link} onClick={() => navigate("/user")} /> :  <RegistrationPanel/>}
@@ -124,7 +141,7 @@ const Menu: React.FC<any> = (props) => {
 
             </div>
 
-            {active ? <Modal onChange={setActive} active={active}>
+            <Modal onChange={setActive} active={active}>
                 <div onClick={(e) => { e.stopPropagation() }} className={s.modalWrap}>
                     <SearchWithList
                         onChange={(val) => { dispatch(setSearchData(val)) }}
@@ -133,7 +150,7 @@ const Menu: React.FC<any> = (props) => {
                         selectList={selectListHandler}
                     />
                 </div>
-            </Modal> : null}
+            </Modal>
 
 
         </div>

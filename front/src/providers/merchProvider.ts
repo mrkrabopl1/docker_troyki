@@ -4,8 +4,22 @@ import axios from "axios";
 
 const getMerchInfo = function (id: string, callback: (val: any) => void) {
     axios({
+        withCredentials:true,
         method: 'get',
         url: `${API_URL}/snickersInfo` + "?" + "id=" + id,
+        headers: {}
+    }
+    ).then((res: any) => {
+        console.log(res.data)
+        callback(res.data)
+    })
+}
+
+const getHistoryInfo = function (callback: (val: any) => void) {
+    axios({
+        withCredentials:true,
+        method: 'get',
+        url: `${API_URL}/historyInfo`,
         headers: {}
     }
     ).then((res: any) => {
@@ -68,4 +82,4 @@ const getSizeTable = function (callback: (val: any) => void) {
         callback(res.data)
     })
 }
-export { getMerchInfo, getSizeTable, getMainInfo, getCollections,getFirms }
+export { getMerchInfo, getSizeTable, getMainInfo, getCollections,getFirms,getHistoryInfo }
