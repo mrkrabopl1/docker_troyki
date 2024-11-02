@@ -1,6 +1,6 @@
 import React, { useEffect, ReactElement, useState, useRef } from 'react'
 import {NavLink, useParams } from 'react-router-dom';
-import { getCollections } from "src/providers/merchProvider"
+import { getCollection } from "src/providers/merchProvider"
 
 import MerchFieldWithPageSwitcher  from 'src/modules/merchField/MerchFieldWithPageSwitcher';
 type urlParamsType = {
@@ -46,7 +46,7 @@ const CollectionPage: React.FC<any> = () => {
             page:pages.current,
             size:pageSize.current
         }
-        getCollections(reqData,getRespData) 
+        getCollection(reqData,getRespData) 
     },[collection])
     
 

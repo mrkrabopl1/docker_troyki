@@ -27,7 +27,7 @@ const PriceHolder: React.FC<PriceHolderType> = (props) => {
     function setPriceBlocks() {
         if(elems){
             let arr = elems.map((val, ind) => {
-                return <PricesBlock 
+                return <PricesBlock key= {val.size}
                     onChange={()=>activeChange(ind)}
                     active={activeState === ind}
                     size={val.size}

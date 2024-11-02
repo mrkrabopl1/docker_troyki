@@ -16,6 +16,7 @@
 .leftPart{
     width:70%;
     flex-shrink: 0;
+    height: 500px;
 }
 th{
     padding: 5px;
@@ -84,7 +85,6 @@ th{
 
 .mainWrap{
     display: flex;
-    height: calc(100vh - 100px);
     margin:20px
 }
 

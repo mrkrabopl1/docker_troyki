@@ -30,7 +30,7 @@ const Combobox: React.FC<ComboboxType> = ({className, enumProp, data, placeholde
         if (active) {
             data.map((value, i) => {
 
-                valArr.push(<div ref={el => arrRef.current[i] = el} onClick={() => {
+                valArr.push(<div key = {value + i} ref={el => arrRef.current[i] = el} onClick={() => {
                     val.current = value
 
                     if (enumProp) {

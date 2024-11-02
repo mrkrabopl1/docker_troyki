@@ -4,7 +4,9 @@ import ComplexDropMenu from './ComplexDropMenu';
 import { useNavigate } from 'react-router-dom';
 import { isDeepEqual } from 'src/global';
 import axios from "axios";
-import { getFirms } from 'src/providers/merchProvider';
+import { getFirms } from 'src/providers/merchProvider'
+import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux'
+import { collections } from '../../store/reducers/menuSlice'
 
 interface MerchMenuInterface {
   className?: string,
@@ -14,9 +16,19 @@ interface MerchMenuInterface {
 }
 
 const ComplexDropMenuWithRequest: React.FC<MerchMenuInterface> = (props) => {
+  let dispatch = useAppDispatch()
   let [merchFieldData, setMerchFieldData] = useState<any>([])
+  const setFirmsData = (firms) => {
+    let collectionsData = [];
+    let colVal = Object.values(firms);
+    colVal.forEach(cols => {
+      collectionsData = collectionsData.concat(cols)
+    })
+    setMerchFieldData(firms)
+    dispatch(collections(collectionsData))
+  }
   useEffect(() => {
-    getFirms(setMerchFieldData)
+    getFirms(setFirmsData)
   }, [])
   return (
     <ComplexDropMenu complexDropData={merchFieldData} />

@@ -80,9 +80,12 @@ const BuyPage: React.FC<any> = () => {
                     </h2>
                     <MerchTable tableData={tableData} />
                     <div>
-                        <div>
+                        <div className={s.fullPrice}>
                             Промежуточный итог {toPrice(fullPrice.current) }
                         </div>
+                        <p>
+                            Все налоги и таможенные сборы включены.<br/>Стоимость доставки рассчитывается на этапе оформления заказа. 
+                        </p>
                         <Button className={s.btn + " btnStyle"} text='Оформить заказ' onChange={formBuyHandle} />
                     </div>
                 </div>

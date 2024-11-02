@@ -21,7 +21,7 @@ const MerchSliderField: React.FC<merchInterface> = (props) => {
     function createSliderSpace(data: merchInfoType[] ) {
         let arr: any = []
         for(let i =0;i<data.length;i++){
-            arr.push(<MerchBlock className = {s.mbwd}  data={data[i]} />)
+            arr.push(<MerchBlock key={data[i].name} className = {s.mbwd}  data={data[i]} />)
 
         }
         return arr

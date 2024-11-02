@@ -40,11 +40,21 @@ type CreateOrderType struct {
 	} `json:"delivery"`
 	Save bool `json:"save"`
 }
-type PostDataCollection struct {
+type Discounts struct {
+	// Define your struct to represent the JSON data
+	Max int `json:"max"`
+}
+type PostDataSoloCollection struct {
 	// Define your struct to represent the JSON data
 	Name string `json:"name"`
 	Page int    `json:"page"`
 	Size int    `json:"size"`
+}
+type PostDataCollection struct {
+	// Define your struct to represent the JSON data
+	Names []string `json:"names"`
+	Page  int      `json:"page"`
+	Size  int      `json:"size"`
 }
 type PostData struct {
 	Name string `json:"name"`

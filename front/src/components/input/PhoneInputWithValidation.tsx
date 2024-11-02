@@ -209,7 +209,7 @@ const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
                     e.preventDefault()
                     numberValidation(e)
                 }}
-                value={phoneVal}
+                defaultValue={phoneVal}
                 style={{ boxSizing: 'border-box', width: "100%" }}
                 className={validState ? s.inputWithLabel : s.inputWithLabel + " " + s.invalid}
                 ref={inputRef}

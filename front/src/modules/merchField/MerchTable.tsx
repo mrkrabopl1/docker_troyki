@@ -36,17 +36,17 @@ const MerchTable: React.FC<tableType> = (props) => {
     let [recalc, setRecalc] = useState<boolean>(true);
     function createHeaders() {
         let headerArr = [
-            <th style={{ textAlign: "left" }}>
+            <th key={"merch"} style={{ textAlign: "left" }}>
                 <div>
                     <span>{"Продукт"}</span>
                 </div>
             </th>,
-            <th style={{ textAlign: "center" }}>
+            <th key={"quantity"} style={{ textAlign: "center" }}>
                 <div>
                     <span>{"Количество"}</span>
                 </div>
             </th>,
-            <th style={{ textAlign: "right" }}>
+            <th key={"price"} style={{ textAlign: "right" }}>
                 <div>
                     <span>{"Цена"}</span>
                 </div>
@@ -67,7 +67,7 @@ const MerchTable: React.FC<tableType> = (props) => {
         let tableArr = []
         if (tableData.length) {
             tableData.forEach((el: any, ind: number) => {
-                tableArr.push(<tr>
+                tableArr.push(<tr key={el.name}>
                     {createTableRow(el, ind)}
                 </tr>)
             })
@@ -91,10 +91,10 @@ const MerchTable: React.FC<tableType> = (props) => {
 
     function createTableRow(el: any, ind: number) {
         let rowArr = []
-        rowArr.push(<td style={{ width: "60%" }}>{<MerchBuyBlock onChange={() => { { } }} data={{ id: el.id, firm: el.firm, price: el.size, name: el.name, imgs: el.img }} />}</td>)
-        rowArr.push(<td style={{textAlign: "center"}}>{el.quantity}</td>)
-        rowArr.push(<td style={{textAlign: "right"}}>{toPrice(el.price * el.quantity)}</td>)
-        rowArr.push(<td style={{textAlign: "center"}}><Button onChange={updateList.bind(null, ind, el.prid, el.quantity)} className={s.deleteBtn} /></td>)
+        rowArr.push(<td key={"merch"} style={{ width: "60%" }}>{<MerchBuyBlock onChange={() => { { } }} data={{ id: el.id, firm: el.firm, price: el.size, name: el.name, imgs: el.img }} />}</td>)
+        rowArr.push(<td key={"quantity"} style={{textAlign: "center"}}>{el.quantity}</td>)
+        rowArr.push(<td key = {"price"} style={{textAlign: "right"}}>{toPrice(el.price * el.quantity)}</td>)
+        rowArr.push(<td key = {"delete"} style={{textAlign: "center"}}><Button onChange={updateList.bind(null, ind, el.prid, el.quantity)} className={s.deleteBtn} /></td>)
 
         return rowArr
     }

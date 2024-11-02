@@ -226,7 +226,7 @@ func SnickersCartResponseWithourFullPrice(cart []types.SnickersCart) types.FullC
 	for _, info := range cart {
 		img_path := info.Image + "/1.jpg"
 
-		fullPrice += info.Price
+		fullPrice += info.Price * info.Quantity
 
 		list = append(list, types.CartResponse{
 			Image:    img_path,
@@ -686,8 +686,8 @@ func (s *Server) handleSearchMerch(w http.ResponseWriter, r *http.Request) {
 // 	render.JSON(w, r, response)
 // }
 
-func (s *Server) handleGetCollection(w http.ResponseWriter, r *http.Request) {
-	var postData types.PostDataCollection
+func (s *Server) handleGetSoloCollection(w http.ResponseWriter, r *http.Request) {
+	var postData types.PostDataSoloCollection
 	err := json.NewDecoder(r.Body).Decode(&postData)
 	if err != nil {
 		log.WithCaller().Err(err)
@@ -695,9 +695,46 @@ func (s *Server) handleGetCollection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	searchData, _ := s.store.GetCollection(r.Context(), postData.Name, postData.Size, postData.Page)
+	searchData, _ := s.store.GetSoloCollection(r.Context(), postData.Name, postData.Size, postData.Page)
 	response := NewSnickersSearchResponse1(searchData)
 	render.JSON(w, r, response)
+}
+func (s *Server) handleGetDiscounts(w http.ResponseWriter, r *http.Request) {
+	var postData types.Discounts
+	err := json.NewDecoder(r.Body).Decode(&postData)
+	if err != nil {
+		log.WithCaller().Err(err).Msg("")
+		render.JSON(w, r, nil)
+		return
+	}
+
+	searchData, _ := s.store.GetDiscounts(r.Context(), postData.Max)
+	response := NewSnickersSearchResponse1(searchData)
+	render.JSON(w, r, response)
+}
+func (s *Server) handleGetCollection(w http.ResponseWriter, r *http.Request) {
+	var postData types.PostDataCollection
+	err := json.NewDecoder(r.Body).Decode(&postData)
+	if err != nil {
+		log.WithCaller().Err(err).Msg("")
+		render.JSON(w, r, nil)
+		return
+	}
+
+	searchData, err1 := s.store.GetCollection(r.Context(), postData.Names, postData.Size, postData.Page)
+	if err1 != nil {
+		log.WithCaller().Err(err1).Msg("")
+		http.Error(w, err1.Error(), http.StatusBadRequest)
+		render.JSON(w, r, nil)
+		return
+	}
+	fullResponse := make(map[string][]types.SnickersSearchResponse1)
+	for key, value := range searchData {
+		response := NewSnickersSearchResponse1(value)
+		fullResponse[key] = response
+	}
+
+	render.JSON(w, r, fullResponse)
 }
 
 func (s *Server) handleCreatePreorder(w http.ResponseWriter, r *http.Request) {
@@ -892,7 +929,7 @@ func (s *Server) handleGetCart(w http.ResponseWriter, r *http.Request) {
 	hashUrl := r.URL.Query().Get("hash")
 
 	cartData, err := s.store.GetCartData(r.Context(), hashUrl)
-
+	log.Log.Info().Interface("snickers", cartData).Msg("")
 	responseData := SnickersCartResponseWithourFullPrice(cartData)
 
 	if err != nil {
@@ -900,7 +937,7 @@ func (s *Server) handleGetCart(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	log.Log.Info().Interface("snickers", responseData)
+	log.Log.Info().Interface("snickers", responseData).Msg("")
 	log.Log.Info().Msg("snickers")
 	render.JSON(w, r, responseData)
 }

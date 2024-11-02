@@ -3,6 +3,7 @@ import MerchBlock from "./MerchBlock"
 import s from "./style.module.css"
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as Bin } from "../../../public/bin.svg";
+import { NavLink } from 'react-router-dom';
 
 
 interface merchInterface { name: string, imgs: string, id: string, firm: string, price: string }
@@ -17,11 +18,11 @@ const MerchBuyBlock: React.FC<{ data: merchInterface, onChange: () => void }> = 
                 <p>
                     {data.firm}
                 </p>
-                <p>
+                <p className={s.merchName}>
                     {data.name}
                 </p>
                 <p>
-                    {data.price}
+                    Size US: {data.price}
                 </p>
             </div>
         </div>

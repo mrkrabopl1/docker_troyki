@@ -42,7 +42,7 @@ const SearchWithList: React.FC<propsRowType> = (props) => {
         onDataRecieve && onDataRecieve(data)
         setDropDownList( data.map((value:any) =>
         {
-            return <MerchLine  data={{...value, onChange:onChangeHandler}}/>    
+            return <MerchLine key={value.name}  data={{...value, onChange:onChangeHandler}}/>    
         }
           
         ))

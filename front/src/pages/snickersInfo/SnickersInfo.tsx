@@ -18,7 +18,7 @@ import { setCookie, getCookie } from 'src/global';
 import { toPrice } from 'src/global';
 import ContentSlider from 'src/components/contentSlider/ContentSlider'
 import ImagePresantationBlock from "src/components/imagesPresantation/ImagePresentationBlock"
-
+import MerchComplexSliderField from 'src/modules/merchField/MerchComplexSliderField';
 import { sizes, getMerchPrice1 } from 'src/constFiles/size';
 
 console.debug(sizes, getMerchPrice1)
@@ -77,6 +77,7 @@ const SnickersInfo: React.FC = () => {
     let [active, setActive] = useState(false)
 
     const setMerchInfoHandler = (val: any) => {
+        pricesArr.current= [];
         const info = JSON.parse(val.info)
         let discountParse = null;
         if (val.discount) {
@@ -156,10 +157,10 @@ const SnickersInfo: React.FC = () => {
         <div>
             <div className={widthProps ? "" : s.mainWrap}>
 
-                <div className={widthProps ?null:s.leftPart} style={widthProps ? { height: "100%", width: "100%" } : { height: "100%"}}>
+                <div className={widthProps ?null:s.leftPart} style={widthProps ? { width: "100%" } : { }}>
                    {widthProps?<ContentSlider content={createSliderContetn()} />:<ImagePresantation images={merchInfo.imgs} />}
                 </div>
-                <div style={widthProps ? { height: "100%", width: "100%" } : { height: "100%", width: "100%" }}>
+                <div style={widthProps ? { width: "100%" } : {  width: "100%" }}>
                     <Button text={"размеры"} onChange={() => {
                         setActive(true)
                     }} />
@@ -257,6 +258,7 @@ const SnickersInfo: React.FC = () => {
                     </Scroller>
                 </Modal>
             </div>
+            <MerchComplexSliderField/>
         </div>
 
     )

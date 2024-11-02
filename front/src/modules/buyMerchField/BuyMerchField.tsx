@@ -10,7 +10,7 @@ import { toPrice } from 'src/global';
 
 interface merchInterface {
     cartData: {
-        name: string, img: string, id: string, firm: string, price: string, count: number, totalPrice: string
+        name: string, img: string, id: string, firm: string, price: string, quantity: number, totalPrice: string, size: number
     }[],
     fullPrice: number
 }
@@ -27,15 +27,20 @@ const BuyMerchField: React.FC<dataType> = (props) => {
 
             {
                 data.cartData.map((data) => {
-                    return <MerchFormBlock data={data} onChange={() => { }} />
+                    return <MerchFormBlock key={data.name} data={data} onChange={() => { }} />
                 })
             }
 
-            <div style={{ display: "flex" }}>
+            {/* <div style={{ display: "flex" }}>
                 <Input placeholder='Промокод' onChange={(val) => { promoCode.current = val }} /> <Button text='Применить' onChange={() => { }} />
-            </div>
-            <div>
-                Всего {toPrice(data.fullPrice)}
+            </div> */}
+            <div className={s.fullPrice}>
+                <span>
+                    Всего
+                </span>
+                <span>
+                    {toPrice(data.fullPrice)}
+                </span>
             </div>
         </div>
 

@@ -41,7 +41,7 @@ const TableWithComboboxColumn: React.FC<tableType> = (props) => {
 
     function createHeaders() {
         let headerArr = table.map((val, id) => {
-            return <th>
+            return <th key={val.title}>
                 <div>
                     <span>{val.title}</span>
                 </div>
@@ -54,7 +54,7 @@ const TableWithComboboxColumn: React.FC<tableType> = (props) => {
 
 
 
-        headerArr.push(<th>
+        headerArr.push(<th  key={headers[0]+1}>
             <div>
                 <Combobox enumProp={true} data={headers} onChangeIndex={choseIndex}></Combobox>
             </div>
@@ -68,7 +68,7 @@ const TableWithComboboxColumn: React.FC<tableType> = (props) => {
         let tableArr = []
         for (let i = 0; i < table[0].table.length; i++) {
 
-            tableArr.push(<tr>
+            tableArr.push(<tr key={i}> 
                 {createTableRow(i)}
             </tr>)
         }
@@ -78,9 +78,9 @@ const TableWithComboboxColumn: React.FC<tableType> = (props) => {
     function createTableRow(index:number){
         let rowArr = []
         for (let i = 0; i < table.length; i++) {
-           rowArr.push(<td>{table[i].table[index]}</td>)
+           rowArr.push(<td key={i}>{table[i].table[index]}</td>)
         }
-        rowArr.push(<td>{comboTable[chosenIndex].table[index]}</td>)
+        rowArr.push(<td key={rowArr.length}>{comboTable[chosenIndex].table[index]}</td>)
 
         return rowArr
     }

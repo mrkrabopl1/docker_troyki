@@ -27,7 +27,7 @@ const CheckBoxColumn: React.FC<columnType> = (props) => {
         <div  >
                 {dataRef.current.map((val,id)=>{
                    valRef.current.push(val.activeData)
-                   return( <div style={{display:"flex"}}>
+                   return( <div key={val.name} style={{display:"flex"}}>
                         {<Checkbox onChange={onChangeForm.bind(this,id)} enable={val.enable} activeData={val.activeData}/>}
                         <p>{val.name}</p>
                     </div>)

@@ -600,7 +600,8 @@ func (s *PostgresStore) GetSnickersInfoById(ctx context.Context, id string) (typ
 
 	return data, nil
 }
-func (s *PostgresStore) GetCollection(ctx context.Context, name string, size int, page int) ([]types.SnickersSearch, error) {
+
+func (s *PostgresStore) GetSoloCollection(ctx context.Context, name string, size int, page int) ([]types.SnickersSearch, error) {
 
 	end := page * size
 	offset := (page - 1) * size
@@ -619,6 +620,32 @@ func (s *PostgresStore) GetCollection(ctx context.Context, name string, size int
 
 	return data, nil
 }
+
+func (s *PostgresStore) GetCollection(ctx context.Context, names []string, size int, page int) (map[string][]types.SnickersSearch, error) {
+
+	end := page * size
+	offset := (page - 1) * size
+	db, _ := s.connect(ctx)
+	data := make(map[string][]types.SnickersSearch)
+	for _, value := range names {
+		var colectionInfo []types.SnickersSearch
+		query := fmt.Sprintf("SELECT COALESCE(discount.minprice, snickers.minprice) AS minprice, snickers.id,image_path, name, firm , maxdiscprice  FROM snickers LEFT JOIN discount ON snickers.id = productid WHERE firm = '%s' OR line = '%s' LIMIT %d  OFFSET %d ", value, value, end, offset)
+		defer db.Close()
+
+		err := db.SelectContext(
+			ctx,
+			&colectionInfo,
+			query)
+		if err != nil {
+			return data, err
+		} else {
+			data[value] = colectionInfo
+		}
+	}
+
+	return data, nil
+}
+
 func (s *PostgresStore) GetSnickersByName(ctx context.Context, name string, max int) ([]types.SnickersSearch, error) {
 	db, _ := s.connect(ctx)
 	var data []types.SnickersSearch
@@ -657,7 +684,7 @@ func (s *PostgresStore) GetCartData(ctx context.Context, hash string) ([]types.S
 				if conditionStr == "" {
 					conditionStr += fmt.Sprintf(`SELECT id, %d AS prid, name ,firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers WHERE id = %d `, sn.Id, sn.Size, sn.Size, sn.Quantity, sn.PrId)
 				} else {
-					conditionStr += fmt.Sprintf(`UNION ALL SELECT id, %d AS prid,firm, name , image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers  WHERE id = %d `, sn.Id, sn.Size, sn.Size, sn.Quantity, sn.PrId)
+					conditionStr += fmt.Sprintf(`UNION ALL SELECT id, %d AS prid, name , firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers  WHERE id = %d `, sn.Id, sn.Size, sn.Size, sn.Quantity, sn.PrId)
 				}
 			}
 			err := db.SelectContext(
@@ -1371,6 +1398,19 @@ func (s *PostgresStore) GetSnickersHistory(ctx context.Context, idCustomer int) 
 	return data, err
 }
 
+func (s *PostgresStore) GetDiscounts(ctx context.Context, max int) ([]types.SnickersSearch, error) {
+	db, _ := s.connect(ctx)
+	defer db.Close()
+	var data []types.SnickersSearch
+	query := `SELECT snickers.minPrice, snickers.id,image_path, name, firm ,maxdiscprice FROM snickers JOIN discount ON snickers.id = productid`
+	err1 := db.SelectContext(ctx, &data, query)
+	if err1 != nil {
+		return data, err1
+	}
+
+	return data, nil
+}
+
 type Interface interface {
 	GetFirms(ctx context.Context) ([]types.FirmsResult, error)
 	GetSnickersByFirmName(ctx context.Context) ([]types.Snickers, error)
@@ -1382,7 +1422,8 @@ type Interface interface {
 	GetSnickersAndFiltersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.SnickersPageAndFilters, error)
 	GetFiltersByString(ctx context.Context, name string) (types.Filter, error)
 	CountTest(ctx context.Context) ([]Count, error)
-	GetCollection(ctx context.Context, name string, size int, page int) ([]types.SnickersSearch, error)
+	GetCollection(ctx context.Context, names []string, size int, page int) (map[string][]types.SnickersSearch, error)
+	GetSoloCollection(ctx context.Context, name string, size int, page int) ([]types.SnickersSearch, error)
 	CreatePreorder(ctx context.Context, id int, info map[string]string) (string, error)
 	UpdatePreorder(ctx context.Context, id int, info map[string]string, hash string) (int, error)
 	GetCartCount(ctx context.Context, hash string) (int, error)
@@ -1404,4 +1445,5 @@ type Interface interface {
 	GetOrderDataByMail(ctx context.Context, mail string, id int) (types.OrderData, string, error)
 	SetSnickersHistory(ctx context.Context, idSnickers int, idCustomer int) error
 	GetSnickersHistory(ctx context.Context, idCustomer int) ([]types.SnickersSearch, error)
+	GetDiscounts(ctx context.Context, max int) ([]types.SnickersSearch, error)
 }

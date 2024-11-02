@@ -19,3 +19,14 @@
     text-align: center;
     padding: 50px;
 }
+
+
+.fullPrice{
+    font-size: 20px;
+}
+
+@media (max-width:600px) {
+    .fullPrice{
+        font-size: 16px;
+    }
+}

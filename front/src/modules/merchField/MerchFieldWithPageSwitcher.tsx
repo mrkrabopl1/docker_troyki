@@ -46,12 +46,12 @@ const MerchFieldWithPageSwitcher: React.FC<merchFieldInterface> = (props) => {
             while (count < size) {
                 count += 1
                 if (data.length !== 0) {
-                    arrSm.push(<MerchBlock width={createWidth()} data={data[0]} />)
+                    arrSm.push(<MerchBlock key = {data[0].name} width={createWidth()} data={data[0]} />)
                 }
                 data.shift()
             }
 
-            arr.push(<div className={className ? className : s.merchField + " " + heightClass.current}>
+            arr.push(<div key={data.length} className={className ? className : s.merchField + " " + heightClass.current}>
                 {arrSm}
             </div>)
         }

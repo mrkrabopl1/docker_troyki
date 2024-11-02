@@ -53,7 +53,7 @@ const SnickersSettings: React.FC<settingModuleInterface> = (props) => {
                 <ZoneSliderValueSetter onChange={(data) => { onChange({ name: "price", data: data }) }} {...priceProps} />
             </DoubleInfoDrop> */}
             {checboxsProps.map((el) => {
-                return <DoubleInfoDrop info={el.name}>
+                return <DoubleInfoDrop key={el.name} info={el.name}>
                     <CheckBoxColumn onChange={(data) => { onChange({ name: el.name, data: data }) }} data={el.props} />
                 </DoubleInfoDrop>
             })}

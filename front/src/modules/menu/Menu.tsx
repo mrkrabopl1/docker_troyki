@@ -112,7 +112,7 @@ const Menu: React.FC<dataType> = (props) => {
     }
     let styleData = {
         main: ss.main+ " " + s.search,
-        dropList: ss.drop_list,
+        dropList: s.drop_list,
         search:s.searchInput
     }
     const selectListHandler = (id: number) => {

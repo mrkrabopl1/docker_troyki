@@ -5,7 +5,7 @@ import { useParams } from 'react-router-dom';
 import s from "./style.module.css"
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
 import BuyMerchField from 'src/modules/buyMerchField/BuyMerchField'
-import { createOrder,getOrderDataByHash } from 'src/providers/orderProvider';
+import { createOrder, getOrderDataByHash } from 'src/providers/orderProvider';
 import { checkCustomerData } from 'src/providers/userProvider';
 import OrderInfo from 'src/components/orderInfo/orderInfo';
 import MailInputWithValidation from 'src/components/input/MailInputWithValidation';
@@ -21,27 +21,27 @@ const FormPage: React.FC = () => {
     const navigate = useNavigate();
     let { hash } = useParams<urlParamsType>();
     let [snickers, setSnickers] = useState<any>({
-        cartData:[],
-        fullPrice:""
+        cartData: [],
+        fullPrice: ""
     })
     let memoSendForm = useRef<boolean>(true)
-    let fullPrice = useRef<number>(0)  
+    let fullPrice = useRef<number>(0)
     let [inProgrees, setInProgress] = useState(true)
-    
-    let [refresh,setRefresh] = useState<boolean>(true)
+
+    let [refresh, setRefresh] = useState<boolean>(true)
     let formData = useRef<any>({
         name: "",
         mail: "",
-        secondName:"",
+        secondName: "",
         address: null,
         phone: ""
     })
     useEffect(() => {
-        getCartData(hash, (data)=>{
+        getCartData(hash, (data) => {
             fullPrice.current = data.fullPrice;
             setSnickers(data)
-            checkCustomerData((data)=>{
-                if(data){
+            checkCustomerData((data) => {
+                if (data) {
                     memoSendForm.current = !memoSendForm.current
                     formData.current = data
                     setRefresh(!refresh)
@@ -53,7 +53,7 @@ const FormPage: React.FC = () => {
 
     return (
         <div className='dependFlex'>
-        <SendForm
+            <SendForm
                 memo={memoSendForm.current}
                 valid={true}
                 formValue={
@@ -89,8 +89,9 @@ const FormPage: React.FC = () => {
                         navigate('/order/' + data.hash)
                     })
                 }} className={{ input: s.formInput, combobox: s.combobox }} />
-
-            <BuyMerchField data={snickers} />
+            <div style={{paddingRight:"90px"}}>
+                <BuyMerchField data={snickers} />
+            </div>
         </div>
 
     )

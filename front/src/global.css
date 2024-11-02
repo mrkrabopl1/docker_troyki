@@ -103,7 +103,8 @@
 }
 
 :global(.btnStyle){
-  background-color: transparent;
+  color: white;
+  background-color: black;
   color: darken(red, 10%);
   position: relative;
   border: none;
@@ -115,8 +116,7 @@
   transition: color 0.5s, transform 0.2s, background-color 0.2s;
   outline: none;
   border-radius: 3px;
-  margin: 0 10px;
-  padding: 23px 33px;
+  padding: 13px 13px;
   border: 3px solid transparent;
   border-radius:5px ;
 }

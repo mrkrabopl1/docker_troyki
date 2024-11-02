@@ -60,12 +60,19 @@ function extend(obj1: Object, obj2: Object) {
   }
 }
 
-function setGlobalScroller(active){
-  if(active){
+function setGlobalScroller(active) {
+  if (active) {
     document.body.style.overflow = 'hidden';
-}else{
+  } else {
     document.body.style.overflow = 'unset';
+  }
 }
+
+function shuffle(array) {
+  for (let i = array.length - 1; i >= 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
 }
 
 function setCookie(name, value, options: { [key: string]: any } = {}) {
@@ -94,4 +101,4 @@ function setCookie(name, value, options: { [key: string]: any } = {}) {
 }
 
 
-export { isDeepEqual, getCookie, setCookie, toPrice, extend, setGlobalScroller }
+export { isDeepEqual, getCookie, setCookie, toPrice, extend, setGlobalScroller, shuffle }

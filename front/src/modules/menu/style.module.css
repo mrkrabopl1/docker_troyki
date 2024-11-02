@@ -37,10 +37,27 @@
   }
 }
 
+
+.searchInput{
+  padding:10px;
+  border: solid 1px black;
+  width: 35%;
+}
+
 @media (min-width: 600px) {
   .complexVertical{
     display: none;
   }
+  .searchInput{
+  
+    width: 55%;
+  }
+  .drop_list{
+  
+    width: 55%;
+   
+  }
+  
 }
 
 
@@ -91,11 +108,7 @@
   margin:auto;
 }
 
-.searchInput{
-  padding:10px;
-  border: solid 1px black;
-  width: 75%;
-}
+
 
 .signButton{
   cursor: pointer;
