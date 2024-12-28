@@ -154,3 +154,8 @@ type OrderData struct {
 	SnickersCart []SnickersCart
 	OrderId      int
 }
+type ProductsInsert struct {
+	Size      string `db:"size"`
+	Quantity  int    `db:"quantity"`
+	Productid int    `db:"productid"`
+}

@@ -233,7 +233,7 @@ func (s *PostgresStore) UpdateFiltersByFilter(ctx context.Context, filterType in
 			if index > 0 {
 				firmStr = fmt.Sprintf(`OR firm = '%s'`, firm)
 			} else {
-				firmStr = fmt.Sprintf(`AND (firm = '%s'`, firm)
+				firmStr = fmt.Sprintf(`(firm = '%s'`, firm)
 			}
 			firmString += firmStr + " "
 		}
@@ -869,27 +869,6 @@ func (s *PostgresStore) GetCartCount(ctx context.Context, hash string) (int, err
 	}
 }
 
-func (s *PostgresStore) CountTest(ctx context.Context) ([]Count, error) {
-	db, _ := s.connect(ctx)
-	defer db.Close()
-	var data []Count
-
-	//query := "SELECT SUM(CASE WHEN firm = 'nike' THEN 1 ELSE 0 END) AS name_data, SUM(CASE WHEN name ILIKE '%n%' THEN 1 ELSE 0 END) AS name_data1 FROM snickers"
-
-	//query := `SELECT name FROM snickers WHERE "8.5" IS NOT NULL`
-
-	//query := `SELECT CASE WHEN id = 1 THEN "10" || ', ' || "11"  WHEN id = 2 THEN  "11" || '' END AS result FROM snickers WHERE id = 1 OR id = 2`
-	query := `SELECT CASE WHEN id = 1 THEN  ARRAY["10", "11"] WHEN id = 2 THEN ARRAY["11"]  END AS result FROM snickers WHERE id = 1 OR id = 2`
-
-	err := db.SelectContext(
-		ctx,
-		&data,
-		query)
-	if err != nil {
-		return data, err
-	}
-	return data, nil
-}
 func generateToken() (string, error) {
 	b := make([]byte, 32)
 	_, err := rand.Read(b)

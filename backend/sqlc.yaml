@@ -1,0 +1,24 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "./db/query/"
+    schema: "./db/migration/"
+    gen:
+      go:
+        package: "db"
+        out: "db/sqlc"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_interface: true
+        rename:
+          Column1: Firms
+        overrides:
+          - db_type: "text[]"
+            go_type:  
+              import: "github.com/mrkrabopl1/go_db.db"
+              type: "TextArray"
+          - db_type: "integer[]"
+            go_type:  
+              import: "github.com/mrkrabopl1/go_db.db"
+              type: "IntArray"
+          

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -11,6 +12,40 @@ import (
 type PostgresStore struct {
 	databaseUrl string
 	dbx         *sqlx.DB
+}
+
+type TextArray []string
+
+func (t *TextArray) Scan(src interface{}) error {
+	if src == nil {
+		*t = nil
+		return nil
+	}
+
+	switch v := src.(type) {
+	case []string:
+		*t = v
+	default:
+		return fmt.Errorf("cannot scan into TextArray: %v", v)
+	}
+	return nil
+}
+
+type IntArray []int
+
+func (t *IntArray) Scan(src interface{}) error {
+	if src == nil {
+		*t = nil
+		return nil
+	}
+
+	switch v := src.(type) {
+	case []int:
+		*t = v
+	default:
+		return fmt.Errorf("cannot scan into TextArray: %v", v)
+	}
+	return nil
 }
 
 func NewPostgresStore(databaseUrl string) *PostgresStore {

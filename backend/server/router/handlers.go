@@ -287,6 +287,7 @@ func UnregisterCustomerDataResponse(customerInfo types.UnregisterCustomerType) t
 }
 
 func (s *Server) handleGetFirms(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("fkms;dlmf;dslmf;sdmf;lsmd;kmkdgb;lmf;gkfm;lgms;dkmf;")
 	firms, err := s.store.GetFirms(r.Context())
 	if err != nil {
 		log.WithCaller().Err(err)
