@@ -104,10 +104,13 @@ type Customer struct {
 	Mail       string      `json:"mail"`
 	Pass       []byte      `json:"pass"`
 	Phone      pgtype.Text `json:"phone"`
-	Country    pgtype.Text `json:"country"`
 	Town       pgtype.Text `json:"town"`
+	Index      pgtype.Text `json:"index"`
 	Sendmail   pgtype.Bool `json:"sendmail"`
-	Postindex  pgtype.Int4 `json:"postindex"`
+	Street     pgtype.Text `json:"street"`
+	Region     pgtype.Text `json:"region"`
+	Home       pgtype.Text `json:"home"`
+	Flat       pgtype.Text `json:"flat"`
 }
 
 type Discount struct {
@@ -116,14 +119,6 @@ type Discount struct {
 	Value        []byte      `json:"value"`
 	Minprice     pgtype.Int4 `json:"minprice"`
 	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-}
-
-type MainPage struct {
-	ID        int32       `json:"id"`
-	Imagepath string      `json:"imagepath"`
-	Maintext  string      `json:"maintext"`
-	Subtext   pgtype.Text `json:"subtext"`
-	Line      string      `json:"line"`
 }
 
 type Order struct {
@@ -139,9 +134,9 @@ type Order struct {
 
 type Orderitem struct {
 	ID        int32       `json:"id"`
-	Orderid   pgtype.Int4 `json:"orderid"`
-	Productid pgtype.Int4 `json:"productid"`
-	Quantity  pgtype.Int4 `json:"quantity"`
+	Orderid   int32       `json:"orderid"`
+	Productid int32       `json:"productid"`
+	Quantity  int32       `json:"quantity"`
 	Size      pgtype.Text `json:"size"`
 }
 
@@ -160,34 +155,38 @@ type Preorderitem struct {
 }
 
 type Snicker struct {
-	ID        int32       `json:"id"`
-	Name      string      `json:"name"`
-	Info      []byte      `json:"info"`
-	Firm      string      `json:"firm"`
-	Line      string      `json:"line"`
-	ImagePath string      `json:"image_path"`
-	Minprice  int32       `json:"minprice"`
-	Maxprice  int32       `json:"maxprice"`
-	_35       pgtype.Int4 `json:"3.5"`
-	_4        pgtype.Int4 `json:"4"`
-	_45       pgtype.Int4 `json:"4.5"`
-	_5        pgtype.Int4 `json:"5"`
-	_55       pgtype.Int4 `json:"5.5"`
-	_6        pgtype.Int4 `json:"6"`
-	_65       pgtype.Int4 `json:"6.5"`
-	_7        pgtype.Int4 `json:"7"`
-	_75       pgtype.Int4 `json:"7.5"`
-	_8        pgtype.Int4 `json:"8"`
-	_85       pgtype.Int4 `json:"8.5"`
-	_9        pgtype.Int4 `json:"9"`
-	_95       pgtype.Int4 `json:"9.5"`
-	_10       pgtype.Int4 `json:"10"`
-	_105      pgtype.Int4 `json:"10.5"`
-	_11       pgtype.Int4 `json:"11"`
-	_115      pgtype.Int4 `json:"11.5"`
-	_12       pgtype.Int4 `json:"12"`
-	_125      pgtype.Int4 `json:"12.5"`
-	_13       pgtype.Int4 `json:"13"`
+	ID          int32       `json:"id"`
+	Qid         string      `json:"qid"`
+	Name        string      `json:"name"`
+	Info        []byte      `json:"info"`
+	Firm        string      `json:"firm"`
+	Line        string      `json:"line"`
+	ImagePath   string      `json:"image_path"`
+	Minprice    int32       `json:"minprice"`
+	Maxprice    int32       `json:"maxprice"`
+	Article     pgtype.Text `json:"article"`
+	Date        pgtype.Text `json:"date"`
+	Description pgtype.Text `json:"description"`
+	_35         pgtype.Int4 `json:"3.5"`
+	_4          pgtype.Int4 `json:"4"`
+	_45         pgtype.Int4 `json:"4.5"`
+	_5          pgtype.Int4 `json:"5"`
+	_55         pgtype.Int4 `json:"5.5"`
+	_6          pgtype.Int4 `json:"6"`
+	_65         pgtype.Int4 `json:"6.5"`
+	_7          pgtype.Int4 `json:"7"`
+	_75         pgtype.Int4 `json:"7.5"`
+	_8          pgtype.Int4 `json:"8"`
+	_85         pgtype.Int4 `json:"8.5"`
+	_9          pgtype.Int4 `json:"9"`
+	_95         pgtype.Int4 `json:"9.5"`
+	_10         pgtype.Int4 `json:"10"`
+	_105        pgtype.Int4 `json:"10.5"`
+	_11         pgtype.Int4 `json:"11"`
+	_115        pgtype.Int4 `json:"11.5"`
+	_12         pgtype.Int4 `json:"12"`
+	_125        pgtype.Int4 `json:"12.5"`
+	_13         pgtype.Int4 `json:"13"`
 }
 
 type Uniquecustomer struct {

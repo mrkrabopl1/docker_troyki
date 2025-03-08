@@ -1391,38 +1391,38 @@ func (s *PostgresStore) GetDiscounts(ctx context.Context, max int) ([]types.Snic
 }
 
 type Interface interface {
-	GetFirms(ctx context.Context) ([]types.FirmsResult, error)
-	GetSnickersByFirmName(ctx context.Context) ([]types.Snickers, error)
-	GetSnickersByLineName(ctx context.Context) ([]types.SnickersLine, error)
+	GetFirms(ctx context.Context) ([]types.FirmsResult, error)               //r
+	GetSnickersByFirmName(ctx context.Context) ([]types.Snickers, error)     //r
+	GetSnickersByLineName(ctx context.Context) ([]types.SnickersLine, error) //r
 	GetMainPage(ctx context.Context) ([]types.MainPage, error)
-	GetSnickersInfoById(ctx context.Context, id string) (types.SnickersInfo, error)
-	GetCartData(ctx context.Context, hash string) ([]types.SnickersCart, error)
-	GetSnickersByName(ctx context.Context, name string, max int) ([]types.SnickersSearch, error)
-	GetSnickersAndFiltersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.SnickersPageAndFilters, error)
-	GetFiltersByString(ctx context.Context, name string) (types.Filter, error)
+	GetSnickersInfoById(ctx context.Context, id string) (types.SnickersInfo, error)                                                                                                //r
+	GetCartData(ctx context.Context, hash string) ([]types.SnickersCart, error)                                                                                                    //r
+	GetSnickersByName(ctx context.Context, name string, max int) ([]types.SnickersSearch, error)                                                                                   //r
+	GetSnickersAndFiltersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.SnickersPageAndFilters, error) //r
+	GetFiltersByString(ctx context.Context, name string) (types.Filter, error)                                                                                                     //r
 	CountTest(ctx context.Context) ([]Count, error)
 	GetCollection(ctx context.Context, names []string, size int, page int) (map[string][]types.SnickersSearch, error)
-	GetSoloCollection(ctx context.Context, name string, size int, page int) ([]types.SnickersSearch, error)
-	CreatePreorder(ctx context.Context, id int, info map[string]string) (string, error)
-	UpdatePreorder(ctx context.Context, id int, info map[string]string, hash string) (int, error)
-	GetCartCount(ctx context.Context, hash string) (int, error)
-	DeleteCartData(ctx context.Context, preorderid int) error
-	RegisterUser(ctx context.Context, pass string, mail string) (int, error)
-	CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int, int16, string, error)
-	GetSnickersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.SnickersPage, error)
-	Login(ctx context.Context, name string, pass string) (int16, error)
-	GetUserData(ctx context.Context, id int) (types.CustimerInfo, error)
-	Verify(ctx context.Context, token string) (int16, error)
-	ChangePass(ctx context.Context, newPass string, oldPass string, id int) error
-	UpdateForgetPass(ctx context.Context, mail string) error
-	ChangeForgetPass(ctx context.Context, newPass string, id int) error
-	GetUnregisterCustomerData(ctx context.Context, id int) (types.UnregisterCustomerType, error)
-	GetOrderData(ctx context.Context, hash string) (types.OrderData, error)
-	GetCartDataFromOrderById(ctx context.Context, id int) ([]types.SnickersCart, error)
-	CreateUniqueCustomer(ctx context.Context) (int, error)
-	GetCartDataFromOrderByHash(ctx context.Context, hash string) ([]types.SnickersCart, error)
-	GetOrderDataByMail(ctx context.Context, mail string, id int) (types.OrderData, string, error)
-	SetSnickersHistory(ctx context.Context, idSnickers int, idCustomer int) error
-	GetSnickersHistory(ctx context.Context, idCustomer int) ([]types.SnickersSearch, error)
-	GetDiscounts(ctx context.Context, max int) ([]types.SnickersSearch, error)
+	GetSoloCollection(ctx context.Context, name string, size int, page int) ([]types.SnickersSearch, error)                                                    //r
+	CreatePreorder(ctx context.Context, id int, info map[string]string) (string, error)                                                                        //r
+	UpdatePreorder(ctx context.Context, id int, info map[string]string, hash string) (int, error)                                                              //rr
+	GetCartCount(ctx context.Context, hash string) (int, error)                                                                                                //r
+	DeleteCartData(ctx context.Context, preorderid int) error                                                                                                  //r
+	RegisterUser(ctx context.Context, pass string, mail string) (int, error)                                                                                   //a
+	CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int, int16, string, error)                                                             //r
+	GetSnickersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.SnickersPage, error) //r?
+	Login(ctx context.Context, name string, pass string) (int16, error)                                                                                        //r
+	GetUserData(ctx context.Context, id int) (types.CustimerInfo, error)                                                                                       //r
+	Verify(ctx context.Context, token string) (int16, error)                                                                                                   //r
+	ChangePass(ctx context.Context, newPass string, oldPass string, id int) error                                                                              //r
+	UpdateForgetPass(ctx context.Context, mail string) error                                                                                                   //a
+	ChangeForgetPass(ctx context.Context, newPass string, id int) error                                                                                        //r
+	GetUnregisterCustomerData(ctx context.Context, id int) (types.UnregisterCustomerType, error)                                                               //r
+	GetOrderData(ctx context.Context, hash string) (types.OrderData, error)                                                                                    //r
+	GetCartDataFromOrderById(ctx context.Context, id int) ([]types.SnickersCart, error)                                                                        //r
+	CreateUniqueCustomer(ctx context.Context) (int, error)                                                                                                     //r
+	GetCartDataFromOrderByHash(ctx context.Context, hash string) ([]types.SnickersCart, error)                                                                 //r
+	GetOrderDataByMail(ctx context.Context, mail string, id int) (types.OrderData, string, error)                                                              //?
+	SetSnickersHistory(ctx context.Context, idSnickers int, idCustomer int) error                                                                              //r
+	GetSnickersHistory(ctx context.Context, idCustomer int) ([]types.SnickersSearch, error)                                                                    //r
+	GetDiscounts(ctx context.Context, max int) ([]types.SnickersSearch, error)                                                                                 //r
 }

@@ -4,7 +4,7 @@ import axios from "axios";
 
 const getMerchInfo = function (id: string, callback: (val: any) => void) {
     axios({
-        withCredentials: true,
+        //withCredentials: true,
         method: 'get',
         url: `${API_URL}/snickersInfo` + "?" + "id=" + id,
         headers: {}
@@ -12,6 +12,8 @@ const getMerchInfo = function (id: string, callback: (val: any) => void) {
     ).then((res: any) => {
         console.log(res.data)
         callback(res.data)
+    },  (error: any) => {
+        console.warn(error)
     })
 }
 
@@ -25,7 +27,9 @@ const getHistoryInfo = function (callback: (val: any) => void) {
     ).then((res: any) => {
         console.log(res.data)
         callback(res.data)
-    })
+    },  (error: any) => {
+        console.warn(error)
+    })   
 }
 
 const getDiscontInfo = function (max: number, callback: (val: any) => void) {
@@ -41,6 +45,8 @@ const getDiscontInfo = function (max: number, callback: (val: any) => void) {
     ).then((res: any) => {
         console.log(res.data)
         callback(res.data)
+    },  (error: any) => {
+        console.warn(error)
     })
 }
 
@@ -52,6 +58,8 @@ const getFirms = function (callback: (val: any) => void) {
     }
     ).then((res: any) => {
         callback(res.data)
+    },  (error: any) => {
+        console.warn(error)
     })
 }
 
@@ -72,6 +80,8 @@ const getCollection = function (reqData: { name: string, page: number, size: num
     }
     ).then((res: any) => {
         callback(res.data)
+    },  (error: any) => {
+        console.warn(error)
     })
 }
 
@@ -86,6 +96,8 @@ const getCollections = function (reqData: { names: string[], page: number, size:
     }
     ).then((res: any) => {
         callback(res.data)
+    },  (error: any) => {
+        console.warn(error)
     })
 }
 
@@ -97,6 +109,8 @@ const getMainInfo = function (callback: (val: any) => void) {
     }
     ).then((res: any) => {
         callback(res.data)
+    },  (error: any) => {
+        console.warn(error)
     })
 }
 
@@ -108,6 +122,8 @@ const getSizeTable = function (callback: (val: any) => void) {
     }
     ).then((res: any) => {
         callback(res.data)
+    },  (error: any) => {
+        console.warn(error)
     })
 }
 export { getMerchInfo, getSizeTable, getMainInfo, getCollections, getFirms, getHistoryInfo, getDiscontInfo, getCollection }

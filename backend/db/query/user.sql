@@ -90,3 +90,7 @@ WHERE id = $1;
 UPDATE uniquecustomers
 SET history = $1
 WHERE id = $2;
+-- name: CreateUniqueCustomer :one
+INSERT INTO uniquecustomers (creationTime, history)
+VALUES ($1, '{}')
+RETURNING id;

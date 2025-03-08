@@ -3,18 +3,18 @@ const createPreorder = function (data: { id: number, info: { size: string } }, c
     let jsonData = JSON.stringify(data)
     axios.post(`${API_URL}/createPreorder`, jsonData, { headers: { "content-type": "application/json" } }).then((res) => {
         callback(res.data)
-    }
-    )
-
+    }, (error) => {
+        console.warn(error)
+    })
 }
 
 const updatePreorder = function (data: { id: number, hashUrl: string, info: { size: string } }, callback: (val: any) => void) {
     let jsonData = JSON.stringify(data)
     axios.post(`${API_URL}/updatePreorder`, jsonData, { headers: { "content-type": "application/json" } }).then((res) => {
         callback(res.data)
-    }
-    )
-
+    }, (error) => {
+        console.warn(error)
+    })
 }
 
 interface clientDataType {
@@ -52,22 +52,26 @@ const createOrder = function (data: clientDataType, callback: (val: any) => void
         method: 'post',
     }).then((res) => {
         callback(res.data)
+    }, (error) => {
+        console.warn(error)
     })
 }
 
 const getOrderDataByHash = function (hash: string, callback: (val: any) => void) {
     axios({
         withCredentials: true,
-        url: `${API_URL}/getOrderDataByHash?hash=`+hash,
+        url: `${API_URL}/getOrderDataByHash?hash=` + hash,
         headers: { "content-type": "application/json" },
         method: 'get',
     }).then((res) => {
         callback(res.data)
+    }, (error) => {
+        console.warn(error)
     })
 }
 
-const getOrderDataByMail = function (mail: string,orderId:string, callback: (val: any) => void) {
-    let jsonData = JSON.stringify({mail,orderId:Number(orderId)})
+const getOrderDataByMail = function (mail: string, orderId: string, callback: (val: any) => void) {
+    let jsonData = JSON.stringify({ mail, orderId: Number(orderId) })
     axios({
         withCredentials: true,
         url: `${API_URL}/getOrderDataByMail`,
@@ -76,6 +80,8 @@ const getOrderDataByMail = function (mail: string,orderId:string, callback: (val
         method: 'post',
     }).then((res) => {
         callback(res.data)
+    }, (error) => {
+        console.warn(error)
     })
 }
 

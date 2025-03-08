@@ -11,13 +11,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const deleteFromPreorderItems = `-- name: DeleteFromPreorderItems :exec
-DELETE FROM preorderItems
-WHERE orderid = $1
+const deleteCartData = `-- name: DeleteCartData :exec
+DELETE FROM preorderitems
+WHERE id = $1
 `
 
-func (q *Queries) DeleteFromPreorderItems(ctx context.Context, orderid int32) error {
-	_, err := q.db.Exec(ctx, deleteFromPreorderItems, orderid)
+func (q *Queries) DeleteCartData(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, deleteCartData, id)
 	return err
 }
 
@@ -36,30 +36,61 @@ func (q *Queries) GetFullPreorderCount(ctx context.Context, orderid int32) (inte
 
 const getOrder = `-- name: GetOrder :one
 SELECT id,
+    hash,
     status,
     customerId,
+    unregistercustomerid
+FROM orders
+WHERE hash = $1
+`
+
+type GetOrderRow struct {
+	ID                   int32       `json:"id"`
+	Hash                 string      `json:"hash"`
+	Status               StatusEnum  `json:"status"`
+	Customerid           pgtype.Int4 `json:"customerid"`
+	Unregistercustomerid pgtype.Int4 `json:"unregistercustomerid"`
+}
+
+func (q *Queries) GetOrder(ctx context.Context, hash string) (GetOrderRow, error) {
+	row := q.db.QueryRow(ctx, getOrder, hash)
+	var i GetOrderRow
+	err := row.Scan(
+		&i.ID,
+		&i.Hash,
+		&i.Status,
+		&i.Customerid,
+		&i.Unregistercustomerid,
+	)
+	return i, err
+}
+
+const getOrderById = `-- name: GetOrderById :one
+SELECT id,
     hash,
+    status,
+    customerId,
     unregistercustomerid
 FROM orders
 WHERE id = $1
 `
 
-type GetOrderRow struct {
+type GetOrderByIdRow struct {
 	ID                   int32       `json:"id"`
+	Hash                 string      `json:"hash"`
 	Status               StatusEnum  `json:"status"`
 	Customerid           pgtype.Int4 `json:"customerid"`
-	Hash                 string      `json:"hash"`
 	Unregistercustomerid pgtype.Int4 `json:"unregistercustomerid"`
 }
 
-func (q *Queries) GetOrder(ctx context.Context, id int32) (GetOrderRow, error) {
-	row := q.db.QueryRow(ctx, getOrder, id)
-	var i GetOrderRow
+func (q *Queries) GetOrderById(ctx context.Context, id int32) (GetOrderByIdRow, error) {
+	row := q.db.QueryRow(ctx, getOrderById, id)
+	var i GetOrderByIdRow
 	err := row.Scan(
 		&i.ID,
+		&i.Hash,
 		&i.Status,
 		&i.Customerid,
-		&i.Hash,
 		&i.Unregistercustomerid,
 	)
 	return i, err
@@ -76,12 +107,12 @@ WHERE orderid = $1
 
 type GetOrderDataByIdRow struct {
 	ID       int32       `json:"id"`
-	Prid     pgtype.Int4 `json:"prid"`
+	Prid     int32       `json:"prid"`
 	Size     pgtype.Text `json:"size"`
-	Quantity pgtype.Int4 `json:"quantity"`
+	Quantity int32       `json:"quantity"`
 }
 
-func (q *Queries) GetOrderDataById(ctx context.Context, orderid pgtype.Int4) ([]GetOrderDataByIdRow, error) {
+func (q *Queries) GetOrderDataById(ctx context.Context, orderid int32) ([]GetOrderDataByIdRow, error) {
 	rows, err := q.db.Query(ctx, getOrderDataById, orderid)
 	if err != nil {
 		return nil, err
@@ -173,27 +204,6 @@ func (q *Queries) GetPreorderIdByHashUrl(ctx context.Context, hashurl string) (i
 	return id, err
 }
 
-const getQuantityFromPreorderItems = `-- name: GetQuantityFromPreorderItems :one
-SELECT quantity
-FROM preorderitems
-WHERE orderid = $1
-    AND size = $2
-    AND productid = $3
-`
-
-type GetQuantityFromPreorderItemsParams struct {
-	Orderid   int32       `json:"orderid"`
-	Size      pgtype.Text `json:"size"`
-	Productid int32       `json:"productid"`
-}
-
-func (q *Queries) GetQuantityFromPreorderItems(ctx context.Context, arg GetQuantityFromPreorderItemsParams) (int32, error) {
-	row := q.db.QueryRow(ctx, getQuantityFromPreorderItems, arg.Orderid, arg.Size, arg.Productid)
-	var quantity int32
-	err := row.Scan(&quantity)
-	return quantity, err
-}
-
 const insertOrder = `-- name: InsertOrder :one
 INSERT INTO orders (
         orderdate,
@@ -230,21 +240,107 @@ func (q *Queries) InsertOrder(ctx context.Context, arg InsertOrderParams) (int32
 	return id, err
 }
 
+const insertOrderItems = `-- name: InsertOrderItems :exec
+INSERT INTO orderItems (productid, quantity, size, orderid)
+VALUES ($1, $2, $3, $4)
+`
+
+type InsertOrderItemsParams struct {
+	Productid int32       `json:"productid"`
+	Quantity  int32       `json:"quantity"`
+	Size      pgtype.Text `json:"size"`
+	Orderid   int32       `json:"orderid"`
+}
+
+func (q *Queries) InsertOrderItems(ctx context.Context, arg InsertOrderItemsParams) error {
+	_, err := q.db.Exec(ctx, insertOrderItems,
+		arg.Productid,
+		arg.Quantity,
+		arg.Size,
+		arg.Orderid,
+	)
+	return err
+}
+
 const insertPreorder = `-- name: InsertPreorder :one
+INSERT INTO preorder (hashurl, updatetime)
+VALUES ($1, $2)
+RETURNING id
+`
+
+type InsertPreorderParams struct {
+	Hashurl    string      `json:"hashurl"`
+	Updatetime pgtype.Date `json:"updatetime"`
+}
+
+func (q *Queries) InsertPreorder(ctx context.Context, arg InsertPreorderParams) (int32, error) {
+	row := q.db.QueryRow(ctx, insertPreorder, arg.Hashurl, arg.Updatetime)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertPreorderItems = `-- name: InsertPreorderItems :one
 INSERT INTO preorderItems (orderid, productid, size, quantity)
 VALUES ($1, $2, $3, 1)
 RETURNING id
 `
 
-type InsertPreorderParams struct {
+type InsertPreorderItemsParams struct {
 	Orderid   int32       `json:"orderid"`
 	Productid int32       `json:"productid"`
 	Size      pgtype.Text `json:"size"`
 }
 
-func (q *Queries) InsertPreorder(ctx context.Context, arg InsertPreorderParams) (int32, error) {
-	row := q.db.QueryRow(ctx, insertPreorder, arg.Orderid, arg.Productid, arg.Size)
+func (q *Queries) InsertPreorderItems(ctx context.Context, arg InsertPreorderItemsParams) (int32, error) {
+	row := q.db.QueryRow(ctx, insertPreorderItems, arg.Orderid, arg.Productid, arg.Size)
 	var id int32
 	err := row.Scan(&id)
 	return id, err
+}
+
+const selectQuantityFromPreorderItems = `-- name: SelectQuantityFromPreorderItems :one
+SELECT quantity
+FROM preorderitems
+WHERE orderid = $1
+    AND size = $2
+    AND productid = $3
+`
+
+type SelectQuantityFromPreorderItemsParams struct {
+	Orderid   int32       `json:"orderid"`
+	Size      pgtype.Text `json:"size"`
+	Productid int32       `json:"productid"`
+}
+
+func (q *Queries) SelectQuantityFromPreorderItems(ctx context.Context, arg SelectQuantityFromPreorderItemsParams) (int32, error) {
+	row := q.db.QueryRow(ctx, selectQuantityFromPreorderItems, arg.Orderid, arg.Size, arg.Productid)
+	var quantity int32
+	err := row.Scan(&quantity)
+	return quantity, err
+}
+
+const updatePreorderItems = `-- name: UpdatePreorderItems :exec
+UPDATE preorderItems
+SET quantity = $1
+WHERE orderid = $2
+    AND size = $3
+    AND productid = $4
+`
+
+type UpdatePreorderItemsParams struct {
+	Quantity  int32       `json:"quantity"`
+	Orderid   int32       `json:"orderid"`
+	Size      pgtype.Text `json:"size"`
+	Productid int32       `json:"productid"`
+}
+
+func (q *Queries) UpdatePreorderItems(ctx context.Context, arg UpdatePreorderItemsParams) error {
+	_, err := q.db.Exec(ctx, updatePreorderItems,
+		arg.Quantity,
+		arg.Orderid,
+		arg.Size,
+		arg.Productid,
+	)
+	return err
 }

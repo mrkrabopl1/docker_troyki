@@ -65,6 +65,19 @@ func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) 
 	return id, err
 }
 
+const createUniqueCustomer = `-- name: CreateUniqueCustomer :one
+INSERT INTO uniquecustomers (creationTime, history)
+VALUES ($1, '{}')
+RETURNING id
+`
+
+func (q *Queries) CreateUniqueCustomer(ctx context.Context, creationtime pgtype.Date) (int32, error) {
+	row := q.db.QueryRow(ctx, createUniqueCustomer, creationtime)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
 const deleteFromVerifivation = `-- name: DeleteFromVerifivation :exec
 DELETE FROM verification
 WHERE id = $1

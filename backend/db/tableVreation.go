@@ -117,21 +117,21 @@ func (s *PostgresStore) CreateTables(ctx context.Context) {
 	)`)
 
 	// _, err := db.Exec(`
-	// 	CREATE TYPE status_enum AS ENUM ('pending', 'approved', 'rejected');
-	// 	CREATE TYPE delivery_enum AS ENUM ('own', 'express', 'cdek');
-	// 	CREATE TABLE Orders (
-	// 		id serial PRIMARY KEY,
-	// 		CustomerID INT,
-	// 		UnregisterCustomerID INT,
-	// 		OrderDate DATE  NOT NULL,
-	// 		Status status_enum  NOT NULL,
-	// 		Hash TEXT  NOT NULL,
-	// 		DeliveryPrice INT  NOT NULL,
-	// 		DeliveryType delivery_enum  NOT NULL,
-	// 		FOREIGN KEY (CustomerID) REFERENCES Customers(id),
-	// 		FOREIGN KEY (UnregisterCustomerID) REFERENCES unregistercustomer(id)
+	// CREATE TYPE status_enum AS ENUM ('pending', 'approved', 'rejected');
+	// CREATE TYPE delivery_enum AS ENUM ('own', 'express', 'cdek');
+	// CREATE TABLE Orders (
+	// 	id serial PRIMARY KEY,
+	// 	CustomerID INT,
+	// 	UnregisterCustomerID INT,
+	// 	OrderDate DATE  NOT NULL,
+	// 	Status status_enum  NOT NULL,
+	// 	Hash TEXT  NOT NULL,
+	// 	DeliveryPrice INT  NOT NULL,
+	// 	DeliveryType delivery_enum  NOT NULL,
+	// 	FOREIGN KEY (CustomerID) REFERENCES Customers(id),
+	// 	FOREIGN KEY (UnregisterCustomerID) REFERENCES unregistercustomer(id)
 
-	// 	);
+	// );
 	// 	`)
 
 	fmt.Println(err, "dm;skfmsdkfmskdmflksdmf")

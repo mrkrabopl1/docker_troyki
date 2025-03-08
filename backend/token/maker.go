@@ -1,6 +1,7 @@
 package token
 
 import (
+	"net/http"
 	"time"
 )
 
@@ -11,4 +12,6 @@ type Maker interface {
 
 	// VerifyToken checks if the token is valid or not
 	VerifyToken(token string) (*Payload, error)
+	CreateJWTCoockie(userid int32, identifier string, duration time.Duration) (http.Cookie, error)
+	CreateCoockie(token string, identifier string, duration time.Duration) (http.Cookie, error)
 }

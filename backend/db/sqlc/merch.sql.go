@@ -44,161 +44,97 @@ func (q *Queries) GetCointIdByName(ctx context.Context, dollar_1 string) ([]GetC
 	return items, nil
 }
 
-const getCollections = `-- name: GetCollections :many
-SELECT COALESCE(discount.minprice, snickers.minprice) AS minprice,
-    snickers.id,
-    image_path,
-    name,
-    firm,
-    maxdiscprice
-FROM snickers
-    LEFT JOIN discount ON snickers.id = productid
-WHERE firm = ANY(CAST($1 AS text []))
-    OR line = $2
-LIMIT $3 OFFSET $4
-`
-
-type GetCollectionsParams struct {
-	Column1 []string `json:"column_1"`
-	Line    string   `json:"line"`
-	Limit   int32    `json:"limit"`
-	Offset  int32    `json:"offset"`
-}
-
-type GetCollectionsRow struct {
-	Minprice     int32       `json:"minprice"`
-	ID           int32       `json:"id"`
-	ImagePath    string      `json:"image_path"`
-	Name         string      `json:"name"`
-	Firm         string      `json:"firm"`
-	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-}
-
-func (q *Queries) GetCollections(ctx context.Context, arg GetCollectionsParams) ([]GetCollectionsRow, error) {
-	rows, err := q.db.Query(ctx, getCollections,
-		arg.Column1,
-		arg.Line,
-		arg.Limit,
-		arg.Offset,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetCollectionsRow
-	for rows.Next() {
-		var i GetCollectionsRow
-		if err := rows.Scan(
-			&i.Minprice,
-			&i.ID,
-			&i.ImagePath,
-			&i.Name,
-			&i.Firm,
-			&i.Maxdiscprice,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getFiltersByString = `-- name: GetFiltersByString :many
-SELECT MIN(minprice) min,
-    MAX(maxprice) max,
-    COUNT("3.5") name_data2,
-    COUNT("4") name_data3,
-    COUNT("4.5") name_data4,
-    COUNT("5") name_data5,
-    COUNT("5.5") name_data6,
-    COUNT("6") name_data7,
-    COUNT("6.5") name_data8,
-    COUNT("7") name_data9,
-    COUNT("7.5") name_data10,
-    COUNT("8") name_data11,
-    COUNT("8.5") name_data12,
-    COUNT("9") name_data13,
-    COUNT("9.5") name_data163,
-    COUNT("10") name_data14,
-    COUNT("10.5") name_data15,
-    COUNT("11") name_data16,
-    COUNT("11.5") name_data17,
-    COUNT("12") name_data18,
-    COUNT("12.5") name_data19,
-    COUNT("13") name_data20
-FROM snickers
-WHERE name ILIKE '%' || CAST($1 AS text) || '%'
+const getFiltersByString = `-- name: GetFiltersByString :one
+WITH firm_counts AS (
+    SELECT s.firm, COUNT(s.id) AS firm_count
+    FROM snickers AS s
+    WHERE s.name ILIKE '%' || $1::text || '%'
+    GROUP BY s.firm
+)
+SELECT
+    COUNT(s."3.5") AS size_35,
+    COUNT(s."4") AS size_4,
+    COUNT(s."4.5") AS size_45,
+    COUNT(s."5") AS size_5,
+    COUNT(s."5.5") AS size_55,
+    COUNT(s."6") AS size_6,
+    COUNT(s."6.5") AS size_65,
+    COUNT(s."7") AS size_7,
+    COUNT(s."7.5") AS size_75,
+    COUNT(s."8") AS size_8,
+    COUNT(s."8.5") AS size_85,
+    COUNT(s."9") AS size_9,
+    COUNT(s."9.5") AS size_95,
+    COUNT(s."10") AS size_10,
+    COUNT(s."10.5") AS size_105,
+    COUNT(s."11") AS size_11,
+    COUNT(s."11.5") AS size_115,
+    COUNT(s."12") AS size_12,
+    COUNT(s."12.5") AS size_125,
+    COUNT(s."13") AS size_13,
+    MIN(s.minprice) AS min,
+    MAX(s.maxprice) AS max,
+    jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) AS firm_count_map
+FROM snickers AS s
+LEFT JOIN firm_counts fc ON s.firm = fc.firm
+WHERE s.name ILIKE '%' || $1::text || '%'
 `
 
 type GetFiltersByStringRow struct {
-	Min         interface{} `json:"min"`
-	Max         interface{} `json:"max"`
-	NameData2   int64       `json:"name_data2"`
-	NameData3   int64       `json:"name_data3"`
-	NameData4   int64       `json:"name_data4"`
-	NameData5   int64       `json:"name_data5"`
-	NameData6   int64       `json:"name_data6"`
-	NameData7   int64       `json:"name_data7"`
-	NameData8   int64       `json:"name_data8"`
-	NameData9   int64       `json:"name_data9"`
-	NameData10  int64       `json:"name_data10"`
-	NameData11  int64       `json:"name_data11"`
-	NameData12  int64       `json:"name_data12"`
-	NameData13  int64       `json:"name_data13"`
-	NameData163 int64       `json:"name_data163"`
-	NameData14  int64       `json:"name_data14"`
-	NameData15  int64       `json:"name_data15"`
-	NameData16  int64       `json:"name_data16"`
-	NameData17  int64       `json:"name_data17"`
-	NameData18  int64       `json:"name_data18"`
-	NameData19  int64       `json:"name_data19"`
-	NameData20  int64       `json:"name_data20"`
+	Size35       int64       `json:"size_35"`
+	Size4        int64       `json:"size_4"`
+	Size45       int64       `json:"size_45"`
+	Size5        int64       `json:"size_5"`
+	Size55       int64       `json:"size_55"`
+	Size6        int64       `json:"size_6"`
+	Size65       int64       `json:"size_65"`
+	Size7        int64       `json:"size_7"`
+	Size75       int64       `json:"size_75"`
+	Size8        int64       `json:"size_8"`
+	Size85       int64       `json:"size_85"`
+	Size9        int64       `json:"size_9"`
+	Size95       int64       `json:"size_95"`
+	Size10       int64       `json:"size_10"`
+	Size105      int64       `json:"size_105"`
+	Size11       int64       `json:"size_11"`
+	Size115      int64       `json:"size_115"`
+	Size12       int64       `json:"size_12"`
+	Size125      int64       `json:"size_125"`
+	Size13       int64       `json:"size_13"`
+	Min          interface{} `json:"min"`
+	Max          interface{} `json:"max"`
+	FirmCountMap []byte      `json:"firm_count_map"`
 }
 
-func (q *Queries) GetFiltersByString(ctx context.Context, dollar_1 string) ([]GetFiltersByStringRow, error) {
-	rows, err := q.db.Query(ctx, getFiltersByString, dollar_1)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetFiltersByStringRow
-	for rows.Next() {
-		var i GetFiltersByStringRow
-		if err := rows.Scan(
-			&i.Min,
-			&i.Max,
-			&i.NameData2,
-			&i.NameData3,
-			&i.NameData4,
-			&i.NameData5,
-			&i.NameData6,
-			&i.NameData7,
-			&i.NameData8,
-			&i.NameData9,
-			&i.NameData10,
-			&i.NameData11,
-			&i.NameData12,
-			&i.NameData13,
-			&i.NameData163,
-			&i.NameData14,
-			&i.NameData15,
-			&i.NameData16,
-			&i.NameData17,
-			&i.NameData18,
-			&i.NameData19,
-			&i.NameData20,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) GetFiltersByString(ctx context.Context, dollar_1 string) (GetFiltersByStringRow, error) {
+	row := q.db.QueryRow(ctx, getFiltersByString, dollar_1)
+	var i GetFiltersByStringRow
+	err := row.Scan(
+		&i.Size35,
+		&i.Size4,
+		&i.Size45,
+		&i.Size5,
+		&i.Size55,
+		&i.Size6,
+		&i.Size65,
+		&i.Size7,
+		&i.Size75,
+		&i.Size8,
+		&i.Size85,
+		&i.Size9,
+		&i.Size95,
+		&i.Size10,
+		&i.Size105,
+		&i.Size11,
+		&i.Size115,
+		&i.Size12,
+		&i.Size125,
+		&i.Size13,
+		&i.Min,
+		&i.Max,
+		&i.FirmCountMap,
+	)
+	return i, err
 }
 
 const getFirms = `-- name: GetFirms :many
@@ -237,17 +173,19 @@ const getSnickersByFirmName = `-- name: GetSnickersByFirmName :many
 SELECT name,
     image_path,
     snickers.id,
-    value
+    value,
+    article
 FROM snickers
     LEFT JOIN discount ON snickers.id = productid
 WHERE firm = $1
 `
 
 type GetSnickersByFirmNameRow struct {
-	Name      string `json:"name"`
-	ImagePath string `json:"image_path"`
-	ID        int32  `json:"id"`
-	Value     []byte `json:"value"`
+	Name      string      `json:"name"`
+	ImagePath string      `json:"image_path"`
+	ID        int32       `json:"id"`
+	Value     []byte      `json:"value"`
+	Article   pgtype.Text `json:"article"`
 }
 
 func (q *Queries) GetSnickersByFirmName(ctx context.Context, firm string) ([]GetSnickersByFirmNameRow, error) {
@@ -264,6 +202,7 @@ func (q *Queries) GetSnickersByFirmName(ctx context.Context, firm string) ([]Get
 			&i.ImagePath,
 			&i.ID,
 			&i.Value,
+			&i.Article,
 		); err != nil {
 			return nil, err
 		}
@@ -284,7 +223,7 @@ SELECT snickers.minPrice,
     maxdiscprice
 FROM snickers
     LEFT JOIN discount ON snickers.id = productid
-WHERE snickers.id = ANY($1)
+WHERE snickers.id = ANY($1::int32[])
 `
 
 type GetSnickersByIdsRow struct {
@@ -296,8 +235,8 @@ type GetSnickersByIdsRow struct {
 	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
 }
 
-func (q *Queries) GetSnickersByIds(ctx context.Context, id int32) ([]GetSnickersByIdsRow, error) {
-	rows, err := q.db.Query(ctx, getSnickersByIds, id)
+func (q *Queries) GetSnickersByIds(ctx context.Context, dollar_1 []interface{}) ([]GetSnickersByIdsRow, error) {
+	rows, err := q.db.Query(ctx, getSnickersByIds, dollar_1)
 	if err != nil {
 		return nil, err
 	}
@@ -423,17 +362,23 @@ const getSnickersInfoById = `-- name: GetSnickersInfoById :one
 SELECT info,
     image_path,
     name,
-    value
+    value,
+    article,
+    description,
+    date
 FROM snickers
     LEFT JOIN discount ON snickers.id = productid
 WHERE snickers.id = $1
 `
 
 type GetSnickersInfoByIdRow struct {
-	Info      []byte `json:"info"`
-	ImagePath string `json:"image_path"`
-	Name      string `json:"name"`
-	Value     []byte `json:"value"`
+	Info        []byte      `json:"info"`
+	ImagePath   string      `json:"image_path"`
+	Name        string      `json:"name"`
+	Value       []byte      `json:"value"`
+	Article     pgtype.Text `json:"article"`
+	Description pgtype.Text `json:"description"`
+	Date        pgtype.Text `json:"date"`
 }
 
 func (q *Queries) GetSnickersInfoById(ctx context.Context, id int32) (GetSnickersInfoByIdRow, error) {
@@ -444,8 +389,61 @@ func (q *Queries) GetSnickersInfoById(ctx context.Context, id int32) (GetSnicker
 		&i.ImagePath,
 		&i.Name,
 		&i.Value,
+		&i.Article,
+		&i.Description,
+		&i.Date,
 	)
 	return i, err
+}
+
+const getSnickersWithDiscount = `-- name: GetSnickersWithDiscount :many
+SELECT snickers.minPrice,
+    snickers.qId,
+    snickers.id,
+    image_path,
+    name,
+    firm,
+    maxdiscprice
+FROM snickers
+    JOIN discount ON snickers.id = productid
+`
+
+type GetSnickersWithDiscountRow struct {
+	Minprice     int32       `json:"minprice"`
+	Qid          string      `json:"qid"`
+	ID           int32       `json:"id"`
+	ImagePath    string      `json:"image_path"`
+	Name         string      `json:"name"`
+	Firm         string      `json:"firm"`
+	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
+}
+
+func (q *Queries) GetSnickersWithDiscount(ctx context.Context) ([]GetSnickersWithDiscountRow, error) {
+	rows, err := q.db.Query(ctx, getSnickersWithDiscount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSnickersWithDiscountRow
+	for rows.Next() {
+		var i GetSnickersWithDiscountRow
+		if err := rows.Scan(
+			&i.Minprice,
+			&i.Qid,
+			&i.ID,
+			&i.ImagePath,
+			&i.Name,
+			&i.Firm,
+			&i.Maxdiscprice,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getSoloCollection = `-- name: GetSoloCollection :many

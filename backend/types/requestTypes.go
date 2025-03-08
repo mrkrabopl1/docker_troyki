@@ -1,11 +1,11 @@
 package types
 
 type DeleteCartData struct {
-	PreorderId int `json:"preorderid"`
+	PreorderId int32 `json:"preorderid"`
 }
 type PreorderType struct {
-	Id   int               `json:"id"`
-	Info map[string]string `json:"info"`
+	Id   int32  `json:"id"`
+	Size string `json:"info"`
 }
 
 type UpdataPreorderType struct {
@@ -58,7 +58,7 @@ type PostDataCollection struct {
 }
 type PostData struct {
 	Name string `json:"name"`
-	Max  int    `json:"max"`
+	Max  int32  `json:"max"`
 }
 type PostDataSnickersAndFiltersByString struct {
 	// Define your struct to represent the JSON data
@@ -76,6 +76,6 @@ type ChangePassType struct {
 	OldPass string `json:"oldPass"`
 }
 type OrderRequest struct {
-	OrderId int    `json:"orderId"`
+	OrderId int32  `json:"orderId"`
 	Mail    string `json:"mail"`
 }

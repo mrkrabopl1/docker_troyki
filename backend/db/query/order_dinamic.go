@@ -3,21 +3,20 @@ package query
 import (
 	"fmt"
 
-	db "github.com/mrkrabopl1/go_db/db/sqlc"
 	"github.com/mrkrabopl1/go_db/types"
 )
 
-func GetSnickersOrderDataQuery(snickersPreorder []db.GetPreorderDataByIdRow) string {
-	var conditionStr string
-	for _, sn := range snickersPreorder {
-		if conditionStr == "" {
-			conditionStr += fmt.Sprintf(`SELECT id, %d AS prid, name ,firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers WHERE id = %d `, sn.Id, sn.Size, sn.Size, sn.Quantity, sn.PrId)
-		} else {
-			conditionStr += fmt.Sprintf(`UNION ALL SELECT id, %d AS prid, name , firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers  WHERE id = %d `, sn.Id, sn.Size, sn.Size, sn.Quantity, sn.PrId)
-		}
-	}
-	return conditionStr
-}
+// func GetSnickersOrderDataQuery(snickersPreorder []GetPreorderDataByIdRow) string {
+// 	var conditionStr string
+// 	for _, sn := range snickersPreorder {
+// 		if conditionStr == "" {
+// 			conditionStr += fmt.Sprintf(`SELECT id, %d AS prid, name ,firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers WHERE id = %d `, sn.Id, sn.Size, sn.Size, sn.Quantity, sn.PrId)
+// 		} else {
+// 			conditionStr += fmt.Sprintf(`UNION ALL SELECT id, %d AS prid, name , firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers  WHERE id = %d `, sn.Id, sn.Size, sn.Size, sn.Quantity, sn.PrId)
+// 		}
+// 	}
+// 	return conditionStr
+// }
 
 type Products struct {
 	Size      string `db:"size"`
@@ -25,7 +24,7 @@ type Products struct {
 	Productid int    `db:"productid"`
 }
 
-func InsertIntoOrderItemsQuery(products []types.ProductsInsert, orderID int) string {
+func InsertOrderItemsQuery(products []types.ProductsInsert, orderID int) string {
 	queryString := "INSERT INTO orderItems (productid, quantity, size, orderid) VALUES "
 	count := 0
 	for _, product := range products {

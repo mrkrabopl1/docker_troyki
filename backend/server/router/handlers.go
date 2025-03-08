@@ -668,6 +668,7 @@ func (s *Server) handleSearchMerch(w http.ResponseWriter, r *http.Request) {
 		log.WithCaller().Err(err)
 		return
 	}
+
 	searchData, _ := s.store.GetSnickersByName(r.Context(), postData.Name, postData.Max)
 	response := NewSnickersSearchResponse(searchData)
 	render.JSON(w, r, response)

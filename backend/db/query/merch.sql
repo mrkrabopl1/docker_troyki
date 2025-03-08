@@ -7,7 +7,8 @@ GROUP BY firm;
 SELECT name,
     image_path,
     snickers.id,
-    value
+    value,
+    article
 FROM snickers
     LEFT JOIN discount ON snickers.id = productid
 WHERE firm = $1;
@@ -19,31 +20,40 @@ SELECT line,
 FROM snickers
 WHERE line = $1
 GROUP BY line;
--- name: GetFiltersByString :many
-SELECT MIN(minprice) min,
-    MAX(maxprice) max,
-    COUNT("3.5") name_data2,
-    COUNT("4") name_data3,
-    COUNT("4.5") name_data4,
-    COUNT("5") name_data5,
-    COUNT("5.5") name_data6,
-    COUNT("6") name_data7,
-    COUNT("6.5") name_data8,
-    COUNT("7") name_data9,
-    COUNT("7.5") name_data10,
-    COUNT("8") name_data11,
-    COUNT("8.5") name_data12,
-    COUNT("9") name_data13,
-    COUNT("9.5") name_data163,
-    COUNT("10") name_data14,
-    COUNT("10.5") name_data15,
-    COUNT("11") name_data16,
-    COUNT("11.5") name_data17,
-    COUNT("12") name_data18,
-    COUNT("12.5") name_data19,
-    COUNT("13") name_data20
-FROM snickers
-WHERE name ILIKE '%' || CAST($1 AS text) || '%';
+-- name: GetFiltersByString :one
+WITH firm_counts AS (
+    SELECT s.firm, COUNT(s.id) AS firm_count
+    FROM snickers AS s
+    WHERE s.name ILIKE '%' || $1::text || '%'
+    GROUP BY s.firm
+)
+SELECT
+    COUNT(s."3.5") AS size_35,
+    COUNT(s."4") AS size_4,
+    COUNT(s."4.5") AS size_45,
+    COUNT(s."5") AS size_5,
+    COUNT(s."5.5") AS size_55,
+    COUNT(s."6") AS size_6,
+    COUNT(s."6.5") AS size_65,
+    COUNT(s."7") AS size_7,
+    COUNT(s."7.5") AS size_75,
+    COUNT(s."8") AS size_8,
+    COUNT(s."8.5") AS size_85,
+    COUNT(s."9") AS size_9,
+    COUNT(s."9.5") AS size_95,
+    COUNT(s."10") AS size_10,
+    COUNT(s."10.5") AS size_105,
+    COUNT(s."11") AS size_11,
+    COUNT(s."11.5") AS size_115,
+    COUNT(s."12") AS size_12,
+    COUNT(s."12.5") AS size_125,
+    COUNT(s."13") AS size_13,
+    MIN(s.minprice) AS min,
+    MAX(s.maxprice) AS max,
+    jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) AS firm_count_map
+FROM snickers AS s
+LEFT JOIN firm_counts fc ON s.firm = fc.firm
+WHERE s.name ILIKE '%' || $1::text || '%';
 -- name: GetCointIdByName :many
 SELECT firm,
     COUNT(id) count
@@ -54,7 +64,10 @@ GROUP BY $1;
 SELECT info,
     image_path,
     name,
-    value
+    value,
+    article,
+    description,
+    date
 FROM snickers
     LEFT JOIN discount ON snickers.id = productid
 WHERE snickers.id = $1;
@@ -68,18 +81,6 @@ SELECT COALESCE(discount.minprice, snickers.minprice) AS minprice,
 FROM snickers
     LEFT JOIN discount ON snickers.id = productid
 WHERE firm = $1
-    OR line = $2
-LIMIT $3 OFFSET $4;
--- name: GetCollections :many
-SELECT COALESCE(discount.minprice, snickers.minprice) AS minprice,
-    snickers.id,
-    image_path,
-    name,
-    firm,
-    maxdiscprice
-FROM snickers
-    LEFT JOIN discount ON snickers.id = productid
-WHERE firm = ANY(CAST($1 AS text []))
     OR line = $2
 LIMIT $3 OFFSET $4;
 -- name: GetSnickersByName :many
@@ -102,4 +103,14 @@ SELECT snickers.minPrice,
     maxdiscprice
 FROM snickers
     LEFT JOIN discount ON snickers.id = productid
-WHERE snickers.id = ANY($1);
+WHERE snickers.id = ANY($1::int32[]);
+-- name: GetSnickersWithDiscount :many
+SELECT snickers.minPrice,
+    snickers.qId,
+    snickers.id,
+    image_path,
+    name,
+    firm,
+    maxdiscprice
+FROM snickers
+    JOIN discount ON snickers.id = productid;

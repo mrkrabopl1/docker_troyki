@@ -9,8 +9,9 @@ const logImport = function (data:{login:string,password:string},callback:(val:an
 axios.post(`http://127.0.0.1:8000/registr`,jsonData ,{headers:{"content-type":"application/json"}}).then((res)=>{
     console.log(res.status)
     callback(res.data) 
-}
-)
+}, (error) => {
+    console.warn(error)
+})
 
 }
 

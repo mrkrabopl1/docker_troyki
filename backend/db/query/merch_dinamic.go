@@ -68,3 +68,25 @@ func GetOrderedSnickersByFiltersQuery(name string, filters types.SnickersFilterS
 	orderString := createOrderString(orderType)
 	return fmt.Sprintf(`SELECT snickers.id, image_path, name, firm, snickers.minprice , maxdiscprice FROM snickers  LEFT JOIN discount ON snickers.id = productid WHERE name ILIKE '%%%s%%' %s  %s LIMIT %d OFFSET %d`, name, filterString, orderString, limit, offset)
 }
+
+func GetOrderedSnickersByFString(name string, filters types.SnickersFilterStruct, orderType int, limit int, offset int) string {
+	filterString := createFilterQuery(filters)
+	orderString := createOrderString(orderType)
+	return fmt.Sprintf(`SELECT snickers.id, image_path, name, firm, snickers.minprice , maxdiscprice FROM snickers  LEFT JOIN discount ON snickers.id = productid WHERE name ILIKE '%%%s%%' %s  %s LIMIT %d OFFSET %d`, name, filterString, orderString, limit, offset)
+}
+
+func GetCollections(names []string, end int, offset int) string {
+
+	// Build placeholders for the IN clause
+	namesStr := ""
+	for i, name := range names {
+		if i == 0 {
+			namesStr += fmt.Sprintf("'%s'", name)
+		} else {
+			namesStr += fmt.Sprintf(",'%s'", name)
+		}
+	}
+
+	return fmt.Sprintf("SELECT COALESCE(discount.minprice, snickers.minprice) AS minprice, snickers.id,  image_path, name, firm, maxdiscprice, line FROM snickers LEFT JOIN discount ON snickers.id = productid WHERE firm IN (%s) OR line IN (%s) LIMIT %d OFFSET %d", namesStr, namesStr, end, offset)
+
+}

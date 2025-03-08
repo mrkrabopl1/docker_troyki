@@ -23,12 +23,14 @@ services:
       dockerfile: go.dockerfile
     environment:
       DATABASE_URL: 'postgres://postgres:s8121996@postgres_db:5432/troyki?sslmode=disable'
+      REDIS_ADDRESS: 'redis:6379'
     expose:
       - "8100"
     ports:
       - '8100:8100'
     depends_on:
       - postgres_db
+      - redis
     networks:
       - postgres_bridge
       - front_networks
@@ -87,6 +89,13 @@ services:
         limits:
           cpus: '1'
           memory: 4G
+    networks:
+      - postgres_bridge
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
     networks:
       - postgres_bridge
   pgadmin:

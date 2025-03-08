@@ -78,10 +78,10 @@ const SnickersInfo: React.FC = () => {
 
     const setMerchInfoHandler = (val: any) => {
         pricesArr.current= [];
-        const info = JSON.parse(val.info)
+        const info = val.info
         let discountParse = null;
         if (val.discount) {
-            discountParse = JSON.parse(val.discount)
+            discountParse = val.discount
         }
         currentSize.current = Object.keys(info)[0]
         let dPr = 0;

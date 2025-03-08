@@ -179,7 +179,9 @@ const changeUserPass= function (data: changePassType, callback: (val: any) => vo
       }
       ).then((res: any) => {
        callback(res)
-      })
+      }, (error) => {
+        console.warn(error)
+    })
  }
 
 
@@ -191,7 +193,9 @@ const changeUserPass= function (data: changePassType, callback: (val: any) => vo
       }
       ).then((res: any) => {
        callback(res)
-      })
+      }, (error) => {
+        console.warn(error)
+    })
  }
 
  const unlogin =function(callback: (val: any) => void){
@@ -203,7 +207,9 @@ const changeUserPass= function (data: changePassType, callback: (val: any) => vo
       }
       ).then((res: any) => {
        callback(res)
-      })
+      }, (error) => {
+        console.warn(error)
+    })
  }
 
  const setUniqueCustomer = function(callback: (val: any) => void){
@@ -215,7 +221,9 @@ const changeUserPass= function (data: changePassType, callback: (val: any) => vo
       }
       ).then((res: any) => {
        callback(res.data)
-      })
+      }, (error) => {
+        console.warn(error)
+    })
  }
 
  const checkCustomerData =function(callback: (val: any) => void){
@@ -227,7 +235,9 @@ const changeUserPass= function (data: changePassType, callback: (val: any) => vo
       }
       ).then((res: any) => {
        callback(res.data)
-      })
+      }, (error) => {
+        console.warn(error)
+    })
  }
 
 export { registerUser, getUserData, verifyEmail, loginUser, changeUserData, changeUserPass, jwtAutorise, updatePass,verifyChangePass,changForgetPass, unlogin,checkCustomerData, setUniqueCustomer }

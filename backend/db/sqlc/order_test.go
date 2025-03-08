@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/mrkrabopl1/go_db/types"
 
 	"github.com/stretchr/testify/require"
 )
@@ -25,12 +24,20 @@ func TestGetPreorderIdByHashUrl(t *testing.T) {
 	require.NotEmpty(t, preorder)
 }
 func TestGetSnickersOrderData(t *testing.T) {
-	preorder, err := testStore.GetSnickersOrderData(context.Background(), []types.SnickersPreorder{
-		types.SnickersPreorder{
-			Size:     "10",
-			Quantity: 10,
-			Id:       2,
-			PrId:     35,
+	textValue := pgtype.Text{
+		String: "10",
+		Valid:  true, // Mark as valid (not NULL)
+	}
+	preorder, err := testStore.GetSnickersOrderData(context.Background(), []GetOrderDataByIdRow{
+		GetOrderDataByIdRow{
+			Size: textValue,
+			Quantity: pgtype.Int4{
+				Int32: 10,
+			},
+			ID: 2,
+			Prid: pgtype.Int4{
+				Int32: 35,
+			},
 		},
 	})
 	fmt.Println(preorder, err)
@@ -44,14 +51,12 @@ func TestGetOrderIdByHashUrl(t *testing.T) {
 	require.NotEmpty(t, preorder)
 }
 func TestInsertPreorder(t *testing.T) {
-	textValue := pgtype.Text{
-		String: "10",
-		Valid:  true, // Mark as valid (not NULL)
-	}
+
 	preorder, err := testStore.InsertPreorder(context.Background(), InsertPreorderParams{
-		Orderid:   42,
-		Productid: 1,
-		Size:      textValue,
+		Hashurl: "fdslkfjdslfmlsdnfsd",
+		Updatetime: pgtype.Date{
+			Time: time.Now(),
+		},
 	})
 	fmt.Println(preorder)
 	require.NoError(t, err)
@@ -63,7 +68,7 @@ func TestGetQuantityFromPreorderItems(t *testing.T) {
 		String: "10",
 		Valid:  true, // Mark as valid (not NULL)
 	}
-	preorder, err := testStore.GetQuantityFromPreorderItems(context.Background(), GetQuantityFromPreorderItemsParams{
+	preorder, err := testStore.SelectQuantityFromPreorderItems(context.Background(), SelectQuantityFromPreorderItemsParams{
 		Orderid:   42,
 		Productid: 1,
 		Size:      textValue,
@@ -101,11 +106,11 @@ func TestInsertOrder(t *testing.T) {
 	require.NotEmpty(t, preorder)
 }
 func TestDeleteFromPreorderItems(t *testing.T) {
-	err := testStore.DeleteFromPreorderItems(context.Background(), 30)
+	err := testStore.DeleteCartData(context.Background(), 30)
 	require.NoError(t, err)
 }
 func TestGetOrder(t *testing.T) {
-	orderRow, err := testStore.GetOrder(context.Background(), 30)
+	orderRow, err := testStore.GetOrder(context.Background(), "fsldkfnsdlflskdmf;sdl")
 	require.NoError(t, err)
 	require.NotEmpty(t, orderRow)
 }

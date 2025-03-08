@@ -20,11 +20,12 @@ const ComplexDropMenuWithRequest: React.FC<MerchMenuInterface> = (props) => {
   let [merchFieldData, setMerchFieldData] = useState<any>([])
   const setFirmsData = (firms) => {
     let collectionsData = [];
-    let colVal = Object.values(firms);
-    colVal.forEach(cols => {
-      collectionsData = collectionsData.concat(cols)
+    let fieldData = {};
+    firms.forEach((cols:any) => {
+      fieldData[cols.firm] = cols.array_of_data;
+      collectionsData = collectionsData.concat(cols.array_of_data)
     })
-    setMerchFieldData(firms)
+    setMerchFieldData(fieldData)
     dispatch(collections(collectionsData))
   }
   useEffect(() => {

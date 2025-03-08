@@ -2,6 +2,7 @@ package token
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/o1egl/paseto"
@@ -54,4 +55,41 @@ func (maker *PasetoMaker) VerifyToken(token string) (*Payload, error) {
 	}
 
 	return payload, nil
+}
+
+func (maker *PasetoMaker) CreateJWTCoockie(userid int32, identifier string, duration time.Duration) (http.Cookie, error) {
+	token, _, err := maker.CreateToken(userid, duration)
+	var myCookie http.Cookie
+	if err != nil {
+		//log.WithCaller().Err(err)
+		return myCookie, err
+	}
+	myCookie = http.Cookie{
+		Name:  identifier,
+		Value: token,
+		//Expires:  expirationTime,
+		Path:     "/",
+		MaxAge:   3600,
+		HttpOnly: false,
+		Secure:   false,
+		// SameSite: http.SameSiteNoneMode,
+		// Domain:   "localhost:3000",
+	}
+	return myCookie, nil
+}
+
+func (maker *PasetoMaker) CreateCoockie(token string, identifier string, duration time.Duration) (http.Cookie, error) {
+	var myCookie http.Cookie
+	myCookie = http.Cookie{
+		Name:  identifier,
+		Value: token,
+		//Expires:  expirationTime,
+		Path:     "/",
+		MaxAge:   3600,
+		HttpOnly: false,
+		Secure:   false,
+		// SameSite: http.SameSiteNoneMode,
+		// Domain:   "localhost:3000",
+	}
+	return myCookie, nil
 }
