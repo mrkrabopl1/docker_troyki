@@ -67,8 +67,8 @@ const SendForm: React.FC<sendFormModuleInterface> = (props) => {
         addressFormMemo.current = !addressFormMemo.current
         extend(formData.current, formValue)
         extend(unvalidFormData.current, formValue)
-        setRefresh(!refresh)
-    },[formValue])
+        setRefresh(prev=>!prev)
+    },[])
 
     const setFormData = (data: string, name: string) => {
         formData.current[name] = data
@@ -76,10 +76,10 @@ const SendForm: React.FC<sendFormModuleInterface> = (props) => {
     useEffect(() => {
         if (!firstUpdate.current) {
             updateValidObj()
-            setRefresh(!refresh)
+            setRefresh(prev=>!prev)
         }
         firstUpdate.current = false
-    }, [valid])
+    }, [])
     const updateValidObj = () => {
         let entries = Object.entries(formData.current)
         for (let i = 0; i < entries.length; i++) {

@@ -17,7 +17,7 @@ const FinalPage: React.FC = () => {
     let { hash } = useParams<urlParamsType>();
     let [snickers,setSnickers] = useState<any>([])
     useEffect(() => {
-        getCartData(hash, setSnickers)
+        getCartData(setSnickers)
     }, [])
     return (
         <div style={{ display: "flex" }}>

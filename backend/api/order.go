@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
 	"github.com/mrkrabopl1/go_db/types"
+	"github.com/mrkrabopl1/go_db/worker"
 )
 
 func (s *Server) handleCreatePreorder(ctx *gin.Context) {
@@ -17,13 +18,30 @@ func (s *Server) handleCreatePreorder(ctx *gin.Context) {
 		return
 	}
 
-	hashUrl, _ := s.store.CreatePreorder(ctx, preorderData.Id, preorderData.Size)
+	fmt.Println(preorderData.Size)
 
+	hashUrl, err := s.store.CreatePreorder(ctx, preorderData.Id, preorderData.Size)
+
+	if err != nil {
+		//log.WithCaller().Err(err)
+		fmt.Println(err)
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
 	// Print the result and the time taken
 
-	data := map[string]string{
-		"hashUrl": hashUrl,
+	myCookie, err := s.tokenMaker.CreateCoockie(hashUrl, "cart", 36000)
+
+	if err != nil {
+		//log.WithCaller().Err(err)
+		fmt.Println(err, "coockieError")
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
 	}
+	fmt.Println(myCookie, "myCookie")
+	ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
+
+	data := hashUrl
 	ctx.JSON(http.StatusOK, data)
 }
 
@@ -39,6 +57,7 @@ func (s *Server) handleCreateOrder(ctx *gin.Context) {
 	if err != nil {
 		//log.WithCaller().Err(err)
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
 	} else {
 		myCookie, _ := s.tokenMaker.CreateCoockie(hash, hash, 36000)
 		ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
@@ -47,39 +66,66 @@ func (s *Server) handleCreateOrder(ctx *gin.Context) {
 			if err != nil {
 				//log.WithCaller().Err(err)
 				ctx.JSON(http.StatusBadRequest, errorResponse(err))
+				return
 			}
 			ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
 		}
 		data := map[string]interface{}{
 			"hash": hash,
 		}
+		err = s.taskDistributor.DistributeTaskSendOrderEmail(ctx, &worker.PayloadSendOrderEmail{
+			Email:        orderData.PersonalData.Mail,
+			Name:         orderData.PersonalData.Name,
+			Phone:        orderData.PersonalData.Phone,
+			Town:         orderData.Address.Town,
+			Street:       orderData.Address.Street,
+			Index:        orderData.Address.Index,
+			House:        orderData.Address.House,
+			Flat:         orderData.Address.Flat,
+			OrderPrice:   orderData.Delivery.DeliveryPrice,
+			DeliveryType: orderData.Delivery.Type,
+			SecondName:   orderData.PersonalData.SecondName,
+		})
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			return
+		}
 		ctx.JSON(http.StatusOK, data)
 	}
-
 	// Print the result and the time taken
 
 }
 
 func (s *Server) handleUpdatePreorder(ctx *gin.Context) {
+	cookie, err := ctx.Cookie("cart")
+	fmt.Println(err, "fkmdslkfsdlkfms")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+	fmt.Println("yes")
 	var preorderData types.UpdataPreorderType
 	if err := ctx.BindJSON(&preorderData); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-
-	quantity, _ := s.store.UpdatePreorder(ctx, preorderData.Id, preorderData.Size, preorderData.HashUrl)
-
+	fmt.Println("yes1", preorderData)
+	quantity, _ := s.store.UpdatePreorder(ctx, preorderData.Id, preorderData.Size, cookie)
+	fmt.Println("yes3", quantity)
 	// Print the result and the time taken
 
-	data := map[string]int32{
-		"count": quantity,
-	}
-	ctx.JSON(http.StatusOK, data)
+	ctx.JSON(http.StatusOK, quantity)
 }
 func (s *Server) handleGetCartCount(ctx *gin.Context) {
 
-	hashUrl := ctx.Query("hash")
-	quantity, err := s.store.GetCartCount(ctx, hashUrl)
+	cookie, err := ctx.Cookie("cart")
+	if err != nil {
+		fmt.Println(err, "error")
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+	fmt.Println(cookie, "cookie")
+	quantity, err := s.store.GetCartCount(ctx, cookie)
 
 	if err != nil {
 		//log.WithCaller().Err(err)
@@ -87,24 +133,24 @@ func (s *Server) handleGetCartCount(ctx *gin.Context) {
 		return
 	}
 
-	data := map[string]int32{
-		"count": quantity,
-	}
-
 	//log.InfoFields(fmt.Sprintf("count %d", quantity))
 
-	ctx.JSON(http.StatusOK, data)
+	ctx.JSON(http.StatusOK, quantity)
 }
 
 func (s *Server) handleGetCart(ctx *gin.Context) {
-	hashUrl := ctx.Query("hash")
+	cookie, err := ctx.Cookie("cart")
+	fmt.Println(cookie, "cookiefkmdslkfmsdlkfmsdlkfmsdlkmf;;;l")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
 
-	cartData, err := s.store.GetCartData(ctx, hashUrl)
+	cartData, err := s.store.GetCartData(ctx, cookie)
 
 	responseData := SnickersCartResponseWithourFullPrice(cartData)
 
 	if err != nil {
-
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
@@ -134,7 +180,7 @@ func SnickersCartResponseWithourFullPrice(cart []types.SnickersCart) types.FullC
 	fullPrice := 0
 	list := []types.CartResponse{}
 	for _, info := range cart {
-		img_path := info.Image + "/1.jpg"
+		img_path := "images/" + info.Image + "/img1.png"
 
 		fullPrice += info.Price * info.Quantity
 

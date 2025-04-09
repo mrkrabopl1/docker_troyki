@@ -61,12 +61,41 @@ func TestGetSnickersInfoById(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, snickers)
 }
+
+func TestGetSnickersInfoByIdComplex(t *testing.T) {
+	snickers, err := testStore.GetSnickersInfoByIdComplex(context.Background(), 1)
+	fmt.Println(snickers, err)
+	require.NoError(t, err)
+	require.NotEmpty(t, snickers)
+}
 func TestGetSoloCollection(t *testing.T) {
 	snickers, err := testStore.GetSoloCollection(context.Background(), GetSoloCollectionParams{
 		Firm:   "nike",
 		Line:   "air_jordan_1",
 		Limit:  10,
 		Offset: 0,
+	})
+	fmt.Println(snickers, err)
+	require.NoError(t, err)
+	require.NotEmpty(t, snickers)
+}
+
+func TestGetSoloCollectionWithCount(t *testing.T) {
+	snickers, err := testStore.GetSoloCollectionWithCount(context.Background(), GetSoloCollectionWithCountParams{
+		Firm:   "nike",
+		Line:   "air_jordan_1",
+		Limit:  20,
+		Offset: 10,
+	})
+	fmt.Println(len(snickers), err)
+	require.NoError(t, err)
+	require.NotEmpty(t, snickers)
+}
+
+func TestGetCollectionCount(t *testing.T) {
+	snickers, err := testStore.GetCountOfCollectionsOrFirms(context.Background(), GetCountOfCollectionsOrFirmsParams{
+		Firm: "nike",
+		Line: "air_jordan_1",
 	})
 	fmt.Println(snickers, err)
 	require.NoError(t, err)
@@ -110,7 +139,7 @@ func TestGetSnickersAndFiltersByString(t *testing.T) {
 		Sizes: []string{},
 		Price: []float32{},
 	}
-	snickers, err := testStore.GetSnickersAndFiltersByString(context.Background(), "air", 1, 8, filters, 0)
+	snickers, err := testStore.GetSnickersAndFiltersByString(context.Background(), "bal", 1, 8, filters, 0)
 	fmt.Println(snickers, err)
 	require.NoError(t, err)
 	require.NotEmpty(t, snickers)

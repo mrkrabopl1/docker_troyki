@@ -1,6 +1,6 @@
 import React, { useEffect, ReactElement, useState, useRef } from 'react'
 import {NavLink, useParams } from 'react-router-dom';
-import { getCollection } from "src/providers/merchProvider"
+import { getCollection,getCountCollection } from "src/providers/merchProvider"
 
 import MerchFieldWithPageSwitcher  from 'src/modules/merchField/MerchFieldWithPageSwitcher';
 type urlParamsType = {
@@ -39,15 +39,28 @@ const CollectionPage: React.FC<any> = () => {
             setUpdateData(!updateData)
     }
 
-
-    useEffect(()=>{
+    const getCollectionData=()=>{
         const reqData = {
-            name:collection,
-            page:pages.current,
-            size:pageSize.current
+            name: collection,
+            page: currentPage.current,
+            size: pageSize.current
         }
         getCollection(reqData,getRespData) 
+    }
+
+
+    useEffect(()=>{
+        getCountCollection(collection,(data)=>{
+            pages.current = Math.ceil(data/pageSize.current)
+            const reqData = {
+                name: collection,
+                page: currentPage.current,
+                size: pageSize.current
+            }
+            getCollection(reqData,getRespData) 
+        })
     },[collection])
+
     
 
     const pageWrap = useRef<HTMLDivElement>(null)
@@ -69,6 +82,8 @@ const CollectionPage: React.FC<any> = () => {
 
 
     const pageChange=(page:number)=>{
+        currentPage.current = page;
+        getCollectionData();
         // currentPage.current = page;
         // filtersInfo.current["name"] = searchWord.current;
         // filtersInfo.current["currentPage"] =  currentPage.current;

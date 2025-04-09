@@ -6,7 +6,7 @@
     top: 0;
     height: 100px;
     z-index: 5;
-    background-color: white;
+    background-color: #f8f8f8;
 }
 
 .menuWrapWithList{
@@ -16,7 +16,7 @@
   right: 0;
   top: 0;
   z-index: 5;
-  background-color: white;
+  background-color: #f8f8f8;
 }
 .regPan{
   display: flex;
@@ -55,6 +55,8 @@
   .drop_list{
   
     width: 55%;
+    top:100%;
+    border: solid 1px black;
    
   }
   
@@ -75,7 +77,7 @@
   left:0;
   bottom: 0;
   height: 100px;
-  background-color: white;
+  background-color: #f8f8f8;
   font-family: 'Open Sans', 'Helvetica Neue', 'Segoe UI', 'Calibri', 'Arial', sans-serif;
 }
 .is_hidden {
@@ -87,19 +89,18 @@
 .shopCounter{
   bottom:5px;
   position:absolute;
-  right:3px;
-  background-color: red;
-  width: 15px;
-  height: 15px;
+  right:0px;
+  background-color: black;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   text-align: center;
 }
 .spanShop{
-
-  font-size: 12px;
-
+  font-size: 10px;
   position: absolute;
   margin: auto;
+  color: white;
   left: 0;
   right: 0;
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, ReactElement, useState, useRef, lazy } from 'react'
+import React, { useEffect, ReactElement, useState, useRef, lazy ,useCallback} from 'react'
 import SearchWithList from 'src/modules/searchWithList/SearchWithList'
 import SnickersSettings from 'src/modules/settingsPanels/SnickersSettings'
 import Button from 'src/components/Button'
@@ -52,10 +52,9 @@ const SearchPage: React.FC<any> = () => {
     let searchWord = useRef<string>(state ? state : "")
     let dispatch = useAppDispatch()
     let emtyText = useRef<string>("По запросу ничего не найдено. Проверьте правописание или выберите другие слова либо фразу.")
-
-
-
-
+    let [merchFieldData, setMerchFieldData] = useState<any>([])
+    let [grid, setGrid] = useState<boolean>(false)
+    const pageWrap = useRef<HTMLDivElement>(null)
     let currentPage = useRef<number>(1)
     let pages = useRef<number>(1)
     let pageSize = useRef<number>(6)
@@ -67,11 +66,11 @@ const SearchPage: React.FC<any> = () => {
         },
         checboxsProps: []
     })
-    const updatePage = (respData: any) => {
+    const updatePage = useCallback((respData: any) => {
         if (respData.snickers.length === 0) {
             emptyData.current = true
             emtyText.current = "По запросу ничего не найдено. Проверьте правописание или выберите другие слова либо фразу."
-            setRefresh(!refresh)
+            setRefresh(prev=>!prev)
         } else {
             emptyData.current = false
             pages.current = respData.pages
@@ -80,34 +79,29 @@ const SearchPage: React.FC<any> = () => {
             settingsModuleMemo.current = !settingsModuleMemo.current;
             setMerchFieldData(respData.snickers)
         }
-    }
-    const updatMerch = (respData: any) => {
-        pages.current = respData.pages
-        if (respData.snickers.length === 0) {
-            emptyData.current = true
-            emtyText.current = "По запросу ничего не найдено. Сбросить фильтры"
-            setRefresh(!refresh)
-        } else {
-            emptyData.current = false
-            setMerchFieldData(respData.snickers)
-        }
-    }
+    },[])
     useEffect(() => {
         if (state) {
             searchWord.current = state
             getSnickersAndFiltersByString(state, updatePage, currentPage.current, pageSize.current, filtersInfo.current, orderType.current)
         }
     }, [])
-    let [merchFieldData, setMerchFieldData] = useState<any>([])
-
-    let [grid, setGrid] = useState<boolean>(false)
-
-    const pageWrap = useRef<HTMLDivElement>(null)
-
+    const updatMerch = useCallback( (respData: any) => {
+        pages.current = respData.pages
+        if (respData.snickers.length === 0) {
+            emptyData.current = true
+            emtyText.current = "По запросу ничего не найдено. Сбросить фильтры"
+            setRefresh(prev=>!prev)
+        } else {
+            emptyData.current = false
+            setMerchFieldData(respData.snickers)
+        }
+    },[])
     const searchCallback = (searchData: string) => {
         searchWord.current = searchData;
         getSnickersByString(searchWord.current, updatMerch, currentPage.current, pageSize.current, filtersInfo.current, orderType.current)
     }
+    
     let [showSettings, setShowSettings] = useState<boolean>(false)
     let [showFilters, setShowFilters] = useState<boolean>(false)
 
@@ -191,19 +185,21 @@ const SearchPage: React.FC<any> = () => {
         }
     }
 
-    const onFiltersChange = (filter: any) => {
+    const onFiltersChange = useCallback((filter: any) => {
         let index: number;
         switch (filter.name) {
             case "sizes":
-                let size = activeSizes.current[filter.data.id];
-                index = filtersInfo.current.sizes.indexOf(size)
-                if (index !== -1 && !filter.data.active) {
-                    filtersInfo.current.sizes.splice(index, 1)
-                } else {
-                    if (filter.data.active) {
-                        filtersInfo.current.sizes.push(size)
+                filter.data.forEach((data:boolean, index:number) => {
+                    let size = activeSizes.current[index];
+                    index = filtersInfo.current.sizes.indexOf(size)
+                    if (index !== -1 && !data) {
+                        filtersInfo.current.sizes.splice(index, 1)
+                    } else {
+                        if (data) {
+                            filtersInfo.current.sizes.push(size)
+                        }
                     }
-                }
+                })
                 break
             case "price":
                 filtersInfo.current.price = filter.data
@@ -223,7 +219,7 @@ const SearchPage: React.FC<any> = () => {
                 break
         }
         getSnickersByString(searchWord.current, updatMerch, currentPage.current, pageSize.current, filtersInfo.current, orderType.current)
-    }
+    },[updatMerch])
 
 
     const pageChange = (page: number) => {

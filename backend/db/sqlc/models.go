@@ -167,6 +167,7 @@ type Snicker struct {
 	Article     pgtype.Text `json:"article"`
 	Date        pgtype.Text `json:"date"`
 	Description pgtype.Text `json:"description"`
+	ImageCount  int32       `json:"image_count"`
 	_35         pgtype.Int4 `json:"3.5"`
 	_4          pgtype.Int4 `json:"4"`
 	_45         pgtype.Int4 `json:"4.5"`

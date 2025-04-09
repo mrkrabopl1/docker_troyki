@@ -80,7 +80,7 @@ const AddressForm: React.FC<addressFormModuleInterface> = (props) => {
     useEffect(()=>{
         if (!firstUpdate.current) {
             updateValidObj()
-            setRefresh(!refresh)
+            setRefresh(prev=>!prev)
         }
         firstUpdate.current = false
     },[valid])

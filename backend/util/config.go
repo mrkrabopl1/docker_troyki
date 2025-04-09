@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -58,6 +59,7 @@ func CreateConfig(dbSource string) *pgxpool.Config {
 	//store := db.NewPostgresStore(os.Getenv("DATABASE_URL"))
 	//var DATABASE_URL string = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", "localhost", "5432", cfg.PgUser, cfg.PgPass, cfg.PgBase)
 
+	fmt.Println(dbSource, "askdas;kd;aslkd;l")
 	dbConfig, err := pgxpool.ParseConfig(dbSource)
 	if err != nil {
 		log.Fatal("Failed to create a config, error: ", err)

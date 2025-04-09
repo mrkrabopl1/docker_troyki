@@ -69,36 +69,36 @@ func (s *PostgresStore) CreateTables(ctx context.Context) {
 	// 	fmt.Println("fatal Error", e.Error())
 	// }
 
-	// db.Exec(`CREATE TABLE IF NOT EXISTS Customers (
-	// 	id serial PRIMARY KEY NOT NULL ,
-	// 	name TEXT,
-	// 	secondName TEXT,
-	// 	mail TEXT NOT NULL,
-	// 	pass BYTEA NOT NULL,
-	// 	phone TEXT,
-	// 	town TEXT,
-	// 	index TEXT,
-	// 	sendMail BOOLEAN,
-	// 	street TEXT,
-	// 	region TEXT,
-	// 	home TEXT,
-	// 	flat TEXT
-	// )`)
+	db.Exec(`CREATE TABLE IF NOT EXISTS Customers (
+		id serial PRIMARY KEY NOT NULL ,
+		name TEXT,
+		secondName TEXT,
+		mail TEXT NOT NULL,
+		pass BYTEA NOT NULL,
+		phone TEXT,
+		town TEXT,
+		index TEXT,
+		sendMail BOOLEAN,
+		street TEXT,
+		region TEXT,
+		home TEXT,
+		flat TEXT
+	)`)
 
-	// db.Exec(`CREATE TABLE IF NOT EXISTS unregistercustomer (
-	// 	id serial PRIMARY KEY NOT NULL ,
-	// 	name TEXT NOT NULL,
-	// 	secondName TEXT,
-	// 	mail TEXT NOT NULL,
-	// 	phone TEXT NOT NULL,
-	// 	town TEXT NOT NULL,
-	// 	index TEXT NOT NULL,
-	// 	sendMail BOOLEAN,
-	// 	street TEXT NOT NULL,
-	// 	region TEXT NOT NULL,
-	// 	house TEXT,
-	// 	flat TEXT
-	// )`)
+	db.Exec(`CREATE TABLE IF NOT EXISTS unregistercustomer (
+		id serial PRIMARY KEY NOT NULL ,
+		name TEXT NOT NULL,
+		secondName TEXT,
+		mail TEXT NOT NULL,
+		phone TEXT NOT NULL,
+		town TEXT NOT NULL,
+		index TEXT NOT NULL,
+		sendMail BOOLEAN,
+		street TEXT NOT NULL,
+		region TEXT NOT NULL,
+		house TEXT,
+		flat TEXT
+	)`)
 
 	// _, err := db.Exec(`CREATE TABLE OrderItems (
 	// 	id serial PRIMARY KEY NOT NULL,
@@ -145,21 +145,21 @@ func (s *PostgresStore) CreateTables(ctx context.Context) {
 	// 		FOREIGN KEY (CustomerID) REFERENCES Customers(id)
 	// )`)
 
-	// s.dbx.Exec(`CREATE TABLE IF NOT EXISTS preorder (
-	// 		id serial PRIMARY KEY NOT NULL ,
-	// 		hashUrl TEXT NOT NULL,
-	// 		updateTime DATE
-	// )`)
+	s.dbx.Exec(`CREATE TABLE IF NOT EXISTS preorder (
+			id serial PRIMARY KEY NOT NULL ,
+			hashUrl TEXT NOT NULL,
+			updateTime DATE
+	)`)
 
-	// s.dbx.Exec(`CREATE TABLE IF NOT EXISTS preorderItems (
-	// 			id serial PRIMARY KEY NOT NULL ,
-	// 			OrderID INT NOT NULL,
-	// 			ProductID INT NOT NULL,
-	// 			Quantity INT NOT NULL,
-	// 			Size TEXT,
-	// 			FOREIGN KEY (OrderID) REFERENCES preorder(id),
-	// 			FOREIGN KEY (ProductID) REFERENCES snickers(id)
-	// 		)`)
+	s.dbx.Exec(`CREATE TABLE IF NOT EXISTS preorderItems (
+				id serial PRIMARY KEY NOT NULL ,
+				OrderID INT NOT NULL,
+				ProductID INT NOT NULL,
+				Quantity INT NOT NULL,
+				Size TEXT,
+				FOREIGN KEY (OrderID) REFERENCES preorder(id),
+				FOREIGN KEY (ProductID) REFERENCES snickers(id)
+			)`)
 
 	// if e != nil {
 	// 	fmt.Println("fatal Error", e.Error())

@@ -44,6 +44,25 @@ func (q *Queries) GetCointIdByName(ctx context.Context, dollar_1 string) ([]GetC
 	return items, nil
 }
 
+const getCountOfCollectionsOrFirms = `-- name: GetCountOfCollectionsOrFirms :one
+SELECT COUNT(snickers.id) AS count 
+FROM snickers
+WHERE firm = $1
+    OR line = $2
+`
+
+type GetCountOfCollectionsOrFirmsParams struct {
+	Firm string `json:"firm"`
+	Line string `json:"line"`
+}
+
+func (q *Queries) GetCountOfCollectionsOrFirms(ctx context.Context, arg GetCountOfCollectionsOrFirmsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, getCountOfCollectionsOrFirms, arg.Firm, arg.Line)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getFiltersByString = `-- name: GetFiltersByString :one
 WITH firm_counts AS (
     SELECT s.firm, COUNT(s.id) AS firm_count
@@ -52,26 +71,26 @@ WITH firm_counts AS (
     GROUP BY s.firm
 )
 SELECT
-    COUNT(s."3.5") AS size_35,
-    COUNT(s."4") AS size_4,
-    COUNT(s."4.5") AS size_45,
-    COUNT(s."5") AS size_5,
-    COUNT(s."5.5") AS size_55,
-    COUNT(s."6") AS size_6,
-    COUNT(s."6.5") AS size_65,
-    COUNT(s."7") AS size_7,
-    COUNT(s."7.5") AS size_75,
-    COUNT(s."8") AS size_8,
-    COUNT(s."8.5") AS size_85,
-    COUNT(s."9") AS size_9,
-    COUNT(s."9.5") AS size_95,
-    COUNT(s."10") AS size_10,
-    COUNT(s."10.5") AS size_105,
-    COUNT(s."11") AS size_11,
-    COUNT(s."11.5") AS size_115,
-    COUNT(s."12") AS size_12,
-    COUNT(s."12.5") AS size_125,
-    COUNT(s."13") AS size_13,
+    COUNT(s."3.5") AS "3.5",
+    COUNT(s."4") AS "4",
+    COUNT(s."4.5") AS "4.5",
+    COUNT(s."5") AS "5",
+    COUNT(s."5.5") AS "5.5",
+    COUNT(s."6") AS "6",
+    COUNT(s."6.5") AS "6.5",
+    COUNT(s."7") AS "7",
+    COUNT(s."7.5") AS "7.5",
+    COUNT(s."8") AS "8",
+    COUNT(s."8.5") AS "8.5",
+    COUNT(s."9") AS "9",
+    COUNT(s."9.5") AS "9.5",
+    COUNT(s."10") AS "10",
+    COUNT(s."10.5") AS "10.5",
+    COUNT(s."11") AS "11",
+    COUNT(s."11.5") AS "11.5",
+    COUNT(s."12") AS "12",
+    COUNT(s."12.5") AS "12.5",
+    COUNT(s."13") AS "13",
     MIN(s.minprice) AS min,
     MAX(s.maxprice) AS max,
     jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) AS firm_count_map
@@ -81,26 +100,26 @@ WHERE s.name ILIKE '%' || $1::text || '%'
 `
 
 type GetFiltersByStringRow struct {
-	Size35       int64       `json:"size_35"`
-	Size4        int64       `json:"size_4"`
-	Size45       int64       `json:"size_45"`
-	Size5        int64       `json:"size_5"`
-	Size55       int64       `json:"size_55"`
-	Size6        int64       `json:"size_6"`
-	Size65       int64       `json:"size_65"`
-	Size7        int64       `json:"size_7"`
-	Size75       int64       `json:"size_75"`
-	Size8        int64       `json:"size_8"`
-	Size85       int64       `json:"size_85"`
-	Size9        int64       `json:"size_9"`
-	Size95       int64       `json:"size_95"`
-	Size10       int64       `json:"size_10"`
-	Size105      int64       `json:"size_105"`
-	Size11       int64       `json:"size_11"`
-	Size115      int64       `json:"size_115"`
-	Size12       int64       `json:"size_12"`
-	Size125      int64       `json:"size_125"`
-	Size13       int64       `json:"size_13"`
+	_35          int64       `json:"3.5"`
+	_4           int64       `json:"4"`
+	_45          int64       `json:"4.5"`
+	_5           int64       `json:"5"`
+	_55          int64       `json:"5.5"`
+	_6           int64       `json:"6"`
+	_65          int64       `json:"6.5"`
+	_7           int64       `json:"7"`
+	_75          int64       `json:"7.5"`
+	_8           int64       `json:"8"`
+	_85          int64       `json:"8.5"`
+	_9           int64       `json:"9"`
+	_95          int64       `json:"9.5"`
+	_10          int64       `json:"10"`
+	_105         int64       `json:"10.5"`
+	_11          int64       `json:"11"`
+	_115         int64       `json:"11.5"`
+	_12          int64       `json:"12"`
+	_125         int64       `json:"12.5"`
+	_13          int64       `json:"13"`
 	Min          interface{} `json:"min"`
 	Max          interface{} `json:"max"`
 	FirmCountMap []byte      `json:"firm_count_map"`
@@ -110,26 +129,26 @@ func (q *Queries) GetFiltersByString(ctx context.Context, dollar_1 string) (GetF
 	row := q.db.QueryRow(ctx, getFiltersByString, dollar_1)
 	var i GetFiltersByStringRow
 	err := row.Scan(
-		&i.Size35,
-		&i.Size4,
-		&i.Size45,
-		&i.Size5,
-		&i.Size55,
-		&i.Size6,
-		&i.Size65,
-		&i.Size7,
-		&i.Size75,
-		&i.Size8,
-		&i.Size85,
-		&i.Size9,
-		&i.Size95,
-		&i.Size10,
-		&i.Size105,
-		&i.Size11,
-		&i.Size115,
-		&i.Size12,
-		&i.Size125,
-		&i.Size13,
+		&i._35,
+		&i._4,
+		&i._45,
+		&i._5,
+		&i._55,
+		&i._6,
+		&i._65,
+		&i._7,
+		&i._75,
+		&i._8,
+		&i._85,
+		&i._9,
+		&i._95,
+		&i._10,
+		&i._105,
+		&i._11,
+		&i._115,
+		&i._12,
+		&i._125,
+		&i._13,
 		&i.Min,
 		&i.Max,
 		&i.FirmCountMap,
@@ -365,7 +384,8 @@ SELECT info,
     value,
     article,
     description,
-    date
+    date,
+    image_count
 FROM snickers
     LEFT JOIN discount ON snickers.id = productid
 WHERE snickers.id = $1
@@ -379,6 +399,7 @@ type GetSnickersInfoByIdRow struct {
 	Article     pgtype.Text `json:"article"`
 	Description pgtype.Text `json:"description"`
 	Date        pgtype.Text `json:"date"`
+	ImageCount  int32       `json:"image_count"`
 }
 
 func (q *Queries) GetSnickersInfoById(ctx context.Context, id int32) (GetSnickersInfoByIdRow, error) {
@@ -392,6 +413,7 @@ func (q *Queries) GetSnickersInfoById(ctx context.Context, id int32) (GetSnicker
 		&i.Article,
 		&i.Description,
 		&i.Date,
+		&i.ImageCount,
 	)
 	return i, err
 }
@@ -497,6 +519,71 @@ func (q *Queries) GetSoloCollection(ctx context.Context, arg GetSoloCollectionPa
 			&i.Name,
 			&i.Firm,
 			&i.Maxdiscprice,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSoloCollectionWithCount = `-- name: GetSoloCollectionWithCount :many
+SELECT COALESCE(discount.minprice, snickers.minprice) AS minprice,
+    snickers.id,
+    image_path,
+    name,
+    firm,
+    maxdiscprice,
+    COUNT(*) OVER () AS total_count
+FROM snickers
+    LEFT JOIN discount ON snickers.id = productid
+WHERE firm = $1
+    OR line = $2
+LIMIT $3 OFFSET $4
+`
+
+type GetSoloCollectionWithCountParams struct {
+	Firm   string `json:"firm"`
+	Line   string `json:"line"`
+	Limit  int32  `json:"limit"`
+	Offset int32  `json:"offset"`
+}
+
+type GetSoloCollectionWithCountRow struct {
+	Minprice     int32       `json:"minprice"`
+	ID           int32       `json:"id"`
+	ImagePath    string      `json:"image_path"`
+	Name         string      `json:"name"`
+	Firm         string      `json:"firm"`
+	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
+	TotalCount   int64       `json:"total_count"`
+}
+
+func (q *Queries) GetSoloCollectionWithCount(ctx context.Context, arg GetSoloCollectionWithCountParams) ([]GetSoloCollectionWithCountRow, error) {
+	rows, err := q.db.Query(ctx, getSoloCollectionWithCount,
+		arg.Firm,
+		arg.Line,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSoloCollectionWithCountRow
+	for rows.Next() {
+		var i GetSoloCollectionWithCountRow
+		if err := rows.Scan(
+			&i.Minprice,
+			&i.ID,
+			&i.ImagePath,
+			&i.Name,
+			&i.Firm,
+			&i.Maxdiscprice,
+			&i.TotalCount,
 		); err != nil {
 			return nil, err
 		}

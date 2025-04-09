@@ -58,8 +58,12 @@ const Combobox: React.FC<ComboboxType> = ({className, enumProp, data, placeholde
     return (
         <div className={className?className:s.combobox} style={{ position: "relative", width: "100%" }}>
             <div className={s.mainBlock} onClick={() => { setActive(!active) }}>
-                {val.current}
-                <span style={{ position: "absolute", right: "0", paddingRight: "5px" }}>{active ? "\u1433" : "\u142F"}</span>
+                <span>{val.current}</span>
+                <div className={s.arrowMain}>
+                    <span className={[s.arrowLeft , active?s.arrowLeftOpen:null].join(" ")}></span>
+                    <span className={[s.arrowRight , active?s.arrowRightOpen:null].join(" ")}></span>
+                </div>
+                {/* <span style={{ position: "absolute", right: "0", paddingRight: "5px" }}>{active ? "\u1433" : "\u142F"}</span> */}
             </div>
             <div className={s.list} style={{ position: "absolute", width: "100%" }}>
                 {createCombobox(data)}

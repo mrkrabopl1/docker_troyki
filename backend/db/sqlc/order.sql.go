@@ -206,19 +206,17 @@ func (q *Queries) GetPreorderIdByHashUrl(ctx context.Context, hashurl string) (i
 
 const insertOrder = `-- name: InsertOrder :one
 INSERT INTO orders (
-        orderdate,
         status,
         deliveryPrice,
         deliveryType,
         unregistercustomerid,
         hash
     )
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id
 `
 
 type InsertOrderParams struct {
-	Orderdate            pgtype.Date  `json:"orderdate"`
 	Status               StatusEnum   `json:"status"`
 	Deliveryprice        int32        `json:"deliveryprice"`
 	Deliverytype         DeliveryEnum `json:"deliverytype"`
@@ -228,7 +226,6 @@ type InsertOrderParams struct {
 
 func (q *Queries) InsertOrder(ctx context.Context, arg InsertOrderParams) (int32, error) {
 	row := q.db.QueryRow(ctx, insertOrder,
-		arg.Orderdate,
 		arg.Status,
 		arg.Deliveryprice,
 		arg.Deliverytype,

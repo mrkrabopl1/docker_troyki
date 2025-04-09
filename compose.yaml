@@ -22,7 +22,7 @@ services:
       context: ./backend
       dockerfile: go.dockerfile
     environment:
-      DATABASE_URL: 'postgres://postgres:s8121996@postgres_db:5432/troyki?sslmode=disable'
+      DATABASE_URL: 'postgres://postgres:12345@postgres_db:5432/troyki?sslmode=disable'
       REDIS_ADDRESS: 'redis:6379'
     expose:
       - "8100"

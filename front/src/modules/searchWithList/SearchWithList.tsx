@@ -59,9 +59,6 @@ const SearchWithList: React.FC<propsRowType> = (props) => {
         setActive(false)
     }
 
-
-
-
     const seatchProxy=(data:any)=>{
         setActive(false)
         searchCallback(data)

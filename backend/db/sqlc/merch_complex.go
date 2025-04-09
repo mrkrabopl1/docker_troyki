@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"time"
 
 	"github.com/mrkrabopl1/go_db/types"
@@ -34,15 +33,15 @@ func (store *SQLStore) GetSnickersInfoByIdComplex(ctx context.Context, id int32)
 	if err != nil {
 		return SnickersInfoResponse{}, err
 	}
+	fmt.Println(snickers)
 	snickersInfoResp := NewSnickersInfoResponse(snickers)
 	return snickersInfoResp, nil
 }
 func NewSnickersInfoResponse(snInfo GetSnickersInfoByIdRow) SnickersInfoResponse {
 	var inf map[string]float64
 	var imgArr []string
-	files, _ := os.ReadDir(snInfo.ImagePath)
-	for index, _ := range files {
-		str := fmt.Sprintf(snInfo.ImagePath+"/%d.jpg", index+1)
+	for index := range snInfo.ImageCount {
+		str := "images/" + fmt.Sprintf(snInfo.ImagePath+"/img%d.png", index+1)
 		imgArr = append(imgArr, str)
 	}
 
@@ -104,26 +103,26 @@ type RespSearchSnickersAndFiltersByString struct {
 }
 
 type SizeData struct {
-	Size35  int64 `json:"size_35"`
-	Size4   int64 `json:"size_4"`
-	Size45  int64 `json:"size_45"`
-	Size5   int64 `json:"size_5"`
-	Size55  int64 `json:"size_55"`
-	Size6   int64 `json:"size_6"`
-	Size65  int64 `json:"size_65"`
-	Size7   int64 `json:"size_7"`
-	Size75  int64 `json:"size_75"`
-	Size8   int64 `json:"size_8"`
-	Size85  int64 `json:"size_85"`
-	Size9   int64 `json:"size_9"`
-	Size95  int64 `json:"size_95"`
-	Size10  int64 `json:"size_10"`
-	Size105 int64 `json:"size_105"`
-	Size11  int64 `json:"size_11"`
-	Size115 int64 `json:"size_115"`
-	Size12  int64 `json:"size_12"`
-	Size125 int64 `json:"size_125"`
-	Size13  int64 `json:"size_13"`
+	Size35  int64 `json:"3.5"`
+	Size4   int64 `json:"4"`
+	Size45  int64 `json:"4.5"`
+	Size5   int64 `json:"5"`
+	Size55  int64 `json:"5.5"`
+	Size6   int64 `json:"6"`
+	Size65  int64 `json:"6.5"`
+	Size7   int64 `json:"7"`
+	Size75  int64 `json:"7.5"`
+	Size8   int64 `json:"8"`
+	Size85  int64 `json:"8.5"`
+	Size9   int64 `json:"9"`
+	Size95  int64 `json:"9.5"`
+	Size10  int64 `json:"10"`
+	Size105 int64 `json:"10.5"`
+	Size11  int64 `json:"11"`
+	Size115 int64 `json:"11.5"`
+	Size12  int64 `json:"12"`
+	Size125 int64 `json:"12.5"`
+	Size13  int64 `json:"13"`
 }
 
 type SnickersResponseD struct {
@@ -136,7 +135,7 @@ type SnickersResponseD struct {
 
 type FiltersSearchResponse struct {
 	FirmsCount map[string]int `json:"firmsCount"`
-	Price      [2]int         `json:"price"`
+	Price      [2]int32       `json:"price"`
 	Sizes      SizeData       `json:"sizes"`
 }
 
@@ -151,7 +150,9 @@ func (store *SQLStore) GetSnickersAndFiltersByString(ctx context.Context, name s
 	var offset = (page - 1) * size
 
 	var limit = size * page
+	fmt.Println(limit, "test")
 	data, err := store.GetOrderedSnickersByFilters(ctx, name, filters, orderedType, limit, offset)
+	fmt.Println(data, "test")
 	if err != nil {
 		return result, err
 	}
@@ -167,40 +168,51 @@ func (store *SQLStore) GetSnickersAndFiltersByString(ctx context.Context, name s
 		Filter:           filter,
 	}
 	var firmsCount map[string]int
-	json.Unmarshal(snickersInfo.Filter.FirmCountMap, &firmsCount)
+	fmt.Println(snickersInfo.Filter.FirmCountMap, "test1")
+	err = json.Unmarshal(snickersInfo.Filter.FirmCountMap, &firmsCount)
+	if err != nil {
+		fmt.Println(err, "wweeerwerwer")
+		return result, err
+	}
+
+	fmt.Println(snickersInfo.Filter, "test2")
 
 	sizeData := SizeData{
-		Size35:  snickersInfo.Filter.Size35,
-		Size4:   snickersInfo.Filter.Size4,
-		Size45:  snickersInfo.Filter.Size45,
-		Size5:   snickersInfo.Filter.Size5,
-		Size55:  snickersInfo.Filter.Size55,
-		Size6:   snickersInfo.Filter.Size6,
-		Size65:  snickersInfo.Filter.Size65,
-		Size7:   snickersInfo.Filter.Size7,
-		Size75:  snickersInfo.Filter.Size75,
-		Size8:   snickersInfo.Filter.Size8,
-		Size85:  snickersInfo.Filter.Size85,
-		Size9:   snickersInfo.Filter.Size9,
-		Size95:  snickersInfo.Filter.Size95,
-		Size10:  snickersInfo.Filter.Size10,
-		Size105: snickersInfo.Filter.Size105,
-		Size11:  snickersInfo.Filter.Size11,
-		Size115: snickersInfo.Filter.Size115,
-		Size12:  snickersInfo.Filter.Size12,
-		Size125: snickersInfo.Filter.Size125,
-		Size13:  snickersInfo.Filter.Size13,
+		Size35:  snickersInfo.Filter._35,
+		Size4:   snickersInfo.Filter._4,
+		Size45:  snickersInfo.Filter._45,
+		Size5:   snickersInfo.Filter._5,
+		Size55:  snickersInfo.Filter._55,
+		Size6:   snickersInfo.Filter._6,
+		Size65:  snickersInfo.Filter._65,
+		Size7:   snickersInfo.Filter._7,
+		Size75:  snickersInfo.Filter._75,
+		Size8:   snickersInfo.Filter._8,
+		Size85:  snickersInfo.Filter._85,
+		Size9:   snickersInfo.Filter._9,
+		Size95:  snickersInfo.Filter._95,
+		Size10:  snickersInfo.Filter._10,
+		Size105: snickersInfo.Filter._105,
+		Size11:  snickersInfo.Filter._11,
+		Size115: snickersInfo.Filter._115,
+		Size12:  snickersInfo.Filter._12,
+		Size125: snickersInfo.Filter._125,
+		Size13:  snickersInfo.Filter._13,
 	}
+	fmt.Println(snickersInfo.Filter.Min, "test3")
+	a := snickersInfo.Filter.Min.(int32)
+	fmt.Println(a, "test3")
 
 	var resp = RespSearchSnickersAndFiltersByString{
 		Snickers: NewSnickersByStringResponse(data),
 		Pages:    snickersInfo.PageSize,
 		Filters: FiltersSearchResponse{
-			Price:      [2]int{snickersInfo.Filter.Min.(int), snickersInfo.Filter.Max.(int)},
+			Price:      [2]int32{snickersInfo.Filter.Min.(int32), snickersInfo.Filter.Max.(int32)},
 			Sizes:      sizeData,
 			FirmsCount: firmsCount,
 		},
 	}
+	fmt.Println(resp, "test4")
 	return resp, nil
 }
 
@@ -212,7 +224,7 @@ func NewSnickersByStringResponse(snLines []types.SnickersSearch) []SnickersRespo
 	for _, line := range snLines {
 		var imgArr []string
 		for i := 1; i < 3; i++ {
-			str := fmt.Sprintf(line.Image_path+"/%d.jpg", i)
+			str := "images/" + fmt.Sprintf(line.Image_path+"/img%d.png", i)
 			imgArr = append(imgArr, str)
 		}
 
@@ -223,6 +235,8 @@ func NewSnickersByStringResponse(snLines []types.SnickersSearch) []SnickersRespo
 		} else {
 			discount = nil
 		}
+
+		fmt.Println(line.Id, "line.Id")
 
 		snPageResp = append(snPageResp, SnickersResponseD{
 			Name:     line.Name,
@@ -256,7 +270,7 @@ func NewSnickersSearchResponse(snickersSearch []GetSnickersByNameRow) []types.Sn
 
 	list := []types.SnickersSearchResponse{}
 	for _, info := range snickersSearch {
-		img_path := info.ImagePath + "/1.jpg"
+		img_path := "images/" + info.ImagePath + "/img1.png"
 		list = append(list, types.SnickersSearchResponse{
 			Image: img_path,
 			Price: int(info.Minprice),
@@ -282,7 +296,7 @@ func NewSnickersSearchResponse1(snickersSearch []GetSoloCollectionRow) []types.S
 	for _, info := range snickersSearch {
 		var imgArr []string
 		for i := 1; i < 3; i++ {
-			str := fmt.Sprintf(info.ImagePath+"/%d.jpg", i)
+			str := "images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
 			imgArr = append(imgArr, str)
 		}
 		var discount interface{}

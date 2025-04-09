@@ -51,6 +51,20 @@ func (mr *MockTaskProcessorMockRecorder) GetSnickersInfo(arg0, arg1 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSnickersInfo", reflect.TypeOf((*MockTaskProcessor)(nil).GetSnickersInfo), arg0, arg1)
 }
 
+// ProcessTaskSendOrderEmail mocks base method.
+func (m *MockTaskProcessor) ProcessTaskSendOrderEmail(arg0 context.Context, arg1 *asynq.Task) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ProcessTaskSendOrderEmail", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ProcessTaskSendOrderEmail indicates an expected call of ProcessTaskSendOrderEmail.
+func (mr *MockTaskProcessorMockRecorder) ProcessTaskSendOrderEmail(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProcessTaskSendOrderEmail", reflect.TypeOf((*MockTaskProcessor)(nil).ProcessTaskSendOrderEmail), arg0, arg1)
+}
+
 // ProcessTaskSendVerifyEmail mocks base method.
 func (m *MockTaskProcessor) ProcessTaskSendVerifyEmail(arg0 context.Context, arg1 *asynq.Task) error {
 	m.ctrl.T.Helper()

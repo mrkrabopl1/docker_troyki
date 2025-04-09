@@ -160,7 +160,7 @@ const SnickersInfo: React.FC = () => {
                 <div className={widthProps ?null:s.leftPart} style={widthProps ? { width: "100%" } : { }}>
                    {widthProps?<ContentSlider content={createSliderContetn()} />:<ImagePresantation images={merchInfo.imgs} />}
                 </div>
-                <div style={widthProps ? { width: "100%" } : {  width: "100%" }}>
+                <div className={s.controllPanel}>
                     <Button text={"размеры"} onChange={() => {
                         setActive(true)
                     }} />
@@ -174,9 +174,7 @@ const SnickersInfo: React.FC = () => {
                     <Button text='Купить' className={"btnStyle " + s.buyMerch } onChange={() => {
                         let data: any = {
                             id: Number(snickers),
-                            info: {
-                                size: String(currentSize.current)
-                            }
+                            size: String(currentSize.current)
                         }
 
                         createPreorder(data, (hash) => {
@@ -201,18 +199,13 @@ const SnickersInfo: React.FC = () => {
                         let cart = getCookie("cart")
                         let data: any = {
                             id: Number(snickers),
-                            info: {
-                                size: currentSize.current
-                            },
-                            gashUrl: cart
+                            size: currentSize.current,
                         }
 
                         if (cart) {
                             let data: any = {
                                 id: Number(snickers),
-                                info: {
-                                    size: String(size)
-                                },
+                                size: String(size),
                                 hashUrl: cart
                             }
                             updatePreorder(data, () => {
@@ -220,13 +213,7 @@ const SnickersInfo: React.FC = () => {
                             })
                         } else {
                             createPreorder(data, (hash) => {
-                                let data: any = {
-                                    id: Number(snickers),
-                                    info: {
-                                        size: String(size)
-                                    }
-                                }
-                                setCookie('cart', hash.hashUrl, { 'max-age': 604800 })
+                                //setCookie('cart', hash.hashUrl, { 'max-age': 604800 })
                                 dispatch(cartCountAction(cartCount + 1))
                             })
                         }
@@ -253,9 +240,11 @@ const SnickersInfo: React.FC = () => {
                     </DoubleInfoDrop>
                 </div>
                 <Modal onChange={setActive} active={active}>
-                    <Scroller className={s.scrollStyle}>
-                        <TableWithComboboxColumn className={s.modalTable} {...tableInfo} />
-                    </Scroller>
+                    <div className={s.scrollContainer}>
+                        <Scroller className={s.scrollStyle}>
+                            <TableWithComboboxColumn className={s.modalTable} {...tableInfo} />
+                        </Scroller>
+                    </div>
                 </Modal>
             </div>
             <MerchComplexSliderField/>

@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -16,16 +17,19 @@ func (q *Queries) GetCartCount(ctx context.Context, hash string) (int32, error) 
 	if err != nil {
 		return 0, err
 	}
+	fmt.Println(id, "preorderId")
 	id1, err1 := q.GetFullPreorderCount(ctx, id)
+	fmt.Println(id1, "preorderCount")
 	if err1 != nil {
 		return 0, err1
 	}
-	return id1.(int32), nil
+	return int32(id1.(int64)), nil
 
 }
 
 func (q *Queries) UpdatePreorder(ctx context.Context, id int32, size string, hash string) (int32, error) {
 	orderId, err := q.GetPreorderIdByHashUrl(ctx, hash)
+	fmt.Println(orderId, "orderId")
 	if err != nil {
 		return 0, err
 	}
@@ -38,7 +42,9 @@ func (q *Queries) UpdatePreorder(ctx context.Context, id int32, size string, has
 		Productid: id,
 	})
 
-	if err1 == sql.ErrNoRows {
+	fmt.Println(quantity, "quantity", err1)
+
+	if errors.Is(err1, sql.ErrNoRows) {
 		_, err2 := q.InsertPreorderItems(ctx, InsertPreorderItemsParams{
 			Orderid: orderId,
 			Size: pgtype.Text{
@@ -55,7 +61,7 @@ func (q *Queries) UpdatePreorder(ctx context.Context, id int32, size string, has
 		panic(err1)
 	} else {
 		err := q.UpdatePreorderItems(ctx, UpdatePreorderItemsParams{
-			Quantity: quantity,
+			Quantity: quantity + 1,
 			Orderid:  orderId,
 			Size: pgtype.Text{
 				String: size,
@@ -74,7 +80,6 @@ func (q *Queries) UpdatePreorder(ctx context.Context, id int32, size string, has
 
 func (q *Queries) CreatePreorder(ctx context.Context, id int32, size string) (string, error) {
 	currentTime := time.Now()
-
 	hashedStr := xxhash.Sum64([]byte((currentTime.String() + fmt.Sprint(id))))
 	orderId, err := q.InsertPreorder(ctx, InsertPreorderParams{
 		Hashurl: fmt.Sprint(hashedStr),
@@ -118,31 +123,36 @@ func (store *SQLStore) CreateOrder(ctx context.Context, orderData *types.CreateO
 			String: orderData.Address.Flat,
 		},
 	})
+	fmt.Println(pgtype.Int4{
+		Int32: userId,
+	}, "userId", "f;s;dkflsdknflsdk", err)
 	if err != nil {
 		return 0, 0, "", err
 	}
+	fmt.Println("testpreorderId")
 	currentTime := time.Now()
-	hashedStr := fmt.Sprint(xxhash.Sum64([]byte((currentTime.String() + fmt.Sprint(orderData.PreorderId)))))
+	hashedStr := fmt.Sprint(xxhash.Sum64([]byte((currentTime.String() + fmt.Sprint(orderData.PreorderHash)))))
 	orderId, err1 := store.Queries.InsertOrder(ctx, InsertOrderParams{
-		Orderdate: pgtype.Date{
-			Time: currentTime,
-		},
 		Status:        StatusEnumPending,
 		Deliveryprice: int32(orderData.Delivery.DeliveryPrice),
 		Deliverytype:  DeliveryEnumOwn,
 		Unregistercustomerid: pgtype.Int4{
 			Int32: userId,
+			Valid: true,
 		},
 		Hash: hashedStr,
 	})
+	fmt.Println(orderId, "testpreorderId", err1)
 	if err1 != nil {
 		return 0, 0, "", err1
 	}
-	preorderId, err2 := store.Queries.GetPreorderIdByHashUrl(ctx, orderData.PreorderId)
+	preorderId, err2 := store.Queries.GetPreorderIdByHashUrl(ctx, orderData.PreorderHash)
+	fmt.Println(preorderId, "preorderId")
 	if err2 != nil {
 		return 0, 0, "", err2
 	}
 	prData, err3 := store.Queries.GetPreorderDataById(ctx, preorderId)
+	fmt.Println(prData, err3)
 	if err3 != nil {
 		return 0, 0, "", err3
 	}
@@ -214,7 +224,7 @@ func (store *SQLStore) GetCartData(ctx context.Context, hash string) ([]types.Sn
 }
 
 func (store *SQLStore) GetCartDataFromOrderById(ctx context.Context, id int32) ([]types.SnickersCart, error) {
-	orderData, err := store.Queries.GetOrderDataById(ctx, pgtype.Int4{Int32: id})
+	orderData, err := store.Queries.GetOrderDataById(ctx, id)
 	if err != nil {
 		return []types.SnickersCart{}, err
 	}
@@ -281,7 +291,7 @@ func NewSnickersSearchResponse3(snickersSearch []GetSnickersWithDiscountRow) []t
 	for _, info := range snickersSearch {
 		var imgArr []string
 		for i := 1; i < 3; i++ {
-			str := fmt.Sprintf(info.ImagePath+"/%d.jpg", i)
+			str := "images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
 			imgArr = append(imgArr, str)
 		}
 		var discount interface{}

@@ -2,12 +2,11 @@ import axios from "axios";
 
 
 
-const getCartData = function (cartHash:any, callback: (val: any) => void) {
-    const data = new FormData();
+const getCartData = function ( callback: (val: any) => void) {
     axios({
         withCredentials: true,
         method: 'get',
-        url: `${API_URL}/getCartData?hash=`+cartHash,
+        url: `${API_URL}/getCartData`,
         headers: {}
     }
     ).then((res:any)=>{
@@ -17,6 +16,22 @@ const getCartData = function (cartHash:any, callback: (val: any) => void) {
         console.warn(error)
     })
 }
+
+const getCartCount = function ( callback: (val: any) => void) {
+    axios({
+        withCredentials: true,
+        method: 'get',
+        url: `${API_URL}/getCartCount`,
+        headers: {}
+    }
+    ).then((res:any)=>{
+        console.log(res.data)
+        callback(res.data)
+    },(error)=>{
+        console.warn(error)
+    })
+}
+
 
 const getOrderCartData = function (cartHash:any, callback: (val: any) => void) {
     const data = new FormData();
@@ -54,4 +69,4 @@ const deleteCartData = function (preorderId, callback: (val: any) => void) {
 
 
 
-export { getCartData, deleteCartData ,getOrderCartData}
+export { getCartData, deleteCartData ,getOrderCartData, getCartCount}

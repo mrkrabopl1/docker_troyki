@@ -49,14 +49,13 @@ DELETE FROM preorderitems
 WHERE id = $1;
 -- name: InsertOrder :one
 INSERT INTO orders (
-        orderdate,
         status,
         deliveryPrice,
         deliveryType,
         unregistercustomerid,
         hash
     )
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id;
 -- name: GetOrder :one
 SELECT id,

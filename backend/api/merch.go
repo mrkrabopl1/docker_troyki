@@ -55,6 +55,20 @@ func (s *Server) handleGetSizes(ctx *gin.Context) {
 	json.Unmarshal(file, &data)
 	ctx.JSON(http.StatusOK, data)
 }
+
+func (s *Server) handleGetCollectionCount(ctx *gin.Context) {
+	name := ctx.Query("name")
+	count, err := s.store.GetCountOfCollectionsOrFirms(ctx, db.GetCountOfCollectionsOrFirmsParams{
+		Firm: name,
+		Line: name,
+	})
+	if err != nil {
+		//log.WithCaller().Err(err)
+		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
+		return
+	}
+	ctx.JSON(http.StatusOK, count)
+}
 func (s *Server) handleGetSnickersInfoById(ctx *gin.Context) {
 	id := ctx.Query("id")
 	fmt.Println("id", id)
@@ -109,26 +123,26 @@ type RespSearchSnickersAndFiltersByString struct {
 	Filters  FiltersSearchResponse `json:"filters"`
 }
 type SizeData struct {
-	Size35  int64 `json:"size_35"`
-	Size4   int64 `json:"size_4"`
-	Size45  int64 `json:"size_45"`
-	Size5   int64 `json:"size_5"`
-	Size55  int64 `json:"size_55"`
-	Size6   int64 `json:"size_6"`
-	Size65  int64 `json:"size_65"`
-	Size7   int64 `json:"size_7"`
-	Size75  int64 `json:"size_75"`
-	Size8   int64 `json:"size_8"`
-	Size85  int64 `json:"size_85"`
-	Size9   int64 `json:"size_9"`
-	Size95  int64 `json:"size_95"`
-	Size10  int64 `json:"size_10"`
-	Size105 int64 `json:"size_105"`
-	Size11  int64 `json:"size_11"`
-	Size115 int64 `json:"size_115"`
-	Size12  int64 `json:"size_12"`
-	Size125 int64 `json:"size_125"`
-	Size13  int64 `json:"size_13"`
+	Size35  int64 `json:"3.5"`
+	Size4   int64 `json:"4"`
+	Size45  int64 `json:"4.5"`
+	Size5   int64 `json:"5"`
+	Size55  int64 `json:"5.5"`
+	Size6   int64 `json:"6"`
+	Size65  int64 `json:"6.5"`
+	Size7   int64 `json:"7"`
+	Size75  int64 `json:"7.5"`
+	Size8   int64 `json:"8"`
+	Size85  int64 `json:"8.5"`
+	Size9   int64 `json:"9"`
+	Size95  int64 `json:"9.5"`
+	Size10  int64 `json:"10"`
+	Size105 int64 `json:"10.5"`
+	Size11  int64 `json:"11"`
+	Size115 int64 `json:"11.5"`
+	Size12  int64 `json:"12"`
+	Size125 int64 `json:"12.5"`
+	Size13  int64 `json:"13"`
 }
 
 type FiltersSearchResponse struct {
@@ -183,7 +197,7 @@ func (s *Server) handleGetSoloCollection(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	end := postData.Page * postData.Size
+	end := postData.Size
 	offset := (postData.Page - 1) * postData.Size
 	response, _ := s.store.GetSoloCollectionComplex(ctx,
 		db.GetSoloCollectionParams{

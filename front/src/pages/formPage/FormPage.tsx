@@ -37,7 +37,7 @@ const FormPage: React.FC = () => {
         phone: ""
     })
     useEffect(() => {
-        getCartData(hash, (data) => {
+        getCartData((data) => {
             fullPrice.current = data.fullPrice;
             setSnickers(data)
             checkCustomerData((data) => {
@@ -68,7 +68,7 @@ const FormPage: React.FC = () => {
                     formData.current.mail = data.mail
 
                     let respData = {
-                        preorderId: hash,
+
                         personalData: {
                             name: data.name,
                             phone: data.phone,
@@ -83,6 +83,7 @@ const FormPage: React.FC = () => {
                             deliveryPrice: 0,
                             type: 1
                         },
+                        preorderHash: hash
 
                     }
                     createOrder(respData, (data) => {

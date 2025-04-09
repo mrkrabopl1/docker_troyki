@@ -19,7 +19,8 @@ module.exports = merge(common, {
         historyApiFallback: true,
         compress: true,
         open: true,
-        hot: true
+        hot: true,
+        allowedHosts: 'all'
     },
     plugins: [
         // Really only opens hot: True automatically identifies whether there is no declaration that the plugin is automatically introduced, but it is afraid that there is a hidden problem here or manual plus.

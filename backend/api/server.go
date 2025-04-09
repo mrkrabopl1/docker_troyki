@@ -27,17 +27,17 @@ type Server struct {
 // NewServer creates a new HTTP server and set up routing.
 func NewServer(config util.Config, store db.Store, taskDistributor worker.TaskDistributor, taskProcessor worker.TaskProcessor) (*Server, error) {
 	fmt.Println("NewServer")
-	//tokenMaker, err := token.NewPasetoMaker(config.TokenSymmetricKey)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("cannot create token maker: %w", err)
-	// }
+	tokenMaker, err := token.NewPasetoMaker(config.TokenSymmetricKey)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create token maker: %w", err)
+	}
 
 	server := &Server{
 		config:          config,
 		store:           store,
 		taskDistributor: taskDistributor,
 		taskProcessor:   taskProcessor,
-		//tokenMaker: tokenMaker,
+		tokenMaker:      tokenMaker,
 	}
 
 	fmt.Println("NewServer")
@@ -82,14 +82,14 @@ func (s *Server) setupRouter() {
 	router.POST("/createPreorder", s.handleCreatePreorder)
 	router.POST("/createOrder", s.handleCreateOrder)
 	router.POST("/updatePreorder", s.handleUpdatePreorder)
-	router.GET("/cartCount", s.handleGetCartCount)
+	router.GET("/getCartCount", s.handleGetCartCount)
 	router.GET("/getCartData", s.handleGetCart)
 	router.GET("/getCartDataFromOrder", s.handleGetCartFromOrder)
 	router.GET("/getOrderDataByHash", s.handleGetOrderDataByHash)
 	router.POST("/getOrderDataByMail", s.handleGetOrderDataByMail)
 	router.POST("/deleteCartData", s.handleDeleteCartData)
 	router.GET("/historyInfo", s.handleGetHistory)
-
+	router.GET("/collectionCount", s.handleGetCollectionCount)
 	router.POST("/registerUser", s.handleRegisterUser)
 	router.POST("/login", s.handleLogin)
 	router.GET("/unlogin", s.handleUnlogin)

@@ -38,6 +38,7 @@ import ChangeForgetPass from './pages/verification/ChangeForgetPass';
 import OrderPage from './pages/orderPage/OrderPage';
 import global from "src/global.css"
 import OrderInfo from './components/orderInfo/orderInfo';
+import { getCartCount } from './providers/shopProvider';
 setTimeout(() => {
   console.debug(API_URL, "f;lsdmf;ls,d;lf")
 }, 10)
@@ -66,14 +67,7 @@ const App: React.FC<any> = () => {
       setUniqueCustomer(()=>{})
     }
     if (coockieCart) {
-      axios({
-        method: 'get',
-        url: 'http://127.0.0.1:8100/cartCount?hash=' + coockieCart,
-        headers: {}
-      }
-      ).then((res: any) => {
-        dispatch(cartCountAction(res.data.count))
-      })
+      getCartCount((data)=> dispatch(cartCountAction(data)))
     }
 
     //getBrends(setMerchFieldData)

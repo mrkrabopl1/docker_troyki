@@ -59,7 +59,7 @@ const ComplexDrop: React.FC<propsType> = (props) => {
                         setChosen(val);
                         setShowDrop(true)
                     }}>
-                    {val}
+                    {val.toUpperCase()}
                 </div>
             )
         })
@@ -70,9 +70,9 @@ const ComplexDrop: React.FC<propsType> = (props) => {
         if (chosen) {
             let arr: any = []
             let dropData = data[chosen]
-            if (dropData.length > 0) {
+            if (dropData.length > 1) {
                 dropData.forEach((val) => {
-                    arr.push(<div key={val} onClick={() => { onChange({ sub: val }) }} >{val}</div>)
+                    arr.push(<div key={val} onClick={() => { onChange({ sub: val }) }} >{val.toUpperCase()}</div>)
                 })
                 // setShowDrop(true)
             } else {
@@ -89,7 +89,7 @@ const ComplexDrop: React.FC<propsType> = (props) => {
             <div
                 onMouseEnter={() => { clearTimeout(timeoutRef.current) }}
                 onMouseLeave={() => { setShowDrop(false) }}
-                style={showDrop ? { left: leftPos.current + "px" } : { display: "none" }} className={s.dropField} >
+                style={data[chosen] && data[chosen].length>1 && showDrop ? { left: leftPos.current + "px" } : { display: "none" }} className={s.dropField} >
                 {createDropContent()}
             </div>
         </div>

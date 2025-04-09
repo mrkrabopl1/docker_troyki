@@ -56,7 +56,7 @@ func NewSnickersLineResponse(snLines []types.SnickersLine) types.SnickersLineRes
 		for indx := range line.Image_path {
 			var imgArr []string
 			for i := 1; i < 3; i++ {
-				str := fmt.Sprintf(line.Image_path[indx]+"/%d.jpg", i)
+				str := "images/" + fmt.Sprintf(line.Image_path[indx]+"/img%d.png", i)
 				imgArr = append(imgArr, str)
 			}
 			list = append(list, types.SnickersResponse{
@@ -79,7 +79,7 @@ func NewSnickersByStringResponse(snLines []types.SnickersSearch) []types.Snicker
 	for _, line := range snLines {
 		var imgArr []string
 		for i := 1; i < 3; i++ {
-			str := fmt.Sprintf(line.Image_path+"/%d.jpg", i)
+			str := "images/" + fmt.Sprintf(line.Image_path+"/img%d.png", i)
 			imgArr = append(imgArr, str)
 		}
 
@@ -122,7 +122,7 @@ func NewSnickersSearchResponse1(snickersSearch []types.SnickersSearch) []types.S
 	for _, info := range snickersSearch {
 		var imgArr []string
 		for i := 1; i < 3; i++ {
-			str := fmt.Sprintf(info.Image_path+"/%d.jpg", i)
+			str := "images/" + fmt.Sprintf(info.Image_path+"/img%d.png", i)
 			imgArr = append(imgArr, str)
 		}
 		var discount interface{}
@@ -149,7 +149,7 @@ func NewSnickersSearchResponse(snickersSearch []types.SnickersSearch) []types.Sn
 
 	list := []types.SnickersSearchResponse{}
 	for _, info := range snickersSearch {
-		img_path := info.Image_path + "/1.jpg"
+		img_path := "images" + info.Image_path + "/img1.png"
 		list = append(list, types.SnickersSearchResponse{
 			Image: img_path,
 			Price: info.Price,
@@ -167,7 +167,7 @@ func NewSnickersInfoResponse(snInfo types.SnickersInfo) types.SnickersInfoRespon
 	var imgArr []string
 	files, _ := os.ReadDir(snInfo.Image_path)
 	for index, _ := range files {
-		str := fmt.Sprintf(snInfo.Image_path+"/%d.jpg", index+1)
+		str := "images/" + fmt.Sprintf(snInfo.Image_path+"/img%d.png", index+1)
 		imgArr = append(imgArr, str)
 	}
 
@@ -196,7 +196,7 @@ func NewSnickersResponse(firms []types.Snickers) []types.SnickersResponseD {
 	for _, firm := range firms {
 		var imgArr []string
 		for i := 0; i < 2; i++ {
-			str := fmt.Sprintf(firm.Image_path+"/%d.jpg", i)
+			str := "images/" + fmt.Sprintf(firm.Image_path+"/img%d.png", i)
 			imgArr = append(imgArr, str)
 		}
 
@@ -224,7 +224,7 @@ func SnickersCartResponseWithourFullPrice(cart []types.SnickersCart) types.FullC
 	fullPrice := 0
 	list := []types.CartResponse{}
 	for _, info := range cart {
-		img_path := info.Image + "/1.jpg"
+		img_path := "images" + info.Image + "/img1.png"
 
 		fullPrice += info.Price * info.Quantity
 
@@ -250,7 +250,7 @@ func SnickersCartResponseWithourFullPrice(cart []types.SnickersCart) types.FullC
 func SnickersCartResponse(cart []types.SnickersCart) []types.CartResponse {
 	list := []types.CartResponse{}
 	for _, info := range cart {
-		img_path := info.Image + "/1.jpg"
+		img_path := "images" + info.Image + "/img1.png"
 		list = append(list, types.CartResponse{
 			Image:    img_path,
 			Id:       int(info.Id),

@@ -20,6 +20,7 @@ type Querier interface {
 	DeleteVerification(ctx context.Context, id int32) error
 	GetBaseCustomerData(ctx context.Context, mail string) (GetBaseCustomerDataRow, error)
 	GetCointIdByName(ctx context.Context, dollar_1 string) ([]GetCointIdByNameRow, error)
+	GetCountOfCollectionsOrFirms(ctx context.Context, arg GetCountOfCollectionsOrFirmsParams) (int64, error)
 	GetCustomerData(ctx context.Context, id int32) (GetCustomerDataRow, error)
 	GetCustomerId(ctx context.Context, mail string) (int32, error)
 	GetFiltersByString(ctx context.Context, dollar_1 string) (GetFiltersByStringRow, error)
@@ -39,6 +40,7 @@ type Querier interface {
 	GetSnickersInfoById(ctx context.Context, id int32) (GetSnickersInfoByIdRow, error)
 	GetSnickersWithDiscount(ctx context.Context) ([]GetSnickersWithDiscountRow, error)
 	GetSoloCollection(ctx context.Context, arg GetSoloCollectionParams) ([]GetSoloCollectionRow, error)
+	GetSoloCollectionWithCount(ctx context.Context, arg GetSoloCollectionWithCountParams) ([]GetSoloCollectionWithCountRow, error)
 	GetUnregisterCustomer(ctx context.Context, id int32) (GetUnregisterCustomerRow, error)
 	GetVerification(ctx context.Context, token string) (GetVerificationRow, error)
 	InsertOrder(ctx context.Context, arg InsertOrderParams) (int32, error)

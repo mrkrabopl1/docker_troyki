@@ -1,4 +1,4 @@
-FROM golang:1.21.5 
+FROM golang:1.22 
 
 WORKDIR /app
 
@@ -9,8 +9,8 @@ COPY . .
 RUN go get -d -v ./...
 
 #  Build file with name api
-RUN go build  -o api .
+RUN go build  -o exec .
 
 EXPOSE 8100
 
-CMD [ "./api" ]
+CMD [ "./exec"]

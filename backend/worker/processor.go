@@ -22,6 +22,7 @@ type TaskProcessor interface {
 	Start() error
 	Shutdown()
 	ProcessTaskSendVerifyEmail(ctx context.Context, task *asynq.Task) error
+	ProcessTaskSendOrderEmail(ctx context.Context, task *asynq.Task) error
 	SetSnickersInfo(ctx context.Context, ID string, merchant db.SnickersInfoResponse) error
 	GetSnickersInfo(ctx context.Context, ID string) (db.SnickersInfoResponse, error)
 }
@@ -104,6 +105,7 @@ func (processor *RedisTaskProcessor) Start() error {
 	mux := asynq.NewServeMux()
 
 	mux.HandleFunc(TaskSendVerifyEmail, processor.ProcessTaskSendVerifyEmail)
+	mux.HandleFunc(TaskSendOrderEmail, processor.ProcessTaskSendOrderEmail)
 
 	return processor.server.Start(mux)
 }

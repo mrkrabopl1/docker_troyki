@@ -28,26 +28,26 @@ WITH firm_counts AS (
     GROUP BY s.firm
 )
 SELECT
-    COUNT(s."3.5") AS size_35,
-    COUNT(s."4") AS size_4,
-    COUNT(s."4.5") AS size_45,
-    COUNT(s."5") AS size_5,
-    COUNT(s."5.5") AS size_55,
-    COUNT(s."6") AS size_6,
-    COUNT(s."6.5") AS size_65,
-    COUNT(s."7") AS size_7,
-    COUNT(s."7.5") AS size_75,
-    COUNT(s."8") AS size_8,
-    COUNT(s."8.5") AS size_85,
-    COUNT(s."9") AS size_9,
-    COUNT(s."9.5") AS size_95,
-    COUNT(s."10") AS size_10,
-    COUNT(s."10.5") AS size_105,
-    COUNT(s."11") AS size_11,
-    COUNT(s."11.5") AS size_115,
-    COUNT(s."12") AS size_12,
-    COUNT(s."12.5") AS size_125,
-    COUNT(s."13") AS size_13,
+    COUNT(s."3.5") AS "3.5",
+    COUNT(s."4") AS "4",
+    COUNT(s."4.5") AS "4.5",
+    COUNT(s."5") AS "5",
+    COUNT(s."5.5") AS "5.5",
+    COUNT(s."6") AS "6",
+    COUNT(s."6.5") AS "6.5",
+    COUNT(s."7") AS "7",
+    COUNT(s."7.5") AS "7.5",
+    COUNT(s."8") AS "8",
+    COUNT(s."8.5") AS "8.5",
+    COUNT(s."9") AS "9",
+    COUNT(s."9.5") AS "9.5",
+    COUNT(s."10") AS "10",
+    COUNT(s."10.5") AS "10.5",
+    COUNT(s."11") AS "11",
+    COUNT(s."11.5") AS "11.5",
+    COUNT(s."12") AS "12",
+    COUNT(s."12.5") AS "12.5",
+    COUNT(s."13") AS "13",
     MIN(s.minprice) AS min,
     MAX(s.maxprice) AS max,
     jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) AS firm_count_map
@@ -67,7 +67,8 @@ SELECT info,
     value,
     article,
     description,
-    date
+    date,
+    image_count
 FROM snickers
     LEFT JOIN discount ON snickers.id = productid
 WHERE snickers.id = $1;
@@ -114,3 +115,23 @@ SELECT snickers.minPrice,
     maxdiscprice
 FROM snickers
     JOIN discount ON snickers.id = productid;
+
+-- name: GetCountOfCollectionsOrFirms :one
+SELECT COUNT(snickers.id) AS count 
+FROM snickers
+WHERE firm = $1
+    OR line = $2;
+    
+-- name: GetSoloCollectionWithCount :many    
+SELECT COALESCE(discount.minprice, snickers.minprice) AS minprice,
+    snickers.id,
+    image_path,
+    name,
+    firm,
+    maxdiscprice,
+    COUNT(*) OVER () AS total_count
+FROM snickers
+    LEFT JOIN discount ON snickers.id = productid
+WHERE firm = $1
+    OR line = $2
+LIMIT $3 OFFSET $4;

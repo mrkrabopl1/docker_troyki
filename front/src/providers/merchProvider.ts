@@ -85,6 +85,21 @@ const getCollection = function (reqData: { name: string, page: number, size: num
     })
 }
 
+const getCountCollection = function (name: string , callback: (val: any) => void) {
+    axios({
+        method: 'get',
+        url: `${API_URL}/collectionCount` + "?" + "name=" + name,
+        headers: {
+           
+        }
+    }
+    ).then((res: any) => {
+        callback(res.data)
+    },  (error: any) => {
+        console.warn(error)
+    })
+}
+
 const getCollections = function (reqData: { names: string[], page: number, size: number }, callback: (val: any) => void) {
     axios({
         method: 'post',
@@ -126,4 +141,4 @@ const getSizeTable = function (callback: (val: any) => void) {
         console.warn(error)
     })
 }
-export { getMerchInfo, getSizeTable, getMainInfo, getCollections, getFirms, getHistoryInfo, getDiscontInfo, getCollection }
+export { getMerchInfo, getSizeTable, getMainInfo, getCollections, getFirms, getHistoryInfo, getDiscontInfo, getCollection,getCountCollection }

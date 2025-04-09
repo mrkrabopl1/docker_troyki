@@ -305,6 +305,21 @@ func (mr *MockStoreMockRecorder) GetCountIdByFiltersAndFirm(arg0, arg1, arg2 int
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCountIdByFiltersAndFirm", reflect.TypeOf((*MockStore)(nil).GetCountIdByFiltersAndFirm), arg0, arg1, arg2)
 }
 
+// GetCountOfCollectionsOrFirms mocks base method.
+func (m *MockStore) GetCountOfCollectionsOrFirms(arg0 context.Context, arg1 db.GetCountOfCollectionsOrFirmsParams) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCountOfCollectionsOrFirms", arg0, arg1)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCountOfCollectionsOrFirms indicates an expected call of GetCountOfCollectionsOrFirms.
+func (mr *MockStoreMockRecorder) GetCountOfCollectionsOrFirms(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCountOfCollectionsOrFirms", reflect.TypeOf((*MockStore)(nil).GetCountOfCollectionsOrFirms), arg0, arg1)
+}
+
 // GetCustomerData mocks base method.
 func (m *MockStore) GetCustomerData(arg0 context.Context, arg1 int32) (db.GetCustomerDataRow, error) {
 	m.ctrl.T.Helper()
@@ -426,7 +441,7 @@ func (mr *MockStoreMockRecorder) GetOrderData(arg0, arg1 interface{}) *gomock.Ca
 }
 
 // GetOrderDataById mocks base method.
-func (m *MockStore) GetOrderDataById(arg0 context.Context, arg1 pgtype.Int4) ([]db.GetOrderDataByIdRow, error) {
+func (m *MockStore) GetOrderDataById(arg0 context.Context, arg1 int32) ([]db.GetOrderDataByIdRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOrderDataById", arg0, arg1)
 	ret0, _ := ret[0].([]db.GetOrderDataByIdRow)
@@ -754,6 +769,21 @@ func (m *MockStore) GetSoloCollectionComplex(arg0 context.Context, arg1 db.GetSo
 func (mr *MockStoreMockRecorder) GetSoloCollectionComplex(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSoloCollectionComplex", reflect.TypeOf((*MockStore)(nil).GetSoloCollectionComplex), arg0, arg1)
+}
+
+// GetSoloCollectionWithCount mocks base method.
+func (m *MockStore) GetSoloCollectionWithCount(arg0 context.Context, arg1 db.GetSoloCollectionWithCountParams) ([]db.GetSoloCollectionWithCountRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSoloCollectionWithCount", arg0, arg1)
+	ret0, _ := ret[0].([]db.GetSoloCollectionWithCountRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSoloCollectionWithCount indicates an expected call of GetSoloCollectionWithCount.
+func (mr *MockStoreMockRecorder) GetSoloCollectionWithCount(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSoloCollectionWithCount", reflect.TypeOf((*MockStore)(nil).GetSoloCollectionWithCount), arg0, arg1)
 }
 
 // GetUnregisterCustomer mocks base method.

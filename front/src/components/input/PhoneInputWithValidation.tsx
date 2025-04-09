@@ -1,4 +1,4 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
+import React, { ReactElement, useEffect, useRef, useState, useCallback } from 'react'
 
 import s from "./style.module.css"
 
@@ -27,11 +27,11 @@ const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
     const [validState, setValid] = useState<boolean>(valid)
     useEffect(() => {
         setPhoneVal(val)
-        inputRef.current.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current)
+        setTimeout(()=>inputRef.current.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current),0)
     }, [val])
     useEffect(() => {
         setPhoneVal(phoneVal)
-        inputRef.current.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current)
+        setTimeout(()=>inputRef.current.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current),0)
     }, [phoneVal])
     useEffect(() => {
         setValid(valid)
@@ -71,11 +71,11 @@ const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
     }
 
 
-    const numberValidation = (val: React.KeyboardEvent<HTMLInputElement>) => {
+    const numberValidation = useCallback((val: React.KeyboardEvent<HTMLInputElement>) => {
         if (val.key === "Delete") {
             let cursorPosition = inputRef.current.selectionStart
             if (cursorPosition < 3) {
-                inputRef.current.setSelectionRange(0, 0)
+                setTimeout(()=>inputRef.current.setSelectionRange(0, 0),0)
             } else {
                 let prefix = ""
                 let suffix = ""
@@ -102,25 +102,15 @@ const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
                 }
             }
         }
-        if (val.key === "ArrowLeft") {
-            let cursorPosition = inputRef.current.selectionStart
-            if (cursorPosition != 0) {
-                inputRef.current.setSelectionRange(cursorPosition - 1, cursorPosition - 1)
-            }
-        }
-        if (val.key === "ArrowRight") {
-            let cursorPosition = inputRef.current.selectionStart
-            inputRef.current.setSelectionRange(cursorPosition + 1, cursorPosition + 1)
-        }
         if (val.key === "Backspace") {
             let cursorPosition = inputRef.current.selectionStart
             if (cursorPosition === 7 || cursorPosition === 11 || cursorPosition === 14) {
                 //inputRef.current.focus();
-                inputRef.current.setSelectionRange(cursorPosition - 1, cursorPosition - 1)
+                setTimeout(()=>inputRef.current.setSelectionRange(cursorPosition - 1, cursorPosition - 1),0)
             } else if (cursorPosition == 4 && phoneVal.length == 4) {
                 setPhoneVal("");
             } else if (cursorPosition < 4) {
-                inputRef.current.setSelectionRange(0, 0)
+                setTimeout(()=>inputRef.current.setSelectionRange(0, 0),0)
             }
             else {
                 const prefix = phoneVal.slice(0, cursorPosition - 1);
@@ -138,9 +128,20 @@ const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
             }
 
         }
+        if (val.key === "ArrowLeft") {
+            let cursorPosition = inputRef.current.selectionStart
+            if (cursorPosition != 0) {
+                setTimeout(()=>inputRef.current.setSelectionRange(cursorPosition - 1, cursorPosition - 1),0)
+            }
+        }
+        if (val.key === "ArrowRight") {
+            let cursorPosition = inputRef.current.selectionStart
+            setTimeout(()=>inputRef.current.setSelectionRange(cursorPosition + 1, cursorPosition + 1),0)
+        }
         let num = Number(val.key)
         if (isFinite(num)) {
             let cursorPosition = inputRef.current.selectionStart
+            console.log(cursorPosition)
             if (cursorPosition === phoneVal.length) {
                 if (phoneVal.length === 16) return
                 let newVal = ""
@@ -188,7 +189,7 @@ const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
                 }
                 const timeStrVal = (prefix + num + suffix).replace(/[-,\s]/g, "")
                 let finalStr = removeChar(timeStrVal)
-                inputRef.current.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current)
+                setTimeout(()=>inputRef.current.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current),0)
                 setPhoneVal(finalStr);
                 if (finalStr.length === 16) {
                     setValid(true)
@@ -198,7 +199,7 @@ const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
                 }
             }
         }
-    }
+    },[phoneVal])
     const [valState, setVal] = useState<string>(val ? val : "")
     return (
         <div className={s.inputContainer}>
@@ -209,7 +210,7 @@ const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
                     e.preventDefault()
                     numberValidation(e)
                 }}
-                defaultValue={phoneVal}
+                value={phoneVal}
                 style={{ boxSizing: 'border-box', width: "100%" }}
                 className={validState ? s.inputWithLabel : s.inputWithLabel + " " + s.invalid}
                 ref={inputRef}

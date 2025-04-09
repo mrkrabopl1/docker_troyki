@@ -10,6 +10,7 @@ import (
 )
 
 const TaskSendVerifyEmail = "task:send_verify_email"
+const TaskSendOrderEmail = "task:send_order_email"
 
 type PayloadSendVerifyEmail struct {
 	Username string `json:"username"`
@@ -73,5 +74,76 @@ func (processor *RedisTaskProcessor) ProcessTaskSendVerifyEmail(ctx context.Cont
 
 	// log.Info().Str("type", task.Type()).Bytes("payload", task.Payload()).
 	// 	Str("email", user.Email).Msg("processed task")
+	return nil
+}
+
+func (distributor *RedisTaskDistributor) DistributeTaskSendOrderEmail(
+	ctx context.Context,
+	payload *PayloadSendOrderEmail,
+	opts ...asynq.Option,
+) error {
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	task := asynq.NewTask(TaskSendOrderEmail, jsonPayload, opts...)
+	info, err := distributor.client.EnqueueContext(ctx, task)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task: %w", err)
+	}
+
+	log.Info().Str("type", task.Type()).Bytes("payload", task.Payload()).
+		Str("queue", info.Queue).Int("max_retry", info.MaxRetry).Msg("enqueued task")
+	return nil
+}
+
+type PayloadSendOrderEmail struct {
+	Name         string `json:"name"`
+	SecondName   string `json:"second_name"`
+	Id           int32  `json:"id"`
+	Town         string `json:"town"`
+	Street       string `json:"street"`
+	House        string `json:"house"`
+	Flat         string `json:"flat"`
+	Index        string `json:"index"`
+	Phone        string `json:"phone"`
+	DeliveryType int    `json:"delivery_type"`
+	Email        string `json:"email"`
+	OrderPrice   int    `json:"order_price"`
+}
+
+func (processor *RedisTaskProcessor) ProcessTaskSendOrderEmail(ctx context.Context, task *asynq.Task) error {
+	var payload PayloadSendOrderEmail
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", asynq.SkipRetry)
+	}
+
+	subject := "Welcome to Troyki Sail"
+	content := fmt.Sprintf(`Hello %s,<br/>
+	Thank you for youre order!<br/>
+	Your order number is <a href="%d">.<br/>
+	Your order info is <br/>
+	First name: %s<br/>
+	Second name: %s<br/>
+	Town: %s<br/>
+	Street: %s<br/>
+	House: %s<br/>
+	Index: %s<br/>
+	Delivery type: %d<br/>	
+	Phone: %s<br/>
+	OrderPrice: %d<br/>	
+	If all some info is incorrect please contact us by this number 899999999999!<br/>
+	Otherwise please wait for the delivery!<br/>`, payload.Name, payload.Id, payload.Name, payload.SecondName,
+		payload.Town, payload.Street, payload.House, payload.Index, payload.DeliveryType, payload.Phone, payload.OrderPrice)
+	to := []string{payload.Email}
+
+	err := processor.mailer.SendEmail(subject, content, to, nil, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to send verify email: %w", err)
+	}
+
+	log.Info().Str("type", task.Type()).Bytes("payload", task.Payload()).
+		Str("email", payload.Email).Msg("processed task")
 	return nil
 }

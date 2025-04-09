@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	db "github.com/mrkrabopl1/go_db/db/sqlc"
 	"github.com/mrkrabopl1/go_db/token"
 )
 
@@ -64,12 +65,18 @@ func CachedMiddleware(s *Server) gin.HandlerFunc {
 		}
 		fmt.Println("idStr", idStr)
 		snickersInfo, err := s.taskProcessor.GetSnickersInfo(ctx, idStr)
-
+		fmt.Println(snickersInfo.Image, "redisTest")
 		if err == nil {
-			fmt.Println("reddis")
-			ctx.JSON(http.StatusOK, snickersInfo)
+			fmt.Println("reddis", snickersInfo.Info, snickersInfo.Image, "redisTest")
+			ctx.JSON(http.StatusOK, db.SnickersInfoResponse{
+				Info:     snickersInfo.Info,
+				Image:    snickersInfo.Image,
+				Name:     snickersInfo.Name,
+				Discount: snickersInfo.Discount,
+			})
 			if errC != nil {
 				//log.WithCaller().Err(errC).Msg("")
+				ctx.Abort()
 				return
 			}
 			user, err1 := s.tokenMaker.VerifyToken(cookie)
@@ -81,6 +88,7 @@ func CachedMiddleware(s *Server) gin.HandlerFunc {
 					s.store.SetSnickersHistory(ctx, int32(numId), user.UserId)
 				}
 			}
+			fmt.Println("ds;flksdfnldffffffffffffffffffffffffffffffffffffffffffffff")
 			ctx.Abort()
 			return
 		}

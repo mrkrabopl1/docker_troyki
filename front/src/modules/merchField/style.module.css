@@ -2,6 +2,7 @@
     display: flex;
     position: relative;
     flex-wrap: wrap;
+    background-color: #f8f8f8;
 }
 
 .merchName{
@@ -44,7 +45,7 @@
 }
 .colorLayout{
     border-radius:5px;
-    background-color: white;
+    background-color: #f8f8f8;
      position: relative;
     flex-shrink: 0;
     height: auto;
@@ -93,6 +94,7 @@
     position: relative; 
     height:"100%";
     min-height: 80%;
+    background-color: #f8f8f8;
 }
 .deleteBtn{
     background: url("../../../public/bin.svg") center no-repeat;

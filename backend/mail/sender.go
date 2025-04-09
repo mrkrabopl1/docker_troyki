@@ -46,12 +46,16 @@ func (sender *GmailSender) SendEmail(
 	attachFiles []string,
 ) error {
 	e := email.NewEmail()
+	fmt.Println("Sender name:", sender.fromEmailAddress)
 	e.From = fmt.Sprintf("%s <%s>", sender.name, sender.fromEmailAddress)
 	e.Subject = subject
 	e.HTML = []byte(content)
+
 	e.To = to
 	e.Cc = cc
 	e.Bcc = bcc
+
+	fmt.Println("test")
 
 	for _, f := range attachFiles {
 		_, err := e.AttachFile(f)
@@ -59,7 +63,9 @@ func (sender *GmailSender) SendEmail(
 			return fmt.Errorf("failed to attach file %s: %w", f, err)
 		}
 	}
-
+	fmt.Println("test1")
 	smtpAuth := smtp.PlainAuth("", sender.fromEmailAddress, sender.fromEmailPassword, smtpAuthAddress)
+	fmt.Println("test2")
+	fmt.Println("Sending email to:", smtpServerAddress, smtpAuth)
 	return e.Send(smtpServerAddress, smtpAuth)
 }

@@ -47,6 +47,7 @@ func main() {
 	fmt.Println("Hello")
 	cfg := config.LoadConfig()
 	cfg1, _ := util.LoadConfig(".")
+	//cfg1.DBSource = os.Getenv("DATABASE_URL")
 	fmt.Println(cfg1)
 	fmt.Println(cfg)
 	connPool, err := pgxpool.NewWithConfig(context.Background(), util.CreateConfig(cfg1.DBSource))
@@ -91,7 +92,7 @@ func main() {
 func runGinServer(config util.Config, store db.Store, taskDistributor worker.TaskDistributor, taskProcessor worker.TaskProcessor) {
 	server, err := api.NewServer(config, store, taskDistributor, taskProcessor)
 	if err != nil {
-		fmt.Println(err, "Error while creating serverddddddddddddddddddddddddddddddddddd")
+		fmt.Println(err, "Error while creating server")
 		//log.Fatal().Err(err).Msg("cannot create server")
 	}
 

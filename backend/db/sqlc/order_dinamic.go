@@ -38,8 +38,8 @@ func insertIntoOrderItemsQuery(products []GetOrderDataByIdRow, orderID int) stri
 	count := 0
 	for _, product := range products {
 		orderItemStr := fmt.Sprintf(`('%d', '%d', '%s', '%d')`,
-			product.Prid.Int32,
-			product.Quantity.Int32,
+			product.Prid,
+			product.Quantity,
 			product.Size.String,
 			orderID,
 		)
@@ -147,9 +147,9 @@ func getSnickersOrderDataQuery(snickersPreorder []GetOrderDataByIdRow) string {
 	var conditionStr string
 	for _, sn := range snickersPreorder {
 		if conditionStr == "" {
-			conditionStr += fmt.Sprintf(`SELECT id, %d AS prid, name ,firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers WHERE id = %d `, sn.ID, sn.Size.String, sn.Size.String, sn.Quantity.Int32, sn.Prid.Int32)
+			conditionStr += fmt.Sprintf(`SELECT id, %d AS prid, name ,firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers WHERE id = %d `, sn.ID, sn.Size.String, sn.Size.String, sn.Quantity, sn.Prid)
 		} else {
-			conditionStr += fmt.Sprintf(`UNION ALL SELECT id, %d AS prid, name , firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers  WHERE id = %d `, sn.ID, sn.Size.String, sn.Size.String, sn.Quantity.Int32, sn.Prid.Int32)
+			conditionStr += fmt.Sprintf(`UNION ALL SELECT id, %d AS prid, name , firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers  WHERE id = %d `, sn.ID, sn.Size.String, sn.Size.String, sn.Quantity, sn.Prid)
 		}
 	}
 	return conditionStr

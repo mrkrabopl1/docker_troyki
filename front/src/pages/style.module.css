@@ -8,7 +8,7 @@
     right: -300px;
     position: absolute;
     top: 0;
-    background-color: white;
+    background-color: #f8f8f8;
     z-index: 10;
     transition:right 0.3s ease-out;
     width: 300px;
@@ -17,7 +17,7 @@
     left: -300px;
     position: absolute;
     top: 0;
-    background-color: white;
+    background-color: #f8f8f8;
     z-index: 10;
     transition:left 0.3s ease-out;
     width: 300px;
@@ -25,7 +25,7 @@
 
 
 .secondPage{
-    background-color: white;
+    background-color: #f8f8f8;
     padding-right: 10px;
 }
 
@@ -35,7 +35,7 @@
 }
 .settingsBtn{
     position: absolute;
-    background-color:white;
+    background-color:#f8f8f8;
     border-radius: 3px;
     top:0;
     width: 32px;
@@ -48,7 +48,7 @@
 }
 .filterBtn{
     position: absolute;
-    background-color:white;
+    background-color:#f8f8f8;
     border-radius: 3px;
     top:0;
     width: 32px;

@@ -16,9 +16,9 @@ const MerchFormBlock: React.FC<{ data: merchInterface, onChange: () => void }> =
             <div style={{ width: "100%" }} onClick={() => navigate('/product/' + data.id)} className={s.merchLine + " flex"}>
                 <img className={s.buyImg} style={{ height: "", width: "15%", flexShrink: 0 }} src={"/" + data.img} alt="" />
                 <div className={s.merchCount}>
-                    <div className='vrtCntr'>
+                    <span className='vrtCntr'>
                         {data.quantity}
-                    </div>
+                    </span>
                 </div>
                 <div style={{width:"100%"}} className='vrtCntr'>
                     <p style={{display:"flex", justifyContent:"space-between"}}>

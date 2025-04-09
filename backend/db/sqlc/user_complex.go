@@ -60,7 +60,7 @@ func NewSnickersSearchResponse5(snickersSearch []GetSnickersByIdsRow) []types.Sn
 	for _, info := range snickersSearch {
 		var imgArr []string
 		for i := 1; i < 3; i++ {
-			str := fmt.Sprintf(info.ImagePath+"/%d.jpg", i)
+			str := "images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
 			imgArr = append(imgArr, str)
 		}
 		var discount interface{}

@@ -1,18 +1,26 @@
 import axios from "axios";
 const createPreorder = function (data: { id: number, info: { size: string } }, callback: (val: any) => void) {
     let jsonData = JSON.stringify(data)
-    axios.post(`${API_URL}/createPreorder`, jsonData, { headers: { "content-type": "application/json" } }).then((res) => {
-        callback(res.data)
-    }, (error) => {
+    axios({
+        withCredentials: true,
+        url: `${API_URL}/createPreorder`,
+        headers: { "content-type": "application/json" },
+        data: jsonData,
+        method: 'post',
+    }).then((res)=>callback(res.data), (error) => {
         console.warn(error)
     })
 }
 
 const updatePreorder = function (data: { id: number, hashUrl: string, info: { size: string } }, callback: (val: any) => void) {
     let jsonData = JSON.stringify(data)
-    axios.post(`${API_URL}/updatePreorder`, jsonData, { headers: { "content-type": "application/json" } }).then((res) => {
-        callback(res.data)
-    }, (error) => {
+    axios({
+        withCredentials: true,
+        url: `${API_URL}/updatePreorder`,
+        headers: { "content-type": "application/json" },
+        data: jsonData,
+        method: 'post',
+    }).then((res)=>callback(res.data), (error) => {
         console.warn(error)
     })
 }
@@ -39,7 +47,7 @@ interface clientDataType {
         type: number
     },
     save: boolean,
-    preorderId: string
+    preorderHash: string
 }
 
 const createOrder = function (data: clientDataType, callback: (val: any) => void) {
