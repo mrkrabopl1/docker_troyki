@@ -4,7 +4,7 @@ import { useAppDispatch } from 'src/store/hooks/redux'
 import { complexDropSlice } from 'src/store/reducers/complexDropSlice'
 import Scroller from '../scroller/Scroller'
 import global from "src/global.css"
-import { ReactComponent as ArrowLeft } from "/public/arrowLeft.svg";
+//import { ReactComponent as ArrowLeft } from "/public/arrowLeft.svg";
 interface dataInterface {
     [key: string]: string[];
 }
@@ -116,7 +116,7 @@ const ComplexDropVertical: React.FC<propsType> = (props) => {
                 <Scroller className={s.scrollStyle}>
                     <div onClick={()=>{
                         setShowDrop(false)
-                    }} className={"flex " + s.backPointer}> <ArrowLeft fill="gray"/>{chosen.current}</div>
+                    }} className={"flex " + s.backPointer}> {chosen.current}</div>
                     <div >
                         {createDropContent()}
                     </div>

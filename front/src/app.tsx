@@ -25,7 +25,7 @@ import {
   NavLink,
 } from "react-router-dom";
 import SettingsModule from './modules/settingsModule/SettingsModule.old'
-import SearchPage from './pages/SearchPage'
+import SearchPage from './pages/search/SearchPage'
 import ComplexDropMenuWithRequest from './modules/menu/ComplexDropMenuWithRequest'
 import Footer from './modules/footer/Footer'
 import Delivery from './pages/infoPages/Delivery'

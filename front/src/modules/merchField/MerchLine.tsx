@@ -15,7 +15,7 @@ const MerchLine: React.FC<{ data: merchInterface }> = (props) => {
             <img className={s.img} style={{ width: "30%", flexShrink: 0 }} src={"/" + data.img} alt="" />
             <div>
                 <p>
-                    {data.firm}
+                    {data.firm.toUpperCase()}
                 </p>
                 <p>
                     {data.name}

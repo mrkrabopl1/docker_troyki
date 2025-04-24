@@ -50,7 +50,7 @@ const InputWithLabelWithValidation: React.FC<propsRowType> = (props) => {
                     setValid(true)
                     if (onChange) {
                         let val = e.target.value
-                        let valid = validRule(valState)
+                        let valid = validRule(val)
                             if (!valid) {
                                 val = null
                             }
@@ -61,7 +61,8 @@ const InputWithLabelWithValidation: React.FC<propsRowType> = (props) => {
                 onFocus={(e) => { if (onFocus) { onFocus(e.target.value) } }}
                 onBlur={(e) => {
                     if(startValidationOnBlur.current){
-                        let valid = validRule(valState)
+                        let val = e.target.value
+                        let valid = validRule(val)
                         if (!valid) {
                             setValid(false)
                         }

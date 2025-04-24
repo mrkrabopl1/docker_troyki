@@ -22,6 +22,7 @@ interface sendFormModuleInterface {
         combobox?: string
     }
     onChange: (data: any) => void,
+    onValid?:(data: any) => void,
     valid: boolean,
     formValue?: {
         name: string,
@@ -61,7 +62,7 @@ const SendForm: React.FC<sendFormModuleInterface> = (props) => {
     let [refresh, setRefresh] = useState<boolean>(false)
 
     let invalidMailText = useRef<string>("Пустое поле ввода")
-    let { className, onChange, valid, formValue,memo } = { ...props }
+    let { className, onChange, valid, formValue,memo,onValid } = { ...props }
 
     useEffect(()=>{
         addressFormMemo.current = !addressFormMemo.current
@@ -72,6 +73,10 @@ const SendForm: React.FC<sendFormModuleInterface> = (props) => {
 
     const setFormData = (data: string, name: string) => {
         formData.current[name] = data
+        updateValidObj();  
+        const finalObj = { ...formData.current }
+        finalObj["save"] = saveData.current
+        onChange(finalObj)
     }
     useEffect(() => {
         if (!firstUpdate.current) {
@@ -91,6 +96,8 @@ const SendForm: React.FC<sendFormModuleInterface> = (props) => {
                 }
             }
         }
+        let valid = !(Object.values(validationObject.current).length > 0)
+        onValid(valid)
     }
 
     return (
@@ -123,17 +130,6 @@ const SendForm: React.FC<sendFormModuleInterface> = (props) => {
                 <span>Отправляйте мне SMS-сообщения о новостях и предложениях</span>
             </div> */}
             {/* <DeliveryInfo/> */}
-            <Button className={s.buttonConf} text='Оформить заказ' onChange={() => {
-                updateValidObj()
-                if (Object.values(validationObject.current).length > 0) {
-                    setRefresh(!refresh)
-                } else {
-                    const finalObj = { ...formData.current }
-                    finalObj["save"] = saveData.current
-                    onChange(finalObj)
-                }
-
-            }} />
 
         </div>
 

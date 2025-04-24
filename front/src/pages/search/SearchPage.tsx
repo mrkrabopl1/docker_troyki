@@ -263,7 +263,7 @@ const SearchPage: React.FC<any> = () => {
                         <MerchSliderField onChange={pageChange} currentPage={currentPage.current} pages={pages.current} heightRow={300} size={grid ? 2 : 3} data={merchFieldData} />
                         <div onClick={() => {
                             setGrid(!grid)
-                        }} style={{ position: "absolute", top: 0, width: "50px", height: "50px" }}>
+                        }} className={s.gridSwitcher}>
                             {grid ? <FoureGrid /> : <SixGrid />}
                         </div>
                         

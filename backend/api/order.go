@@ -73,6 +73,7 @@ func (s *Server) handleCreateOrder(ctx *gin.Context) {
 		data := map[string]interface{}{
 			"hash": hash,
 		}
+		fmt.Println("maybe good")
 		err = s.taskDistributor.DistributeTaskSendOrderEmail(ctx, &worker.PayloadSendOrderEmail{
 			Email:        orderData.PersonalData.Mail,
 			Name:         orderData.PersonalData.Name,

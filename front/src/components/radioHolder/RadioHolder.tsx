@@ -19,8 +19,7 @@ const RadioHolder: React.FC<RadioType> = (props) => {
     return (
         <div  className={className} >
             {children.map( (child,id) => {
-                if(child.props.active !== undefined){
-                   
+                if(child.props.active !== undefined){  
                     return <div onClick={()=>dispatch(setChosen({namespace:name,val:id}))}>{child}</div>
                 }else{
                     return null

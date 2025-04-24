@@ -6,7 +6,7 @@ import { NavLink } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom';
 import LineSwitcher from 'src/components/switcher/LineSwitcher'
 import s from "./style.module.css"
-import ss from "../../pages/style.module.css"
+import ss from "../../pages/search/style.module.css"
 import loupe from "/public/vagabond.png";
 import BuyButton from "./BuyButton";
 import { verified } from 'src/store/reducers/menuSlice'

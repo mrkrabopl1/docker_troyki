@@ -35,7 +35,7 @@ const SearchWithList: React.FC<propsRowType> = (props) => {
     let mainRef = useRef<HTMLDivElement|null>(null)
 
     const onChangeHandler=(data)=>{
-        selectList(data)
+        selectList && selectList(data)
     }
 
     const createDropList: (data: any) => void = (data) => {

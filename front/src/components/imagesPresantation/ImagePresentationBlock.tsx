@@ -6,14 +6,16 @@ import loop from "../../../public/zoom.svg"
 
 type iconType = {
     image: string,
-    onClick?:()=>void
+    onClick?:()=>void,
+    onHover?:(param:string)=>void,
+    onOut?:()=>void,
 }
 const ImagePresantationBlock: React.FC<iconType> = (data) => {
-    const { image, onClick } = { ...data }
+    const { image, onClick, onHover, onOut} = { ...data }
     let [hover,setHover] = useState<Boolean>(false)
 
     return (
-        <div onClick={()=>{onClick()}} style={{height:"100%"}}  onMouseOut={() => {setHover(false)}} onMouseOver={() => {setHover(true)}}>
+        <div  onClick={()=>{onClick()}} style={{height:"100%"}}  onMouseOut={() => {setHover(false); onOut  && onOut()  }} onMouseOver={() => {setHover(true); onHover && onHover(image)}}>
             <img loading={"lazy"} onMouseDown={(e)=>{
                     e.preventDefault();
                 }} style={{display:hover?"block":"none"}} className={s.loop} src={loop} alt="React Logo" />

@@ -1,6 +1,7 @@
 import React, { ReactElement, useRef, useState } from 'react'
 import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux'
 import Checkbox from '../checkbox/Checkbox'
+import Scroller from '../scroller/Scroller'
 
 type checkBoxType = {enable:boolean,activeData:boolean,name:string}
 type columnType = {
@@ -24,7 +25,7 @@ const CheckBoxColumn: React.FC<columnType> = (props) => {
         },500)
     }
     return (
-        <div  >
+        <div style={{paddingLeft:"5px"}}  >
                 {dataRef.current.map((val,id)=>{
                    valRef.current.push(val.activeData)
                    return( <div key={val.name} style={{display:"flex"}}>

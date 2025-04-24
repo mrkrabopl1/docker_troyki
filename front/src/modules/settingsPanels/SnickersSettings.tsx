@@ -3,6 +3,7 @@ import DynamicElement from "src/components/dynamicElement/DynamicElement"
 import s from './style.module.css'
 import DoubleInfoDrop from 'src/components/doubleInfoDrop/DoubleInfoDrop'
 import CheckBoxColumn from 'src/components/checkBoxForm/CheckBoxForm'
+import Scroller from 'src/components/scroller/Scroller'
 import ZoneSliderValueSetter from 'src/modules/sliderValueSetter/ZoneSliderValueSetter'
 type propsRowType = {
     propsData: any,
@@ -54,7 +55,11 @@ const SnickersSettings: React.FC<settingModuleInterface> = (props) => {
             </DoubleInfoDrop> */}
             {checboxsProps.map((el) => {
                 return <DoubleInfoDrop key={el.name} info={el.name}>
-                    <CheckBoxColumn onChange={(data) => { onChange({ name: el.name, data: data }) }} data={el.props} />
+                    <div style={{height:"200px"}}>
+                        <Scroller>
+                            <CheckBoxColumn onChange={(data) => { onChange({ name: el.name, data: data }) }} data={el.props} /> 
+                        </Scroller>
+                    </div>
                 </DoubleInfoDrop>
             })}
         </div>
