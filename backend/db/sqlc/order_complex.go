@@ -234,8 +234,21 @@ func (store *SQLStore) GetCartDataFromOrderById(ctx context.Context, id int32) (
 	}
 	return snickersOrder, nil
 }
+
 func (store *SQLStore) GetCartDataFromOrderByHash(ctx context.Context, hash string) ([]types.SnickersCart, error) {
 	orderId, err := store.Queries.GetOrderIdByHashUrl(ctx, hash)
+	if err != nil {
+		return []types.SnickersCart{}, err
+	}
+	snickers, err1 := store.GetCartDataFromOrderById(ctx, orderId)
+	if err1 != nil {
+		return []types.SnickersCart{}, err1
+	}
+	return snickers, nil
+}
+
+func (store *SQLStore) GetCartDataFromPreorderByHash(ctx context.Context, hash string) ([]types.SnickersCart, error) {
+	orderId, err := store.Queries.GetPreorderIdByHashUrl(ctx, hash)
 	if err != nil {
 		return []types.SnickersCart{}, err
 	}

@@ -20,7 +20,7 @@ type urlParamsType = {
     onChange:()=>void
 };
 
-const DeliveryPage: React.FC<urlParamsType> = (props) => {
+const PayBlock: React.FC<urlParamsType> = (props) => {
     let { address, contactInfo, onChange } = {...props};
     return (
         <div>
@@ -36,15 +36,13 @@ const DeliveryPage: React.FC<urlParamsType> = (props) => {
                 address? <div>
                 
                 <span>
-                        Адрес доставки
+                        Платеж
                 </span>
-                <span>
-                       {address.town}{address.index}
-                </span>
+            
                 </div>:null
             }
            
-            <DeliveryTypeRadioGroup onChange={onChange}/>
+            
 
         </div>
 
@@ -52,4 +50,4 @@ const DeliveryPage: React.FC<urlParamsType> = (props) => {
 }
 
 
-export default DeliveryPage
+export default PayBlock

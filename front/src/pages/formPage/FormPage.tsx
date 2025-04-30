@@ -15,6 +15,7 @@ import DeliveryRadioGroup from './pageElements/DeliveryRadio';
 import Button from 'src/components/Button';
 import DeliveryTypeRadioGroup from './pageElements/DeliveryTypeRadio';
 import DeliveryPage from './pageElements/DeliveryPage';
+import PayBlock from './pageElements/PayBlock';
 
 interface merchInterface { name: string, img: string, id: string, firm: string, price: string, count: number }
 type urlParamsType = {
@@ -51,9 +52,10 @@ const FormPage: React.FC = () => {
         cartData: [],
         fullPrice: ""
     })
-    let [delivery, setDelivery] = useState(0)
-    let [formId, setFormId] = useState(0)
+    let delivery = useRef(0)
+    let formId = useRef(0)
     let memoSendForm = useRef<boolean>(true)
+    let respData = useRef<any>({})
     let validSendForm = useRef(false)
     let fullPrice = useRef<number>(0)
     let [inProgrees, setInProgress] = useState(true)
@@ -82,16 +84,16 @@ const FormPage: React.FC = () => {
     }, [])
 
     const getForm = () => {
-        switch (formId) {
+        switch (formId.current) {
             case 0:
-                if (!delivery) {
+                if (!delivery.current) {
                     return <SendForm
                         memo={memoSendForm.current}
                         valid={true}
                         formValue={
                             formData.current
                         }
-                        onValid={(valid)=>{
+                        onValid={(valid) => {
                             validSendForm.current = valid;
                         }}
 
@@ -102,7 +104,7 @@ const FormPage: React.FC = () => {
                             formData.current.phone = data.phone
                             formData.current.mail = data.mail
 
-                            let respData = {
+                            respData.current = {
 
                                 personalData: {
                                     name: data.name,
@@ -121,31 +123,33 @@ const FormPage: React.FC = () => {
                                 preorderHash: hash
 
                             }
-                            createOrder(respData, (data) => {
-                                navigate('/order/' + data.hash)
-                            })
                         }} className={{ input: s.formInput, combobox: s.combobox }} />
                 }
             case 1:
-               return <DeliveryPage address={formData.current.address} contactInfo={formData.current.mail} onChange={()=>{}} />
-            
+                return <DeliveryPage address={formData.current.address} contactInfo={formData.current.mail} onChange={() => { }} />
+            case 2:
+                return <PayBlock address={formData.current.address} contactInfo={formData.current.mail} onChange={() => { }} />    
+
         }
     }
 
-    const getFullForm = ()=>{
-        switch (formId){
-            case 0 :
+    const getFullForm = () => {
+        switch (formId.current) {
+            case 0:
                 return <div>
                     <h2>
                         Способ доставки
                     </h2>
-                    <DeliveryRadioGroup onChange={()=>{}}/>
+                    <DeliveryRadioGroup onChange={(data) => {
+                        delivery.current = data
+                        setRefresh(prev => !prev)
+                    }} />
                     {getForm()}
                 </div>
             case 1:
                 return <div>
                     {getForm()}
-                </div>    
+                </div>
         }
     }
 
@@ -153,24 +157,30 @@ const FormPage: React.FC = () => {
         <div className='dependFlex'>
             <div className={s.fieldHolder}>
                 {
-                   getFullForm()
+                    getFullForm()
                 }
-                
-                {formId? <Button text={BACK_ROUTE[delivery][formId]} onChange={() => {
-                   setFormId(prev => prev - 1)
-                }} />:null}
-                <Button text={BUY_ROUTE[delivery][formId]} onChange={() => {
-                    if (formId === BACK_ROUTE[delivery].length - 1) {
 
-                    } else {
-                        if(validSendForm.current){
-                            setFormId(prev => prev + 1)
-                        }else{
-                            memoSendForm.current = !memoSendForm.current
-                            setRefresh(prev=>!prev)
+                <div className={s.buttonHolder}>
+                    {formId.current ? <Button className={s.backBtn} text={BACK_ROUTE[delivery.current][formId.current]} onChange={() => {
+                        if (formId.current === 0) return
+                        formId.current = formId.current - 1
+                        setRefresh(prev => !prev)
+                    }} /> : null}
+                    <Button className={"btnStyle " + s.mainButton} text={BUY_ROUTE[delivery.current][formId.current]} onChange={() => {
+                        if (formId.current === BUY_ROUTE[delivery.current].length - 1) {
+                            createOrder(respData.current, (data) => {
+                                navigate('/order/' + data.hash)
+                            })
+                        } else {
+                            if (validSendForm.current) {
+                                formId.current = formId.current + 1
+                            } else {
+                                memoSendForm.current = !memoSendForm.current
+                            }
                         }
-                    }
-                }} />
+                        setRefresh(prev => !prev)
+                    }} />
+                </div>
 
             </div>
             <div style={{ paddingRight: "90px" }}>

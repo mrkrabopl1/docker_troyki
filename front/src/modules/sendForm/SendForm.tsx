@@ -84,7 +84,7 @@ const SendForm: React.FC<sendFormModuleInterface> = (props) => {
             setRefresh(prev=>!prev)
         }
         firstUpdate.current = false
-    }, [])
+    }, [memo])
     const updateValidObj = () => {
         let entries = Object.entries(formData.current)
         for (let i = 0; i < entries.length; i++) {

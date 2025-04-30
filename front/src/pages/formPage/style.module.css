@@ -19,3 +19,23 @@
 .wrapper{
     font-family: 'Open Sans', 'Helvetica Neue', 'Segoe UI', 'Calibri', 'Arial', sans-serif;
 }
+
+.bmf{
+    width: 50%;
+}
+
+.fieldHolder{
+    width: 50%;
+}
+
+.backBtn:hover{
+   color:red
+}
+
+.mainButton{
+   margin-left: auto;
+ }
+ .buttonHolder{
+    position:relative;
+    display:flex;
+ }

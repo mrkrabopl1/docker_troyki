@@ -178,7 +178,7 @@ const SnickersInfo: React.FC = () => {
                         }
 
                         createPreorder(data, (hash) => {
-                            navigate("/form/" + hash.hashUrl)
+                            navigate("/form/" + hash)
                         })
 
                         // dispatch(setSnickers([{

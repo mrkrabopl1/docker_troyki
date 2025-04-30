@@ -12,7 +12,6 @@ import (
 
 func (s *Server) handleCreatePreorder(ctx *gin.Context) {
 	var preorderData types.PreorderType
-	fmt.Println("tedt")
 	if err := ctx.BindJSON(&preorderData); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
@@ -140,14 +139,9 @@ func (s *Server) handleGetCartCount(ctx *gin.Context) {
 }
 
 func (s *Server) handleGetCart(ctx *gin.Context) {
-	cookie, err := ctx.Cookie("cart")
-	fmt.Println(cookie, "cookiefkmdslkfmsdlkfmsdlkfmsdlkmf;;;l")
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return
-	}
+	hashUrl := ctx.Query("hash")
 
-	cartData, err := s.store.GetCartData(ctx, cookie)
+	cartData, err := s.store.GetCartData(ctx, hashUrl)
 
 	responseData := SnickersCartResponseWithourFullPrice(cartData)
 
