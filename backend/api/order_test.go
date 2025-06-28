@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	mockdb "github.com/mrkrabopl1/go_db/db/mock"
+	db "github.com/mrkrabopl1/go_db/db/sqlc"
 	"github.com/mrkrabopl1/go_db/types"
 	"github.com/mrkrabopl1/go_db/worker"
 	mockwk "github.com/mrkrabopl1/go_db/worker/mock"
@@ -261,14 +262,14 @@ func TestHandleCreateOrder(t *testing.T) {
 	testCases := []struct {
 		name          string
 		cookieValue   string
-		requestBody   types.CreateOrderType
+		requestBody   db.CreateOrderType
 		buildStubs    func(store *mockdb.MockStore, distributor *mockwk.MockTaskDistributor)
 		checkResponse func(recorder *httptest.ResponseRecorder)
 	}{
 		{
 			name:        "OK with email",
 			cookieValue: "valid-token",
-			requestBody: types.CreateOrderType{
+			requestBody: db.CreateOrderType{
 				PreorderHash: "3768787411872764248",
 				PersonalData: types.PersonalData{
 					Name:       "name",
@@ -284,9 +285,9 @@ func TestHandleCreateOrder(t *testing.T) {
 					House:  "house",
 					Flat:   "flat",
 				},
-				Delivery: types.Delivery{
+				Delivery: db.Delivery{
 					DeliveryPrice: 10000,
-					Type:          1,
+					Type:          "own",
 				},
 				Save: true,
 			},

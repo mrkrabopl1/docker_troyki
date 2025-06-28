@@ -6,7 +6,7 @@ import { show, sticky,verified } from 'src/store/reducers/menuSlice'
 import { setFooter } from 'src/store/reducers/dispetcherSlice'
 import {  setWidthProps } from 'src/store/reducers/resizeSlice'
 import DropZone from "src/develop/dropZone/DropZone"
-const SnickersInfo = lazy(() => import('./pages/snickersInfo/SnickersInfo'))
+const ProductsInfo = lazy(() => import('./pages/ProductsInfo/ProductsInfo'))
 import Form from './pages/formPage/FormPage'
 import BuyPage from './pages/buyPage/BuyPage'
 const CollectionPage = lazy(() => import('./pages/collectionPage/CollectionPage'))
@@ -15,6 +15,7 @@ import { getCookie } from './global'
 import WayToPay from './pages/infoPages/WayToPay'
 import ScrollToTop from './scrollToTop';
 import { setUniqueCustomer } from './providers/userProvider';
+import { getCdekDeliveryData,chackPostalIndex } from './providers/cdek';
 import Refund from './pages/infoPages/Refund';
 import {
   Link, Route, BrowserRouter as Router, Routes,
@@ -39,11 +40,17 @@ import OrderPage from './pages/orderPage/OrderPage';
 import global from "src/global.css"
 import OrderInfo from './components/orderInfo/orderInfo';
 import { getCartCount } from './providers/shopProvider';
+import { useContentHeight } from 'src/store/hooks/redux';
 setTimeout(() => {
   console.debug(API_URL, "f;lsdmf;ls,d;lf")
 }, 10)
 
 const App: React.FC<any> = () => {
+  const { contentRef, contentHeight } = useContentHeight();
+
+  useEffect(() => {
+    console.log('Текущая высота контента:', contentHeight);
+  }, [contentHeight]);
   let [merchFieldData, setMerchFieldData] = useState<any>([])
   const dispatch = useAppDispatch();
 
@@ -74,6 +81,8 @@ const App: React.FC<any> = () => {
   }, [])
 
   useEffect(() => {
+    chackPostalIndex("127642",(data)=>{})
+    getCdekDeliveryData("1276",(data)=>{})
     jwtAutorise((res)=>{
       console.debug(res)
       dispatch(verified(res.data))
@@ -96,7 +105,10 @@ const App: React.FC<any> = () => {
       //  dispatch(sticky(true))
       }
     } else {
-      if(window.scrollY === 0) return
+      if(window.scrollY === 0){
+        dispatch(show(true))
+        return
+      } 
       if (window.scrollY + e.deltaY < 150 ) {
         dispatch(show(true))
       } else {
@@ -106,6 +118,30 @@ const App: React.FC<any> = () => {
     }
 
   }
+  useEffect(() => {
+    const element = contRef.current;
+    if (!element) return;
+    // Создание наблюдателя за изменениями размеров
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === element) {
+
+          if(window.innerHeight >= element.offsetHeight || window.scrollY < 150 ){
+            dispatch(show(true))
+          }
+        }
+      }
+    });
+
+    observer.observe(element);
+
+    // Очистка при размонтировании
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+
   const manipulateDispetcher = (e: React.WheelEvent<HTMLDivElement>) => {
     if(Math.ceil(window.scrollY+window.innerHeight+e.deltaY) >= contRef.current.scrollHeight - 100){
       dispatch(setFooter(true))
@@ -120,7 +156,7 @@ const App: React.FC<any> = () => {
       <ScrollToTop/>
       <Routes>
         <Route path="/" element={
-          <div ref={contRef} onWheel={(e)=>{
+          <div  style={{display:"flex", flexDirection:"column", minHeight:"100vh"}} ref={contRef} onWheel={(e)=>{
             manipulateMenu(e)
             manipulateDispetcher(e)
           }} onScroll={(e)=>{
@@ -143,7 +179,7 @@ const App: React.FC<any> = () => {
           </Route>
           <Route path="/product/:snickers" element={
             <React.Suspense fallback={<>...</>}>
-              <SnickersInfo />
+              <ProductsInfo />
             </React.Suspense>
           }
           >

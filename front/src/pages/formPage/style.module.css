@@ -24,12 +24,50 @@
     width: 50%;
 }
 
+.infoBlock{
+    border:solid 2px black;
+    border-radius:4px;
+    display: flex;
+    justify-content:space-between;
+    margin:10px 0;
+    padding:10px;
+}
+
+.drop_list{
+    
+}
+
+.btn{
+    margin-top: auto;
+    padding:5px
+}
+
+.payHeader{
+    font-size: 22px;
+}
+
+
+.payHolder{
+    border:solid 2px black;
+    border-radius:4px;
+    font-size: 22px;
+}
+
+.btn:hover{
+    color:red
+}
+
 .fieldHolder{
     width: 50%;
 }
 
 .backBtn:hover{
-   color:red
+   scale: 1.1;
+}
+
+.backBtn{
+    transition: all 0.5s;
+    font-size: 16px;
 }
 
 .mainButton{
@@ -38,4 +76,8 @@
  .buttonHolder{
     position:relative;
     display:flex;
+ }
+
+ .mainHolder{
+    margin: 10px;
  }

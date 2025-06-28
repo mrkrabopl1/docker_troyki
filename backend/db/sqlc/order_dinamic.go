@@ -14,14 +14,15 @@ type Products struct {
 }
 
 func insertIntoPreorderItemsQuery(products []GetPreorderDataByIdRow, orderID int) string {
-	queryString := "INSERT INTO orderItems (productid, quantity, size, orderid) VALUES "
+	queryString := "INSERT INTO orderItems (productid, quantity, size, orderid, source_table) VALUES "
 	count := 0
 	for _, product := range products {
-		orderItemStr := fmt.Sprintf(`('%d', '%d', '%s', '%d')`,
-			product.Prid,
+		orderItemStr := fmt.Sprintf(`('%d', '%d', '%s', '%d', '%s')`,
+			product.Productid,
 			product.Quantity,
 			product.Size.String,
 			orderID,
+			product.SourceTable,
 		)
 		if count > 0 {
 			queryString += ","
@@ -34,14 +35,15 @@ func insertIntoPreorderItemsQuery(products []GetPreorderDataByIdRow, orderID int
 }
 
 func insertIntoOrderItemsQuery(products []GetOrderDataByIdRow, orderID int) string {
-	queryString := "INSERT INTO orderItems (productid, quantity, size, orderid) VALUES "
+	queryString := "INSERT INTO orderItems (productid, quantity, size, orderid, source_table) VALUES "
 	count := 0
 	for _, product := range products {
-		orderItemStr := fmt.Sprintf(`('%d', '%d', '%s', '%d')`,
-			product.Prid,
+		orderItemStr := fmt.Sprintf(`('%d', '%d', '%s', '%d', '%s')`,
+			product.Productid,
 			product.Quantity,
 			product.Size.String,
 			orderID,
+			product.SourceTable,
 		)
 		if count > 0 {
 			queryString += ","
@@ -72,6 +74,7 @@ func (q *Queries) GetSnickersPreorderData(ctx context.Context, snickersPreorder 
 			&i.Size,
 			&i.Price,
 			&i.Quantity,
+			&i.SourceTable,
 		); err != nil {
 			return nil, err
 		}
@@ -84,9 +87,12 @@ func (q *Queries) GetSnickersPreorderData(ctx context.Context, snickersPreorder 
 }
 
 func (q *Queries) InsertManyPreorderItems(ctx context.Context, products []GetPreorderDataByIdRow, orderID int) error {
+	fmt.Println("Inserting preorder items for order ID:", orderID, products)
 	orderQuery := insertIntoPreorderItemsQuery(products, orderID)
+	fmt.Println(orderQuery)
 	_, err := q.db.Exec(ctx, orderQuery)
 	if err != nil {
+		fmt.Println("Error executing insert query:", err)
 		return err
 	}
 	return nil
@@ -94,13 +100,61 @@ func (q *Queries) InsertManyPreorderItems(ctx context.Context, products []GetPre
 
 func getSnickersPreorderDataQuery(snickersPreorder []GetPreorderDataByIdRow) string {
 	var conditionStr string
-	for _, sn := range snickersPreorder {
-		if conditionStr == "" {
-			conditionStr += fmt.Sprintf(`SELECT id, %d AS prid, name ,firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers WHERE id = %d `, sn.ID, sn.Size.String, sn.Size.String, sn.Quantity, sn.Prid)
+
+	for i, sn := range snickersPreorder {
+		// Определяем таблицу источника и параметры
+		tableName := "snickers"
+		sizeField := fmt.Sprintf("'%s'", sn.Size.String)  // Для snickers берем размер
+		priceField := fmt.Sprintf(`"%s"`, sn.Size.String) // Для snickers цена из размера
+
+		if sn.SourceTable == "solomerch" {
+			tableName = "solomerch"
+			sizeField = "''"        // Для solomerch размер пустой
+			priceField = "minprice" // Для solomerch берем minprice
+		}
+
+		if i == 0 {
+			conditionStr += fmt.Sprintf(`
+					SELECT 
+						pr.global_id as id, 
+						%d AS prid, 
+						p.name, 
+						p.firm, 
+						p.image_path, 
+						%s AS size, 
+						%s AS price, 
+						%d AS quantity, 
+						'%s' AS source_table 
+					FROM 
+						product_registry pr
+					JOIN 
+						%s p ON pr.internal_id = p.id AND pr.source_table = '%s'
+					WHERE 
+						pr.global_id = %d`,
+				sn.ID, sizeField, priceField, sn.Quantity, tableName, tableName, tableName, sn.Productid)
 		} else {
-			conditionStr += fmt.Sprintf(`UNION ALL SELECT id, %d AS prid, name , firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers  WHERE id = %d `, sn.ID, sn.Size.String, sn.Size.String, sn.Quantity, sn.Prid)
+			conditionStr += fmt.Sprintf(`
+					UNION ALL 
+					SELECT 
+						pr.global_id as id, 
+						%d AS prid, 
+						p.name, 
+						p.firm, 
+						p.image_path, 
+						%s AS size, 
+						%s AS price, 
+						%d AS quantity, 
+						'%s' AS  source_table 
+					FROM 
+						product_registry pr
+					JOIN 
+						%s p ON pr.internal_id = p.id AND pr.source_table = '%s'
+					WHERE 
+						pr.global_id = %d`,
+				sn.ID, sizeField, priceField, sn.Quantity, tableName, tableName, tableName, sn.Productid)
 		}
 	}
+
 	return conditionStr
 }
 
@@ -147,9 +201,9 @@ func getSnickersOrderDataQuery(snickersPreorder []GetOrderDataByIdRow) string {
 	var conditionStr string
 	for _, sn := range snickersPreorder {
 		if conditionStr == "" {
-			conditionStr += fmt.Sprintf(`SELECT id, %d AS prid, name ,firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers WHERE id = %d `, sn.ID, sn.Size.String, sn.Size.String, sn.Quantity, sn.Prid)
+			conditionStr += fmt.Sprintf(`SELECT id, %d AS prid, name ,firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers WHERE id = %d `, sn.ID, sn.Size.String, sn.Size.String, sn.Quantity, sn.Productid)
 		} else {
-			conditionStr += fmt.Sprintf(`UNION ALL SELECT id, %d AS prid, name , firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers  WHERE id = %d `, sn.ID, sn.Size.String, sn.Size.String, sn.Quantity, sn.Prid)
+			conditionStr += fmt.Sprintf(`UNION ALL SELECT id, %d AS prid, name , firm, image_path,'%s' AS size, "%s" AS price, %d AS quantity FROM snickers  WHERE id = %d `, sn.ID, sn.Size.String, sn.Size.String, sn.Quantity, sn.Productid)
 		}
 	}
 	return conditionStr

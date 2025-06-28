@@ -135,8 +135,8 @@ const Menu: React.FC<dataType> = (props) => {
             </div>
 
             <div style={{paddingTop:"10px", margin: "auto 20px", display: "flex", position: "relative" }}>
-                {isVerified ? <User className={global.link} onClick={() => navigate("/user")} /> :  <RegistrationPanel/>}
-                <Loupe onClick={() => setActive(true)} className={global.link} height={"24px"} width={"24px"} />
+                {/* {isVerified ? <User className={global.link} onClick={() => navigate("/user")} /> :  <RegistrationPanel/>} */}
+                <Loupe onClick={() => setActive(true)} className={global.link} height={"36px"} width={"36px"} />
                 <BuyButton />
 
             </div>

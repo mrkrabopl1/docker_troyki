@@ -23,7 +23,7 @@ type SnickersResponseDD struct {
 	Price    int         `json:"price"`
 }
 
-type SnickersInfoResponse struct {
+type ProductsInfoResponse struct {
 	Name     string      `json:"name"`
 	Image    []string    `json:"imgs"`
 	Info     string      `json:"info"`
@@ -45,7 +45,15 @@ type SnickersSearchResponse1 struct {
 	Id       int         `json:"id"`
 	Discount interface{} `json:"discount"`
 }
-
+type MerchSearchResponse struct {
+	Name        string      `json:"name"`
+	Image       []string    `json:"imgs"`
+	Firm        string      `json:"firm"`
+	Price       int         `json:"price"`
+	Id          int         `json:"id"`
+	ProductType string      `json:"productType"`
+	Discount    interface{} `json:"discount"`
+}
 type FiltersSearchResponse struct {
 	FirmsCount map[string]int `json:"firmsCount"`
 	Price      [2]int         `json:"price"`
@@ -105,12 +113,13 @@ type UnregisterCustomerResponse struct {
 }
 
 type AddressTypeResp struct {
-	Town   string `json:"town"`
-	Index  string `json:"index"`
-	Region string `json:"region"`
-	Street string `json:"street"`
-	House  string `json:"house,omitempty"`
-	Flat   string `json:"flat,omitempty"`
+	Town        string   `json:"town"`
+	Index       string   `json:"index"`
+	Region      string   `json:"region"`
+	Street      string   `json:"street"`
+	House       string   `json:"house,omitempty"`
+	Flat        string   `json:"flat,omitempty"`
+	Coordinates []string `json:"coordinates"`
 }
 
 type OrderDataResp struct {
@@ -118,4 +127,5 @@ type OrderDataResp struct {
 	State        string                     `json:"state"`
 	CartResponse FullCartRespone            `json:"cartResponse"`
 	OrderId      int                        `json:"orderId"`
+	Address      AddressTypeResp            `json:"address"`
 }

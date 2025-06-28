@@ -25,7 +25,7 @@ type Products struct {
 }
 
 func InsertOrderItemsQuery(products []types.ProductsInsert, orderID int) string {
-	queryString := "INSERT INTO orderItems (productid, quantity, size, orderid) VALUES "
+	queryString := "INSERT INTO orderItems (productid, quantity, size, orderid, productType) VALUES "
 	count := 0
 	for _, product := range products {
 		orderItemStr := fmt.Sprintf(`('%d', '%d', '%s', '%d')`,
@@ -33,6 +33,7 @@ func InsertOrderItemsQuery(products []types.ProductsInsert, orderID int) string 
 			product.Quantity,
 			product.Size,
 			orderID,
+			product.ProductType,
 		)
 		if count > 0 {
 			queryString += ","

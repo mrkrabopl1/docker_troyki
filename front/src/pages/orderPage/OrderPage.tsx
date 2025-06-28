@@ -13,6 +13,7 @@ import { setSnickers } from 'src/store/reducers/formSlice';
 import OrderForm from 'src/modules/sendForm/OrderForm';
 import { getCookie } from 'src/global';
 import { getOrderCartData } from 'src/providers/shopProvider';
+import MapComponent from 'src/modules/map/Map';
 interface merchInterface { name: string, img: string, id: string, firm: string, price: string, count: number }
 type urlParamsType = {
     hash: string;
@@ -28,18 +29,19 @@ const OrderPage: React.FC = () => {
         orderData: {
             name: "",
             secondName: "",
-            address: {
-                town: "",
-                region: "",
-                home: "",
-                flat: "",
-                street: "",
-            },
             mail: "",
             phone: "",
             price: "",
             orderId: "",
             index: "",
+        },
+        address: {
+            town: "",
+            region: "",
+            home: "",
+            flat: "",
+            street: "",
+            coordinates:["0","0"]
         },
          orderId: 0
     })
@@ -53,7 +55,7 @@ const OrderPage: React.FC = () => {
         if(cookie.current){
             getOrderDataByHash(hash, (data) => {
                 setSnickers(data.cartResponse)
-                setOrder({ orderData: data.userInfo, orderId: data.orderId })
+                setOrder({ address:data.address,orderData: data.userInfo, orderId: data.orderId })
             })
         }else{
             getOrderCartData(hash, (data) => {
@@ -65,8 +67,11 @@ const OrderPage: React.FC = () => {
 
     return (
         <div className={"dependFlex"}>
+            <div>
+            <MapComponent location={order.address.coordinates}/>
             {cookie.current? 
             <OrderInfo
+                address={order.address}
                 orderData={order.orderData} orderId = {order.orderId}
             />:
             <OrderForm onChange={(data)=>{
@@ -75,7 +80,9 @@ const OrderPage: React.FC = () => {
                      setOrder({ orderData: resp.userInfo, orderId: resp.orderId })
                 })
             }}/>
-            }
+            }   
+            </div>
+            
            
 
             <BuyMerchField data={snickers} />

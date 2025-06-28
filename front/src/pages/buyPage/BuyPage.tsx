@@ -53,7 +53,7 @@ const BuyPage: React.FC<any> = () => {
     useEffect(() => {
         setActive(activeRef.current)
         if (!cartCountRef.current) return
-        getCartData((data) => {
+        getCartData(cart, (data) => {
             fullPrice.current = 0;
             data.cartData.forEach(val=>{
                 fullPrice.current +=val.price*val.quantity

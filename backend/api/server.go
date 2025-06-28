@@ -61,7 +61,7 @@ func (s *Server) setupRouter() {
 	// s.router.With(querySelectionMiddleware("name")).Get("/snickersByFirm", s.handleGetSnickersByFirmName)
 	// s.router.With(querySelectionMiddleware("name")).Get("/snickersByLine", s.handleGetSnickersByLineName)
 
-	// s.router.With(querySelectionMiddleware("id")).Get("/snickersInfo", s.handleGetSnickersInfoById)
+	// s.router.With(querySelectionMiddleware("id")).Get("/ProductsInfo", s.handleGetProductsInfoById)
 	router.GET("/sizeTable", s.handleGetSizes)
 	router.GET("/firms", s.handleGetFirms)
 	//s.router.Get("/mainPage", s.handleGetMainPage)
@@ -70,7 +70,7 @@ func (s *Server) setupRouter() {
 
 	snickersRoute := router.Group("/")
 	snickersRoute.Use(CachedMiddleware(s))
-	snickersRoute.GET("/snickersInfo", s.handleGetSnickersInfoById)
+	snickersRoute.GET("/ProductsInfo", s.handleGetProductsInfoById)
 
 	router.POST("/searchMerch", s.handleSearchMerch)
 	router.POST("/getSnickersAndFiltersByString", s.handleSearchSnickersAndFiltersByString)
@@ -93,7 +93,7 @@ func (s *Server) setupRouter() {
 	router.POST("/registerUser", s.handleRegisterUser)
 	router.POST("/login", s.handleLogin)
 	router.GET("/unlogin", s.handleUnlogin)
-	router.GET("/jwtAutorise", s.handleJwtAutorise)
+	router.GET("/pasetoAutorise", s.handlePasetoAutorise)
 	router.GET("/getUserData", s.handleGetUserData)
 	router.POST("/verify", s.handleVerifyUser)
 	router.POST("/changePass", s.handleChangePass)

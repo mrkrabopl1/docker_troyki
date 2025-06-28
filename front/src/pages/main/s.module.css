@@ -1,0 +1,27 @@
+.mainBanner{
+    width:100%;
+    flex-shrink: 0;
+    height:700px;
+    position: relative;
+}
+
+.buttonBanner{
+    width:450px;
+    font-size: 50px;
+    color: white;
+    background-color: black;
+    border-radius: 15px;
+    margin: auto;
+}
+
+.contentHolder{
+    left: 50%;
+    top: 70%;
+    transform: translate(-50%, -50%);
+    background-color: transparent;
+}
+
+.sliderHolder{
+    height: 700px;
+    position: relative;
+}

@@ -73,7 +73,7 @@ const PageController: React.FC<ContentSliderType> = (data) => {
         <div style={{ justifyContent: "center", display: "flex" }}>
 
             <div style={{ width: "30px", position: "relative" }}>
-                <button onClick={() => leftFunc()} className={s.paginate + " " + s.right1}><i></i><i></i></button>
+                <button onClick={() => leftFunc()} className={s.paginate + " " + s.right1}><i className={s.pg}></i><i className={s.pg} ></i></button>
             </div>
 
             <div style={{ cursor: "pointer", margin: "auto 0", justifyContent: "center", display: "flex" }} >
@@ -81,7 +81,7 @@ const PageController: React.FC<ContentSliderType> = (data) => {
             </div>
 
             <div style={{ width: "30px", position: "relative" }}>
-                <button onClick={() => rightFunc()} className={s.paginate + " " + s.right}><i></i><i></i></button>
+                <button onClick={() => rightFunc()} className={s.paginate + " " + s.right}><i className={s.pg}></i><i className={s.pg}></i></button>
             </div>
 
         </div>

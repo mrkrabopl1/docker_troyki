@@ -1,4 +1,4 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
+import React, { ReactElement, useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, useParams } from 'react-router-dom';
 import { getMerchInfo, getSizeTable } from "src/providers/merchProvider"
 import PriceHolder from 'src/modules/PriceHolder/PriceHolder';
@@ -16,7 +16,7 @@ import { createPreorder, updatePreorder } from 'src/providers/orderProvider';
 import s from "./style.module.css"
 import { setCookie, getCookie } from 'src/global';
 import { toPrice } from 'src/global';
-import ContentSlider from 'src/components/contentSlider/ContentSlider'
+import ContentSlider from 'src/components/contentSlider/ContentSliderWithControl'
 import ImagePresantationBlock from "src/components/imagesPresantation/ImagePresentationBlock"
 import MerchComplexSliderField from 'src/modules/merchField/MerchComplexSliderField';
 import { sizes, getMerchPrice1 } from 'src/constFiles/size';
@@ -56,7 +56,7 @@ type tableType = {
         }
     ]
 }
-const SnickersInfo: React.FC = () => {
+const ProductsInfo: React.FC = () => {
     const { shop } = { ...useAppSelector(state => state.menuReducer) }
     const { widthProps } = { ...useAppSelector(state => state.resizeReducer) }
     const navigate = useNavigate();
@@ -65,6 +65,7 @@ const SnickersInfo: React.FC = () => {
     let [recalc, setRecalc] = useState<boolean>(true)
     let [merchInfo, setMerchInfo] = useState<any>({ imgs: [], name: "", info: {} })
     let currentPrice = useRef<number>(0)
+    let merchType = useRef<string>("snickers")
     let currentDiscount = useRef<number>(0)
     let currentProiceDiscount = useRef<number>(0)
     let pricesArr = useRef<any>([])
@@ -77,6 +78,38 @@ const SnickersInfo: React.FC = () => {
     let [active, setActive] = useState(false)
 
     const setMerchInfoHandler = (val: any) => {
+        merchType.current = val.producttype
+        switch(val.producttype){
+            case "solomerch":
+                createSoloMerch(val)
+                break
+            case "snickers":
+                createSnickers(val)
+                break    
+
+        }
+       
+    }
+
+    const createSoloMerch=(val)=>{
+        pricesArr.current= [];
+        let discountParse = null;
+        if (val.discount) {
+            discountParse = val.discount
+        }
+        
+        let dPr = 0;
+        if (discountParse) {
+            let data = discountParse[currentSize.current]
+            if (data) {
+                dPr = data
+            }
+        }
+        currentPrice.current = val.minprice - dPr
+        setMerchInfo(val)
+    }
+
+    const createSnickers=(val)=>{
         pricesArr.current= [];
         const info = val.info
         let discountParse = null;
@@ -153,28 +186,40 @@ const SnickersInfo: React.FC = () => {
         }
         return arr
     }
+
+    const getPresentModule = useCallback(()=>{
+        if(merchInfo.imgs.length>1){
+            return <ImagePresantation images={merchInfo.imgs} />
+        }else{
+            return <ImagePresantationBlock image={merchInfo.imgs[0]} />
+        }
+    },[merchInfo])
     return (
         <div>
             <div className={widthProps ? "" : s.mainWrap}>
 
                 <div className={widthProps ?null:s.leftPart} style={widthProps ? { width: "100%" } : { }}>
-                   {widthProps?<ContentSlider content={createSliderContetn()} />:<ImagePresantation images={merchInfo.imgs} />}
+                   {widthProps?<ContentSlider content={createSliderContetn()} />:getPresentModule()}
                 </div>
                 <div className={s.controllPanel}>
-                    <Button text={"размеры"} onChange={() => {
+                    {(merchType.current === "snickers")?<Button text={"размеры"} onChange={() => {
                         setActive(true)
-                    }} />
+                    }} />:null}
                     <h1 className={s.merchName} >{merchInfo.name}</h1>
                     <div>
                         {currentDiscount.current ? <span className={s.discountPrice}>{toPrice(currentProiceDiscount.current)}</span> : null}
                         <span>{toPrice(currentPrice.current)}</span>
                         {currentDiscount.current ? <span className={s.discountPerce}>-{Math.round((currentDiscount.current/currentProiceDiscount.current)*100)}%</span> : null}
                     </div>
-                    <PriceHolder onChange={priceChangeHandler} elems={pricesArr.current} />
+                    {
+                        (merchType.current === "solomerch")?<div>{currentPrice.current}</div>: <PriceHolder onChange={priceChangeHandler} elems={pricesArr.current} />
+                    }
+                 
                     <Button text='Купить' className={"btnStyle " + s.buyMerch } onChange={() => {
                         let data: any = {
                             id: Number(snickers),
-                            size: String(currentSize.current)
+                            size: String(currentSize.current),
+                            sourceTable:merchType.current
                         }
 
                         createPreorder(data, (hash) => {
@@ -200,13 +245,15 @@ const SnickersInfo: React.FC = () => {
                         let data: any = {
                             id: Number(snickers),
                             size: currentSize.current,
+                            sourceTable:merchType.current
                         }
 
                         if (cart) {
                             let data: any = {
                                 id: Number(snickers),
                                 size: String(size),
-                                hashUrl: cart
+                                hashUrl: cart,
+                                sourceTable:merchType.current
                             }
                             updatePreorder(data, () => {
                                 dispatch(cartCountAction(cartCount + 1))
@@ -239,13 +286,13 @@ const SnickersInfo: React.FC = () => {
                         </div>
                     </DoubleInfoDrop>
                 </div>
-                <Modal onChange={setActive} active={active}>
+                {<Modal onChange={setActive} active={active}>
                     <div className={s.scrollContainer}>
                         <Scroller className={s.scrollStyle}>
                             <TableWithComboboxColumn className={s.modalTable} {...tableInfo} />
                         </Scroller>
                     </div>
-                </Modal>
+                </Modal>}
             </div>
             <MerchComplexSliderField/>
         </div>
@@ -254,4 +301,4 @@ const SnickersInfo: React.FC = () => {
 }
 
 
-export default SnickersInfo
+export default ProductsInfo

@@ -14,7 +14,7 @@ import (
 
 func (s *Server) handleGetFirms(ctx *gin.Context) {
 	fmt.Println("fkms;dlmf;dslmf;sdmf;lsmd;kmkdgb;lmf;gkfm;lgms;dkmf;")
-	firms, err := s.store.GetFirms(ctx)
+	firms, err := s.store.GetMerchFirms(ctx)
 	if err != nil {
 		//log.WithCaller().Err(err)
 		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
@@ -58,7 +58,7 @@ func (s *Server) handleGetSizes(ctx *gin.Context) {
 
 func (s *Server) handleGetCollectionCount(ctx *gin.Context) {
 	name := ctx.Query("name")
-	count, err := s.store.GetCountOfCollectionsOrFirms(ctx, db.GetCountOfCollectionsOrFirmsParams{
+	count, err := s.store.GetMerchCountOfCollectionsOrFirms(ctx, db.GetMerchCountOfCollectionsOrFirmsParams{
 		Firm: name,
 		Line: name,
 	})
@@ -69,7 +69,7 @@ func (s *Server) handleGetCollectionCount(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, count)
 }
-func (s *Server) handleGetSnickersInfoById(ctx *gin.Context) {
+func (s *Server) handleGetProductsInfoById(ctx *gin.Context) {
 	id := ctx.Query("id")
 	fmt.Println("id", id)
 	numId, err := strconv.ParseInt(id, 10, 32)
@@ -79,18 +79,32 @@ func (s *Server) handleGetSnickersInfoById(ctx *gin.Context) {
 		return
 	}
 	int32Value := int32(numId)
-	snickersInfo, err2 := s.store.GetSnickersInfoByIdComplex(ctx, int32Value)
-	if err2 != nil {
+	prInfo, err := s.store.GetProductSource(ctx, int32Value)
+	if err != nil {
 		fmt.Println("dmsa;mdasmd;aslmd;asl;l")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	fmt.Println(id, "dml;aksmd;lasmd;asm;k")
-	s.taskProcessor.SetSnickersInfo(ctx, id, snickersInfo)
-	fmt.Println(snickersInfo)
-	//snickersInfoResp := NewSnickersInfoResponse(snickersInfo)
-	//log.Log.Info().Interface("snickersInfo", snickersInfoResp).Msg("")
-	ctx.JSON(http.StatusOK, snickersInfo)
+	if prInfo.SourceTable == "snickers" {
+		ProductsInfo, err2 := s.store.GetProductsInfoByIdComplex(ctx, prInfo.InternalID)
+		if err2 != nil {
+			fmt.Println("dmsa;mdasmd;aslmd;asl;l")
+			ctx.JSON(http.StatusBadRequest, errorResponse(err))
+			return
+		}
+		s.taskProcessor.SetProductsInfo(ctx, id, ProductsInfo)
+		ctx.JSON(http.StatusOK, ProductsInfo)
+	}
+	if prInfo.SourceTable == "solomerch" {
+		ProductsInfo, err2 := s.store.GetSoloMerchInfoByIdComplex(ctx, prInfo.InternalID)
+		if err2 != nil {
+			fmt.Println("dmsa;mdasmd;aslmd;asl;l")
+			ctx.JSON(http.StatusBadRequest, errorResponse(err))
+			return
+		}
+		//s.taskProcessor.SetProductsInfo(ctx, id, ProductsInfo)
+		ctx.JSON(http.StatusOK, ProductsInfo)
+	}
 
 	cookie, errC := ctx.Cookie("unique")
 
@@ -100,8 +114,9 @@ func (s *Server) handleGetSnickersInfoById(ctx *gin.Context) {
 	}
 	user, err1 := s.tokenMaker.VerifyToken(cookie)
 	if err1 != nil {
-
+		fmt.Println(err1)
 	} else {
+		fmt.Println(user, user.UserId, "fdslfsd;mfdskmf;sdmfs")
 		err := s.store.SetSnickersHistory(ctx, int32(numId), user.UserId)
 		if err != nil {
 			//log.WithCaller().Err(err).Msg("")
@@ -157,13 +172,13 @@ func (s *Server) handleSearchSnickersAndFiltersByString(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	snickersInfo, err1 := s.store.GetSnickersAndFiltersByString(ctx, postData.Name, postData.Page, postData.Size, postData.Filters, postData.OrderedType)
+	ProductsInfo, err1 := s.store.GetSnickersAndFiltersByString(ctx, postData.Name, postData.Page, postData.Size, postData.Filters, postData.OrderedType)
 	if err1 != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err1))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, snickersInfo)
+	ctx.JSON(http.StatusOK, ProductsInfo)
 }
 
 type RespSearchSnickersByString struct {
@@ -177,8 +192,8 @@ func (s *Server) handleSearchSnickersByString(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	snickersInfo, _ := s.store.GetSnickersByString(ctx, postData.Name, postData.Page, postData.Size, postData.Filters, postData.OrderType)
-	ctx.JSON(http.StatusOK, snickersInfo)
+	ProductsInfo, _ := s.store.GetSnickersByString(ctx, postData.Name, postData.Page, postData.Size, postData.Filters, postData.OrderType)
+	ctx.JSON(http.StatusOK, ProductsInfo)
 }
 
 func (s *Server) handleSearchMerch(ctx *gin.Context) {
@@ -197,13 +212,13 @@ func (s *Server) handleGetSoloCollection(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	end := postData.Size
+
 	offset := (postData.Page - 1) * postData.Size
-	response, _ := s.store.GetSoloCollectionComplex(ctx,
-		db.GetSoloCollectionParams{
+	response, _ := s.store.GetMerchCollectionComplex(ctx,
+		db.GetMerchCollectionParams{
 			Firm:   postData.Name,
 			Line:   postData.Name,
-			Limit:  int32(end),
+			Limit:  int32(postData.Size),
 			Offset: int32(offset),
 		})
 	ctx.JSON(http.StatusOK, response)

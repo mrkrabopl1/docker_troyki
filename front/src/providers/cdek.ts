@@ -1,39 +1,18 @@
 import axios from "axios";
+ 
+const getCdekDeliveryData = function (query:string,callback: (val: any) => void) {
+    var url = "http://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address";
+    var token = "6be459b258fe86fa07e195d91fadc7572d62c0a6";
 
-const getCdekDeliveryData = function (info:any, callback: (val: any) => void) {
-    let data = JSON.stringify({
-        "type": "2",
-        "date": "2020-11-03T11:49:32+0700",
-        "currency": "1",
-        "tariff_code": "11",
-        "from_location": {
-            "code": 270
-        },
-        "to_location": {
-            "code": 44
-        },
-        "services": [
-            {
-                "code": "CARTON_BOX_XS",
-                "parameter": "2"
-            }
-        ],
-        "packages": [
-            {
-                "height": 10,
-                "length": 10,
-                "weight": 4000,
-                "width": 10
-            }
-        ]
-    })
     axios({
         method: 'post',
-        url: `https://api.edu.cdek.ru/v2/calculator/tariff`,
+        url: "http://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address",
         headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": "Token " + token 
         },
-        data: data
+        data: JSON.stringify({query: query})
     }).then((res: any) => {
         console.log(res)
         callback(res.data)
@@ -41,4 +20,46 @@ const getCdekDeliveryData = function (info:any, callback: (val: any) => void) {
     )
 }
 
-export {getCdekDeliveryData}
+const getAddressDeliveryData = function (query:string,callback: (val: any) => void) {
+    var url = "http://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address";
+    var token = "6be459b258fe86fa07e195d91fadc7572d62c0a6";
+
+    axios({
+        method: 'post',
+        url: "http://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address",
+        headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": "Token " + token 
+        },
+        data: JSON.stringify({query: query})
+    }).then((res: any) => {
+        console.log(res)
+        callback(res.data)
+    }
+    )
+}
+
+
+
+const chackPostalIndex= function(index:string,callback: (val: any) => void){
+    var url = "http://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/postal_unit";;
+    var token = "6be459b258fe86fa07e195d91fadc7572d62c0a6";
+
+    axios({
+        method: 'post',
+        url: url,
+        headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": "Token " + token 
+        },
+        data: JSON.stringify({query: index})
+    }).then((res: any) => {
+        console.log(res)
+        callback(res.data)
+    }
+    )
+}
+
+export {getCdekDeliveryData,chackPostalIndex,getAddressDeliveryData}

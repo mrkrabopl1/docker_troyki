@@ -30,7 +30,7 @@ func (s *Server) handleLogin(ctx *gin.Context) {
 		if err2 != nil {
 			ctx.JSON(http.StatusBadRequest, errorResponse(err1))
 		} else {
-			myCookie, err := s.tokenMaker.CreateJWTCoockie(customerData.ID, "unique", 3600000)
+			myCookie, err := s.tokenMaker.CreatePasetoCoockie(customerData.ID, "unique", 3600000)
 			if err != nil {
 				//log.WithCaller().Err(err)
 				ctx.JSON(http.StatusBadRequest, errorResponse(err1))
@@ -42,17 +42,24 @@ func (s *Server) handleLogin(ctx *gin.Context) {
 	}
 }
 func (s *Server) handleSetUniqueCustomer(ctx *gin.Context) {
-	uniqueCustomerId, err := s.store.CreateUniqueCustomer(ctx, pgtype.Date{Time: time.Now()})
+	validDate := pgtype.Date{
+		Time:  time.Now().Add(2 * time.Hour),
+		Valid: true, // This is crucial!
+	}
+	uniqueCustomerId, err := s.store.CreateUniqueCustomer(ctx, validDate)
 	if err != nil {
-		// log.WithCaller().Err(err).Msg("")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		fmt.Println(err)
+		return
 	} else {
-		myCookie, err := s.tokenMaker.CreateJWTCoockie(uniqueCustomerId, "unique", 36000)
+		myCookie, err := s.tokenMaker.CreatePasetoCoockie(uniqueCustomerId, "unique", 2*time.Hour)
+		fmt.Println(myCookie.Expires)
 		if err != nil {
 			//log.WithCaller().Err(err).Msg("")
 			ctx.JSON(http.StatusBadRequest, errorResponse(err))
 			return
 		}
+		fmt.Println(myCookie)
 		ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
 		ctx.JSON(http.StatusOK, 1)
 	}
@@ -61,20 +68,24 @@ func (s *Server) handleSetUniqueCustomer(ctx *gin.Context) {
 func (s *Server) handleGetHistory(ctx *gin.Context) {
 	cookie, err := ctx.Cookie("unique")
 	if err != nil {
+		fmt.Println(err, "1")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 	user, err := s.tokenMaker.VerifyToken(cookie)
 	if err != nil {
+		fmt.Println(err, "2")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
+	fmt.Println(user.UserId)
 	snickers, err := s.store.GetSnickersHistoryComplex(ctx, user.UserId)
 	if errors.Is(err, errorsType.NotExist) {
 		ctx.JSON(http.StatusOK, snickers)
 		return
 	}
 	if err != nil {
+		fmt.Println(err, "3")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
@@ -117,7 +128,7 @@ func (s *Server) handleUnlogin(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, 0)
 	}
 }
-func (s *Server) handleJwtAutorise(ctx *gin.Context) {
+func (s *Server) handlePasetoAutorise(ctx *gin.Context) {
 
 	_, err := ctx.Request.Cookie("token")
 
@@ -168,7 +179,7 @@ func (s *Server) handleVerifyUser(ctx *gin.Context) {
 		//log.WithCaller().Err(err)
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 	} else {
-		myCookie, err1 := s.tokenMaker.CreateJWTCoockie(id, "token", 3600000)
+		myCookie, err1 := s.tokenMaker.CreatePasetoCoockie(id, "token", 3600000)
 		if err1 != nil {
 			//log.WithCaller().Err(err1)
 			ctx.JSON(http.StatusBadRequest, errorResponse(err))
@@ -230,7 +241,7 @@ func (s *Server) handleVerifyForgetPass(ctx *gin.Context) {
 		//log.WithCaller().Err(err).Msg("error")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 	} else {
-		myCookie, err := s.tokenMaker.CreateJWTCoockie(id, "changePass", 3600)
+		myCookie, err := s.tokenMaker.CreatePasetoCoockie(id, "changePass", 3600)
 		if err != nil {
 			//log.WithCaller().Err(err).Msg("error")
 			ctx.JSON(http.StatusBadRequest, errorResponse(err))
@@ -240,6 +251,29 @@ func (s *Server) handleVerifyForgetPass(ctx *gin.Context) {
 		// Render the response as JSON
 		ctx.JSON(http.StatusOK, true)
 	}
+}
+func (s *Server) handleUpdateUniqeCustomer(ctx *gin.Context) {
+
+	//merchId := ctx.Query("merchId")
+
+	coockie, err := ctx.Cookie("uniqe")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+	payload, _ := s.tokenMaker.VerifyToken(coockie)
+
+	data := db.UpdateUniqueCustomerHistryParams{
+		History: []int32{1},
+		ID:      payload.UserId,
+	}
+
+	err1 := s.store.UpdateUniqueCustomerHistry(ctx, data)
+	if err1 != nil {
+		//log.WithCaller().Err(err).Msg("error")
+		ctx.JSON(http.StatusBadRequest, errorResponse(err1))
+	}
+	ctx.JSON(http.StatusOK, true)
 }
 func (s *Server) handleChangeForgetPass(ctx *gin.Context) {
 	//var passes types.ChangePassType
@@ -277,9 +311,6 @@ func (s *Server) handleChangeForgetPass(ctx *gin.Context) {
 }
 func (s *Server) handleCheckCustomerData(ctx *gin.Context) {
 	cookie, errC := ctx.Cookie("saved")
-	cookie2, _ := ctx.Cookie("cart")
-	fmt.Println(cookie, "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", errC)
-	fmt.Println(cookie2, "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 	if errC != nil {
 		if errC == http.ErrNoCookie {
 			fmt.Println("0 codsad")
@@ -304,14 +335,6 @@ func UnregisterCustomerDataResponse(customerInfo db.GetUnregisterCustomerRow) ty
 		SecondName: customerInfo.Secondname.String,
 		Mail:       customerInfo.Mail,
 		Phone:      customerInfo.Phone,
-		Address: types.AddressTypeResp{
-			House:  customerInfo.House.String,
-			Flat:   customerInfo.Flat.String,
-			Index:  customerInfo.Index,
-			Region: customerInfo.Region,
-			Town:   customerInfo.Town,
-			Street: customerInfo.Street,
-		},
 	}
 
 	return data

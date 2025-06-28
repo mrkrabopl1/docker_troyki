@@ -13,7 +13,7 @@ const BuyButton: React.FC<any> = (props) => {
         <div style={{display:"flex"}}>
             <NavLink to="/buy" className={global.link} >
                 <div>
-                     <Cart/>
+                     <Cart  height={"36px"} width={"36px"} />
                      <div className={s.shopCounter} style={cartCount?{position:"absolute"}:{display:"none"}}>
                        <span className={s.spanShop}>{cartCount}</span>
                      </div>

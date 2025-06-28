@@ -25,7 +25,7 @@
     box-sizing: border-box;
     font-family:'Open Sans Condensed';
 }
-div{
+body{
   background-color: #f8f8f8;
 }
 .link{

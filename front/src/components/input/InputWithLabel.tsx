@@ -22,9 +22,7 @@ const InputWithLabel: React.FC<propsRowType> = (props) => {
         setVal(val)
      },[val])
     return (
-        <div style={{width:"100%",position:"relative", padding:"15px", marginTop:"5px"}}>
-
-
+        <div className= {className?className:s.inputHolder} >
             <input
                 value={valState}
                 style={{ boxSizing: 'border-box', width: "100%" }}

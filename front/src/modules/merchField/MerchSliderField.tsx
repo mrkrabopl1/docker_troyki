@@ -1,7 +1,7 @@
 import React, { ReactElement, useEffect, useRef, useState } from 'react'
 import MerchBlock from "./MerchBlock"
 import NameBorder from 'src/components/wraps/NameBorder'
-import ContentSlider from 'src/components/contentSlider/ContentSlider'
+import ContentSlider from 'src/components/contentSlider/ContentSliderWithControl'
 import s from "./style.module.css"
 
 

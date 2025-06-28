@@ -11,6 +11,7 @@ import Button from 'src/components/Button';
 import { verified } from 'src/store/reducers/menuSlice'
 import DeliveryInfo from '../deliveryInfo/DeliveryInfo'
 import AddressForm from './AddressForm'
+import AddressInput from './AddressInput'
 import MailInputWithValidation from 'src/components/input/MailInputWithValidation'
 import { extend } from 'src/global'
 
@@ -113,9 +114,10 @@ const SendForm: React.FC<sendFormModuleInterface> = (props) => {
             </div>
             <div className='flex'>
                 <InputWithLabelWithValidation val={formData.current.name} valid={!validationObject.current.name} invalidText={"Введите имя."} className={className?.input} onChange={(data) => { setFormData(data, "name") }} placeholder={"Имя"} />
-                <InputWithLabel val={unvalidFormData.current.secondName} className={className?.input} onChange={(data) => { setFormData(data, "secondName") }} placeholder={"Фамилия"} />
+                <InputWithLabel val={unvalidFormData.current.secondName} onChange={(data) => { setFormData(data, "secondName") }} placeholder={"Фамилия"} />
             </div>
-            <AddressForm memo={addressFormMemo.current} formValue={formData.current.address} className={{}} valid={!validationObject.current.address} onChange={(data) => { setFormData(data, "address") }} />
+            <AddressInput  valid={!validationObject.current.address} onChange={(data) => { setFormData(data, "address") }}/>
+            {/* <AddressForm memo={addressFormMemo.current} formValue={formData.current.address} className={{}} valid={!validationObject.current.address} onChange={(data) => { setFormData(data, "address") }} /> */}
             <PhoneInputWithValidation val={formData.current.phone} invalidIncorrect={"Неверный формат"} invalidEmpty={"Введите телефон"} valid={!validationObject.current.phone} className={className?.input} onChange={(data) => { setFormData(data, "phone") }} placeholder={"Телефон"} />
             {verified ? <div className='flex pdn'>
                 <div style={{ marginTop: "auto", marginBottom: "auto", paddingRight: "5px" }}>

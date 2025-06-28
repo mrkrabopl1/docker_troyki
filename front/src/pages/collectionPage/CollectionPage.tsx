@@ -50,6 +50,7 @@ const CollectionPage: React.FC<any> = () => {
 
 
     useEffect(()=>{
+        currentPage.current = 1
         getCountCollection(collection,(data)=>{
             pages.current = Math.ceil(data/pageSize.current)
             const reqData = {

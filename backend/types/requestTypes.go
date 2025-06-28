@@ -4,8 +4,9 @@ type DeleteCartData struct {
 	PreorderId int32 `json:"preorderid"`
 }
 type PreorderType struct {
-	Id   int32  `json:"id"`
-	Size string `json:"size"`
+	Id          int32  `json:"id"`
+	Size        string `json:"size"`
+	SourceTable string `json:"sourceTable"`
 }
 
 type UpdataPreorderType struct {
@@ -27,25 +28,15 @@ type PersonalData struct {
 }
 
 type Address struct {
-	Town   string `json:"town"`
-	Index  string `json:"index"`
-	Region string `json:"region"`
-	Street string `json:"street"`
-	House  string `json:"house,omitempty"`
-	Flat   string `json:"flat,omitempty"`
+	Town        string   `json:"town"`
+	Index       string   `json:"index"`
+	Region      string   `json:"region"`
+	Street      string   `json:"street"`
+	House       string   `json:"house,omitempty"`
+	Flat        string   `json:"flat,omitempty"`
+	Coordinates []string `json:"coordinates"`
 }
 
-type Delivery struct {
-	DeliveryPrice int `json:"deliveryPrice"`
-	Type          int `json:"type"`
-}
-type CreateOrderType struct {
-	PreorderHash string       `json:"preorderHash"`
-	PersonalData PersonalData `json:"personalData"`
-	Address      Address      `json:"address"`
-	Delivery     Delivery     `json:"delivery"`
-	Save         bool         `json:"save"`
-}
 type Discounts struct {
 	// Define your struct to represent the JSON data
 	Max int `json:"max"`

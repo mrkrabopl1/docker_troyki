@@ -16,6 +16,11 @@ import Button from 'src/components/Button';
 import DeliveryTypeRadioGroup from './pageElements/DeliveryTypeRadio';
 import DeliveryPage from './pageElements/DeliveryPage';
 import PayBlock from './pageElements/PayBlock';
+import LinkButton from 'src/components/LinkButton';
+import { current } from '@reduxjs/toolkit';
+import EmailPhoneInput from 'src/components/input/EmailPhoneInput';
+import ContactForm from 'src/modules/sendForm/ContactForm';
+import MapComponent from 'src/modules/map/Map';
 
 interface merchInterface { name: string, img: string, id: string, firm: string, price: string, count: number }
 type urlParamsType = {
@@ -53,6 +58,12 @@ const FormPage: React.FC = () => {
         fullPrice: ""
     })
     let delivery = useRef(0)
+    const contactInfo = useRef({
+        "Имя": "",
+        "Фамилия": "",
+        "mail": "",
+        "Телефон": ""
+    })
     let formId = useRef(0)
     let memoSendForm = useRef<boolean>(true)
     let respData = useRef<any>({})
@@ -66,10 +77,11 @@ const FormPage: React.FC = () => {
         mail: "",
         secondName: "",
         address: null,
-        phone: ""
+        phone: "",
+        deliveryType: "own"
     })
     useEffect(() => {
-        getCartData((data) => {
+        getCartData(hash, (data) => {
             fullPrice.current = data.fullPrice;
             setSnickers(data)
             checkCustomerData((data) => {
@@ -82,6 +94,38 @@ const FormPage: React.FC = () => {
             })
         })
     }, [])
+
+    const contactInfoChange=(data)=>{
+        contactInfo.current.Имя = data.name
+        if (data.mail) {
+            contactInfo.current.mail = data.mail
+            formData.current.mail = data.mail
+        } else {
+            contactInfo.current.Телефон = data.phone
+            formData.current.phone = data.phone
+        }
+
+        respData.current = {
+
+            personalData: {
+                name: data.name,
+                phone: data.phone,
+                mail: data.mail,
+            },
+            address: {
+                town: "",
+                street: "",
+                index: ""
+            },
+            save: data.save,
+            delivery: {
+                deliveryPrice: 0,
+                type: "own"
+            },
+            preorderHash: hash
+
+        }
+    }
 
     const getForm = () => {
         switch (formId.current) {
@@ -98,6 +142,10 @@ const FormPage: React.FC = () => {
                         }}
 
                         onChange={(data: any) => {
+                            contactInfo.current.Имя = data.name
+                            contactInfo.current.Фамилия = data.secondName
+                            contactInfo.current.mail = data.mail
+                            contactInfo.current.Телефон = data.phone
                             formData.current.name = data.name
                             formData.current.secondName = data.secondName
                             formData.current.address = { ...data.address }
@@ -118,20 +166,90 @@ const FormPage: React.FC = () => {
                                 save: data.save,
                                 delivery: {
                                     deliveryPrice: 0,
-                                    type: 1
+                                    type: formData.current.deliveryType
                                 },
                                 preorderHash: hash
 
                             }
                         }} className={{ input: s.formInput, combobox: s.combobox }} />
+                } else {
+                    return <div>
+                        <ContactForm
+                            memo={memoSendForm.current}
+                            valid={true}
+                            formValue={
+                                formData.current
+                            }
+                            onValid={(valid) => {
+                                validSendForm.current = valid;
+                            }
+                            }
+                            onChange={contactInfoChange} />
+                             <MapComponent location = {[37.6709, 55.7718]}/>
+                    </div>
+
                 }
             case 1:
-                return <DeliveryPage address={formData.current.address} contactInfo={formData.current.mail} onChange={() => { }} />
+                if (!delivery.current) {
+                    return <DeliveryPage coords={formData.current.address.coordinates}
+                     onChangeInfo={() => {
+                        if (formId.current === 0) return
+                        formId.current = formId.current - 1
+                        setRefresh(prev => !prev)
+                    }} 
+                    address={formData.current.address} contactInfo={contactInfo.current} 
+                    onChange={(data) => {
+                        formData.current.deliveryType = data
+                    }}
+                     />
+                } else {
+                    return <PayBlock deliveryInfo={{ "Доставка": formData.current.deliveryType }} address={formData.current.address} contactInfo={contactInfo.current} onChange={(val) => {
+
+                        formData.current.save = val
+                        respData.current = {
+                            personalData: {
+                                name: formData.current.name,
+                                phone: formData.current.phone,
+                                mail: formData.current.mail,
+                                secondName: formData.current.secondName ? formData.current.secondName : ""
+                            },
+                            address: {
+
+                            },
+                            save: formData.current.save,
+                            delivery: {
+                                deliveryPrice: 0,
+                                type: formData.current.deliveryType
+                            },
+                            preorderHash: hash
+                        }
+                    }} />
+                }
+
             case 2:
-                return <PayBlock address={formData.current.address} contactInfo={formData.current.mail} onChange={() => { }} />    
+                return <PayBlock deliveryInfo={{ "Доставка": formData.current.deliveryType }} address={formData.current.address} contactInfo={contactInfo.current} onChange={() => {
+                    respData.current = {
+                        personalData: {
+                            name: formData.current.name,
+                            phone: formData.current.phone,
+                            mail: formData.current.mail,
+                            secondName: formData.current.secondName ? formData.current.secondName : ""
+                        },
+                        address: {
+
+                        },
+                        save: formData.current.save,
+                        delivery: {
+                            deliveryPrice: 0,
+                            type: formData.current.deliveryType
+                        },
+                        preorderHash: hash
+                    }
+                }} />
 
         }
     }
+
 
     const getFullForm = () => {
         switch (formId.current) {
@@ -147,6 +265,7 @@ const FormPage: React.FC = () => {
                     {getForm()}
                 </div>
             case 1:
+            case 2:
                 return <div>
                     {getForm()}
                 </div>
@@ -154,14 +273,14 @@ const FormPage: React.FC = () => {
     }
 
     return (
-        <div className='dependFlex'>
+        <div className={s.mainHolder + ' dependFlex'}>
             <div className={s.fieldHolder}>
                 {
                     getFullForm()
                 }
 
                 <div className={s.buttonHolder}>
-                    {formId.current ? <Button className={s.backBtn} text={BACK_ROUTE[delivery.current][formId.current]} onChange={() => {
+                    {formId.current ? <LinkButton icon={"arrowLeft"} className={s.backBtn} text={BACK_ROUTE[delivery.current][formId.current - 1]} onChange={() => {
                         if (formId.current === 0) return
                         formId.current = formId.current - 1
                         setRefresh(prev => !prev)
@@ -183,7 +302,7 @@ const FormPage: React.FC = () => {
                 </div>
 
             </div>
-            <div style={{ paddingRight: "90px" }}>
+            <div style={{ marginLeft: "20px", width: "50%", paddingRight: "90px" }}>
                 <BuyMerchField data={snickers} />
             </div>
         </div>

@@ -31,10 +31,10 @@ func TestGetSnickersOrderData(t *testing.T) {
 	}
 	preorder, err := testStore.GetSnickersOrderData(context.Background(), []GetOrderDataByIdRow{
 		GetOrderDataByIdRow{
-			Size:     textValue,
-			Quantity: 10,
-			ID:       2,
-			Prid:     35,
+			Size:      textValue,
+			Quantity:  10,
+			ID:        2,
+			Productid: 35,
 		},
 	})
 	fmt.Println(preorder, err)
@@ -49,7 +49,7 @@ func TestGetOrderIdByHashUrl(t *testing.T) {
 }
 
 func TestUpdatePreorder(t *testing.T) {
-	preorder, err := testStore.UpdatePreorder(context.Background(), 2582, "8", "1465553591858304793")
+	preorder, err := testStore.UpdatePreorder(context.Background(), 2582, "8", "snickers", "1465553591858304793")
 	fmt.Println(preorder, err)
 	require.NoError(t, err)
 	require.NotEmpty(t, preorder)
@@ -69,7 +69,7 @@ func TestInsertPreorder(t *testing.T) {
 
 func TestCreatePreorder(t *testing.T) {
 
-	preorder, err := testStore.CreatePreorder(context.Background(), 1, "11")
+	preorder, err := testStore.CreatePreorder(context.Background(), 1, "11", "snickers")
 
 	fmt.Println(preorder)
 	require.NoError(t, err)
@@ -78,9 +78,11 @@ func TestCreatePreorder(t *testing.T) {
 
 func TestGetCartData(t *testing.T) {
 
-	preorder, err := testStore.GetCartData(context.Background(), "2636255529132076831")
-
-	fmt.Println(preorder)
+	preorder, err := testStore.GetCartData(context.Background(), "4963521833281056534")
+	now := time.Now()
+	expiration := time.Now().Add(2 * time.Hour)
+	fmt.Println(preorder, now)
+	fmt.Println(expiration)
 	require.NoError(t, err)
 	require.NotEmpty(t, preorder)
 }
@@ -138,7 +140,7 @@ func TestDeleteFromPreorderItems(t *testing.T) {
 
 func TestCreateOrder(t *testing.T) {
 	orderData := types.CreateOrderType{
-		PreorderHash: "3768787411872764248",
+		PreorderHash: "7563840074177507240",
 		PersonalData: types.PersonalData{
 			Name:       "name",
 			SecondName: "secondName",

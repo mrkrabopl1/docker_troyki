@@ -81,3 +81,19 @@
   .lamp:hover~.text {
     color:black;
   }
+
+  .iconLamp{
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0 10px;
+    border: solid 2px black;
+    border-radius: 5px ;
+    margin:5px 0
+  }
+  
+  .iconLamp:checked{
+    border-color: red;
+  }
+  
+  

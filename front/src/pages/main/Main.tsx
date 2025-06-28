@@ -1,4 +1,4 @@
-import React, { useEffect, ReactElement, useState, useRef, memo } from 'react'
+import React, { useEffect, ReactElement, useState, useRef, memo, useCallback } from 'react'
 
 import MerchSliderField from '../../modules/merchField/MerchSliderField'
 import { getMainInfo } from "src/providers/merchProvider"
@@ -11,6 +11,26 @@ import StickyDispetcherButton from 'src/modules/stickyDispetcherButton/StickyDis
 import MerchBanner from 'src/modules/merchBanner/MerchBanner'
 import s from "./s.module.css"
 
+import ContentSliderWithSwitcher from 'src/components/contentSlider/ContentSliderWithSwitcher';
+
+
+const TextArray = {
+  text:[
+  "Мы открылись",
+  "Мероприятия"
+  ],
+  subText:[
+    "",
+    ""
+  ],
+  btnText:[
+    "К колекции",
+    "К мероприятию"
+    ]
+}
+
+
+
 const Main: React.FC<any> = () => {
 
   const navigate = useNavigate()
@@ -21,11 +41,11 @@ const Main: React.FC<any> = () => {
 
   let mainPageRef = useRef<HTMLDivElement>(null)
 
-  let [imgBanner, setImgBanner] = useState<{ image: string, name: string, id: string }>({ image: "", name: "", id: "" })
+  let [imgBanner, setImgBanner] = useState<{btnText:string, image: string, name: string, id: string }>({ btnText:"",image: "", name: "", id: "" })
  
-  const createUrlImage = (data: {mainText:string,subText:string, img: string, name: string, id: string }[]) => {
+  const createUrlImage = (data: {mainText:string,subText:string, img: string, name: string, id: string ,btnText:string}[]) => {
     data.forEach(val => {
-      setImgBanner({ image: val.img, name: val.name, id: val.id,  })
+      setImgBanner({ image: val.img, name: val.name, id: val.id, btnText:val.btnText })
     })
 
 
@@ -33,9 +53,19 @@ const Main: React.FC<any> = () => {
 
   const { chousenName } = useAppSelector(state => state.complexDropReducer)
 
+  const createMerchBanner = useCallback(()=>{
+    let arr:any = [];
+    for(let i = 0;i<2;i++){
+      arr.push(<MerchBanner className={{
+        main:s.mainBanner,
+        button:s.buttonBanner,
+        contentHolder:s.contentHolder
+      }} btnText={TextArray.btnText[i]} onChange={onChangeBanner} id={imgBanner.id} title={""} img={"/images/main/"+i+".png"} />)
+    }
+    return arr
+  },[])
 
   useEffect(() => {
-    getMainInfo(createUrlImage)
     getHistoryInfo(setMerchHistoryFieldData )
   }, [])
   let [merchFieldData, setMerchFieldData] = useState<any>([])
@@ -46,7 +76,7 @@ const Main: React.FC<any> = () => {
 
     <div style={{position:"relative"}}>
       <StickyDispetcherButton top='80%' left="80%"/>
-      <MerchBanner onChange={onChangeBanner} id={imgBanner.id} title={imgBanner.name} img={"/"+imgBanner.image} />
+      <ContentSliderWithSwitcher className={{slider:s.sliderHolder}} content={createMerchBanner()}/>
       <MerchComplexSliderField/>
     </div>
 

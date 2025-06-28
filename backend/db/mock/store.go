@@ -486,19 +486,19 @@ func (mr *MockStoreMockRecorder) GetOrderIdByHashUrl(arg0, arg1 interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrderIdByHashUrl", reflect.TypeOf((*MockStore)(nil).GetOrderIdByHashUrl), arg0, arg1)
 }
 
-// GetOrderedSnickersByFilters mocks base method.
-func (m *MockStore) GetOrderedSnickersByFilters(arg0 context.Context, arg1 string, arg2 types.SnickersFilterStruct, arg3, arg4, arg5 int) ([]types.SnickersSearch, error) {
+// GetOrderedProductsByFilters mocks base method.
+func (m *MockStore) GetOrderedProductsByFilters(arg0 context.Context, arg1 string, arg2 types.SnickersFilterStruct, arg3, arg4, arg5 int) ([]types.SnickersSearch, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetOrderedSnickersByFilters", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret := m.ctrl.Call(m, "GetOrderedProductsByFilters", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].([]types.SnickersSearch)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetOrderedSnickersByFilters indicates an expected call of GetOrderedSnickersByFilters.
-func (mr *MockStoreMockRecorder) GetOrderedSnickersByFilters(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+// GetOrderedProductsByFilters indicates an expected call of GetOrderedProductsByFilters.
+func (mr *MockStoreMockRecorder) GetOrderedProductsByFilters(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrderedSnickersByFilters", reflect.TypeOf((*MockStore)(nil).GetOrderedSnickersByFilters), arg0, arg1, arg2, arg3, arg4, arg5)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrderedProductsByFilters", reflect.TypeOf((*MockStore)(nil).GetOrderedProductsByFilters), arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
 // GetPassword mocks base method.
@@ -666,34 +666,34 @@ func (mr *MockStoreMockRecorder) GetSnickersHistoryComplex(arg0, arg1 interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSnickersHistoryComplex", reflect.TypeOf((*MockStore)(nil).GetSnickersHistoryComplex), arg0, arg1)
 }
 
-// GetSnickersInfoById mocks base method.
-func (m *MockStore) GetSnickersInfoById(arg0 context.Context, arg1 int32) (db.GetSnickersInfoByIdRow, error) {
+// GetProductsInfoById mocks base method.
+func (m *MockStore) GetProductsInfoById(arg0 context.Context, arg1 int32) (db.GetProductsInfoByIdRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSnickersInfoById", arg0, arg1)
-	ret0, _ := ret[0].(db.GetSnickersInfoByIdRow)
+	ret := m.ctrl.Call(m, "GetProductsInfoById", arg0, arg1)
+	ret0, _ := ret[0].(db.GetProductsInfoByIdRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetSnickersInfoById indicates an expected call of GetSnickersInfoById.
-func (mr *MockStoreMockRecorder) GetSnickersInfoById(arg0, arg1 interface{}) *gomock.Call {
+// GetProductsInfoById indicates an expected call of GetProductsInfoById.
+func (mr *MockStoreMockRecorder) GetProductsInfoById(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSnickersInfoById", reflect.TypeOf((*MockStore)(nil).GetSnickersInfoById), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProductsInfoById", reflect.TypeOf((*MockStore)(nil).GetProductsInfoById), arg0, arg1)
 }
 
-// GetSnickersInfoByIdComplex mocks base method.
-func (m *MockStore) GetSnickersInfoByIdComplex(arg0 context.Context, arg1 int32) (db.SnickersInfoResponse, error) {
+// GetProductsInfoByIdComplex mocks base method.
+func (m *MockStore) GetProductsInfoByIdComplex(arg0 context.Context, arg1 int32) (db.ProductsInfoResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSnickersInfoByIdComplex", arg0, arg1)
-	ret0, _ := ret[0].(db.SnickersInfoResponse)
+	ret := m.ctrl.Call(m, "GetProductsInfoByIdComplex", arg0, arg1)
+	ret0, _ := ret[0].(db.ProductsInfoResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetSnickersInfoByIdComplex indicates an expected call of GetSnickersInfoByIdComplex.
-func (mr *MockStoreMockRecorder) GetSnickersInfoByIdComplex(arg0, arg1 interface{}) *gomock.Call {
+// GetProductsInfoByIdComplex indicates an expected call of GetProductsInfoByIdComplex.
+func (mr *MockStoreMockRecorder) GetProductsInfoByIdComplex(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSnickersInfoByIdComplex", reflect.TypeOf((*MockStore)(nil).GetSnickersInfoByIdComplex), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProductsInfoByIdComplex", reflect.TypeOf((*MockStore)(nil).GetProductsInfoByIdComplex), arg0, arg1)
 }
 
 // GetSnickersOrderData mocks base method.

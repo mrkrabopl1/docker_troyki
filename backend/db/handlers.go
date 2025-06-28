@@ -456,7 +456,7 @@ func (s *PostgresStore) GetTest(ctx context.Context) {
 	elapsed := end.Sub(start)
 	fmt.Printf("YourFunction took %s\n", elapsed)
 
-	var data1 types.SnickersInfo
+	var data1 types.ProductsInfo
 	start1 := time.Now()
 	query1 := "SELECT info,image_path, name FROM snickers"
 	//query := "SELECT image_path, name FROM snickers WHERE id =1"
@@ -480,12 +480,12 @@ func (s *PostgresStore) GetTest(ctx context.Context) {
 	fmt.Println(data1)
 }
 
-func (s *PostgresStore) GetSnickersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.SnickersPage, error) {
+func (s *PostgresStore) GetSnickersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.ProductsPage, error) {
 	db, _ := s.connect(ctx)
 	defer db.Close()
 	var count int
 	var data []types.SnickersSearch
-	var finalData types.SnickersPage
+	var finalData types.ProductsPage
 	filterString := createFilterQuery(filters)
 	fmt.Println(filterString, "filterString", name)
 	query1 := fmt.Sprintf(`SELECT COUNT(id) FROM snickers  WHERE name ILIKE '%%%s%%' %s`, name, filterString)
@@ -514,18 +514,18 @@ func (s *PostgresStore) GetSnickersByString(ctx context.Context, name string, pa
 	if err != nil {
 		return finalData, err1
 	}
-	finalData = types.SnickersPage{
+	finalData = types.ProductsPage{
 		SnickersPageInfo: data,
 		PageSize:         int(pageSize),
 	}
 
 	return finalData, nil
 }
-func (s *PostgresStore) GetSnickersAndFiltersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.SnickersPageAndFilters, error) {
+func (s *PostgresStore) GetSnickersAndFiltersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.ProductsPageAndFilters, error) {
 
 	db, _ := s.connect(ctx)
 	defer db.Close()
-	var finalData types.SnickersPageAndFilters
+	var finalData types.ProductsPageAndFilters
 	var count int
 	var orderedString = ""
 	if orderedType == 1 {
@@ -563,7 +563,7 @@ func (s *PostgresStore) GetSnickersAndFiltersByString(ctx context.Context, name 
 		return finalData, fError
 	}
 
-	finalData = types.SnickersPageAndFilters{
+	finalData = types.ProductsPageAndFilters{
 		SnickersPageInfo: data,
 		PageSize:         int(pageSize),
 		Filter:           filter,
@@ -585,8 +585,8 @@ func (s *PostgresStore) GetMainPage(ctx context.Context) ([]types.MainPage, erro
 	return data, nil
 }
 
-func (s *PostgresStore) GetSnickersInfoById(ctx context.Context, id string) (types.SnickersInfo, error) {
-	var data types.SnickersInfo
+func (s *PostgresStore) GetProductsInfoById(ctx context.Context, id string) (types.ProductsInfo, error) {
+	var data types.ProductsInfo
 	db, _ := s.connect(ctx)
 
 	defer db.Close()
@@ -1065,7 +1065,7 @@ func (s *PostgresStore) Login(ctx context.Context, mail string, pass string) (in
 	}
 }
 
-func (s *PostgresStore) CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int, int16, string, error) {
+func (s *PostgresStore) CreateOrder(ctx context.Context, orderData *CreateOrderType) (int, int16, string, error) {
 	db, _ := s.connect(ctx)
 	defer db.Close()
 
@@ -1395,10 +1395,10 @@ type Interface interface {
 	GetSnickersByFirmName(ctx context.Context) ([]types.Snickers, error)     //r
 	GetSnickersByLineName(ctx context.Context) ([]types.SnickersLine, error) //r
 	GetMainPage(ctx context.Context) ([]types.MainPage, error)
-	GetSnickersInfoById(ctx context.Context, id string) (types.SnickersInfo, error)                                                                                                //r
+	GetProductsInfoById(ctx context.Context, id string) (types.ProductsInfo, error)                                                                                                //r
 	GetCartData(ctx context.Context, hash string) ([]types.SnickersCart, error)                                                                                                    //r
 	GetSnickersByName(ctx context.Context, name string, max int) ([]types.SnickersSearch, error)                                                                                   //r
-	GetSnickersAndFiltersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.SnickersPageAndFilters, error) //r
+	GetSnickersAndFiltersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.ProductsPageAndFilters, error) //r
 	GetFiltersByString(ctx context.Context, name string) (types.Filter, error)                                                                                                     //r
 	CountTest(ctx context.Context) ([]Count, error)
 	GetCollection(ctx context.Context, names []string, size int, page int) (map[string][]types.SnickersSearch, error)
@@ -1409,7 +1409,7 @@ type Interface interface {
 	DeleteCartData(ctx context.Context, preorderid int) error                                                                                                  //r
 	RegisterUser(ctx context.Context, pass string, mail string) (int, error)                                                                                   //a
 	CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int, int16, string, error)                                                             //r
-	GetSnickersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.SnickersPage, error) //r?
+	GetSnickersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (types.ProductsPage, error) //r?
 	Login(ctx context.Context, name string, pass string) (int16, error)                                                                                        //r
 	GetUserData(ctx context.Context, id int) (types.CustimerInfo, error)                                                                                       //r
 	Verify(ctx context.Context, token string) (int16, error)                                                                                                   //r

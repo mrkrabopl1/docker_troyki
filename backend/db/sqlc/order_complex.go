@@ -27,7 +27,7 @@ func (q *Queries) GetCartCount(ctx context.Context, hash string) (int32, error) 
 
 }
 
-func (q *Queries) UpdatePreorder(ctx context.Context, id int32, size string, hash string) (int32, error) {
+func (q *Queries) UpdatePreorder(ctx context.Context, id int32, size string, sourceTable string, hash string) (int32, error) {
 	orderId, err := q.GetPreorderIdByHashUrl(ctx, hash)
 	fmt.Println(orderId, "orderId")
 	if err != nil {
@@ -51,10 +51,11 @@ func (q *Queries) UpdatePreorder(ctx context.Context, id int32, size string, has
 				String: size,
 				Valid:  true, // Mark as valid (not NULL)
 			},
-			Productid: id,
+			Productid:   id,
+			SourceTable: sourceTable,
 		})
 		if err2 != nil {
-			fmt.Println(err2)
+			fmt.Println(err2, ";ldms;flmds;lfmds", sourceTable)
 		}
 		return 1, nil
 	} else if err1 != nil {
@@ -78,7 +79,8 @@ func (q *Queries) UpdatePreorder(ctx context.Context, id int32, size string, has
 
 }
 
-func (q *Queries) CreatePreorder(ctx context.Context, id int32, size string) (string, error) {
+func (q *Queries) CreatePreorder(ctx context.Context, id int32, size string, sourceTable string) (string, error) {
+	fmt.Println(id, size, sourceTable, "createPreorderssssssssssssssssssssssssssssssssssssssssssssssss")
 	currentTime := time.Now()
 	hashedStr := xxhash.Sum64([]byte((currentTime.String() + fmt.Sprint(id))))
 	orderId, err := q.InsertPreorder(ctx, InsertPreorderParams{
@@ -96,7 +98,8 @@ func (q *Queries) CreatePreorder(ctx context.Context, id int32, size string) (st
 			String: size,
 			Valid:  true, // Mark as valid (not NULL)
 		},
-		Productid: id,
+		Productid:   id,
+		SourceTable: sourceTable,
 	})
 	if err2 != nil {
 		fmt.Println(err2)
@@ -104,38 +107,43 @@ func (q *Queries) CreatePreorder(ctx context.Context, id int32, size string) (st
 	}
 	return fmt.Sprint(hashedStr), nil
 }
-func (store *SQLStore) CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int32, int32, string, error) {
+
+type Delivery struct {
+	DeliveryPrice int          `json:"deliveryPrice"`
+	Type          DeliveryEnum `json:"type"`
+}
+type CreateOrderType struct {
+	PreorderHash string             `json:"preorderHash"`
+	PersonalData types.PersonalData `json:"personalData"`
+	Address      types.Address      `json:"address"`
+	Delivery     Delivery           `json:"delivery"`
+	Save         bool               `json:"save"`
+}
+
+func (store *SQLStore) CreateOrder(ctx context.Context, orderData *CreateOrderType) (int32, int32, string, error) {
+	fmt.Println(orderData, "orderData in createOrder")
 	userId, err := store.Queries.SetUnregisterCustomer(ctx, SetUnregisterCustomerParams{
 		Name: orderData.PersonalData.Name,
 		Secondname: pgtype.Text{
 			String: orderData.PersonalData.SecondName,
 		},
-		Mail:   orderData.PersonalData.Mail,
-		Phone:  orderData.PersonalData.Phone,
-		Town:   orderData.Address.Town,
-		Street: orderData.Address.Street,
-		Region: orderData.Address.Region,
-		Index:  orderData.Address.Index,
-		House: pgtype.Text{
-			String: orderData.Address.House,
-		},
-		Flat: pgtype.Text{
-			String: orderData.Address.Flat,
-		},
+		Mail:  orderData.PersonalData.Mail,
+		Phone: orderData.PersonalData.Phone,
 	})
 	fmt.Println(pgtype.Int4{
 		Int32: userId,
-	}, "userId", "f;s;dkflsdknflsdk", err)
+	}, "addressId", "f;s;dkflsdknflsdk", err)
 	if err != nil {
 		return 0, 0, "", err
 	}
+
 	fmt.Println("testpreorderId")
 	currentTime := time.Now()
 	hashedStr := fmt.Sprint(xxhash.Sum64([]byte((currentTime.String() + fmt.Sprint(orderData.PreorderHash)))))
 	orderId, err1 := store.Queries.InsertOrder(ctx, InsertOrderParams{
 		Status:        StatusEnumPending,
 		Deliveryprice: int32(orderData.Delivery.DeliveryPrice),
-		Deliverytype:  DeliveryEnumOwn,
+		Deliverytype:  orderData.Delivery.Type,
 		Unregistercustomerid: pgtype.Int4{
 			Int32: userId,
 			Valid: true,
@@ -146,22 +154,49 @@ func (store *SQLStore) CreateOrder(ctx context.Context, orderData *types.CreateO
 	if err1 != nil {
 		return 0, 0, "", err1
 	}
+	if orderData.Delivery.Type != DeliveryEnumOwn {
+		_, err9 := store.Queries.SetOrderAddress(ctx, SetOrderAddressParams{
+			Town: orderData.Address.Town,
+			Street: pgtype.Text{
+				String: orderData.Address.Street,
+				Valid:  true,
+			},
+			Region: pgtype.Text{
+				String: orderData.Address.Region,
+				Valid:  true,
+			},
+			Index: orderData.Address.Index,
+			House: pgtype.Text{
+				String: orderData.Address.House,
+			},
+			Flat: pgtype.Text{
+				String: orderData.Address.Flat,
+			},
+			Coordinates: orderData.Address.Coordinates,
+			Orderid:     orderId,
+		})
+		fmt.Println(pgtype.Int4{
+			Int32: userId,
+		}, "addressId", "f;s;dkflsdknflsdk", err9)
+	}
 	preorderId, err2 := store.Queries.GetPreorderIdByHashUrl(ctx, orderData.PreorderHash)
-	fmt.Println(preorderId, "preorderId")
+	fmt.Println(preorderId, "preorderId", orderData.PreorderHash, err2)
 	if err2 != nil {
 		return 0, 0, "", err2
 	}
 	prData, err3 := store.Queries.GetPreorderDataById(ctx, preorderId)
-	fmt.Println(prData, err3)
+	fmt.Println(prData, err3, "ccccccccccccccccccccccccc")
 	if err3 != nil {
 		return 0, 0, "", err3
 	}
 	err4 := store.Queries.InsertManyPreorderItems(ctx, prData, int(orderId))
 	if err4 != nil {
+		fmt.Println(err4, "error in InsertManyPreorderItems", prData)
 		return 0, 0, "", err4
 	}
 	err5 := store.Queries.DeleteCartData(ctx, preorderId)
 	if err5 != nil {
+		fmt.Println(err5, "error in InsertManyPreorderItems", prData)
 		return 0, 0, "", err5
 	}
 
@@ -173,6 +208,7 @@ type GetOrderData struct {
 	State        string
 	SnickersCart []types.SnickersCart
 	OrderId      int
+	Address      GetOrderAddressByIdRow
 }
 
 func (store *SQLStore) GetOrderData(ctx context.Context, hash string) (GetOrderData, error) {
@@ -186,6 +222,10 @@ func (store *SQLStore) GetOrderData(ctx context.Context, hash string) (GetOrderD
 		if err != nil {
 			return GetOrderData{}, err
 		}
+		address, err := store.GetOrderAddressById(ctx, orderInfo.ID)
+		if err != nil {
+			return GetOrderData{}, err
+		}
 		if orderInfo.Unregistercustomerid.Valid {
 			unregData, err1 := store.Queries.GetUnregisterCustomer(ctx, orderInfo.Unregistercustomerid.Int32)
 			if err1 != nil {
@@ -196,6 +236,7 @@ func (store *SQLStore) GetOrderData(ctx context.Context, hash string) (GetOrderD
 				UserInfo:     unregData,
 				SnickersCart: snickers,
 				OrderId:      int(orderInfo.ID),
+				Address:      address,
 			}, nil
 
 		} else {
@@ -213,6 +254,7 @@ func (store *SQLStore) GetCartData(ctx context.Context, hash string) ([]types.Sn
 		if err != nil {
 			return dataQuery, err
 		} else {
+			fmt.Println(prData, "prData")
 			data, err := store.GetSnickersPreorderData(ctx, prData)
 			if err != nil {
 				return dataQuery, err
@@ -264,6 +306,7 @@ type OrderDataResp struct {
 	State        StatusEnum               `json:"state"`
 	CartResponse []types.SnickersCart     `json:"cartResponse"`
 	OrderId      int32                    `json:"orderId"`
+	Address      types.Address            `json:"address"`
 }
 
 func (store *SQLStore) GetOrderDataByMail(ctx context.Context, mail string, id int32) (OrderDataResp, string, error) {

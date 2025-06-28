@@ -16,7 +16,7 @@ type MainPage struct {
 	SubText string `db:"subtext"`
 	Image   string `db:"imagepath"`
 }
-type SnickersInfo struct {
+type ProductsInfo struct {
 	Name       string  `db:"name"`
 	Image_path string  `db:"image_path"`
 	Info       string  `db:"info"`
@@ -52,7 +52,7 @@ type SnickersPageAndFilters struct {
 	PageSize         int
 	Filter           Filter
 }
-type SnickersPage struct {
+type ProductsPage struct {
 	SnickersPageInfo []SnickersSearch
 	PageSize         int
 }
@@ -91,14 +91,15 @@ type Filter struct {
 	FirmFilter      map[string]int
 }
 type SnickersCart struct {
-	Name     string `db:"name"`
-	Price    int    `db:"price"`
-	Size     string `db:"size"`
-	Image    string `db:"image_path"`
-	Id       int16  `db:"id"`
-	Quantity int    `db:"quantity"`
-	PrId     int    `db:"prid"`
-	Firm     string `db:"firm"`
+	Name        string `db:"name"`
+	Price       int    `db:"price"`
+	Size        string `db:"size"`
+	Image       string `db:"image_path"`
+	Id          int16  `db:"id"`
+	Quantity    int    `db:"quantity"`
+	PrId        int    `db:"prid"`
+	Firm        string `db:"firm"`
+	SourceTable string `db:"source_table"`
 }
 
 type SnickersPreorder struct {
@@ -155,7 +156,8 @@ type OrderData struct {
 	OrderId      int
 }
 type ProductsInsert struct {
-	Size      string `db:"size"`
-	Quantity  int    `db:"quantity"`
-	Productid int    `db:"productid"`
+	Size        string `db:"size"`
+	Quantity    int    `db:"quantity"`
+	Productid   int    `db:"productid"`
+	ProductType int    `db:"producttype"`
 }

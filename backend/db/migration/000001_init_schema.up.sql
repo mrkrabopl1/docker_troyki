@@ -1,3 +1,16 @@
+CREATE TYPE  public.status_enum AS ENUM ('pending', 'approved', 'rejected');
+CREATE TYPE  public.delivery_enum AS ENUM ('own', 'express', 'cdek','curier');
+CREATE TYPE public.product_source_enum AS ENUM ('snickers', 'solomerch', 'clothes');
+CREATE TYPE public.clothes_enum AS ENUM ('t-shirt', 'hoodie', 'sweatshirt', 'jacket', 'pants', 'shorts');
+
+CREATE TABLE product_registry (
+    global_id SERIAL PRIMARY KEY,
+    source_table public.product_source_enum  NOT NULL,
+    internal_id INT NOT NULL,
+    UNIQUE (source_table, internal_id)
+);
+
+
 CREATE TABLE public.snickers (
     id serial PRIMARY KEY NOT NULL,
     qId text  NOT NULL,
@@ -35,18 +48,52 @@ CREATE TABLE public.snickers (
 );
 
 
+CREATE TABLE public.solomerch (
+    id serial PRIMARY KEY NOT NULL,
+    qId text  NOT NULL,
+    name text NOT NULL,
+    firm text NOT NULL,
+    line text ,
+    image_path text NOT NULL,
+	image_count integer NOT NULL,
+    minprice integer NOT NULL,
+    article text,
+    date text,
+    description text
+);
+
+CREATE TABLE public.clothes (
+    id serial PRIMARY KEY NOT NULL,
+    qId text  NOT NULL,
+    name text NOT NULL,
+    firm text NOT NULL,
+    line text ,
+    image_path text NOT NULL,
+	image_count integer NOT NULL,
+    minprice integer NOT NULL,
+	maxprice integer NOT NULL,
+    article text,
+    date text,
+    description text,
+	type public.clothes_enum,
+	XS integer,
+	S integer,
+	М integer,
+	L integer,
+	XL integer,
+	XXL integer
+);
+
 CREATE INDEX idx_qId ON public.snickers(qId);
 
 
 CREATE TABLE IF NOT EXISTS public.discount (
- 	   id serial PRIMARY KEY NOT NULL ,
-       productid INT NOT NULL,
-       value JSON NOT NULL,
-       minprice INT ,
-       maxdiscprice INT,
-       FOREIGN KEY (productID) REFERENCES public.snickers(id)
+    id serial PRIMARY KEY NOT NULL,
+    productid INT NOT NULL,
+    value JSON NOT NULL,
+    minprice INT,
+    maxdiscprice INT
 );
-
 CREATE TABLE IF NOT EXISTS public.customers (
 		id serial PRIMARY KEY NOT NULL ,
 		name TEXT,
@@ -60,7 +107,8 @@ CREATE TABLE IF NOT EXISTS public.customers (
 		street TEXT,
 		region TEXT,
 		home TEXT,
-		flat TEXT
+		flat TEXT,
+		coordinates INTEGER[]
 );
 
 
@@ -78,24 +126,19 @@ CREATE TABLE IF NOT EXISTS public.unregistercustomer (
 		name TEXT NOT NULL,
 		secondName TEXT,
 		mail TEXT NOT NULL,
-		phone TEXT NOT NULL,
-		town TEXT NOT NULL,
-		index TEXT NOT NULL,
-		sendMail BOOLEAN,
-		street TEXT NOT NULL,
-		region TEXT NOT NULL,
-		house TEXT,
-		flat TEXT
+		phone TEXT NOT NULL
 );
+
 
 CREATE TABLE public.uniquecustomers (
 		id serial PRIMARY KEY NOT NULL,
-		creationTime DATE NOT NULL,
+		creationTime DATE NOT NULL DEFAULT CURRENT_DATE,
 		history INTEGER[] NOT NULL
 );
 
-CREATE TYPE  public.status_enum AS ENUM ('pending', 'approved', 'rejected');
-CREATE TYPE  public.delivery_enum AS ENUM ('own', 'express', 'cdek');
+
+
+
 CREATE TABLE public.orders (
 			id serial PRIMARY KEY,
 			CustomerID INT,
@@ -104,7 +147,7 @@ CREATE TABLE public.orders (
 			Status status_enum  NOT NULL,
 			Hash TEXT  NOT NULL,
 			DeliveryPrice INT  NOT NULL,
-			DeliveryType delivery_enum  NOT NULL,
+			DeliveryType public.delivery_enum  NOT NULL,
 			FOREIGN KEY (CustomerID) REFERENCES public.customers(id),
 			FOREIGN KEY (UnregisterCustomerID) REFERENCES public.unregistercustomer(id)
 );
@@ -112,11 +155,11 @@ CREATE TABLE public.orders (
 CREATE TABLE public.orderitems (
 	id serial PRIMARY KEY NOT NULL,
 	OrderID integer NOT NULL,
-	ProductID INT  NOT NULL,
+	ProductId INT NOT NULL ,
+	source_table  product_source_enum NOT NULL,
 	Quantity integer NOT NULL,
 	Size text,
-	FOREIGN KEY (OrderID) REFERENCES public.orders(id),
-	FOREIGN KEY (ProductID) REFERENCES snickers(id)
+	FOREIGN KEY (OrderID) REFERENCES public.orders(id)
 );
 
 CREATE TABLE IF NOT EXISTS public.preorder (
@@ -127,9 +170,38 @@ CREATE TABLE IF NOT EXISTS public.preorder (
 CREATE TABLE IF NOT EXISTS public.preorderitems (
 				id serial PRIMARY KEY NOT NULL ,
 				OrderID INT NOT NULL,
-				ProductID INT NOT NULL,
+				ProductId INT NOT NULL ,
 				Quantity INT NOT NULL,
+				source_table  product_source_enum NOT NULL,
 				Size TEXT,
-				FOREIGN KEY (OrderID) REFERENCES public.preorder(id),
-				FOREIGN KEY (ProductID) REFERENCES public.snickers(id)
+				FOREIGN KEY (OrderID) REFERENCES public.preorder(id)
 );
+CREATE TABLE IF NOT EXISTS public.orderAddress (
+		id serial PRIMARY KEY NOT NULL ,
+		town TEXT NOT NULL,
+		index TEXT NOT NULL,
+		sendMail BOOLEAN,
+		street TEXT,
+		region TEXT,
+		house TEXT,
+		OrderID integer NOT NULL,
+		flat TEXT,
+		coordinates TEXT[] NOT NULL,
+		FOREIGN KEY (OrderID) REFERENCES public.orders(id)
+);
+
+
+CREATE TABLE IF NOT EXISTS public.preorderAddress (
+    id serial PRIMARY KEY NOT NULL,
+    town TEXT NOT NULL,
+    index TEXT NOT NULL,
+    sendMail BOOLEAN,
+    street TEXT,
+    region TEXT,
+    house TEXT,
+    OrderID integer NOT NULL,
+    flat TEXT,
+    coordinates TEXT[] NOT NULL,
+    FOREIGN KEY (OrderID) REFERENCES public.preorder(id)
+);
+

@@ -67,25 +67,12 @@ func TestSetUnregisterCustomer(t *testing.T) {
 		String: "fhsdlf",
 		Valid:  true, // Mark as valid (not NULL)
 	}
-	house := pgtype.Text{
-		String: "house",
-		Valid:  true, // Mark as valid (not NULL)
-	}
-	flat := pgtype.Text{
-		String: "flat",
-		Valid:  true, // Mark as valid (not NULL)
-	}
+
 	params := SetUnregisterCustomerParams{
 		Name:       "fdsf",
 		Secondname: secondname,
 		Mail:       "mr.krabopl12@gmail.com",
 		Phone:      "89653181498",
-		Town:       "test",
-		Street:     "test",
-		Region:     "yyi",
-		Index:      "gkjkjhkjhk",
-		House:      house,
-		Flat:       flat,
 	}
 	data, err := testStore.SetUnregisterCustomer(context.Background(), params)
 	fmt.Println(data)
@@ -129,4 +116,34 @@ func TestCheckCustomerExistence(t *testing.T) {
 	fmt.Println(data)
 	require.NoError(t, err)
 	require.NotEmpty(t, data)
+}
+
+func TestSetUniqueCustomer(t *testing.T) {
+	data, err := testStore.CreateUniqueCustomer(context.Background(), pgtype.Date{
+		Time:  time.Now(),
+		Valid: true,
+	})
+	fmt.Println(data)
+	require.NoError(t, err)
+	require.NotEmpty(t, data)
+}
+
+func TestGetSnickersHistoryComplex(t *testing.T) {
+	data, err := testStore.GetSnickersHistoryComplex(context.Background(), 751)
+	fmt.Println(data)
+	require.NoError(t, err)
+	require.NotEmpty(t, data)
+}
+
+func TestGetSnickersByIds(t *testing.T) {
+	data1 := []int32{2548, 2637, 2401}
+	data, err := testStore.GetSnickersByIds(context.Background(), data1)
+	fmt.Println(data)
+	require.NoError(t, err)
+	require.NotEmpty(t, data)
+}
+
+func TestSetSnickersHistory(t *testing.T) {
+	err := testStore.SetSnickersHistory(context.Background(), 718, 718)
+	require.NoError(t, err)
 }

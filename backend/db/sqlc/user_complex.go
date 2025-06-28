@@ -13,6 +13,7 @@ import (
 func (store *SQLStore) SetSnickersHistory(ctx context.Context, idSnickers int32, idCustomer int32) error {
 	history, err := store.Queries.SelectHistoryFromUniqueCustomer(ctx, idCustomer)
 	if err != nil {
+		fmt.Println("fdkmlsfknsdkfms")
 		return err
 	}
 	history = append(history, idSnickers)
@@ -46,7 +47,9 @@ func (store *SQLStore) GetSnickersHistoryComplex(ctx context.Context, idCustomer
 			list = append(list, entry)
 		}
 	}
-	snickers, err1 := store.Queries.GetSnickersByIds(ctx, int32SliceToInterface(list))
+
+	snickers, err1 := store.Queries.GetSnickersByIds(ctx, list)
+	fmt.Println("test1")
 	if err1 != nil {
 		return []types.SnickersSearchResponse1{}, err1
 	}

@@ -4,9 +4,9 @@ import axios from "axios";
 
 const getMerchInfo = function (id: string, callback: (val: any) => void) {
     axios({
-        //withCredentials: true,
+        withCredentials: true,
         method: 'get',
-        url: `${API_URL}/snickersInfo` + "?" + "id=" + id,
+        url: `${API_URL}/ProductsInfo` + "?" + "id=" + id,
         headers: {}
     }
     ).then((res: any) => {

@@ -11,21 +11,24 @@ import (
 type Store interface {
 	Querier
 	GetCountIdByFiltersAndFirm(ctx context.Context, name string, filters types.SnickersFilterStruct) (int64, error)
-	GetOrderedSnickersByFilters(ctx context.Context, name string, filters types.SnickersFilterStruct, orderType int, limit int, offset int) ([]types.SnickersSearch, error)
+	GetOrderedProductsByFilters(ctx context.Context, name string, filters types.SnickersFilterStruct, orderType int, limit int, offset int) ([]types.SnickersSearch, error)
 	GetSnickersOrderData(ctx context.Context, snickersPreorder []GetOrderDataByIdRow) ([]types.SnickersCart, error)
 	//InsertIntoOrderItems(ctx context.Context, products []types.ProductsInsert, orderID int) error
 	SetSnickersHistory(ctx context.Context, idSnickers int32, idCustomer int32) error
-	CreatePreorder(ctx context.Context, id int32, size string) (string, error)
+	CreatePreorder(ctx context.Context, id int32, size string, sourceTable string) (string, error)
 	GetSnickersByNameComplex(ctx context.Context, name string, limit int32) ([]types.SnickersSearchResponse, error)
-	UpdatePreorder(ctx context.Context, id int32, size string, hash string) (int32, error)
+	GetMerchByNameComplex(ctx context.Context, name string, limit int32) ([]types.SnickersSearchResponse, error)
+	UpdatePreorder(ctx context.Context, id int32, size string, sourceTable string, hash string) (int32, error)
 	GetSoloCollectionComplex(ctx context.Context, arg GetSoloCollectionParams) ([]types.SnickersSearchResponse1, error)
+	GetMerchCollectionComplex(ctx context.Context, arg GetMerchCollectionParams) ([]types.MerchSearchResponse, error)
 	GetCartCount(ctx context.Context, hash string) (int32, error)
 	SelectHistoryFromUniqueCustomer(ctx context.Context, id int32) ([]int32, error)
 	InsertVerification(ctx context.Context, arg InsertVerificationParams) error
 	RegisterUser(ctx context.Context, pass string, mail string) (int32, error)
-	CreateOrder(ctx context.Context, orderData *types.CreateOrderType) (int32, int32, string, error)
+	CreateOrder(ctx context.Context, orderData *CreateOrderType) (int32, int32, string, error)
 	GetCartData(ctx context.Context, hash string) ([]types.SnickersCart, error)
-	GetSnickersInfoByIdComplex(ctx context.Context, id int32) (SnickersInfoResponse, error)
+	GetProductsInfoByIdComplex(ctx context.Context, id int32) (ProductsInfoResponse, error)
+	GetSoloMerchInfoByIdComplex(ctx context.Context, id int32) (SoloMerchInfoResponse, error)
 	VerifyUser(ctx context.Context, token string) (int32, error)
 	GetCartDataFromOrderByHash(ctx context.Context, hash string) ([]types.SnickersCart, error)
 	GetCartDataFromOrderById(ctx context.Context, id int32) ([]types.SnickersCart, error)

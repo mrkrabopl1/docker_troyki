@@ -91,13 +91,13 @@
   position:absolute;
   right:0px;
   background-color: black;
-  width: 12px;
-  height: 12px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   text-align: center;
 }
 .spanShop{
-  font-size: 10px;
+  font-size: 14px;
   position: absolute;
   margin: auto;
   color: white;

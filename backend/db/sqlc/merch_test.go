@@ -17,15 +17,45 @@ func TestGetFirms(t *testing.T) {
 	require.NotEmpty(t, firms)
 }
 
+func TestGetMerchFirms(t *testing.T) {
+	firms, err := testStore.GetMerchFirms(context.Background())
+	fmt.Println(firms)
+	require.NoError(t, err)
+	require.NotEmpty(t, firms)
+}
+
 func TestGetSnickersByFirmName(t *testing.T) {
-	snickers, err := testStore.GetSnickersByFirmName(context.Background(), "nike")
+	snickers, err := testStore.GetSnickersByFirmName(context.Background(), "soloMerch")
+	fmt.Println(snickers)
+	require.NoError(t, err)
+	require.NotEmpty(t, snickers)
+}
+
+func TestGetMerchByFirmName(t *testing.T) {
+	snickers, err := testStore.GetMerchProductsByFirmName(context.Background(), "solomerch")
 	fmt.Println(snickers)
 	require.NoError(t, err)
 	require.NotEmpty(t, snickers)
 }
 
 func TestGetFiltersByString(t *testing.T) {
-	snickers, err := testStore.GetFiltersByString(context.Background(), "Air")
+	snickers, err := testStore.GetFiltersByString(context.Background(), "POP MART")
+	fmt.Println(snickers)
+	var result map[string]interface{}
+	json.Unmarshal(snickers.FirmCountMap, &result)
+	fmt.Println(result)
+	require.NoError(t, err)
+}
+func TestGetCombFiltersByString(t *testing.T) {
+	snickers, err := testStore.GetCombinedFiltersByString(context.Background(), "POP MART")
+	fmt.Println(snickers)
+	var result map[string]interface{}
+	json.Unmarshal(snickers.FirmCountMap, &result)
+	fmt.Println(result)
+	require.NoError(t, err)
+}
+func TestGetFiltersByString1(t *testing.T) {
+	snickers, err := testStore.GetMerchFiltersByString(context.Background(), "POP MART")
 	fmt.Println(snickers)
 	var result map[string]interface{}
 	json.Unmarshal(snickers.FirmCountMap, &result)
@@ -34,46 +64,50 @@ func TestGetFiltersByString(t *testing.T) {
 }
 
 func TestGetCountIdByFiltersAndFirm(t *testing.T) {
-	snickers, err := testStore.GetCountIdByFiltersAndFirm(context.Background(), "Air", types.SnickersFilterStruct{
+	snickers, err := testStore.GetCountIdByFiltersAndFirm(context.Background(), "Labubu", types.SnickersFilterStruct{
 		Sizes: []string{},
 		Firms: []string{},
 		Price: []float32{},
 	})
-	fmt.Println(snickers, err)
+	fmt.Println(snickers, "fldkfjlskdjflsd")
 	require.NoError(t, err)
 	require.NotEmpty(t, snickers)
 }
 
 func TestGetOrderedSnickersIByFilters(t *testing.T) {
-	snickers, err := testStore.GetOrderedSnickersByFilters(context.Background(), "Air", types.SnickersFilterStruct{
-		Sizes: []string{"5"},
-		Firms: []string{"nike"},
-		Price: []float32{10000.0, 25000.0},
+	snickers, err := testStore.GetOrderedProductsByFilters(context.Background(), "POP MART", types.SnickersFilterStruct{
+		Firms: []string{"solomerch"},
+		Price: []float32{10.0, 2500000.0},
 	}, 0, 10, 0)
 	fmt.Println(snickers, err)
 	require.NoError(t, err)
 	require.NotEmpty(t, snickers)
 }
 
-func TestGetSnickersInfoById(t *testing.T) {
-	snickers, err := testStore.GetSnickersInfoById(context.Background(), 1)
+func TestGetProductsInfoById(t *testing.T) {
+	snickers, err := testStore.GetProductsInfoById(context.Background(), 1)
 	fmt.Println(snickers, err)
 	require.NoError(t, err)
 	require.NotEmpty(t, snickers)
 }
-
-func TestGetSnickersInfoByIdComplex(t *testing.T) {
-	snickers, err := testStore.GetSnickersInfoByIdComplex(context.Background(), 1)
+func TestGetMerchInfoById(t *testing.T) {
+	snickers, err := testStore.GetSoloMerchInfoById(context.Background(), 1)
+	fmt.Println(snickers, err)
+	require.NoError(t, err)
+	require.NotEmpty(t, snickers)
+}
+func TestGetProductsInfoByIdComplex(t *testing.T) {
+	snickers, err := testStore.GetProductsInfoByIdComplex(context.Background(), 1)
 	fmt.Println(snickers, err)
 	require.NoError(t, err)
 	require.NotEmpty(t, snickers)
 }
 func TestGetSoloCollection(t *testing.T) {
-	snickers, err := testStore.GetSoloCollection(context.Background(), GetSoloCollectionParams{
-		Firm:   "nike",
-		Line:   "air_jordan_1",
-		Limit:  10,
-		Offset: 0,
+	snickers, err := testStore.GetMerchCollection(context.Background(), GetMerchCollectionParams{
+		Firm:   "solomerch",
+		Line:   "",
+		Limit:  40,
+		Offset: 36,
 	})
 	fmt.Println(snickers, err)
 	require.NoError(t, err)
@@ -92,10 +126,32 @@ func TestGetSoloCollectionWithCount(t *testing.T) {
 	require.NotEmpty(t, snickers)
 }
 
+func TestGetMerchCollectionWithCount(t *testing.T) {
+	snickers, err := testStore.GetMerchCollectionWithCount(context.Background(), GetMerchCollectionWithCountParams{
+		Firm:   "solomerch",
+		Line:   "labubu monster",
+		Limit:  20,
+		Offset: 10,
+	})
+	fmt.Println(snickers, err)
+	require.NoError(t, err)
+	require.NotEmpty(t, snickers)
+}
+
 func TestGetCollectionCount(t *testing.T) {
 	snickers, err := testStore.GetCountOfCollectionsOrFirms(context.Background(), GetCountOfCollectionsOrFirmsParams{
 		Firm: "nike",
 		Line: "air_jordan_1",
+	})
+	fmt.Println(snickers, err)
+	require.NoError(t, err)
+	require.NotEmpty(t, snickers)
+}
+
+func TestGetMerchCollectionCount(t *testing.T) {
+	snickers, err := testStore.GetMerchCountOfCollectionsOrFirms(context.Background(), GetMerchCountOfCollectionsOrFirmsParams{
+		Firm: "solomerch",
+		Line: "",
 	})
 	fmt.Println(snickers, err)
 	require.NoError(t, err)
@@ -125,6 +181,16 @@ func TestGetCollections(t *testing.T) {
 
 func TestGetSnickersByName(t *testing.T) {
 	snickers, err := testStore.GetSnickersByName(context.Background(), GetSnickersByNameParams{
+		Column1: "A",
+		Limit:   1,
+	})
+	fmt.Println(snickers, err)
+	require.NoError(t, err)
+	require.NotEmpty(t, snickers)
+}
+
+func TestGetMerchByName(t *testing.T) {
+	snickers, err := testStore.GetMerchByName(context.Background(), GetMerchByNameParams{
 		Column1: "A",
 		Limit:   1,
 	})

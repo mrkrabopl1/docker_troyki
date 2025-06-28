@@ -14,14 +14,16 @@ interface   merchBannerInterface  {
     className?:{
         button?:string,
         title?:string,
-        main?:string
+        main?:string,
+        contentHolder?:string
     },
     id:string,
+    btnText:string,
     onChange:(arg:string)=>void
 }
 
 const MerchBanner: React.FC< merchBannerInterface> = (props) => {
-    let {id,img,title,onChange,className} = {...props}
+    let {id,img,title,onChange,className,btnText} = {...props}
     const onChangeButton = ()=>{
         onChange(id)
     }
@@ -30,9 +32,9 @@ const MerchBanner: React.FC< merchBannerInterface> = (props) => {
 
         <div className={className?className.main?className.main:s.main:s.main} style = {{display:"flex"}}>
             <img className={"fs"} src= {img} alt="" />
-            <div style={{display:"flex", margin:"auto", position:"absolute"}}>
+            <div className={className?className.contentHolder?className.contentHolder:s.contentHolder:s.contentHolder} style={{display:"flex", margin:"auto", position:"absolute"}}>
                 <p className={s.title}>{title}</p>
-                <Button className={s.buton} onChange={onChangeButton} text={"К колекции"}></Button>
+                <Button className={className?className.button?className.button:s.buton:s.buton} onChange={onChangeButton} text={btnText}></Button>
             </div>
         </div>
    
