@@ -1,7 +1,7 @@
-import React, { ReactElement, useRef, useState, memo } from 'react'
+import React, { ReactElement, useRef, useState, memo, useCallback } from 'react'
 import s from "./style.module.css"
 
-type propsLampType = {
+type PropsLampType = {
     onChange:(...args:any)=>void|null
     name?:string,
     text?:string,
@@ -11,11 +11,15 @@ type propsLampType = {
 
 
 
-const Lamp: React.FC<propsLampType> = (props) => {
+const Lamp: React.FC<PropsLampType> = (props) => {
     let {onChange, name, text, checked, description} = {...props}
+    const handleChange = useCallback((e) => {
+        onChange(e);
+    }, [onChange]);
+
     return (
         <label className={s.lampHolder}>
-            <input defaultChecked={checked}  onChange={(e)=>{onChange(e)}} className={s.lamp} type="radio" name={name} />
+            <input defaultChecked={checked}  onChange={handleChange} className={s.lamp} type="radio" name={name} />
             <span className={s.design}></span>
             <div>
                 {text?<p  className={s.text}>{text}</p>:null}
@@ -25,4 +29,4 @@ const Lamp: React.FC<propsLampType> = (props) => {
     )
 }
 
-export default memo(Lamp, ()=>false)
+export default memo(Lamp)

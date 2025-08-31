@@ -98,7 +98,7 @@ func JSONTransformToStruct() []SnickersStruct {
 				allInfo := make(map[string]float64)
 				fmt.Println()
 				for iter.Next() {
-					//var SnickersInfoCr SnickersInfoCr
+					//var ProductsInfoCr ProductsInfoCr
 
 					key := fmt.Sprintf("%v", iter.Key().Interface())
 

@@ -14,5 +14,5 @@ package api
 // 	s.router.Get("/firms", s.handleGetFirms)
 // 	s.router.Get("/snickersByFirm", s.handleGetSnickersByFirmName)
 // 	s.router.Get("/snickersByLine", s.handleGetSnickersByLineName)
-// 	s.router.Get("/snickersInfo", s.handleGetSnickersInfoById)
+// 	s.router.Get("/ProductsInfo", s.handleGetProductsInfoById)
 // }

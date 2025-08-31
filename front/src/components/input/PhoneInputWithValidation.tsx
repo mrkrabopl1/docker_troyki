@@ -1,239 +1,248 @@
-import React, { ReactElement, useEffect, useRef, useState, useCallback } from 'react'
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import s from "./style.module.css";
 
-import s from "./style.module.css"
+type PhoneInputProps = {
+    onChange: (value: string) => void;
+    onFocus?: (value: string) => void;
+    onBlur?: (value: string) => void;
+    className?: string;
+    placeholder?: string;
+    val?: string;
+    valid: boolean;
+    invalidEmpty: string;
+    invalidIncorrect: string;
+};
 
-type propsRowType = {
-    onChange: (...args: any) => void | null
-    onFocus?: (...args: any) => void
-    onBlur?: (...args: any) => void
-    className?: string,
-    placeholder?: string,
-    val?: string,
-    valid: boolean,
-    invalidEmpty: string,
-    invalidIncorrect: string
-}
+const PHONE_FORMAT = {
+    prefix: "+7 ",
+    codeSeparator: " ",
+    mainSeparator: "-",
+    fullLength: 16 // Длина полного форматированного номера
+};
 
+const PhoneInputWithValidation: React.FC<PhoneInputProps> = ({
+    onChange,
+    onFocus,
+    onBlur,
+    className = '',
+    placeholder = "+7 999 999-99-99",
+    val = "+7",
+    valid,
+    invalidEmpty,
+    invalidIncorrect
+}) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [phoneValue, setPhoneValue] = useState(val);
+    const [isValid, setIsValid] = useState(valid);
+    const shouldValidate = useRef(false);
+    const cursorPos = useRef(2);
+     const hasChange = useRef<boolean>(false);
 
-
-const PhoneInputWithValidation: React.FC<propsRowType> = (props) => {
-    const inputRef = useRef<HTMLInputElement>(null)
-    let { valid, onBlur, onChange, onFocus, className, val, invalidEmpty, invalidIncorrect } = { ...props }
-
-    let [phoneVal, setPhoneVal] = useState<string>(val ? val : "+7")
-    const cursorPositionRef = useRef<number>(2)
-    const startValidationOnBlur = useRef<boolean>(false)
-
-    const [validState, setValid] = useState<boolean>(valid)
-    useEffect(() => {
-        setPhoneVal(val)
-        setTimeout(()=>inputRef.current.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current),0)
-    }, [val])
-    useEffect(() => {
-        setPhoneVal(phoneVal)
-        setTimeout(()=>inputRef.current.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current),0)
-    }, [phoneVal])
-    useEffect(() => {
-        setValid(valid)
-    }, [valid])
-
-
-    const formatVal = function (val: string) {
-        val.replace(/[-,\s]/g, "")
-        if (Number.isNaN(val) || val.length !== 11 || val) {
-            return null
+    // Форматирование номера телефона
+    const formatPhoneNumber = useCallback((value: string): string => {
+        const cleanValue = value.replace(/[^\d]/g, '').slice(1); // Удаляем все нецифры и первый символ
+        let formatted = PHONE_FORMAT.prefix;
+        
+        if (cleanValue.length > 0) {
+            formatted += cleanValue.slice(0, 3);
+            if (cleanValue.length > 3) {
+                formatted += PHONE_FORMAT.codeSeparator + cleanValue.slice(3, 6);
+                if (cleanValue.length > 6) {
+                    formatted += PHONE_FORMAT.codeSeparator + cleanValue.slice(6, 8);
+                    if (cleanValue.length > 8) {
+                        formatted += PHONE_FORMAT.mainSeparator + cleanValue.slice(8, 10);
+                    }
+                }
+            }
         }
 
+        return formatted;
+    }, []);
 
+    // Установка позиции курсора
+    const setCursorPosition = useCallback((position: number) => {
+        cursorPos.current = position;
+        setTimeout(() => {
+            inputRef.current?.setSelectionRange(position, position);
+        }, 0);
+    }, []);
+
+    // Синхронизация с внешними значениями
+    useEffect(() => {
+         setPhoneValue(val);
+         if (!hasChange.current && !valid) {
+            hasChange.current = true;
+            return
+        }
+        setIsValid(valid);
+    }, [val, valid]);
+
+    // Обработчик ввода
+    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+        hasChange.current=true;
+        e.preventDefault();
+        shouldValidate.current = true;
+        const { key } = e;
+        const cursorPosition = inputRef.current?.selectionStart || 0;
+
+        // Обработка навигации
+        if (['ArrowLeft', 'ArrowRight'].includes(key)) {
+            const newPos = key === 'ArrowLeft' ? cursorPosition - 1 : cursorPosition + 1;
+            setCursorPosition(newPos);
+            return;
+        }
+
+        // Обработка удаления
+        if (['Delete', 'Backspace'].includes(key)) {
+            handleDelete(key, cursorPosition);
+            return;
+        }
+
+        // Обработка цифр
+        if (/\d/.test(key)) {
+            handleDigitInput(key, cursorPosition);
+        }
+    }, [phoneValue]);
+
+    // Обработка ввода цифр
+const handleDigitInput = useCallback((digit: string, cursorPosition: number) => {
+    // Получаем текущее значение без форматирования
+    const cleanValue = phoneValue.replace(/[^\d]/g, '').slice(1);
+
+    if(cursorPosition < PHONE_FORMAT.prefix.length) {
+        cursorPosition = PHONE_FORMAT.prefix.length; 
+    }
+    
+    // Вставляем новую цифру в нужную позицию
+    let newCleanValue = cleanValue.slice(0, cursorPosition - PHONE_FORMAT.prefix.length) + 
+                       digit + 
+                       cleanValue.slice(cursorPosition - PHONE_FORMAT.prefix.length);
+    
+    // Форматируем новое значение
+    let formatted = PHONE_FORMAT.prefix;
+    if (newCleanValue.length > 0) {
+        formatted += newCleanValue.slice(0, 3);
+        if (newCleanValue.length > 3) {
+            formatted += PHONE_FORMAT.codeSeparator + newCleanValue.slice(3, 6);
+            if (newCleanValue.length > 6) {
+                formatted += PHONE_FORMAT.codeSeparator + newCleanValue.slice(6, 8);
+                if (newCleanValue.length > 8) {
+                    formatted += PHONE_FORMAT.mainSeparator + newCleanValue.slice(8, 10);
+                }
+            }
+        }
     }
 
-    const stringToVal = function (val) {
-        val.replace(/[-,\s]/g, "")
+    // Вычисляем новую позицию курсора
+    let newCursorPosition = cursorPosition + 1;
+    
+    // Корректируем позицию курсора при переходе через разделители
+    if (cursorPosition === PHONE_FORMAT.prefix.length + 3) {
+        newCursorPosition += PHONE_FORMAT.codeSeparator.length;
+    } else if (cursorPosition === PHONE_FORMAT.prefix.length + 3 + PHONE_FORMAT.codeSeparator.length + 3) {
+        newCursorPosition += PHONE_FORMAT.codeSeparator.length;
+    } else if (cursorPosition === PHONE_FORMAT.prefix.length + 3 + PHONE_FORMAT.codeSeparator.length + 3 + PHONE_FORMAT.codeSeparator.length + 2) {
+        newCursorPosition += PHONE_FORMAT.mainSeparator.length;
     }
 
-    const removeChar = (timeStrVal: string) => {
-        let defaultPart = timeStrVal.slice(0, 2)
-        let codePart = timeStrVal.slice(2, 5)
-        let mainPart = timeStrVal.slice(5, 8)
-        let firstDoublePart = timeStrVal.slice(8, 10)
-        let seconfDoublePart = timeStrVal.slice(10, 12)
-        let finalStr = defaultPart + " " + codePart
-        if (mainPart) {
-            finalStr = finalStr + " " + mainPart
+    if (formatted.length <= PHONE_FORMAT.fullLength) {
+        setPhoneValue(formatted);
+        setCursorPosition(newCursorPosition);
+        // validatePhone(formatted);
+    }
+}, [phoneValue, formatPhoneNumber]);
+
+// Обработка удаления символов
+const handleDelete = useCallback((key: string, cursorPosition: number) => {
+    // Получаем текущее значение без форматирования
+    const cleanValue = phoneValue.replace(/[^\d]/g, '').slice(2);
+    
+    let newCleanValue = cleanValue;
+    let newCursorPosition = cursorPosition;
+    
+    if (key === 'Backspace' && cursorPosition > PHONE_FORMAT.prefix.length) {
+        // Удаляем цифру перед курсором
+        const posInClean = cursorPosition - PHONE_FORMAT.prefix.length;
+        newCleanValue = cleanValue.slice(0, posInClean - 1) + cleanValue.slice(posInClean);
+        newCursorPosition = cursorPosition - 1;
+        
+        // Корректируем позицию если переходим через разделитель
+        if (phoneValue[cursorPosition - 1] === PHONE_FORMAT.codeSeparator || 
+            phoneValue[cursorPosition - 1] === PHONE_FORMAT.mainSeparator) {
+            newCursorPosition -= 1;
         }
-        if (firstDoublePart) {
-            finalStr = finalStr + "-" + firstDoublePart
-        }
-        if (seconfDoublePart) {
-            finalStr = finalStr + "-" + seconfDoublePart
-        }
-        return finalStr
+    } else if (key === 'Delete' && cursorPosition < phoneValue.length) {
+        // Удаляем цифру после курсора
+        const posInClean = cursorPosition - PHONE_FORMAT.prefix.length;
+        newCleanValue = cleanValue.slice(0, posInClean) + cleanValue.slice(posInClean + 1);
     }
 
+    // Форматируем новое значение
+    let formatted = PHONE_FORMAT.prefix;
+    if (newCleanValue.length > 0) {
+        formatted += newCleanValue.slice(0, 3);
+        if (newCleanValue.length > 3) {
+            formatted += PHONE_FORMAT.codeSeparator + newCleanValue.slice(3, 6);
+            if (newCleanValue.length > 6) {
+                formatted += PHONE_FORMAT.codeSeparator + newCleanValue.slice(6, 8);
+                if (newCleanValue.length > 8) {
+                    formatted += PHONE_FORMAT.mainSeparator + newCleanValue.slice(8, 10);
+                }
+            }
+        }
+    }
 
-    const numberValidation = useCallback((val: React.KeyboardEvent<HTMLInputElement>) => {
-        if (val.key === "Delete") {
-            let cursorPosition = inputRef.current.selectionStart
-            if (cursorPosition < 3) {
-                setTimeout(()=>inputRef.current.setSelectionRange(0, 0),0)
-            } else {
-                let prefix = ""
-                let suffix = ""
+    setPhoneValue(formatted);
+    setCursorPosition(newCursorPosition);
+    validatePhone(formatted);
+}, [phoneValue, formatPhoneNumber]);
+    const validatePhone = useCallback((value: string) => {
+        const isValid = value.length === PHONE_FORMAT.fullLength;
+        setIsValid(isValid);
+        onChange(isValid ? value : "");
+    }, [onChange]);
+    // Обработчик потери фокуса
+    const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+        if (shouldValidate.current) {
+            if (phoneValue.length < PHONE_FORMAT.fullLength && phoneValue.length !== 0) {
+                setIsValid(false);
+            }
+            onBlur?.(e.target.value);
+        }
+    }, [phoneValue, onBlur]);
 
-                if (cursorPosition === 6 || cursorPosition === 10 || cursorPosition === 13) {
-                    prefix = phoneVal.slice(0, cursorPosition + 1);
-                    suffix = phoneVal.slice(cursorPosition + 2, phoneVal.length);
-                } else {
-                    prefix = phoneVal.slice(0, cursorPosition);
-                    suffix = phoneVal.slice(cursorPosition + 1, phoneVal.length);
-                }
-                const timeStrVal = (prefix + suffix).replace(/[-,\s]/g, "")
-                let finalStr = removeChar(timeStrVal)
-                cursorPositionRef.current = cursorPosition
-                if (finalStr.length === 3) {
-                    finalStr = ""
-                }
-                setPhoneVal(finalStr);
-                if (finalStr.length === 16) {
-                    setValid(true)
-                    onChange(finalStr)
-                }else{
-                    onChange("")
-                }
-            }
-        }
-        if (val.key === "Backspace") {
-            let cursorPosition = inputRef.current.selectionStart
-            if (cursorPosition === 7 || cursorPosition === 11 || cursorPosition === 14) {
-                //inputRef.current.focus();
-                setTimeout(()=>inputRef.current.setSelectionRange(cursorPosition - 1, cursorPosition - 1),0)
-            } else if (cursorPosition == 4 && phoneVal.length == 4) {
-                setPhoneVal("");
-            } else if (cursorPosition < 4) {
-                setTimeout(()=>inputRef.current.setSelectionRange(0, 0),0)
-            }
-            else {
-                const prefix = phoneVal.slice(0, cursorPosition - 1);
-                const suffix = phoneVal.slice(cursorPosition, phoneVal.length);
-                const timeStrVal = (prefix + suffix).replace(/[-,\s]/g, "")
-                const finalStr = removeChar(timeStrVal)
-                cursorPositionRef.current = cursorPosition - 1
-                setPhoneVal(finalStr);
-                if (finalStr.length === 16) {
-                    setValid(true)
-                    onChange(finalStr)
-                }else{
-                    onChange("")
-                }
-            }
+    // Текст ошибки
+    const errorMessage = useMemo(() => {
+        return phoneValue.length === 0 ? invalidEmpty : invalidIncorrect;
+    }, [phoneValue, invalidEmpty, invalidIncorrect]);
 
-        }
-        if (val.key === "ArrowLeft") {
-            let cursorPosition = inputRef.current.selectionStart
-            if (cursorPosition != 0) {
-                setTimeout(()=>inputRef.current.setSelectionRange(cursorPosition - 1, cursorPosition - 1),0)
-            }
-        }
-        if (val.key === "ArrowRight") {
-            let cursorPosition = inputRef.current.selectionStart
-            setTimeout(()=>inputRef.current.setSelectionRange(cursorPosition + 1, cursorPosition + 1),0)
-        }
-        let num = Number(val.key)
-        if (isFinite(num)) {
-            let cursorPosition = inputRef.current.selectionStart
-            console.log(cursorPosition)
-            if (cursorPosition === phoneVal.length) {
-                if (phoneVal.length === 16) return
-                let newVal = ""
-                if (phoneVal.length < 4) {
-                    newVal = "+7" + " " + num
-                }
-                else if (phoneVal.length === 6) {
-                    newVal = phoneVal + " " + num
-                } else if (phoneVal.length === 10 || phoneVal.length === 13) {
-                    newVal = phoneVal + "-" + num
-                } else {
-                    newVal = phoneVal + num
-                }
-                cursorPositionRef.current = newVal.length
-                setPhoneVal(newVal)
-                if (newVal.length === 16) {
-                    setValid(true)
-                    onChange(newVal)
-                }else{
-                    onChange("")
-                }
-            } else {
-                let prefix = ""
-                let suffix = ""
+    // Классы инпута
+    const inputClasses = useMemo(() => {
+        return [s.inputWithLabel, className, !isValid && s.invalid].filter(Boolean).join(' ');
+    }, [className, isValid]);
 
-                if (cursorPosition < 3) {
-                    prefix = phoneVal.slice(0, 3);
-                    suffix = phoneVal.slice(4, phoneVal.length);
-                    cursorPositionRef.current = 5
-                }
-                else if (cursorPosition === 6 || cursorPosition === 10 || cursorPosition === 13) {
-                    prefix = phoneVal.slice(0, cursorPosition + 1);
-                    suffix = phoneVal.slice(cursorPosition + 2, phoneVal.length);
-                    cursorPositionRef.current = cursorPosition + 1
-                }
-                else if (cursorPosition === 5 || cursorPosition === 9 || cursorPosition === 12) {
-                    prefix = phoneVal.slice(0, cursorPosition);
-                    suffix = phoneVal.slice(cursorPosition + 1, phoneVal.length);
-                    cursorPositionRef.current = cursorPosition + 2
-                }
-                else {
-                    prefix = phoneVal.slice(0, cursorPosition);
-                    suffix = phoneVal.slice(cursorPosition + 1, phoneVal.length);
-                    cursorPositionRef.current = cursorPosition + 1
-                }
-                const timeStrVal = (prefix + num + suffix).replace(/[-,\s]/g, "")
-                let finalStr = removeChar(timeStrVal)
-                setTimeout(()=>inputRef.current.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current),0)
-                setPhoneVal(finalStr);
-                if (finalStr.length === 16) {
-                    setValid(true)
-                    onChange(finalStr)
-                }else{
-                    onChange("")
-                }
-            }
-        }
-    },[phoneVal])
-    const [valState, setVal] = useState<string>(val ? val : "")
     return (
         <div className={s.inputContainer}>
             <span>Phone</span>
             <input
-                onKeyDown={(e) => {
-                    startValidationOnBlur.current = true
-                    e.preventDefault()
-                    numberValidation(e)
-                }}
-                value={phoneVal}
-                style={{ boxSizing: 'border-box', width: "100%" }}
-                className={validState ? s.inputWithLabel : s.inputWithLabel + " " + s.invalid}
                 ref={inputRef}
-                placeholder="+7 999 999-99-99"
-                type='tel'
-                onFocus={(e) => { if (onFocus) { onFocus(e.target.value) } }}
-                onBlur={(e) => {
-                    if (startValidationOnBlur.current) {
-                        if (phoneVal.length < 16 && phoneVal.length !== 0) {
-                            setValid(false)
-                        }
-                        if (onBlur) {
-                            onBlur(e.target.value)
-                        }
-                    }
-                }}
+                value={phoneValue}
+                className={inputClasses}
+                style={{ boxSizing: 'border-box', width: "100%" }}
+                placeholder={placeholder}
+                type="tel"
+                onKeyDown={handleKeyDown}
+                onFocus={(e) => onFocus?.(e.target.value)}
+                onBlur={handleBlur}
+                aria-invalid={!isValid}
             />
-            {!validState ? <label style={{ color: "red" }}>{phoneVal.length === 0 ? invalidEmpty : invalidIncorrect}</label> : null}
-            {/* <label onClick={
-                ()=>inputRef.current && inputRef.current.focus()
-                }  className={s.label}>{placeholder}</label> */}
+            {!isValid && (
+                <div className={s.errorMessage} style={{ color: "red" }}>
+                    {errorMessage}
+                </div>
+            )}
         </div>
-    )
-}
+    );
+};
 
-export default PhoneInputWithValidation
+export default React.memo(PhoneInputWithValidation);

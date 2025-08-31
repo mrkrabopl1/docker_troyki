@@ -1,4 +1,4 @@
-import React, { ReactElement, useRef, useState } from 'react'
+import React, { ReactElement, useRef, useState,memo } from 'react'
 
 type listType = {
     children: React.ReactNode[]
@@ -11,9 +11,7 @@ let defaultStyle = {
 }
 
 
-const DropDownList: React.FC<listType> = (props) => {
-
-    let {className,children,active} = {...props}
+const DropDownList: React.FC<listType> = ({className,children,active}) => {
     return (
        <div style={active?{position:"absolute"}:{display:"none"}} className={className} >
             {
@@ -23,4 +21,4 @@ const DropDownList: React.FC<listType> = (props) => {
     )
 }
 
-export default DropDownList
+export default  memo(DropDownList)

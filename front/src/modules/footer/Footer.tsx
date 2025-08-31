@@ -1,49 +1,70 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import SearchWithList from '../searchWithList/SearchWithList'
-import Modal from 'src/components/modal/Modal'
-import ColumnWithChilds from 'src/components/table/simpleTable/ColumnWithChilds'
-import s from "./style.module.css"
+import React, { useMemo, memo,useCallback } from 'react';
+import { NavLink } from 'react-router-dom';
+import ColumnWithChilds from 'src/components/table/simpleTable/ColumnWithChilds';
+import s from "./style.module.css";
 
-import { NavLink } from 'react-router-dom'
-type propsRowType = {
-    data: any,
-    callback: (...args: any) => void | null
-}
+const Footer: React.FC = () => {
+    const renderNavLink = useCallback((to: string, text: string) => (
+        <NavLink 
+            className={({ isActive, isPending }) => 
+                isPending ? s.link_active : isActive ? s.link_active : s.link
+            } 
+            to={to}
+        >
+            {text}
+        </NavLink>
+    ), []);
 
-const Footer: React.FC<any> = (props) => {
+    const aboutUsArr = useMemo(() => [
+        renderNavLink("/way_to_pay", "Способы оплаты"),
+        renderNavLink("/delivery", "Доставка и самовывоз"),
+        renderNavLink("/faq", "Частые вопросы")
+    ], [renderNavLink]);
 
-    let aboutUsArr = [
-       <NavLink className={({ isActive, isPending }) =>isPending ? s.link_active : isActive ? s.link_active :  s.link}  to="/way_to_pay">Способы оплаты</NavLink >,
-       <NavLink className={({ isActive, isPending }) =>isPending ? s.link_active : isActive ? s.link_active :  s.link}   to="/delivery">Доставка и самовывоз </NavLink > , 
-       <NavLink className={({ isActive, isPending }) =>isPending ? "pending" : isActive ? s.link_active :  s.link}   to="/faq">Частые вопросы </NavLink >  
-    ]
+    const policyArr = useMemo(() => [
+        renderNavLink("/refund-policy", "Обмен и возврат"),
+        renderNavLink("/privacy-policy", "Политика конфиденциальности"),
+        renderNavLink("/faq", "Условия предоставления услуг")
+    ], [renderNavLink]);
 
-    let policyArr = [
-        <NavLink className={({ isActive, isPending }) =>isPending ? s.link_active : isActive ? s.link_active :  s.link}  to="/refund-policy">Обмен и возврат</NavLink >,
-        <NavLink className={({ isActive, isPending }) =>isPending ? s.link_active : isActive ? s.link_active :  s.link}   to="/privacy-policy">Политика конфиденциальности </NavLink > , 
-        <NavLink className={({ isActive, isPending }) =>isPending ? s.link_active : isActive ? s.link_active :  s.link}   to="/faq">Условия предоставления услуг </NavLink >  
-     ]
-     let clientHelpArr = [
-        <div>
-            <div>
-                mail
-            </div>
-            <div>
-                phon
-            </div>
+    const clientHelpArr = useMemo(() => [
+        <div key="contacts">
+            <div>mail</div>
+            <div>phone</div>
         </div>,
-        <div>Звонки принимаются ежедневно 
-        с 10:00 до 22:00 по МСК.</div> , 
-     ]
-    return (
-        <div className={s.footer + " fontSize"}  style={{display:"flex",width:"100%", justifyContent:"space-between"}}>
-            <ColumnWithChilds headerClassName={"fontSizeH"} className={s.footerColumn}  header={"Помощь"} rows={ aboutUsArr} />
-            <ColumnWithChilds headerClassName={"fontSizeH"} className={s.footerColumn} header={"Политики и условия"} rows={policyArr} />
-            <ColumnWithChilds headerClassName={"fontSizeH"} className={s.footerColumn} header={"Служба клиентской поддержки"} rows={clientHelpArr} />
+        <div key="work-hours">
+            Звонки принимаются ежедневно с 10:00 до 22:00 по МСК.
         </div>
+    ], []);
 
-    )
-}
+    const footerStyle = useMemo(() => ({
+        display: "flex",
+        width: "100%", 
+        justifyContent: "space-between"
+    }), []);
 
+    return (
+        <div className={`${s.footer} fontSize`} style={footerStyle}>
+            <ColumnWithChilds 
+                headerClassName="fontSizeH" 
+                className={s.footerColumn}  
+                header="Помощь" 
+                rows={aboutUsArr} 
+            />
+            <ColumnWithChilds 
+                headerClassName="fontSizeH" 
+                className={s.footerColumn} 
+                header="Политики и условия" 
+                rows={policyArr} 
+            />
+            <ColumnWithChilds 
+                headerClassName="fontSizeH" 
+                className={s.footerColumn} 
+                header="Служба клиентской поддержки" 
+                rows={clientHelpArr} 
+            />
+        </div>
+    );
+};
 
-export default Footer
+export default memo(Footer);

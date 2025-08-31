@@ -1,74 +1,75 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import MerchBlock from "./MerchBlock"
-import MerchField from './MerchField'
-import PageController from 'src/components/contentSlider/slidersSwitchers/PageController'
-import s from "./style.module.css"
+import React, { useMemo } from 'react';
+import MerchBlock from "./MerchBlock";
+import PageController from 'src/components/contentSlider/slidersSwitchers/PageController';
+import s from "./style.module.css";
 
-
-interface merchInterface {
-    name: string,
-    imgs: string[],
-    id: string,
-    price:string,
-    className?: string
-}
-interface merchFieldInterface {
-    heightRow?: number,
-    pages: number,
-    currentPage: number,
-    className?: string,
-    size: number,
-    data: merchInterface[],
-    onChange: (args: any) => void
+interface MerchInterface {
+    name: string;
+    imgs: string[];
+    id: string;
+    price: string;
+    className?: string;
 }
 
-const MerchFieldWithPageSwitcher: React.FC<merchFieldInterface> = (props) => {
-    let { data, size, className, heightRow, pages, currentPage, onChange } = { ...props }
-    data = [...data]
-    const createWidth = () => {
-        return 100 / size + "%"
-    }
+interface MerchFieldProps {
+    heightRow?: number;
+    pages: number;
+    currentPage: number;
+    className?: string;
+    size: number;
+    data: MerchInterface[];
+    onChange: (page: number) => void;
+}
 
-    let heightClass = useRef<string>("")
+const MerchFieldWithPageSwitcher: React.FC<MerchFieldProps> = ({
+    data = [],
+    size,
+    className,
+    pages,
+    currentPage,
+    onChange
+}) => {
+    const blockWidth = `${100 / size}%`;
+    const heightClass = size === 3 ? "dependetHeight" : "dependetHeight1";
 
-    if(size === 3){
-         heightClass.current = "dependetHeight"
-    }else{
-         heightClass.current = "dependetHeight1"
-    }
-
-
-    const createBlocks = () => {
-        let arr: any = []
-        while (data.length) {
-            let count = 0
-            let arrSm: any = []
-            while (count < size) {
-                count += 1
-                if (data.length !== 0) {
-                    arrSm.push(<MerchBlock key = {data[0].name} width={createWidth()} data={data[0]} />)
-                }
-                data.shift()
-            }
-
-            arr.push(<div key={data.length} className={className ? className : s.merchField + " " + heightClass.current}>
-                {arrSm}
-            </div>)
+    const rows = useMemo(() => {
+        const result = [];
+        const items = [...data];
+        
+        while (items.length > 0) {
+            const rowItems = items.splice(0, size);
+            const row = (
+                <div 
+                    key={`row-${items.length}`} 
+                    className={className ? className : `${s.merchField} ${heightClass}`}
+                >
+                    {rowItems.map(item => (
+                        <MerchBlock 
+                            key={item.id} 
+                            width={blockWidth} 
+                            data={item} 
+                        />
+                    ))}
+                </div>
+            );
+            result.push(row);
         }
+        
+        return result;
+    }, [data, size, className, heightClass, blockWidth]);
 
-        return arr
-    }
     return (
         <div>
             <div className={s.globalMerchField}>
-                 {createBlocks()}
+                {rows}
             </div>
-            <PageController currentPosition={currentPage} positions={pages} callback={onChange} />
-
+            <PageController 
+                currentPosition={currentPage} 
+                positions={pages} 
+                callback={onChange} 
+            />
         </div>
+    );
+};
 
-    )
-}
-
-
-export default MerchFieldWithPageSwitcher
+export default React.memo(MerchFieldWithPageSwitcher);

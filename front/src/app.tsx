@@ -1,4 +1,4 @@
-import React, { useEffect, ReactElement, useState, useRef, lazy } from 'react'
+import React, { useEffect, ReactElement, useState, useRef, lazy, useCallback } from 'react'
 import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux'
 import { cartCountAction } from 'src/store/reducers/menuSlice'
 import axios from "axios";
@@ -6,7 +6,7 @@ import { show, sticky,verified } from 'src/store/reducers/menuSlice'
 import { setFooter } from 'src/store/reducers/dispetcherSlice'
 import {  setWidthProps } from 'src/store/reducers/resizeSlice'
 import DropZone from "src/develop/dropZone/DropZone"
-const ProductsInfo = lazy(() => import('./pages/ProductsInfo/ProductsInfo'))
+const ProductsInfo = lazy(() => import('./pages/productsInfo/ProductsInfo'))
 import Form from './pages/formPage/FormPage'
 import BuyPage from './pages/buyPage/BuyPage'
 const CollectionPage = lazy(() => import('./pages/collectionPage/CollectionPage'))
@@ -45,112 +45,139 @@ setTimeout(() => {
   console.debug(API_URL, "f;lsdmf;ls,d;lf")
 }, 10)
 
-const App: React.FC<any> = () => {
-  const { contentRef, contentHeight } = useContentHeight();
-
-  useEffect(() => {
-    console.log('Текущая высота контента:', contentHeight);
-  }, [contentHeight]);
-  let [merchFieldData, setMerchFieldData] = useState<any>([])
+const App: React.FC = () => {
   const dispatch = useAppDispatch();
+  const contRef = useRef<HTMLDivElement>(null);
+  const resizeTimeoutRef = useRef<NodeJS.Timeout>();
+  const animationFrameRef = useRef<number>();
 
-  let contRef = useRef<HTMLDivElement>(null)
-
-  const { chousenName } = useAppSelector(state => state.complexDropReducer)
-  useEffect(() => {
-    let coockieCart = getCookie("cart")
-    let coockieUnique= getCookie("unique")
-    window.addEventListener("resize",(e)=>{
-      if(window.document.body.clientWidth<700){
-        dispatch(setWidthProps(1))
-      }else if (window.document.body.clientWidth<300){
-        dispatch(setWidthProps(2))
-      }else{
-        dispatch(setWidthProps(0))
-      }
+  // Optimized resize handler with debouncing
+  const handleResize = useCallback(() => {
+    if (resizeTimeoutRef.current) {
+      clearTimeout(resizeTimeoutRef.current);
     }
-    )
-    if (!coockieUnique) {
-      setUniqueCustomer(()=>{})
-    }
-    if (coockieCart) {
-      getCartCount((data)=> dispatch(cartCountAction(data)))
-    }
-
-    //getBrends(setMerchFieldData)
-  }, [])
-
-  useEffect(() => {
-    chackPostalIndex("127642",(data)=>{})
-    getCdekDeliveryData("1276",(data)=>{})
-    jwtAutorise((res)=>{
-      console.debug(res)
-      dispatch(verified(res.data))
-    })
-  }, [])
-
-
-  const manipulateMenu = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (e.deltaY > 0) {
-      let rect = contRef.current.getBoundingClientRect()
-      console.debug(window.innerHeight)
-      if(Math.ceil(window.scrollY+window.innerHeight+3) >= contRef.current.scrollHeight)return
-      let maxScroll = contRef.current.scrollHeight - window.innerHeight 
-      if (window.scrollY + e.deltaY < 150 ) {
-        dispatch(sticky(false))
-      } else {
-        if(maxScroll>150){
-          dispatch(show(false))
+    
+    resizeTimeoutRef.current = setTimeout(() => {
+      const width = document.body.clientWidth;
+      requestAnimationFrame(() => {
+        if (width < 300) {
+          dispatch(setWidthProps(2));
+        } else if (width < 700) {
+          dispatch(setWidthProps(1));
+        } else {
+          dispatch(setWidthProps(0));
         }
-      //  dispatch(sticky(true))
-      }
-    } else {
-      if(window.scrollY === 0){
-        dispatch(show(true))
-        return
-      } 
-      if (window.scrollY + e.deltaY < 150 ) {
-        dispatch(show(true))
-      } else {
-        dispatch(show(true))
-        dispatch(sticky(true))
-      }
+      });
+    }, 100);
+  }, [dispatch]);
+
+  // App initialization
+  useEffect(() => {
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    
+    if (!getCookie("unique")) {
+      setUniqueCustomer(() => {});
+    }
+    
+    const cartCookie = getCookie("cart");
+    if (cartCookie) {
+      getCartCount((data) => dispatch(cartCountAction(data)));
     }
 
-  }
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      clearTimeout(resizeTimeoutRef.current);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [dispatch, handleResize]);
+
+  // Fixed ResizeObserver implementation
   useEffect(() => {
     const element = contRef.current;
     if (!element) return;
-    // Создание наблюдателя за изменениями размеров
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.target === element) {
 
-          if(window.innerHeight >= element.offsetHeight || window.scrollY < 150 ){
-            dispatch(show(true))
+    let animationFrameId: number;
+    const observer = new ResizeObserver((entries) => {
+      // Cancel any pending animation frames
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+
+      animationFrameId = requestAnimationFrame(() => {
+        for (const entry of entries) {
+          if (entry.target === element) {
+            const { offsetHeight } = element;
+            const { innerHeight, scrollY } = window;
+            
+            if (innerHeight >= offsetHeight || scrollY < 150) {
+              dispatch(show(true));
+            }
           }
         }
-      }
+      });
     });
 
     observer.observe(element);
-
-    // Очистка при размонтировании
     return () => {
       observer.disconnect();
+      cancelAnimationFrame(animationFrameId);
     };
-  }, []);
+  }, [dispatch]);
 
+  // Wheel event handlers with proper frame management
+  const manipulateMenu = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    // if (!contRef.current || !e.deltaY) return;
 
-  const manipulateDispetcher = (e: React.WheelEvent<HTMLDivElement>) => {
-    if(Math.ceil(window.scrollY+window.innerHeight+e.deltaY) >= contRef.current.scrollHeight - 100){
-      dispatch(setFooter(true))
-    }else{
-      if(Math.ceil(window.scrollY+window.innerHeight) <= contRef.current.scrollHeight - 100){
-        dispatch(setFooter(false))
-      }
+    // if (animationFrameRef.current) {
+    //   cancelAnimationFrame(animationFrameRef.current);
+    // }
+
+    // animationFrameRef.current = requestAnimationFrame(() => {
+    //   const { scrollHeight } = contRef.current!;
+    //   const { innerHeight, scrollY } = window;
+      
+    //   if (e.deltaY > 0) {
+    //     if (Math.ceil(scrollY + innerHeight + 3) >= scrollHeight) return;
+        
+    //     if (scrollY + e.deltaY < 150) {
+    //       dispatch(sticky(false));
+    //     } else if (scrollHeight - innerHeight > 150) {
+    //       dispatch(show(false));
+    //     }
+    //   } else {
+    //     if (scrollY === 0) {
+    //       dispatch(show(true));
+    //       return;
+    //     }
+    //     dispatch(show(true));
+    //     if (scrollY + e.deltaY >= 150) {
+    //       dispatch(sticky(true));
+    //     }
+    //   }
+    // });
+  }, [dispatch]);
+
+  const manipulateDispetcher = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    if (!contRef.current) return;
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
     }
-  }
+
+    animationFrameRef.current = requestAnimationFrame(() => {
+      const { scrollHeight } = contRef.current!;
+      const { innerHeight, scrollY } = window;
+      
+      if (Math.ceil(scrollY + innerHeight + e.deltaY) >= scrollHeight - 100) {
+        dispatch(setFooter(true));
+      } else if (Math.ceil(scrollY + innerHeight) <= scrollHeight - 100) {
+        dispatch(setFooter(false));
+      }
+    });
+  }, [dispatch]);
   return (
     <Router>
       <ScrollToTop/>

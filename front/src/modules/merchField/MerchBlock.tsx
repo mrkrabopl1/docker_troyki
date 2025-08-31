@@ -1,16 +1,16 @@
-import React, { ReactElement, useRef, useState } from 'react'
+import React, { ReactElement, useRef, useState,memo } from 'react'
 import s from "./style.module.css"
 import { useNavigate } from 'react-router-dom';
 import { toPrice } from 'src/global';
 
 
 
-interface merchInterface { name: string, imgs: string[], id: string, price: string, discount?: number }
+interface MerchInterface { name: string, imgs: string[], id: string, price: string, discount?: number }
 
 
 
 
-const MerchBlock: React.FC<{ className?:string,width?:string, data: merchInterface }> = (props) => {
+const MerchBlock: React.FC<{ className?:string,width?:string, data: MerchInterface }> = (props) => {
     const navigate = useNavigate();
     let { data, className, width } = { ...props }
     let [compOpacity, setOpacity] = useState(0)
@@ -78,9 +78,9 @@ const MerchBlock: React.FC<{ className?:string,width?:string, data: merchInterfa
     //     });
     // }
 
-    function backwordAnimate() {
-        setOpacity(1)
-    }
+    // function backwordAnimate() {
+    //     setOpacity(1)
+    // }
 
 
     return (
@@ -117,4 +117,4 @@ const MerchBlock: React.FC<{ className?:string,width?:string, data: merchInterfa
 }
 
 
-export default MerchBlock
+export default memo(MerchBlock)

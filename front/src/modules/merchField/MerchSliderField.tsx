@@ -1,37 +1,43 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import MerchBlock from "./MerchBlock"
-import NameBorder from 'src/components/wraps/NameBorder'
-import ContentSlider from 'src/components/contentSlider/ContentSliderWithControl'
-import s from "./style.module.css"
+import React, { memo, useMemo } from 'react';
+import MerchBlock from "./MerchBlock";
+import NameBorder from 'src/components/wraps/NameBorder';
+import ContentSlider from 'src/components/contentSlider/ContentSliderWithControl';
+import s from "./style.module.css";
 
+type MerchInfoType = {
+    price: string;
+    discount: number;
+    name: string;
+    imgs: string[];
+    firm: string;
+    id: string;
+};
 
-type merchInfoType ={
-    price:string,
-    discount:number,
-    name:string,
-    imgs:string[],
-    firm:string,
-    id:string
+interface MerchInterface { 
+    name: string;
+    merchInfo: MerchInfoType[];
 }
 
-interface merchInterface { name: string,  merchInfo: merchInfoType[]}
+const MerchSliderField: React.FC<MerchInterface> = memo(({ name, merchInfo }) => {
+    const sliderContent = useMemo(() => 
+        merchInfo.map(item => (
+            <MerchBlock 
+                key={item.id} // Лучше использовать id вместо name как ключ
+                className={s.mbwd}  
+                data={item} 
+            />
+        )),
+        [merchInfo]
+    );
 
-const MerchSliderField: React.FC<merchInterface> = (props) => {
-    let { name,merchInfo } = { ...props }
-    function createSliderSpace(data: merchInfoType[] ) {
-        let arr: any = []
-        for(let i =0;i<data.length;i++){
-            arr.push(<MerchBlock key={data[i].name} className = {s.mbwd}  data={data[i]} />)
-
-        }
-        return arr
-    }
     return (
-        <div >
-            <NameBorder {...{ content: <ContentSlider className={"dependetHeight"} content={createSliderSpace(merchInfo)} />, name: name }} ref={null} />
+        <div>
+            <NameBorder 
+                content={<ContentSlider className="dependetHeight" content={sliderContent} />} 
+                name={name} 
+            />
         </div>
-    )
-}
+    );
+});
 
-
-export default MerchSliderField
+export default MerchSliderField;

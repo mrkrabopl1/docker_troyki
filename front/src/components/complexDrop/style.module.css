@@ -2,6 +2,7 @@
     transition: 1s;
     padding: 5px;
     cursor: pointer;
+    white-space: nowrap;
 }
 
 .mainElem:hover:after,
@@ -9,6 +10,7 @@
     width: 100%;
 }
 .mainElem:after {
+
     margin: auto;
     background-color: black; /* Цвет линии при наведении на нее курсора мыши */
     display: block;
@@ -27,12 +29,12 @@
     padding-left: 20px;
     border-top: solid 1px black ;
     border-bottom: solid 1px black ;
-    background-color: #f8f8f8;
+    background-color: #fff;
 }
 .complexDropVertical{
     position: relative;
     border: solid 1px black ;
-    background-color: #f8f8f8;
+    background-color: #fff;
     display: inline-flex;
     width:250px;
     height: 300px;
@@ -54,7 +56,7 @@
     padding: 5px;
     cursor: pointer;
     z-index:200;
-    background-color: #f8f8f8;
+    background-color: #fff;
 }
 
 
@@ -69,7 +71,7 @@
     height: 100%;
     cursor: pointer;
     z-index:200;
-    background-color: #f8f8f8;
+    background-color: #fff;
     overflow: hidden;
 }
 

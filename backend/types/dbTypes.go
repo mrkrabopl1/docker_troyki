@@ -6,10 +6,15 @@ import (
 	"github.com/lib/pq"
 )
 
+type SizesT struct {
+	Snickers []string `json:"snickers"`
+	Clothes  []string `json:"clothes"`
+}
 type SnickersFilterStruct struct {
 	Firms []string  `json:"firms"`
-	Sizes []string  `json:"sizes"`
+	Sizes SizesT    `json:"sizes"`
 	Price []float32 `json:"price"`
+	Types []int32   `json:"types"`
 }
 type MainPage struct {
 	Text    string `db:"maintext"`
@@ -22,13 +27,14 @@ type ProductsInfo struct {
 	Info       string  `db:"info"`
 	Discount   *string `db:"value"`
 }
-type SnickersSearch struct {
+type ProductsSearch struct {
 	Name       string `db:"name"`
 	Image_path string `db:"image_path"`
 	Id         int16  `db:"id"`
 	Firm       string `db:"firm"`
 	Price      int    `db:"minprice"`
 	Discount   *int   `db:"maxdiscprice"`
+	TotalCount int64  `json:"total_count"`
 }
 type FirmsResult struct {
 	Firm        string         `db:"firm"`
@@ -48,15 +54,14 @@ type SnickersLine struct {
 	Discount   *string        `db:"value"`
 }
 type SnickersPageAndFilters struct {
-	SnickersPageInfo []SnickersSearch
+	ProductsPageInfo []ProductsSearch
 	PageSize         int
 	Filter           Filter
 }
 type ProductsPage struct {
-	SnickersPageInfo []SnickersSearch
+	ProductsPageInfo []ProductsSearch
 	PageSize         int
 }
-
 type SizeFilter struct {
 	C1  int `json:"3.5" db:"name_data2"`
 	C2  int `json:"4" db:"name_data3"`

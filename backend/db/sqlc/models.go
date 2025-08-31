@@ -11,6 +11,49 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type BodyEnum string
+
+const (
+	BodyEnumChild BodyEnum = "child"
+	BodyEnumWoman BodyEnum = "woman"
+	BodyEnumMan   BodyEnum = "man"
+)
+
+func (e *BodyEnum) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = BodyEnum(s)
+	case string:
+		*e = BodyEnum(s)
+	default:
+		return fmt.Errorf("unsupported scan type for BodyEnum: %T", src)
+	}
+	return nil
+}
+
+type NullBodyEnum struct {
+	BodyEnum BodyEnum `json:"body_enum"`
+	Valid    bool     `json:"valid"` // Valid is true if BodyEnum is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullBodyEnum) Scan(value interface{}) error {
+	if value == nil {
+		ns.BodyEnum, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.BodyEnum.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullBodyEnum) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.BodyEnum), nil
+}
+
 type ClothesEnum string
 
 const (
@@ -20,6 +63,7 @@ const (
 	ClothesEnumJacket     ClothesEnum = "jacket"
 	ClothesEnumPants      ClothesEnum = "pants"
 	ClothesEnumShorts     ClothesEnum = "shorts"
+	ClothesEnumOther      ClothesEnum = "other"
 )
 
 func (e *ClothesEnum) Scan(src interface{}) error {
@@ -101,6 +145,50 @@ func (ns NullDeliveryEnum) Value() (driver.Value, error) {
 	return string(ns.DeliveryEnum), nil
 }
 
+type MerchEnum string
+
+const (
+	MerchEnumHat   MerchEnum = "hat"
+	MerchEnumToys  MerchEnum = "toys"
+	MerchEnumBag   MerchEnum = "bag"
+	MerchEnumOther MerchEnum = "other"
+)
+
+func (e *MerchEnum) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = MerchEnum(s)
+	case string:
+		*e = MerchEnum(s)
+	default:
+		return fmt.Errorf("unsupported scan type for MerchEnum: %T", src)
+	}
+	return nil
+}
+
+type NullMerchEnum struct {
+	MerchEnum MerchEnum `json:"merch_enum"`
+	Valid     bool      `json:"valid"` // Valid is true if MerchEnum is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullMerchEnum) Scan(value interface{}) error {
+	if value == nil {
+		ns.MerchEnum, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.MerchEnum.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullMerchEnum) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.MerchEnum), nil
+}
+
 type ProductSourceEnum string
 
 const (
@@ -142,6 +230,48 @@ func (ns NullProductSourceEnum) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.ProductSourceEnum), nil
+}
+
+type SnickersEnum string
+
+const (
+	SnickersEnumSlepowers SnickersEnum = "slepowers"
+	SnickersEnumOther     SnickersEnum = "other"
+)
+
+func (e *SnickersEnum) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = SnickersEnum(s)
+	case string:
+		*e = SnickersEnum(s)
+	default:
+		return fmt.Errorf("unsupported scan type for SnickersEnum: %T", src)
+	}
+	return nil
+}
+
+type NullSnickersEnum struct {
+	SnickersEnum SnickersEnum `json:"snickers_enum"`
+	Valid        bool         `json:"valid"` // Valid is true if SnickersEnum is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullSnickersEnum) Scan(value interface{}) error {
+	if value == nil {
+		ns.SnickersEnum, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.SnickersEnum.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullSnickersEnum) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.SnickersEnum), nil
 }
 
 type StatusEnum string
@@ -188,25 +318,27 @@ func (ns NullStatusEnum) Value() (driver.Value, error) {
 }
 
 type Clothe struct {
-	ID          int32           `json:"id"`
-	Qid         string          `json:"qid"`
-	Name        string          `json:"name"`
-	Firm        string          `json:"firm"`
-	Line        pgtype.Text     `json:"line"`
-	ImagePath   string          `json:"image_path"`
-	ImageCount  int32           `json:"image_count"`
-	Minprice    int32           `json:"minprice"`
-	Maxprice    int32           `json:"maxprice"`
-	Article     pgtype.Text     `json:"article"`
-	Date        pgtype.Text     `json:"date"`
-	Description pgtype.Text     `json:"description"`
-	Type        NullClothesEnum `json:"type"`
-	Xs          pgtype.Int4     `json:"xs"`
-	S           pgtype.Int4     `json:"s"`
-	М           pgtype.Int4     `json:"М"`
-	L           pgtype.Int4     `json:"l"`
-	Xl          pgtype.Int4     `json:"xl"`
-	Xxl         pgtype.Int4     `json:"xxl"`
+	ID          int32       `json:"id"`
+	Qid         string      `json:"qid"`
+	Name        string      `json:"name"`
+	Firm        string      `json:"firm"`
+	Info        []byte      `json:"info"`
+	Line        pgtype.Text `json:"line"`
+	ImagePath   string      `json:"image_path"`
+	ImageCount  int32       `json:"image_count"`
+	Minprice    int32       `json:"minprice"`
+	Maxprice    int32       `json:"maxprice"`
+	Article     pgtype.Text `json:"article"`
+	Bodytype    BodyEnum    `json:"bodytype"`
+	Date        pgtype.Text `json:"date"`
+	Description pgtype.Text `json:"description"`
+	Type        int32       `json:"type"`
+	Xs          pgtype.Int4 `json:"xs"`
+	S           pgtype.Int4 `json:"s"`
+	M           pgtype.Int4 `json:"m"`
+	L           pgtype.Int4 `json:"l"`
+	Xl          pgtype.Int4 `json:"xl"`
+	Xxl         pgtype.Int4 `json:"xxl"`
 }
 
 type Customer struct {
@@ -301,6 +433,13 @@ type ProductRegistry struct {
 	InternalID  int32             `json:"internal_id"`
 }
 
+type ProductType struct {
+	ID        int32             `json:"id"`
+	Category  ProductSourceEnum `json:"category"`
+	TypeName  string            `json:"type_name"`
+	EnumValue string            `json:"enum_value"`
+}
+
 type Snicker struct {
 	ID          int32       `json:"id"`
 	Qid         string      `json:"qid"`
@@ -311,9 +450,11 @@ type Snicker struct {
 	ImagePath   string      `json:"image_path"`
 	Minprice    int32       `json:"minprice"`
 	Maxprice    int32       `json:"maxprice"`
+	Type        int32       `json:"type"`
 	Article     pgtype.Text `json:"article"`
 	Date        pgtype.Text `json:"date"`
 	Description pgtype.Text `json:"description"`
+	Bodytype    BodyEnum    `json:"bodytype"`
 	ImageCount  int32       `json:"image_count"`
 	_35         pgtype.Int4 `json:"3.5"`
 	_4          pgtype.Int4 `json:"4"`
@@ -347,6 +488,7 @@ type Solomerch struct {
 	ImageCount  int32       `json:"image_count"`
 	Minprice    int32       `json:"minprice"`
 	Article     pgtype.Text `json:"article"`
+	Type        int32       `json:"type"`
 	Date        pgtype.Text `json:"date"`
 	Description pgtype.Text `json:"description"`
 }

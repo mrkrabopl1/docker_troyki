@@ -1,45 +1,71 @@
-import React ,{useRef, useState, useCallback,  memo, useEffect } from "react"
-import { useAppSelector,useAppDispatch } from 'src/store/hooks/redux'
-import {userSlice } from 'src/store/reducers/userSlice'
-import s from "./style.module.css"
-import loop from "../../../public/zoom.svg"
-import ImagePresantationBlock from "./ImagePresentationBlock"
-import ExpandedImagePresentation from "./ExpandedImagePresentation"
-import {isDeepEqual} from 'src/global'
-type iconType = {
-    images:string[]
-}
-const ImagePresantation:React.FC<iconType>=(data)=>{
+import React, { useRef, useState, useCallback, memo, useEffect } from "react";
+import s from "./style.module.css";
+import ImagePresentationBlock from "./ImagePresentationBlock";
+import ExpandedImagePresentation from "./ExpandedImagePresentation";
+import { isDeepEqual } from 'src/global';
 
-    const presentationRef = useRef<HTMLDivElement>(null)
-    const {images}={...data}
+type ImagePresentationProps = {
+    images: string[];
+};
+
+const ImagePresentation: React.FC<ImagePresentationProps> = ({ images }) => {
+    const presentationRef = useRef<HTMLDivElement>(null);
     const [mainImage, setMainImage] = useState<string>(images[0]);
-    let [isExpand, setExpand] = useState<Boolean>(false)
+    const [isExpanded, setIsExpanded] = useState<boolean>(false);
+
+    // Reset main image when images prop changes
+    useEffect(() => {
+        setMainImage(images[0]);
+    }, [images]);
 
     const handleThumbnailLeave = useCallback(() => {
         setMainImage(images[0]);
-      }, [images])
-    useEffect(()=>{
-        setMainImage(images[0])
-    }, [images]) 
-    return(
-            <div ref={presentationRef} className={s.imgCompponentWrap}>
-                {isExpand? <ExpandedImagePresentation onClose={()=>setExpand(false)} images={images}/>:null}
-                <ImagePresantationBlock  onClick={()=>{setExpand(true)}} image={mainImage}/>
-                <div className={s.bottomFlexBlock}>
-                    {images.slice(1).map((val, index)=>{
-                        return   <div key={index}  style={{height:"100%"}}>
-                            <ImagePresantationBlock onOut = {handleThumbnailLeave} onClick={()=>{setExpand(true)}} onHover={setMainImage} image={val}/>
-                        </div>
-                    })}
-                </div>
+    }, [images]);
+
+    const handleExpand = useCallback(() => {
+        setIsExpanded(true);
+    }, []);
+
+    const handleCloseExpanded = useCallback(() => {
+        setIsExpanded(false);
+    }, []);
+
+    const handleThumbnailHover = useCallback((image: string) => {
+        setMainImage(image);
+    }, []);
+
+    return (
+        <div ref={presentationRef} className={s.imgComponentWrap}>
+            {isExpanded && (
+                <ExpandedImagePresentation 
+                    onClose={handleCloseExpanded} 
+                    images={images} 
+                />
+            )}
+            
+            <ImagePresentationBlock 
+                onClick={handleExpand} 
+                image={mainImage} 
+            />
+            
+            <div className={s.bottomFlexBlock}>
+                {images.slice(1).map((image, index) => (
+                    <div key={`${image}-${index}`} style={{height:"100%"}}>
+                        <ImagePresentationBlock 
+                            onOut={handleThumbnailLeave}
+                            onClick={handleExpand}
+                            onHover={handleThumbnailHover}
+                            image={image}
+                        />
+                    </div>
+                ))}
             </div>
-    )
-}
+        </div>
+    );
+};
 
-function checkMemo(oldData: any, newData: any) {
-    return (isDeepEqual(oldData.images, newData.images))
-  }
-  
+const propsAreEqual = (prevProps: ImagePresentationProps, nextProps: ImagePresentationProps) => {
+    return isDeepEqual(prevProps.images, nextProps.images);
+};
 
-export default  memo(ImagePresantation,checkMemo)
+export default memo(ImagePresentation, propsAreEqual);

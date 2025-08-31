@@ -70,11 +70,11 @@ func (s *Server) setupRouter() {
 
 	snickersRoute := router.Group("/")
 	snickersRoute.Use(CachedMiddleware(s))
-	snickersRoute.GET("/ProductsInfo", s.handleGetProductsInfoById)
+	snickersRoute.GET("/productsInfo", s.handleGetProductsInfoById)
 
 	router.POST("/searchMerch", s.handleSearchMerch)
-	router.POST("/getSnickersAndFiltersByString", s.handleSearchSnickersAndFiltersByString)
-	router.POST("/getSnickersByString", s.handleSearchSnickersByString)
+	router.POST("/getProductsAndFiltersByString", s.handleSearchSnickersAndFiltersByString)
+	router.POST("/getProductsByString", s.handleSearchProductsByString)
 	router.POST("/collection", s.handleGetSoloCollection)
 	router.POST("/collections", s.handleGetCollection)
 	router.POST("/disconts", s.handleGetDiscounts)
@@ -89,7 +89,6 @@ func (s *Server) setupRouter() {
 	router.POST("/getOrderDataByMail", s.handleGetOrderDataByMail)
 	router.POST("/deleteCartData", s.handleDeleteCartData)
 	router.GET("/historyInfo", s.handleGetHistory)
-	router.GET("/collectionCount", s.handleGetCollectionCount)
 	router.POST("/registerUser", s.handleRegisterUser)
 	router.POST("/login", s.handleLogin)
 	router.GET("/unlogin", s.handleUnlogin)
@@ -100,6 +99,9 @@ func (s *Server) setupRouter() {
 	router.GET("/forgetPass", s.handleForgetPass)
 	router.POST("/verifyChangePass", s.handleVerifyForgetPass)
 	router.POST("/changeForgetPass", s.handleChangeForgetPass)
+	router.POST("/createDiscounts", s.createDiscounts)
+	router.POST("/getDataAndFilterByCategories", s.handleSearchProductsAndFiltersByCategories)
+	router.POST("/getDataByCategoriesAndFilters", s.handleSearchProductByCategoriesAndFilters)
 
 	router.GET("/checkCustomerData", s.handleCheckCustomerData)
 

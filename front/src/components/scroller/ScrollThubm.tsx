@@ -1,243 +1,168 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import s from "./style.module.css" 
-type propsScrollerThumbType = {
-    callback: (scroll: any, prop?: boolean) => void,
-    kSize: number,
-    isVertical: boolean,
-    kPos: number
-}
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import s from "./style.module.css";
 
-let styleWrapper: any = {
-    overflow: "hidden",
-    position: "relative",
-    height: "440px",
-    width: "200px"
-}
+type ScrollerThumbProps = {
+    callback: (scroll: number, proportional?: boolean) => void;
+    kSize: number;
+    isVertical: boolean;
+    kPos: number;
+};
 
-
-
-
-const ScrollerThumb: React.FC<propsScrollerThumbType> = (props) => {
-    let { callback, kSize, kPos, isVertical } = { ...props }
-    let [thumbPos, setThumbPos] = useState(kPos)
-    let [moveThumb, setMoveThumb] = useState(false)
-    let [moveEvent, setMoveEvent] = useState<any>(null)
-    let [thumbSize, setThumbSize] = useState(0)
-    let [startPos, setStartPos] = useState(0)
-    let thumbWrapper = useRef<HTMLDivElement>(null)
-    let intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-    let thumb = useRef<HTMLDivElement>(null)
-    let [contTop, setContTop] = useState(0)
-    let [contLeft, setContLeft] = useState(0)
-    let [horizontal, setHorizontal] = useState(false)
-    let [vertical, setVertical] = useState(false)
-    let scroller = useRef<HTMLDivElement>(null)
-    let scrollCont = useRef<HTMLDivElement>(null)
-
-
-    useEffect(() => {
-        document.addEventListener("mouseup", (e) => {
-            document.removeEventListener("mousemove", moveDraw)
-            setMoveThumb(false)
-        }
-        )
-        document.addEventListener("mousemove", moveDraw)
-        if (thumbWrapper.current && thumb.current) {
-            if (isVertical) {
-                setThumbSize(thumbWrapper.current.clientHeight * kSize)
-                setThumbPos(kPos * (thumbWrapper.current.clientHeight - thumb.current.clientHeight))
-            } else {
-                setThumbSize(thumbWrapper.current.clientWidth * kSize)
-                setThumbPos(kPos * (thumbWrapper.current.clientWidth - thumb.current.clientWidth))
-            }
-        }
-        return (): void => {
-            document.removeEventListener("mousemove", moveDraw)
-            document.removeEventListener("mouseup", (e) => {
-                document.removeEventListener("mousemove", moveDraw)
-                setMoveThumb(false)
-            }
-            )
-        }
-    }, [props])
-
-    const startCounter = () => {
-        if (intervalRef.current) return;
-        let interval = 0
-        intervalRef.current = setInterval(() => {
-            interval = interval + 0.01
-         callback(interval,true)
-        }, 10);
-      };
+const ScrollerThumb: React.FC<ScrollerThumbProps> = ({
+    callback,
+    kSize,
+    isVertical,
+    kPos
+}) => {
+    const [thumbPos, setThumbPos] = useState(0);
+    const [thumbSize, setThumbSize] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const [startPos, setStartPos] = useState(0);
     
-      const stopCounter = () => {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
+    const thumbWrapperRef = useRef<HTMLDivElement>(null);
+    const thumbRef = useRef<HTMLDivElement>(null);
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    // Обработчик перемещения thumb
+    const handleMove = useCallback((e: MouseEvent) => {
+        if (!isDragging || !thumbRef.current || !thumbWrapperRef.current) return;
+
+        const wrapper = thumbWrapperRef.current;
+        const thumb = thumbRef.current;
+        
+        let delta: number;
+        let maxScroll: number;
+
+        if (isVertical) {
+            maxScroll = wrapper.clientHeight - thumb.clientHeight;
+            delta = (e.clientY - startPos) / maxScroll;
+            setStartPos(e.clientY);
+        } else {
+            maxScroll = wrapper.clientWidth - thumb.clientWidth;
+            delta = (e.clientX - startPos) / maxScroll;
+            setStartPos(e.clientX);
         }
-      };
-    const styleScroller: any = {
-        zIndex: 10,
-        overscrollBehavior:"none",
-        backgroundColor: "transparent",
-        display: " flex",
-         marginRight:"1px"
 
-    }
+        callback(delta, true);
+    }, [isDragging, startPos, isVertical, callback]);
 
-    const buttonStyle = {
-        backgroundColor: "red",
-        width: "100%",
-        height: "20px"
-    }
+    // Обработчик отпускания мыши
+    const handleMouseUp = useCallback(() => {
+        setIsDragging(false);
+        document.removeEventListener('mousemove', handleMove);
+    }, [handleMove]);
 
+    // Обработчик нажатия на thumb
+    const handleMouseDown = useCallback((e: React.MouseEvent) => {
+        setIsDragging(true);
+        setStartPos(isVertical ? e.clientY : e.clientX);
+        document.addEventListener('mousemove', handleMove);
+        document.addEventListener('mouseup', handleMouseUp, { once: true });
+    }, [handleMove, handleMouseUp, isVertical]);
 
+    // Обработчик колеса мыши
+    const handleWheel = useCallback((e: React.WheelEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        callback(e.deltaY > 0 ? -10 : 10);
+    }, [callback]);
 
-    let thumbWrapVericalStyle = {
-        width: "3px",
-        height: "100%"
-    }
+    // Обновление размеров и позиции thumb
+    useEffect(() => {
+        const wrapper = thumbWrapperRef.current;
+        const thumb = thumbRef.current;
+        
+        if (!wrapper || !thumb) return;
 
-    let thumbWrapHorizontalStyle = {
-        width: "100%",
-        height: "3px"
-    }
+        if (isVertical) {
+            const newSize = wrapper.clientHeight * kSize;
+            const newPos = kPos * (wrapper.clientHeight - newSize);
+            setThumbSize(newSize);
+            setThumbPos(newPos);
+        } else {
+            const newSize = wrapper.clientWidth * kSize;
+            const newPos = kPos * (wrapper.clientWidth - newSize);
+            setThumbSize(newSize);
+            setThumbPos(newPos);
+        }
+    }, [kSize, kPos, isVertical]);
 
-
-    let thumbVericalStyle = {
-        width: "100%",
-        height: thumbSize + "px",
-        top: thumbPos + "px"
-    }
-
-    let thumbHorizontalStyle = {
-        width: thumbSize + "px",
-        height: "100%",
-        left: thumbPos + "px"
-    }
-
-    let thumbStyle: any = {
-        position:"absolute"
-    }
-
-    if (isVertical) {
-        Object.assign(thumbStyle, thumbVericalStyle)
-        Object.assign(styleScroller, thumbWrapVericalStyle)
-        styleScroller.position = "absolute"
-        styleScroller.right = 0
-        styleScroller.flexDirection = "column"
-    } else {
-        Object.assign(thumbStyle, thumbHorizontalStyle)
-        Object.assign(styleScroller, thumbWrapHorizontalStyle)
-        styleScroller.position = "absolute"
-        styleScroller.bottom = 0
-    }
-
-    let wrapThumbStyle: any = {
-        position: "relative",
-        width: "auto",
-        height: "auto"
-
-    }
-
-    if (isVertical) {
-        Object.assign(wrapThumbStyle, thumbWrapVericalStyle)
-    } else {
-        Object.assign(wrapThumbStyle, thumbWrapHorizontalStyle)
-    }
-
-    const styleContent: any = {
-        position: "absolute",
-        top: contTop + "px",
-        left: contLeft + "px"
-
-    }
-
-    const moveDraw = (e: any) => {
-        if (thumb.current && thumbWrapper.current) {
-
-            if (moveThumb) {
-                let delta
-                if (isVertical) {
-                    let maxScroll = thumbWrapper.current?.clientHeight - thumb.current?.clientHeight
-                    delta = (e.clientY - startPos) / maxScroll
-                    setStartPos(e.clientY)
-                } else {
-                    let maxScroll = thumbWrapper.current?.clientWidth - thumb.current?.clientWidth
-                    delta = (e.clientX - startPos) / maxScroll
-                    setStartPos(e.clientX)
-                }
-                callback(delta, true)
+    // Очистка эффектов
+    useEffect(() => {
+        return () => {
+            document.removeEventListener('mousemove', handleMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
             }
-        }
-    }
+        };
+    }, [handleMove, handleMouseUp]);
+
+    // Стили
+    const wrapperStyle = {
+        zIndex: 10,
+        overscrollBehavior: "none",
+        backgroundColor: "transparent",
+        display: "flex",
+        marginRight: "1px",
+        position: "absolute" as const,
+        ...(isVertical 
+            ? { 
+                width: "3px", 
+                height: "100%", 
+                right: 0,
+                flexDirection: "column" as const
+              }
+            : { 
+                width: "100%", 
+                height: "3px", 
+                bottom: 0 
+              })
+    };
+
+    const thumbStyle = {
+        position: "absolute" as const,
+        backgroundColor: "rgba(0, 0, 0, 0.3)",
+        borderRadius: "3px",
+        ...(isVertical
+            ? {
+                width: "100%",
+                height: `${thumbSize}px`,
+                top: `${thumbPos}px`
+              }
+            : {
+                width: `${thumbSize}px`,
+                height: "100%",
+                left: `${thumbPos}px`
+              })
+    };
+
+    const innerWrapperStyle = {
+        position: "relative" as const,
+        width: isVertical ? "3px" : "100%",
+        height: isVertical ? "100%" : "3px"
+    };
 
     return (
-        <div  onScroll={(e)=>{
-            e.stopPropagation()
-            e.preventDefault()
-        }} onWheel={(e) => {
-            e.stopPropagation()
-            e.preventDefault()
-            let delta = e.deltaY > 0 ? -10 : 10
-            callback(delta)
-        }}
-            id={"Thumb"} ref={scroller} style={styleScroller}>
-            {/* <button
-
-                onMouseDown={(e)=>{
-                    let interval = 0
-                    intervalRef.current = setInterval(() => {
-                        interval = interval - 0.01
-                    callback(interval,true)
-                    }, 10);
-                }
-                }
-                onMouseUp={() => {
-                    if (intervalRef.current) {
-                        clearInterval(intervalRef.current);
-                        intervalRef.current = null;
-                    }
-                    
-                }}
-                style={buttonStyle}></button> */}
-            <div onWheel={(e)=>{e.preventDefault()}} ref={thumbWrapper} style={wrapThumbStyle}>
-                <div className={s.thumb}  onMouseUp={() => {
-                    setMoveThumb(false)
-                }}
-                    onMouseDown={(e) => {
-                        if (isVertical) {
-                            setStartPos(e.clientY);
-                        } else {
-                            setStartPos(e.clientX);
-                        }
-
-                        setMoveThumb(true)
-                    }
-                    }
-                    onMouseMove={
-                        moveDraw
-                    } ref={thumb} style={thumbStyle}></div>
+        <div 
+            onScroll={e => e.preventDefault()}
+            onWheel={handleWheel}
+            style={wrapperStyle}
+        >
+            <div 
+                ref={thumbWrapperRef}
+                style={innerWrapperStyle}
+                onWheel={e => e.preventDefault()}
+            >
+                <div 
+                    className={s.thumb}
+                    ref={thumbRef}
+                    style={thumbStyle}
+                    onMouseDown={handleMouseDown}
+                />
             </div>
-            {/* <button
-                onMouseDown={(e)=>{
-                    let interval = 0
-                    intervalRef.current = setInterval(() => {
-                        interval = interval + 0.01
-                     callback(interval,true)
-                    }, 10);
-                }
-                }
-                onMouseUp={()=>{
-                    if (intervalRef.current) {
-                        clearInterval(intervalRef.current);
-                        intervalRef.current = null;
-                    }
-                }}
-                style={buttonStyle}></button> */}
         </div>
-    )
-}
+    );
+};
 
-
-export default ScrollerThumb
+export default React.memo(ScrollerThumb);

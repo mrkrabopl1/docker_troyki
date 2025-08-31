@@ -2,13 +2,27 @@
     display: flex;
     position: relative;
     flex-wrap: wrap;
-    background-color: #f8f8f8;
+    background-color: #fff;
 }
 
 .merchName{
     font-size: 20px;
 }
-
+.littlePrice{
+    white-space: nowrap;
+}
+.merchLine{
+    display: flex;
+    height:90px;
+    background-color: #fff;
+    border-color: black;
+}
+.merchBuyLine{
+       display: flex;
+    height:130px;
+    background-color: #fff;
+    border-color: black;
+}
 .img{
     width: 100%;
     object-fit: contain;
@@ -45,7 +59,7 @@
 }
 .colorLayout{
     border-radius:5px;
-    background-color: #f8f8f8;
+    background-color: #fff;
      position: relative;
     flex-shrink: 0;
     height: auto;
@@ -94,7 +108,7 @@
     position: relative; 
     height:"100%";
     min-height: 80%;
-    background-color: #f8f8f8;
+    background-color: #fff;
 }
 .deleteBtn{
     background: url("../../../public/bin.svg") center no-repeat;

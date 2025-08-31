@@ -1,76 +1,97 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import s from "./style.module.css"
-import {ReactComponent as Cart} from "../../../public/cart.svg";
+import React, { useState, useRef, useCallback, useEffect, memo } from 'react';
+import s from "./style.module.css";
+import { ReactComponent as Cart } from "../../../public/cart.svg";
 
-type stringFunc = (data: string) => void
-
-
-type ComboboxType = { 
-    enumProp?: boolean,
-    data: string[],
-    placeholder?:string,
-    onChangeIndex?: (data: number) => void,
-    onChangeData?: (data: string) => void ,
-    className?:string
+interface ComboboxProps {
+    enumProp?: boolean;
+    data: string[];
+    placeholder?: string;
+    onChangeIndex?: (index: string) => void;
+    onChangeData?: (data: string) => void;
+    className?: string;
 }
 
+const Combobox: React.FC<ComboboxProps> = memo(({
+    className,
+    enumProp,
+    data,
+    placeholder,
+    onChangeIndex,
+    onChangeData
+}) => {
+    const [active, setActive] = useState(false);
+    const [currentValue, setCurrentValue] = useState(placeholder || data[0]);
+    const comboRef = useRef<HTMLDivElement>(null);
+    const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+    // Обработчик клика вне компонента
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (comboRef.current && !comboRef.current.contains(event.target as Node)) {
+                setActive(false);
+            }
+        };
 
-const Combobox: React.FC<ComboboxType> = ({className, enumProp, data, placeholder, onChangeIndex, onChangeData }) => {
-    let arrRef = useRef<any>([])
-    let firstValue = placeholder?placeholder:data[0];
-    let val = useRef<string>(firstValue)
-    let [active, setActive] = useState(false);
-    const createCombobox: (data: Array<string>) => ReactElement[] = (data: Array<string>) => {
-        arrRef.current = []
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
-        let valArr: ReactElement[] = []
-
-        arrRef.current = arrRef.current.slice(0, data.length);
-        if (active) {
-            data.map((value, i) => {
-
-                valArr.push(<div key = {value + i} ref={el => arrRef.current[i] = el} onClick={() => {
-                    val.current = value
-
-                    if (enumProp) {
-                        if (onChangeIndex) {
-                            onChangeIndex(i)
-                        }
-
-                    } else {
-                        if (onChangeData) {
-                            onChangeData(value)
-                        }
-                    }
-
-                    setActive(!active)
-                }}>
-                    {value}
-                </div>)
-            })
+    const handleItemClick = useCallback((value: string, index: number) => {
+        setCurrentValue(value);
+        setActive(false);
+        
+        if (enumProp) {
+            onChangeIndex?.(String(index));
+        } else {
+            onChangeData?.(value);
         }
+    }, [enumProp, onChangeIndex, onChangeData]);
 
-        return valArr
+    const toggleDropdown = useCallback(() => {
+        setActive(prev => !prev);
+    }, []);
 
-    }
+    const renderItems = useCallback(() => {
+        if (!active) return null;
+
+        return data.map((value, index) => (
+            <div 
+                key={`${value}-${index}`}
+                ref={el => itemRefs.current[index] = el}
+                className={s.comboboxItem}
+                onClick={() => handleItemClick(value, index)}
+            >
+                {value}
+            </div>
+        ));
+    }, [active, data, handleItemClick]);
 
     return (
-        <div className={className?className:s.combobox} style={{ position: "relative", width: "100%" }}>
-            <div className={s.mainBlock} onClick={() => { setActive(!active) }}>
-                <span>{val.current}</span>
+        <div 
+            ref={comboRef}
+            className={className || s.combobox} 
+            style={{ position: "relative", width: "100%" }}
+        >
+            <div 
+                className={s.mainBlock} 
+                onClick={toggleDropdown}
+                aria-expanded={active}
+                role="combobox"
+            >
+                <span>{currentValue}</span>
                 <div className={s.arrowMain}>
-                    <span className={[s.arrowLeft , active?s.arrowLeftOpen:null].join(" ")}></span>
-                    <span className={[s.arrowRight , active?s.arrowRightOpen:null].join(" ")}></span>
+                    <span className={`${s.arrowLeft} ${active ? s.arrowLeftOpen : ''}`}></span>
+                    <span className={`${s.arrowRight} ${active ? s.arrowRightOpen : ''}`}></span>
                 </div>
-                {/* <span style={{ position: "absolute", right: "0", paddingRight: "5px" }}>{active ? "\u1433" : "\u142F"}</span> */}
             </div>
-            <div className={s.list} style={{ position: "absolute", width: "100%" }}>
-                {createCombobox(data)}
-            </div>
+            
+            {active && (
+                <div className={s.list} style={{ position: "absolute", width: "100%" }}>
+                    {renderItems()}
+                </div>
+            )}
         </div>
-    )
-}
+    );
+});
 
-
-export default Combobox
+export default Combobox;

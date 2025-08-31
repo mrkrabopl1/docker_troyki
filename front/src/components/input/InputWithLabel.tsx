@@ -1,49 +1,77 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import s from "./style.module.css";
 
-import s from "./style.module.css"
+type InputWithLabelProps = {
+    onChange: (value: string) => void;
+    onFocus?: (value: string) => void;
+    onBlur?: (value: string) => void;
+    className?: string;
+    placeholder?: string;
+    val?: string;
+};
 
-type propsRowType = {
-    onChange: (...args: any) => void | null
-    onFocus?: (...args: any) => void
-    onBlur?: (...args: any) => void
-    className?: string,
-    placeholder?: string,
-    val?: string
-}
+const InputWithLabel: React.FC<InputWithLabelProps> = ({
+    onChange,
+    onFocus,
+    onBlur,
+    className = '',
+    placeholder = '',
+    val = ''
+}) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [value, setValue] = useState(val);
 
+    // Синхронизация с внешним значением
+    useEffect(() => {
+        setValue(val);
+    }, [val]);
 
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const newValue = e.target.value;
+        setValue(newValue);
+        onChange(newValue);
+    }, [onChange]);
 
-const InputWithLabel: React.FC<propsRowType> = (props) => {
-    const inputRef = useRef(null)
+    const handleFocus = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+        onFocus?.(e.target.value);
+    }, [onFocus]);
 
-    let { onChange, onFocus, onBlur, className, placeholder, val } = { ...props }
-    const [valState, setVal] = useState<string>(val ? val : "")
-    useEffect(()=>{
-        setVal(val)
-     },[val])
+    const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+        onBlur?.(e.target.value);
+    }, [onBlur]);
+
+    const focusInput = useCallback(() => {
+        inputRef.current?.focus();
+    }, []);
+
+    const containerClass = className || s.inputWithLabel;
+
     return (
-        <div className= {className?className:s.inputHolder} >
+        <div className={s.inputContainer}>
             <input
-                value={valState}
+                ref={inputRef}
+                value={value}
+                className={s.inputWithLabel}
                 style={{ boxSizing: 'border-box', width: "100%" }}
-                className={s.inputWithLabel} ref={inputRef}
+                type="text"
+                onChange={handleChange}
                 placeholder=''
-                type='text'
-                onChange={(e) => {
-                    if (onChange) {
-                        onChange(e.target.value)
-                        setVal(e.target.value)
-                    }
-                }}
-                onFocus={(e) => { if (onFocus) { onFocus(e.target.value) } }}
-                onBlur={(e) => { if (onBlur) { onBlur(e.target.value) } }}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
                 required
+                aria-label={placeholder}
             />
-            <label onClick={
-                ()=>inputRef.current && inputRef.current.focus()
-                }  className={s.label}>{placeholder}</label>
+            {placeholder && (
+                <label 
+                    onClick={focusInput} 
+                    className={s.label}
+                    htmlFor={inputRef.current?.id}
+                >
+                    {placeholder}
+                </label>
+            )}
         </div>
-    )
-}
+    );
+};
 
-export default InputWithLabel
+export default React.memo(InputWithLabel);

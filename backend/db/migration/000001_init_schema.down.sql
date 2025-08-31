@@ -15,9 +15,12 @@ DROP TABLE IF EXISTS public.snickers;
 DROP TABLE IF EXISTS public.solomerch;
 DROP TABLE IF EXISTS public.clothes;
 DROP TABLE IF EXISTS public.product_registry; 
-
+DROP TABLE IF EXISTS public.product_types;
 -- И только потом удаляем типы
 DROP TYPE IF EXISTS public.delivery_enum;
 DROP TYPE IF EXISTS public.status_enum;
 DROP TYPE IF EXISTS public.clothes_enum;
+DROP TYPE IF EXISTS public.merch_enum;
+DROP TYPE IF EXISTS public.body_enum;
+DROP TYPE IF EXISTS public.snickers_enum;
 DROP TYPE IF EXISTS public.product_source_enum;

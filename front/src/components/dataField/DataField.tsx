@@ -1,4 +1,4 @@
-import React, { ReactElement, useCallback, useEffect, useRef, useState } from 'react'
+import React, { ReactElement, useMemo, useEffect, useRef, useState, memo } from 'react'
 import s from "./style.module.css"
 
 
@@ -15,7 +15,7 @@ const DataField: React.FC<DataFieldType> = (props) => {
     let {header, data, className} = {...props}
 
 
-    const createContent = useCallback(()=>{
+    const createContent = useMemo(()=>{
         let arr = []
        data.forEach((el)=>{
         if(el.description){
@@ -28,11 +28,11 @@ const DataField: React.FC<DataFieldType> = (props) => {
     return (
         <div className={className?.main|| s.main}>
             <div className={className?.header|| s.header}>{header}</div>
-            {createContent()}
+            {createContent}
         </div>
 
     )
 }
 
 
-export default DataField
+export default memo(DataField)

@@ -129,7 +129,7 @@ func TestSetUniqueCustomer(t *testing.T) {
 }
 
 func TestGetSnickersHistoryComplex(t *testing.T) {
-	data, err := testStore.GetSnickersHistoryComplex(context.Background(), 751)
+	data, err := testStore.GetSnickersHistoryComplex(context.Background(), 14)
 	fmt.Println(data)
 	require.NoError(t, err)
 	require.NotEmpty(t, data)

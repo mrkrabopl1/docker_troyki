@@ -1,18 +1,13 @@
-import React, { useRef, useState } from "react"
-import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux'
-import { userSlice } from 'src/store/reducers/userSlice'
+import React, { useRef, useState  ,memo} from "react"
 import s from "./style.module.css"
-import loop from "../../../public/zoom.svg"
 
 type iconType = {
     images: string[],
     onClose:()=>void
 }
-const ExpandedImagePresentation: React.FC<iconType> = (data) => {
-    const { images, onClose } = { ...data }
-    let windowHeight = useRef(window.innerHeight)
-    console.log(windowHeight)
-
+const ExpandedImagePresentation: React.FC<iconType> = ({ images, onClose }) => {
+ 
+  
     return (
         <div className={s.expandingElement}>
             {images.map(val=>{
@@ -22,4 +17,4 @@ const ExpandedImagePresentation: React.FC<iconType> = (data) => {
     )
 }
 
-export default ExpandedImagePresentation
+export default memo(ExpandedImagePresentation)

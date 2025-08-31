@@ -1,107 +1,81 @@
-import React, { useEffect, ReactElement, useState, useRef } from 'react'
-import {NavLink, useParams } from 'react-router-dom';
-import { getCollection,getCountCollection } from "src/providers/merchProvider"
+import React, { useEffect, useState, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
+import { getCollection } from "src/providers/merchProvider";
+import MerchFieldWithPageSwitcher from 'src/modules/merchField/MerchFieldWithPageSwitcher';
+import { set } from 'ol/transform';
 
-import MerchFieldWithPageSwitcher  from 'src/modules/merchField/MerchFieldWithPageSwitcher';
-type urlParamsType = {
-    collection: string;
-  };
-const CollectionPage: React.FC<any> = () => {
-    let {collection} = useParams<urlParamsType>();
-
-    console.debug(collection)
-
-    let [updateData,setUpdateData] =  useState<boolean>(true)    
-    let currentPage = useRef<number>(1)
-    let pages = useRef<number>(1)
-    let pageSize= useRef<number>(9)
-
-    let [filtersState,setFilters] = useState<any>([])
-    let [merchFieldData, setMerchFieldData] = useState<any>([])
-
-    let [grid,setGrid] = useState<boolean>(false)
-    
-   // let merchFieldData = useRef<any>({merchInfo:[],filters:[]})
-
-    let filtersInfo = useRef<{[key:string]:any}>({})
-    let settingsModuleMemo = useRef<boolean>(true)
-    let firms = useRef<string[]>([])
-    let searchWord = useRef<string>("")
-    // useEffect(() => {
-    //     if (searchData) {
-    //         getImgs(searchData, setData)
-    //     }
-    // }, [searchData])
-    let filters = useRef<any>(null)
-    const setData=(data:any)=>{
-            filters.current = data.filters
-            setMerchFieldData( data.merchData)
-            setUpdateData(!updateData)
-    }
-
-    const getCollectionData=()=>{
-        const reqData = {
-            name: collection,
-            page: currentPage.current,
-            size: pageSize.current
-        }
-        getCollection(reqData,getRespData) 
-    }
-
-
-    useEffect(()=>{
-        currentPage.current = 1
-        getCountCollection(collection,(data)=>{
-            pages.current = Math.ceil(data/pageSize.current)
-            const reqData = {
-                name: collection,
-                page: currentPage.current,
-                size: pageSize.current
-            }
-            getCollection(reqData,getRespData) 
-        })
-    },[collection])
-
-    
-
-    const pageWrap = useRef<HTMLDivElement>(null)
-    
-    let timeArr = [41,42,43]
-
-   
-
-    const getRespData=(resData:{pages:number,merchInfo:[]})=>{
-            setMerchFieldData(resData)
-        }
-
-    const getRespDataByFilter=(respData:{merchInfo:[]})=>{
-        setMerchFieldData(respData)
-    }
-
-
-
-
-
-    const pageChange=(page:number)=>{
-        currentPage.current = page;
-        getCollectionData();
-        // currentPage.current = page;
-        // filtersInfo.current["name"] = searchWord.current;
-        // filtersInfo.current["currentPage"] =  currentPage.current;
-        // filtersInfo.current["pageSize"] =  pageSize.current;
-        // filtersInfo.current["pages"] =  pages.current;
-        // getFullMerchInfo(filtersInfo.current,getRespData) 
-    }
-
-
-    return (
-
-        <div >
-           <MerchFieldWithPageSwitcher onChange={pageChange} currentPage = {currentPage.current}  pages={pages.current} heightRow={500} size={grid?2:3} data={merchFieldData} />   
-        </div>
-
-
-    )
+interface MerchItem {
+    name: string;
+    imgs: string[];
+    id: string;
+    price: string;
+    className?: string;
+    total_count: number;
 }
 
-export default CollectionPage
+interface CollectionResponse {
+    pages: number;
+    merchInfo: MerchItem[];
+}
+
+const PAGE_SIZE = 9;
+
+const CollectionPage: React.FC = () => {
+    // Properly typed useParams with string index signature
+    const params = useParams<{ collection: string }>();
+    const collection = params.collection || '';
+    
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [collectionData, setCollectionData] = useState<MerchItem[]>([]);
+    const [gridView] = useState(false);
+
+    const fetchCollection = useCallback(async (page: number) => {
+        try {
+            const data = await new Promise< MerchItem[]>(resolve => {
+                getCollection({
+                    name: collection,
+                    page,
+                    size: PAGE_SIZE
+                }, resolve);
+            });
+            setTotalPages(Math.ceil((data[0]?.total_count || 0) / PAGE_SIZE));
+            setCollectionData(data);
+
+        } catch (error) {
+            console.error('Error fetching collection:', error);
+        }
+    }, [collection]);
+
+    const initializeCollection = useCallback(async () => {
+        try {
+            await fetchCollection(1);
+        } catch (error) {
+            console.error('Error initializing collection:', error);
+        }
+    }, [collection, fetchCollection]);
+
+    useEffect(() => {
+        initializeCollection();
+    }, [initializeCollection]);
+
+    const handlePageChange = useCallback((page: number) => {
+        setCurrentPage(page);
+        fetchCollection(page);
+    }, [fetchCollection]);
+
+    return (
+        <div>
+            <MerchFieldWithPageSwitcher 
+                onChange={handlePageChange} 
+                currentPage={currentPage} 
+                pages={totalPages} 
+                heightRow={500} 
+                size={gridView ? 2 : 3} 
+                data={collectionData} 
+            />
+        </div>
+    );
+};
+
+export default React.memo(CollectionPage);

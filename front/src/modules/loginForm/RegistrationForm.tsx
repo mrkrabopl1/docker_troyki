@@ -114,9 +114,9 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
                 персональных данных.
             </div>
             <MailInputWithValidation  valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
-            <PasswordInputWithValidation check={true} validRule={validRuleForPass} valid={!validationObject.current.pass} invalidText={invalidPassText.current} onChange={(data) => { setFormData(data, "pass") }} className={s.loginInput} placeholder="Password" />
+            <PasswordInputWithValidation showToggle={true} validRule={validRuleForPass} valid={!validationObject.current.pass} invalidText={invalidPassText.current} onChange={(data) => { setFormData(data, "pass") }} className={s.loginInput} placeholder="Password" />
             <PasswordInput check={true} onChange={(data) => { passCheck.current = data }} className={s.loginInput} placeholder="Repeat password" />
-            <Button className={s.loginButton} onChange={() => {
+            <Button className={s.loginButton} onClick={() => {
                 updateValidObj()
                 if (Object.values(validationObject.current).length > 0) {
                     setRefresh(!refresh)

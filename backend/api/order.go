@@ -10,8 +10,18 @@ import (
 	"github.com/mrkrabopl1/go_db/worker"
 )
 
+type PreorderType struct {
+	Id          int32                `json:"id"`
+	Size        string               `json:"size"`
+	SourceTable db.ProductSourceEnum `json:"sourceTable"`
+}
+type UpdataPreorderType struct {
+	PreorderType
+	HashUrl string `json:"hashUrl"`
+}
+
 func (s *Server) handleCreatePreorder(ctx *gin.Context) {
-	var preorderData types.PreorderType
+	var preorderData PreorderType
 	if err := ctx.BindJSON(&preorderData); err != nil {
 		fmt.Println(err, "error in preorder")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
@@ -108,7 +118,7 @@ func (s *Server) handleUpdatePreorder(ctx *gin.Context) {
 		return
 	}
 	fmt.Println("yes")
-	var preorderData types.UpdataPreorderType
+	var preorderData UpdataPreorderType
 	if err := ctx.BindJSON(&preorderData); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return

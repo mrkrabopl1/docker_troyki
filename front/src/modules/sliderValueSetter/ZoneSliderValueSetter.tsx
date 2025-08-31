@@ -1,133 +1,102 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import Slider from 'src/components/slider/Slider'
-import NumInput from 'src/components/NumInput'
-import ZoneSliderSimple from 'src/components/slider/ZoneSliderSimple'
-import s from './style.module.css'
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import ZoneSliderSimple from 'src/components/slider/ZoneSliderSimple';
+import NumInput from 'src/components/input/NumInput';
+import s from './style.module.css';
 
-type ZoneSliderSetterType = {
-    max: number,
-    min: number,
-    dataLeft?: number,
-    dataRight?: number,
-    onChange?:(arg:any)=>void
+interface ZoneSliderSetterProps {
+    max: number;
+    min: number;
+    dataLeft?: number;
+    dataRight?: number;
+    onChange?: (value: [number, number]) => void;
 }
 
+const ZoneSliderValueSetter: React.FC<ZoneSliderSetterProps> = ({ 
+    onChange, 
+    max, 
+    min, 
+    dataRight = Infinity, 
+    dataLeft = -Infinity 
+}) => {
+    const [values, setValues] = useState<[number, number]>([
+        dataLeft >= min && dataLeft <= max ? dataLeft : min,
+        dataRight <= max && dataRight >= min ? dataRight : max
+    ]);
+    const throttlingTimerId = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-let styleWrapper: any = {
-    position: "relative",
-    height: "40px",
-    left: "100px"
-}
-
-
-
-
-const ZoneSliderValueSetter: React.FC<ZoneSliderSetterType> = ({onChange, max, min, dataRight, dataLeft }) => {
-    let memoSlider = useRef<boolean>(true)
-
-    let wrappRef = useRef<HTMLDivElement>(null)
-    let sliderRef = useRef(null)
-    let [sliderPosition, setSliderPosition] = useState(0)
-    let trottlingTimerId = useRef<ReturnType<typeof setTimeout> | null>(null)
-    let [refresh, setRefresh] = useState<boolean>(true)
-    useEffect(()=>{
-       memoSlider.current = !memoSlider.current;
-       numDataLeft.current = dataLeft?dataLeft:min
-       numDataRight.current = dataRight?dataRight:max
-       setRefresh(!refresh)
-    },[min,max,dataRight, dataLeft])
-    let active = useRef(refresh)
-    let numDataLeft = useRef<number>(dataLeft?dataLeft:min)
-    let numDataRight = useRef<number>(dataRight?dataRight:max)
-
-    active.current = refresh
-
+    // Update internal state when props change
     useEffect(() => {
-        if (dataRight && dataRight <= max && dataRight >= min) {
-            if (dataLeft) {
-                if (dataRight > dataLeft) {
-                    numDataRight.current = dataRight;
-                }
-            } else {
-                numDataRight.current = dataRight;
-            }
+        setValues([
+            dataLeft >= min && dataLeft <= max ? dataLeft : min,
+            dataRight <= max && dataRight >= min ? dataRight : max
+        ]);
+    }, [min, max, dataRight, dataLeft]);
+
+    // Throttled callback for slider changes
+    const handleSliderChange = useCallback((sliderMin: number, sliderMax: number) => {
+        const newLeft = min + (max - min) * sliderMin;
+        const newRight = min + (max - min) * sliderMax;
+        
+        setValues([newLeft, newRight]);
+        
+        if (throttlingTimerId.current) {
+            clearTimeout(throttlingTimerId.current);
         }
-        if (dataLeft && dataLeft <= max && dataLeft >= min) {
-            if (dataRight) {
-                if (dataRight > dataLeft) {
-                    numDataLeft.current = dataLeft;
-                }
-            } else {
-                numDataLeft.current = dataLeft;
-            }
+        
+        throttlingTimerId.current = setTimeout(() => {
+            onChange?.([newLeft, newRight]);
+        }, 500);
+    }, [min, max, onChange]);
+
+    // Handle left input change
+    const handleLeftChange = useCallback((value: number) => {
+        if (value >= min && value <= values[1]) {
+            const newValues: [number, number] = [value, values[1]];
+            setValues(newValues);
+            onChange?.(newValues);
         }
-        setRefresh(!refresh);
-    },[])
+    }, [min, values, onChange]);
 
-    
-
-    let sliderStyle: any = {
-        position: "absolute",
-        left: sliderPosition + "px",
-        width: "10px",
-        height: "10px",
-        backgroundColor: "green",
-        top: 0,
-        bottom: 0,
-        margin: "auto"
-    }
-
-    const convertSliderPos = (sliderPosLeft:number,sliderPosRight:number) => {
-        numDataLeft.current =(min + (max-min)*sliderPosLeft)
-        numDataRight.current= (min + (max-min)*sliderPosRight)
-        refresh = !refresh
-        setRefresh(refresh)
-        if (trottlingTimerId.current) {
-            clearTimeout(trottlingTimerId.current);
+    // Handle right input change
+    const handleRightChange = useCallback((value: number) => {
+        if (value <= max && value >= values[0]) {
+            const newValues: [number, number] = [values[0], value];
+            setValues(newValues);
+            onChange?.(newValues);
         }
-        trottlingTimerId.current = setTimeout(() => {
-            onChange && onChange([ numDataLeft.current, numDataRight.current])
-        }, 500)
-    }
-   
+    }, [max, values, onChange]);
 
-    const changeLeftData=(data:number)=>{
-            if(data>numDataRight.current||data<min){
-                
-            }else{
-                memoSlider.current = !memoSlider.current;
-                numDataLeft.current = data;
-                setRefresh(!refresh)
-                if(onChange){
-                    onChange([data,numDataRight.current])
-                }
+    // Clean up timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (throttlingTimerId.current) {
+                clearTimeout(throttlingTimerId.current);
             }
-    }
-
-    const changeRightData=(data:number)=>{
-        if(data<numDataLeft.current||data>max){
-            
-        }else{
-            memoSlider.current = !memoSlider.current;
-            numDataRight.current = data;
-            setRefresh(!refresh)
-            if(onChange){
-                onChange([numDataLeft.current,data])
-            }
-        }
-}
+        };
+    }, []);
 
     return (
         <div>
-            <ZoneSliderSimple memo={memoSlider.current} onChange={(min,max)=>{convertSliderPos(min,max)}}  min={(numDataLeft.current-min) /(max-min)} max={(numDataRight.current-min) /(max-min)} />
-            <div style={{ display: "flex",width:"100%" }}>
-                <NumInput className={s.numInput} data={numDataLeft.current} callback={changeLeftData} />
+            <ZoneSliderSimple 
+                onChange={handleSliderChange} 
+                min={(values[0] - min) / (max - min)} 
+                max={(values[1] - min) / (max - min)} 
+            />
+            <div className={s.inputContainer}>
+                <NumInput 
+                    className={s.numInput} 
+                    value={values[0]} 
+                    onChange={handleLeftChange} 
+                />
                 <span>-</span>
-                <NumInput className={s.numInput} data={numDataRight.current} callback={changeRightData} />
+                <NumInput 
+                    className={s.numInput} 
+                    value={values[1]} 
+                    onChange={handleRightChange} 
+                />
             </div>
         </div>
-    )
-}
+    );
+};
 
-
-export default ZoneSliderValueSetter
+export default React.memo(ZoneSliderValueSetter);

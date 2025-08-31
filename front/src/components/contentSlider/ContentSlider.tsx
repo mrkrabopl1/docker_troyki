@@ -1,10 +1,19 @@
-import React, { ReactElement, useCallback, useEffect, useRef, useState } from 'react';
+import React, { 
+  useCallback, 
+  useEffect, 
+  useRef, 
+  useState, 
+  useMemo,
+  ReactElement, 
+  CSSProperties 
+} from 'react';
 
 type SliderProps = {
   content: ReactElement[];
   className?: string;
   currentStep?: number;
   onChange?: (steps: number) => void;
+  transitionDuration?: number;
 };
 
 const ContentSlider: React.FC<SliderProps> = ({ 
@@ -12,51 +21,113 @@ const ContentSlider: React.FC<SliderProps> = ({
   className,
   currentStep = 1,
   onChange,
+  transitionDuration = 300
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
-  const [stepSize, setStepSize] = useState(0);
-  const [totalSteps, setTotalSteps] = useState(1);
+  const [dimensions, setDimensions] = useState({
+    stepSize: 0,
+    totalSteps: 1,
+    containerWidth: 0,
+    trackWidth: 0
+  });
   const [internalPosition, setInternalPosition] = useState(0);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const animationFrameId = useRef<number | null>(null);
 
+  // Расчет размеров и параметров слайдера
   const calculateDimensions = useCallback(() => {
     if (!trackRef.current || !containerRef.current) return;
 
     const containerWidth = containerRef.current.clientWidth;
     const trackWidth = trackRef.current.scrollWidth;
-    const itemWidth = trackWidth / content.length;
     
+    if (
+      dimensions.containerWidth === containerWidth && 
+      dimensions.trackWidth === trackWidth
+    ) {
+      return;
+    }
+
+    const itemWidth = trackWidth / content.length;
     const visibleItems = Math.floor(containerWidth / itemWidth);
     const hiddenItems = Math.max(0, content.length - visibleItems);
     const newTotalSteps = Math.max(1, hiddenItems + 1);
+    const newStepSize = hiddenItems > 0 
+      ? (trackWidth - containerWidth) / hiddenItems 
+      : 0;
     
-    const newStepSize = hiddenItems > 0 ? (trackWidth - containerWidth) / hiddenItems : 0;
-    
-    setTotalSteps(newTotalSteps);
-    setStepSize(newStepSize);
-    onChange?.(newTotalSteps);
-    
-    // Обновляем позицию (CSS transition сделает анимацию)
-    setInternalPosition(-(currentStep - 1) * newStepSize);
-  }, [content.length, currentStep, onChange]);
+    setDimensions({
+      stepSize: newStepSize,
+      totalSteps: newTotalSteps,
+      containerWidth,
+      trackWidth
+    });
 
-  useEffect(() => {
-    calculateDimensions();
-    const resizeObserver = new ResizeObserver(calculateDimensions);
-    if (containerRef.current) resizeObserver.observe(containerRef.current);
-    return () => resizeObserver.disconnect();
+    onChange?.(newTotalSteps);
+  }, [content.length, dimensions, onChange]);
+
+  // Оптимизированная версия с requestAnimationFrame
+  const debouncedCalculateDimensions = useCallback(() => {
+    if (animationFrameId.current) {
+      cancelAnimationFrame(animationFrameId.current);
+    }
+    
+    animationFrameId.current = requestAnimationFrame(() => {
+      calculateDimensions();
+    });
   }, [calculateDimensions]);
 
+  // Обновление позиции при изменении currentStep
+  useEffect(() => {
+    const newPosition = -(currentStep - 1) * dimensions.stepSize;
+    setInternalPosition(newPosition);
+  }, [currentStep, dimensions.stepSize]);
+
+  // Инициализация ResizeObserver
+  useEffect(() => {
+    debouncedCalculateDimensions();
+    
+    if (!resizeObserverRef.current) {
+      resizeObserverRef.current = new ResizeObserver(debouncedCalculateDimensions);
+    }
+    
+    const container = containerRef.current;
+    if (container) {
+      resizeObserverRef.current.observe(container);
+    }
+
+    return () => {
+      if (resizeObserverRef.current && container) {
+        resizeObserverRef.current.unobserve(container);
+      }
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
+    };
+  }, [debouncedCalculateDimensions]);
+
+  // Стиль трека
+  const trackStyle = useMemo((): CSSProperties => ({
+    display: 'flex',
+    transform: `translateX(${internalPosition}px)`,
+    transition: `transform ${transitionDuration}ms ease-out`,
+    willChange: 'transform',
+  }), [internalPosition, transitionDuration]);
+
+  // Стиль контейнера
+  const containerStyle: CSSProperties = useMemo(() => ({
+    overflow: 'hidden',
+    width: '100%',
+    position: 'relative'
+  }), []);
+
   return (
-    <div ref={containerRef} style={{ overflow: 'hidden', width: '100%' }}>
+    <div ref={containerRef} style={containerStyle}>
       <div
         ref={trackRef}
         className={className}
-        style={{
-          display: 'flex',
-          transform: `translateX(${internalPosition}px)`,
-          transition: 'transform 0.3s ease-out'
-        }}
+        style={trackStyle}
       >
         {content}
       </div>

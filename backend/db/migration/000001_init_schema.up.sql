@@ -1,7 +1,11 @@
 CREATE TYPE  public.status_enum AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE  public.delivery_enum AS ENUM ('own', 'express', 'cdek','curier');
 CREATE TYPE public.product_source_enum AS ENUM ('snickers', 'solomerch', 'clothes');
-CREATE TYPE public.clothes_enum AS ENUM ('t-shirt', 'hoodie', 'sweatshirt', 'jacket', 'pants', 'shorts');
+CREATE TYPE public.clothes_enum AS ENUM ('t-shirt', 'hoodie', 'sweatshirt', 'jacket', 'pants', 'shorts','other');
+CREATE TYPE public.merch_enum AS ENUM ('hat', 'toys', 'bag','other');
+CREATE TYPE public.snickers_enum AS ENUM ('slepowers','other');
+CREATE TYPE public.body_enum AS ENUM ('child', 'woman', 'man');
+
 
 CREATE TABLE product_registry (
     global_id SERIAL PRIMARY KEY,
@@ -9,6 +13,34 @@ CREATE TABLE product_registry (
     internal_id INT NOT NULL,
     UNIQUE (source_table, internal_id)
 );
+
+CREATE TABLE product_types (
+    id SERIAL PRIMARY KEY,
+    category product_source_enum NOT NULL,  -- Категория из product_source_enum
+    type_name VARCHAR(50) NOT NULL,         -- Название типа (дублирует значение из соответствующего ENUM)
+    enum_value VARCHAR(50) NOT NULL,        -- Значение из соответствующего ENUM
+    UNIQUE (category, enum_value)           -- Уникальная связка категория+значение
+);
+
+INSERT INTO product_types (category, type_name, enum_value) VALUES
+-- Одежда (clothes_enum)
+('clothes', 'Футболка', 't-shirt'),
+('clothes', 'Худи', 'hoodie'),
+('clothes', 'Свитшот', 'sweatshirt'),
+('clothes', 'Куртка', 'jacket'),
+('clothes', 'Штаны', 'pants'),
+('clothes', 'Шорты', 'shorts'),
+('clothes', 'Другое', 'other'),
+
+-- Мерч (merch_enum)
+('solomerch', 'Кепка', 'hat'),
+('solomerch', 'Игрушки', 'toys'),
+('solomerch', 'Сумка', 'bag'),
+('solomerch', 'Другое', 'other'),
+
+-- Кроссовки (snickers_enum)
+('snickers', 'Слепауэрс', 'slepowers'),
+('snickers', 'Другое', 'other');
 
 
 CREATE TABLE public.snickers (
@@ -21,9 +53,11 @@ CREATE TABLE public.snickers (
     image_path text NOT NULL,
     minprice integer NOT NULL,
     maxprice integer NOT NULL,
+    type INTEGER NOT NULL REFERENCES product_types(id),
     article text,
     date text,
     description text,
+	bodytype public.body_enum NOT NULL DEFAULT 'man',
 	image_count integer NOT NULL,
     "3.5" integer,
     "4" integer,
@@ -58,6 +92,7 @@ CREATE TABLE public.solomerch (
 	image_count integer NOT NULL,
     minprice integer NOT NULL,
     article text,
+    type INTEGER NOT NULL REFERENCES product_types(id),
     date text,
     description text
 );
@@ -67,18 +102,20 @@ CREATE TABLE public.clothes (
     qId text  NOT NULL,
     name text NOT NULL,
     firm text NOT NULL,
+	info json NOT NULL,
     line text ,
     image_path text NOT NULL,
 	image_count integer NOT NULL,
     minprice integer NOT NULL,
 	maxprice integer NOT NULL,
     article text,
+	bodytype public.body_enum NOT NULL DEFAULT 'man',
     date text,
     description text,
-	type public.clothes_enum,
-	XS integer,
+    type INTEGER NOT NULL REFERENCES product_types(id),
+    XS integer,
 	S integer,
-	М integer,
+	M integer,
 	L integer,
 	XL integer,
 	XXL integer

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import Map from 'ol/Map';
 import View from 'ol/View';
 import TileLayer from 'ol/layer/Tile';
@@ -10,78 +10,90 @@ import Feature from 'ol/Feature';
 import Style from 'ol/style/Style';
 import Circle from 'ol/style/Circle';
 import Fill from 'ol/style/Fill';
-import 'ol/ol.css'; // Подключаем стили OpenLayers
+import 'ol/ol.css';
 import { fromLonLat } from 'ol/proj';
-import { Color } from 'ol/color';
-import s from "./style.module.css"
-const CENTER = [0, 0];
-const ZOOM = 18;
+import s from "./style.module.css";
+
+const DEFAULT_CENTER = [0, 0];
+const DEFAULT_ZOOM = 18;
 const MAX_ZOOM = 30;
 
-type urlParamsType = {
-    location: number[]
+type MapComponentProps = {
+    location?: [number, number];
 };
-const MapComponent: React.FC<urlParamsType> = (props) => {
-    const {location} = { ...props }
-    const mapRef = useRef(null); // Реф для контейнера карты
-    const mapModel = useRef(null)
-    const vectorLayer = useRef(null)
-    const vectorSource = useRef(null)
-    const point = useRef(null)
 
-    useEffect(() => {
-        // Инициализация карты только после монтирования компонента
-        if (!mapRef.current) return;
-        vectorSource .current  = new VectorSource()
-        vectorLayer.current =  new VectorLayer({
-            source: vectorSource .current ,
-        })
-        point.current = new Feature()
-        point.current .setStyle(new Style({
-            image: new Circle({
-                radius: 6,
-                fill: new Fill({
-                    color: 'rgba(255, 0, 0, 0.5)',
-                }),
+const MapComponent: React.FC<MapComponentProps> = ({ location }) => {
+    const mapRef = useRef<HTMLDivElement>(null);
+    const mapInstance = useRef<Map | null>(null);
+    const vectorLayerRef = useRef<VectorLayer | null>(null);
+    const vectorSourceRef = useRef<VectorSource | null>(null);
+    const pointFeatureRef = useRef<Feature | null>(null);
+
+    // Создаем стиль точки один раз
+    const pointStyle = useMemo(() => new Style({
+        image: new Circle({
+            radius: 6,
+            fill: new Fill({
+                color: 'rgba(255, 0, 0, 0.5)',
             }),
-        }))
-        const geometry = new Point(fromLonLat(CENTER))
-       // const geometry = new Point(fromLonLat([location[0],location[1]]));
-        point.current.setGeometry(geometry);
-        vectorSource.current.addFeature(point.current)
-        point.current.set("type", "line");
-        mapModel.current = new Map({
-            target: mapRef.current, // Используем DOM-элемент рефа
+        }),
+    }), []);
+
+    // Инициализация карты
+    useEffect(() => {
+        if (!mapRef.current) return;
+
+        // Создаем источник и слой для векторных данных
+        vectorSourceRef.current = new VectorSource();
+        vectorLayerRef.current = new VectorLayer({
+            source: vectorSourceRef.current,
+        });
+
+        // Создаем точку
+        pointFeatureRef.current = new Feature();
+        pointFeatureRef.current.setStyle(pointStyle);
+        
+        // Устанавливаем геометрию точки
+        const initialGeometry = new Point(fromLonLat(location || DEFAULT_CENTER));
+        pointFeatureRef.current.setGeometry(initialGeometry);
+        pointFeatureRef.current.set("type", "point");
+        
+        // Добавляем точку в источник
+        vectorSourceRef.current.addFeature(pointFeatureRef.current);
+
+        // Создаем карту
+        mapInstance.current = new Map({
+            target: mapRef.current,
             layers: [
-                new TileLayer({
-                    source: new OSM(),
-                }),
-                vectorLayer.current,
+                new TileLayer({ source: new OSM() }),
+                vectorLayerRef.current,
             ],
             view: new View({
-                center: [...CENTER],
-                zoom: ZOOM,
-                maxZoom: MAX_ZOOM
+                center: fromLonLat(location || DEFAULT_CENTER),
+                zoom: DEFAULT_ZOOM,
+                maxZoom: MAX_ZOOM,
             }),
             controls: []
         });
 
-        // Очистка при размонтировании компонента
-        return () => mapModel.current.setTarget(undefined);
-    }, []);
+        return () => {
+            if (mapInstance.current) {
+                mapInstance.current.setTarget(undefined);
+                mapInstance.current = null;
+            }
+        };
+    }, [pointStyle]);
+
+    // Обновление позиции при изменении location
     useEffect(() => {
-        if(!location) return
-        const geometry = new Point(fromLonLat([location[0],location[1]]));
-        point.current.setGeometry(geometry);
-        mapModel.current.getView().setCenter(fromLonLat([location[0],location[1]]));
+        if (!location || !pointFeatureRef.current || !mapInstance.current) return;
+
+        const newGeometry = new Point(fromLonLat(location));
+        pointFeatureRef.current.setGeometry(newGeometry);
+        mapInstance.current.getView().setCenter(fromLonLat(location));
     }, [location]);
 
-    return (
-        <div
-            ref={mapRef}
-            className={s.mapHolder}
-        />
-    );
+    return <div ref={mapRef} className={s.mapHolder} />;
 };
 
-export default MapComponent;
+export default React.memo(MapComponent);

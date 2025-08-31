@@ -13,12 +13,14 @@ import (
 type Querier interface {
 	CheckCustomerExistence(ctx context.Context, arg CheckCustomerExistenceParams) (bool, error)
 	CheckMail(ctx context.Context, mail string) (bool, error)
+	ClearDiscounts(ctx context.Context) error
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (int32, error)
 	CreateUniqueCustomer(ctx context.Context, creationtime pgtype.Date) (int32, error)
 	DeleteCartData(ctx context.Context, id int32) error
 	DeleteFromVerifivation(ctx context.Context, id int32) error
 	DeleteVerification(ctx context.Context, id int32) error
 	GetBaseCustomerData(ctx context.Context, mail string) (GetBaseCustomerDataRow, error)
+	GetCategoryByTypeId(ctx context.Context, typeID int32) (GetCategoryByTypeIdRow, error)
 	GetClothesInfoById(ctx context.Context, id int32) (GetClothesInfoByIdRow, error)
 	GetCombinedFiltersByString(ctx context.Context, dollar_1 string) (GetCombinedFiltersByStringRow, error)
 	GetCountIdByName(ctx context.Context, dollar_1 string) ([]GetCountIdByNameRow, error)
@@ -26,12 +28,13 @@ type Querier interface {
 	GetCustomerData(ctx context.Context, id int32) (GetCustomerDataRow, error)
 	GetCustomerId(ctx context.Context, mail string) (int32, error)
 	GetFiltersByString(ctx context.Context, dollar_1 string) (GetFiltersByStringRow, error)
+	GetFiltersFromClothes(ctx context.Context, arg GetFiltersFromClothesParams) (GetFiltersFromClothesRow, error)
+	GetFiltersFromMerchByType(ctx context.Context, arg GetFiltersFromMerchByTypeParams) (GetFiltersFromMerchByTypeRow, error)
+	GetFiltersFromSnickers(ctx context.Context, arg GetFiltersFromSnickersParams) (GetFiltersFromSnickersRow, error)
 	GetFirms(ctx context.Context) ([]GetFirmsRow, error)
 	GetFullPreorderCount(ctx context.Context, orderid int32) (interface{}, error)
-	GetMerchByIds(ctx context.Context, dollar_1 []int32) ([]GetMerchByIdsRow, error)
-	//
+	GetFullProductsInfoByIds(ctx context.Context, dollar_1 []int32) ([]GetFullProductsInfoByIdsRow, error)
 	GetMerchByLineName(ctx context.Context, firm string) ([]GetMerchByLineNameRow, error)
-	GetMerchByName(ctx context.Context, arg GetMerchByNameParams) ([]GetMerchByNameRow, error)
 	GetMerchCollection(ctx context.Context, arg GetMerchCollectionParams) ([]GetMerchCollectionRow, error)
 	GetMerchCollectionWithCount(ctx context.Context, arg GetMerchCollectionWithCountParams) ([]GetMerchCollectionWithCountRow, error)
 	GetMerchCountIdByName(ctx context.Context, dollar_1 string) ([]GetMerchCountIdByNameRow, error)
@@ -39,6 +42,8 @@ type Querier interface {
 	GetMerchFiltersByString(ctx context.Context, dollar_1 string) (GetMerchFiltersByStringRow, error)
 	GetMerchFirms(ctx context.Context) ([]GetMerchFirmsRow, error)
 	GetMerchProductsByFirmName(ctx context.Context, firm string) ([]GetMerchProductsByFirmNameRow, error)
+	// Данные из таблицы solomerch
+	// Данные из таблицы clothes
 	GetMerchWithDiscount(ctx context.Context) ([]GetMerchWithDiscountRow, error)
 	GetOrder(ctx context.Context, hash string) (GetOrderRow, error)
 	GetOrderAddressById(ctx context.Context, orderid int32) (GetOrderAddressByIdRow, error)
@@ -52,17 +57,22 @@ type Querier interface {
 	GetPreorderIdByHashUrl(ctx context.Context, hashurl string) (int32, error)
 	GetPreorderInfo(ctx context.Context, orderid int32) ([]GetPreorderInfoRow, error)
 	GetProductSource(ctx context.Context, globalID int32) (GetProductSourceRow, error)
+	GetProductsByIds(ctx context.Context, dollar_1 []int32) ([]GetProductsByIdsRow, error)
+	GetProductsByName(ctx context.Context, arg GetProductsByNameParams) ([]GetProductsByNameRow, error)
+	GetProductsInfoById(ctx context.Context, id int32) (GetProductsInfoByIdRow, error)
+	GetProductsWithDiscount(ctx context.Context) ([]GetProductsWithDiscountRow, error)
 	GetSnickersByFirmName(ctx context.Context, firm string) ([]GetSnickersByFirmNameRow, error)
 	GetSnickersByIds(ctx context.Context, dollar_1 []int32) ([]GetSnickersByIdsRow, error)
 	GetSnickersByLineName(ctx context.Context, line string) ([]GetSnickersByLineNameRow, error)
 	GetSnickersByName(ctx context.Context, arg GetSnickersByNameParams) ([]GetSnickersByNameRow, error)
-	GetSnickersInfoById(ctx context.Context, id int32) (GetSnickersInfoByIdRow, error)
-	GetSnickersWithDiscount(ctx context.Context) ([]GetSnickersWithDiscountRow, error)
 	GetSoloCollection(ctx context.Context, arg GetSoloCollectionParams) ([]GetSoloCollectionRow, error)
 	GetSoloCollectionWithCount(ctx context.Context, arg GetSoloCollectionWithCountParams) ([]GetSoloCollectionWithCountRow, error)
 	GetSoloMerchInfoById(ctx context.Context, id int32) (GetSoloMerchInfoByIdRow, error)
+	GetTypeIDByCategoryAndName(ctx context.Context, arg GetTypeIDByCategoryAndNameParams) (int32, error)
 	GetUnregisterCustomer(ctx context.Context, id int32) (GetUnregisterCustomerRow, error)
 	GetVerification(ctx context.Context, token string) (GetVerificationRow, error)
+	//
+	InsertDiscounts(ctx context.Context, arg InsertDiscountsParams) (int32, error)
 	InsertOrder(ctx context.Context, arg InsertOrderParams) (int32, error)
 	InsertOrderItems(ctx context.Context, arg InsertOrderItemsParams) error
 	InsertPreorder(ctx context.Context, arg InsertPreorderParams) (int32, error)
@@ -70,6 +80,7 @@ type Querier interface {
 	InsertPreorderItems(ctx context.Context, arg InsertPreorderItemsParams) (int32, error)
 	InsertVerification(ctx context.Context, arg InsertVerificationParams) error
 	SelectHistoryFromUniqueCustomer(ctx context.Context, id int32) ([]int32, error)
+	SelectMainCategories(ctx context.Context) (interface{}, error)
 	SelectQuantityFromPreorderItems(ctx context.Context, arg SelectQuantityFromPreorderItemsParams) (int32, error)
 	SetOrderAddress(ctx context.Context, arg SetOrderAddressParams) (int32, error)
 	SetPreorderAddress(ctx context.Context, arg SetPreorderAddressParams) (int32, error)

@@ -23,8 +23,8 @@ type TaskProcessor interface {
 	Shutdown()
 	ProcessTaskSendVerifyEmail(ctx context.Context, task *asynq.Task) error
 	ProcessTaskSendOrderEmail(ctx context.Context, task *asynq.Task) error
-	SetSnickersInfo(ctx context.Context, ID string, merchant db.SnickersInfoResponse) error
-	GetSnickersInfo(ctx context.Context, ID string) (db.SnickersInfoResponse, error)
+	SetProductsInfo(ctx context.Context, ID string, merchant db.ProductsInfoResponse) error
+	GetProductsInfo(ctx context.Context, ID string) (db.ProductsInfoResponse, error)
 }
 
 type RedisTaskProcessor struct {
@@ -65,7 +65,7 @@ func NewRedisTaskProcessor(redisOpt asynq.RedisClientOpt, store db.Store, mailer
 	}
 }
 
-func (p *RedisTaskProcessor) SetSnickersInfo(ctx context.Context, ID string, merchant db.SnickersInfoResponse) error {
+func (p *RedisTaskProcessor) SetProductsInfo(ctx context.Context, ID string, merchant db.ProductsInfoResponse) error {
 	// Convert merchant struct to JSON
 	data, err := json.Marshal(merchant)
 	if err != nil {
@@ -79,23 +79,23 @@ func (p *RedisTaskProcessor) SetSnickersInfo(ctx context.Context, ID string, mer
 	return p.redisClient.Set(ctx, key, data, 24*time.Hour).Err()
 }
 
-func (p *RedisTaskProcessor) GetSnickersInfo(ctx context.Context, ID string) (db.SnickersInfoResponse, error) {
+func (p *RedisTaskProcessor) GetProductsInfo(ctx context.Context, ID string) (db.ProductsInfoResponse, error) {
 	// Generate unique key
 	key := "snickers:" + ID
 
 	// Fetch data from Redis
 	data, err := p.redisClient.Get(ctx, key).Result()
 	if err == redis.Nil {
-		return db.SnickersInfoResponse{}, fmt.Errorf("merchant not found")
+		return db.ProductsInfoResponse{}, fmt.Errorf("merchant not found")
 	} else if err != nil {
-		return db.SnickersInfoResponse{}, err
+		return db.ProductsInfoResponse{}, err
 	}
 
 	// Convert JSON to struct
-	var snickers db.SnickersInfoResponse
+	var snickers db.ProductsInfoResponse
 	err = json.Unmarshal([]byte(data), &snickers)
 	if err != nil {
-		return db.SnickersInfoResponse{}, err
+		return db.ProductsInfoResponse{}, err
 	}
 
 	return snickers, nil

@@ -11,34 +11,72 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearDiscounts = `-- name: ClearDiscounts :exec
+DELETE FROM discount
+`
+
+func (q *Queries) ClearDiscounts(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, clearDiscounts)
+	return err
+}
+
+const getCategoryByTypeId = `-- name: GetCategoryByTypeId :one
+SELECT 
+    pt.category AS product_category,
+    pt.type_name AS type_name,
+    pt.enum_value AS type_enum
+FROM 
+    product_types pt
+WHERE 
+    pt.id = $1
+`
+
+type GetCategoryByTypeIdRow struct {
+	ProductCategory ProductSourceEnum `json:"product_category"`
+	TypeName        string            `json:"type_name"`
+	TypeEnum        string            `json:"type_enum"`
+}
+
+func (q *Queries) GetCategoryByTypeId(ctx context.Context, typeID int32) (GetCategoryByTypeIdRow, error) {
+	row := q.db.QueryRow(ctx, getCategoryByTypeId, typeID)
+	var i GetCategoryByTypeIdRow
+	err := row.Scan(&i.ProductCategory, &i.TypeName, &i.TypeEnum)
+	return i, err
+}
+
 const getClothesInfoById = `-- name: GetClothesInfoById :one
 SELECT
+    info,
     image_path,
     name,
     article,
     clothes.minprice,
     description,
     date,
-    image_count
+    image_count,
+    discount.value AS discount_value
 FROM clothes
     LEFT JOIN discount ON clothes.id = productid
 WHERE clothes.id = $1
 `
 
 type GetClothesInfoByIdRow struct {
-	ImagePath   string      `json:"image_path"`
-	Name        string      `json:"name"`
-	Article     pgtype.Text `json:"article"`
-	Minprice    int32       `json:"minprice"`
-	Description pgtype.Text `json:"description"`
-	Date        pgtype.Text `json:"date"`
-	ImageCount  int32       `json:"image_count"`
+	Info          []byte      `json:"info"`
+	ImagePath     string      `json:"image_path"`
+	Name          string      `json:"name"`
+	Article       pgtype.Text `json:"article"`
+	Minprice      int32       `json:"minprice"`
+	Description   pgtype.Text `json:"description"`
+	Date          pgtype.Text `json:"date"`
+	ImageCount    int32       `json:"image_count"`
+	DiscountValue []byte      `json:"discount_value"`
 }
 
 func (q *Queries) GetClothesInfoById(ctx context.Context, id int32) (GetClothesInfoByIdRow, error) {
 	row := q.db.QueryRow(ctx, getClothesInfoById, id)
 	var i GetClothesInfoByIdRow
 	err := row.Scan(
+		&i.Info,
 		&i.ImagePath,
 		&i.Name,
 		&i.Article,
@@ -46,6 +84,7 @@ func (q *Queries) GetClothesInfoById(ctx context.Context, id int32) (GetClothesI
 		&i.Description,
 		&i.Date,
 		&i.ImageCount,
+		&i.DiscountValue,
 	)
 	return i, err
 }
@@ -75,7 +114,7 @@ WITH combined_products AS (
     -- Data from solomerch (no size columns)
     SELECT 
         sm.minprice AS minprice,
-        sm.maxprice AS maxprice,
+        sm.minprice AS maxprice,
         sm.firm,
         NULL, NULL, NULL, NULL, NULL, 
         NULL, NULL, NULL, NULL, NULL,
@@ -274,39 +313,107 @@ func (q *Queries) GetCountOfCollectionsOrFirms(ctx context.Context, arg GetCount
 }
 
 const getFiltersByString = `-- name: GetFiltersByString :one
-WITH firm_counts AS (
-    SELECT s.firm, COUNT(s.id) AS firm_count
-    FROM snickers AS s
+WITH combined_products AS (
+    -- Данные из snickers
+    SELECT 
+        pr.global_id,
+        s.firm,
+        s.minprice,
+        s.maxprice,
+        s."3.5", s."4", s."4.5", s."5", s."5.5", 
+        s."6", s."6.5", s."7", s."7.5", s."8", 
+        s."8.5", s."9", s."9.5", s."10", s."10.5", 
+        s."11", s."11.5", s."12", s."12.5", s."13",
+        NULL::integer AS "XS",
+        NULL::integer AS "S",
+        NULL::integer AS "M",
+        NULL::integer AS "L",
+        NULL::integer AS "XL",
+        NULL::integer AS "XXL",
+        s.type 
+    FROM snickers s
+    JOIN product_registry pr ON pr.internal_id = s.id AND pr.source_table = 'snickers'
     WHERE s.name ILIKE '%' || $1::text || '%'
-    GROUP BY s.firm
+    
+    UNION ALL
+    
+    -- Данные из solomerch
+    SELECT 
+        pr.global_id,
+        sm.firm,
+        sm.minprice,
+        sm.minprice,
+        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer, 
+        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+        sm.type
+    FROM solomerch sm
+    JOIN product_registry pr ON pr.internal_id = sm.id AND pr.source_table = 'solomerch'
+    WHERE sm.name ILIKE '%' || $1::text || '%'
+    
+    UNION ALL
+    
+    -- Данные из clothes
+    SELECT 
+        pr.global_id,
+        cl.firm,
+        cl.minprice,
+        cl.maxprice,
+        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer, 
+        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+        cl.XS,
+        cl.S,
+        cl.M,
+        cl.L,
+        cl.XL,
+        cl.XXL,
+        cl.type
+    FROM clothes cl
+     JOIN product_registry pr ON pr.internal_id = cl.id AND pr.source_table = 'clothes'
+    WHERE cl.name ILIKE '%' || $1::text || '%'
+),
+firm_counts AS (
+    SELECT firm, COUNT(global_id) AS firm_count
+    FROM combined_products
+    GROUP BY firm
 )
 SELECT
-    COUNT(s."3.5") AS "3.5",
-    COUNT(s."4") AS "4",
-    COUNT(s."4.5") AS "4.5",
-    COUNT(s."5") AS "5",
-    COUNT(s."5.5") AS "5.5",
-    COUNT(s."6") AS "6",
-    COUNT(s."6.5") AS "6.5",
-    COUNT(s."7") AS "7",
-    COUNT(s."7.5") AS "7.5",
-    COUNT(s."8") AS "8",
-    COUNT(s."8.5") AS "8.5",
-    COUNT(s."9") AS "9",
-    COUNT(s."9.5") AS "9.5",
-    COUNT(s."10") AS "10",
-    COUNT(s."10.5") AS "10.5",
-    COUNT(s."11") AS "11",
-    COUNT(s."11.5") AS "11.5",
-    COUNT(s."12") AS "12",
-    COUNT(s."12.5") AS "12.5",
-    COUNT(s."13") AS "13",
-    MIN(s.minprice) AS min,
-    MAX(s.maxprice) AS max,
+    COUNT(NULLIF(cp."3.5", 0)) AS "3.5",
+    COUNT(NULLIF(cp."4", 0)) AS "4",
+    COUNT(NULLIF(cp."4.5", 0)) AS "4.5",
+    COUNT(NULLIF(cp."5", 0)) AS "5",
+    COUNT(NULLIF(cp."5.5", 0)) AS "5.5",
+    COUNT(NULLIF(cp."6", 0)) AS "6",
+    COUNT(NULLIF(cp."6.5", 0)) AS "6.5",
+    COUNT(NULLIF(cp."7", 0)) AS "7",
+    COUNT(NULLIF(cp."7.5", 0)) AS "7.5",
+    COUNT(NULLIF(cp."8", 0)) AS "8",
+    COUNT(NULLIF(cp."8.5", 0)) AS "8.5",
+    COUNT(NULLIF(cp."9", 0)) AS "9",
+    COUNT(NULLIF(cp."9.5", 0)) AS "9.5",
+    COUNT(NULLIF(cp."10", 0)) AS "10",
+    COUNT(NULLIF(cp."10.5", 0)) AS "10.5",
+    COUNT(NULLIF(cp."11", 0)) AS "11",
+    COUNT(NULLIF(cp."11.5", 0)) AS "11.5",
+    COUNT(NULLIF(cp."12", 0)) AS "12",
+    COUNT(NULLIF(cp."12.5", 0)) AS "12.5",
+    COUNT(NULLIF(cp."13", 0)) AS "13",
+    COUNT(NULLIF(cp."XS", 0)) AS "XS",
+    COUNT(NULLIF(cp."S", 0)) AS "S",
+    COUNT(NULLIF(cp."M", 0)) AS "M",
+    COUNT(NULLIF(cp."L", 0)) AS "L",
+    COUNT(NULLIF(cp."XL", 0)) AS "XL",
+    COUNT(NULLIF(cp."XXL", 0)) AS "XXL",
+    MIN(cp.minprice) AS min,
+    MAX(cp.maxprice) AS max,
     jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) AS firm_count_map
-FROM snickers AS s
-LEFT JOIN firm_counts fc ON s.firm = fc.firm
-WHERE s.name ILIKE '%' || $1::text || '%'
+FROM combined_products cp
+LEFT JOIN firm_counts fc ON cp.firm = fc.firm
+GROUP BY ()
 `
 
 type GetFiltersByStringRow struct {
@@ -330,6 +437,12 @@ type GetFiltersByStringRow struct {
 	_12          int64       `json:"12"`
 	_125         int64       `json:"12.5"`
 	_13          int64       `json:"13"`
+	XS           int64       `json:"XS"`
+	S            int64       `json:"S"`
+	M            int64       `json:"M"`
+	L            int64       `json:"L"`
+	XL           int64       `json:"XL"`
+	XXL          int64       `json:"XXL"`
 	Min          interface{} `json:"min"`
 	Max          interface{} `json:"max"`
 	FirmCountMap []byte      `json:"firm_count_map"`
@@ -338,6 +451,253 @@ type GetFiltersByStringRow struct {
 func (q *Queries) GetFiltersByString(ctx context.Context, dollar_1 string) (GetFiltersByStringRow, error) {
 	row := q.db.QueryRow(ctx, getFiltersByString, dollar_1)
 	var i GetFiltersByStringRow
+	err := row.Scan(
+		&i._35,
+		&i._4,
+		&i._45,
+		&i._5,
+		&i._55,
+		&i._6,
+		&i._65,
+		&i._7,
+		&i._75,
+		&i._8,
+		&i._85,
+		&i._9,
+		&i._95,
+		&i._10,
+		&i._105,
+		&i._11,
+		&i._115,
+		&i._12,
+		&i._125,
+		&i._13,
+		&i.XS,
+		&i.S,
+		&i.M,
+		&i.L,
+		&i.XL,
+		&i.XXL,
+		&i.Min,
+		&i.Max,
+		&i.FirmCountMap,
+	)
+	return i, err
+}
+
+const getFiltersFromClothes = `-- name: GetFiltersFromClothes :one
+WITH combined_products AS (
+    SELECT 
+        pr.global_id,
+        cl.firm,
+        cl.minprice,
+        cl.maxprice,
+        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer, 
+        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+    cl.xs::integer AS "XS",
+    cl.s::integer AS "S",
+    cl.m::integer AS "M",
+    cl.l::integer AS "L",
+    cl.xl::integer AS "XL",
+    cl.xxl::integer AS "XXL",
+        cl.type
+    FROM clothes cl
+     JOIN product_registry pr ON pr.internal_id = cl.id AND pr.source_table = 'clothes'
+    WHERE cl.name ILIKE '%' || $1::text || '%'
+        AND ($2::numeric IS NULL OR cl.minprice >= $2)  -- Фильтр по мин. цене
+        AND ($3::numeric IS NULL OR cl.maxprice <= $3)      -- Фильтр по макс. цене
+),
+firm_counts AS (
+    SELECT firm, COUNT(global_id) AS firm_count
+    FROM combined_products
+    GROUP BY firm
+)
+SELECT
+       COUNT(NULLIF(cp."XS", 0)) AS "XS",
+    COUNT(NULLIF(cp."S", 0)) AS "S",
+    COUNT(NULLIF(cp."M", 0)) AS "M",
+    COUNT(NULLIF(cp."L", 0)) AS "L",
+    COUNT(NULLIF(cp."XL", 0)) AS "XL",
+    COUNT(NULLIF(cp."XXL", 0)) AS "XXL",
+    MIN(cp.minprice)::float AS min,
+    MAX(cp.maxprice)::float AS max,
+    jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) AS firm_count_map
+FROM combined_products cp
+LEFT JOIN firm_counts fc ON cp.firm = fc.firm
+GROUP BY ()
+`
+
+type GetFiltersFromClothesParams struct {
+	Name     string         `json:"name"`
+	MinPrice pgtype.Numeric `json:"min_price"`
+	MaxPrice pgtype.Numeric `json:"max_price"`
+}
+
+type GetFiltersFromClothesRow struct {
+	XS           int64   `json:"XS"`
+	S            int64   `json:"S"`
+	M            int64   `json:"M"`
+	L            int64   `json:"L"`
+	XL           int64   `json:"XL"`
+	XXL          int64   `json:"XXL"`
+	Min          float64 `json:"min"`
+	Max          float64 `json:"max"`
+	FirmCountMap []byte  `json:"firm_count_map"`
+}
+
+func (q *Queries) GetFiltersFromClothes(ctx context.Context, arg GetFiltersFromClothesParams) (GetFiltersFromClothesRow, error) {
+	row := q.db.QueryRow(ctx, getFiltersFromClothes, arg.Name, arg.MinPrice, arg.MaxPrice)
+	var i GetFiltersFromClothesRow
+	err := row.Scan(
+		&i.XS,
+		&i.S,
+		&i.M,
+		&i.L,
+		&i.XL,
+		&i.XXL,
+		&i.Min,
+		&i.Max,
+		&i.FirmCountMap,
+	)
+	return i, err
+}
+
+const getFiltersFromMerchByType = `-- name: GetFiltersFromMerchByType :one
+WITH combined_products AS (
+    SELECT 
+        pr.global_id,
+        sm.firm,
+        sm.minprice,
+        sm.minprice AS maxprice,  -- Исправлено: дублирование minprice
+        sm.type
+    FROM solomerch sm
+    JOIN product_registry pr ON pr.internal_id = sm.id AND pr.source_table = 'solomerch'
+    WHERE sm.name ILIKE '%' || $1::text || '%'
+      AND ($2::numeric IS NULL OR sm.minprice >= $2)  -- Исправлено: s → sm
+),
+firm_counts AS (
+    SELECT firm, COUNT(global_id) AS firm_count
+    FROM combined_products
+    GROUP BY firm
+)
+SELECT
+    MIN(cp.minprice)::float AS min,
+    MAX(cp.maxprice)::float AS max,
+    jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) AS firm_count_map
+FROM combined_products cp
+LEFT JOIN firm_counts fc ON cp.firm = fc.firm
+`
+
+type GetFiltersFromMerchByTypeParams struct {
+	Name     string         `json:"name"`
+	MinPrice pgtype.Numeric `json:"min_price"`
+}
+
+type GetFiltersFromMerchByTypeRow struct {
+	Min          float64 `json:"min"`
+	Max          float64 `json:"max"`
+	FirmCountMap []byte  `json:"firm_count_map"`
+}
+
+func (q *Queries) GetFiltersFromMerchByType(ctx context.Context, arg GetFiltersFromMerchByTypeParams) (GetFiltersFromMerchByTypeRow, error) {
+	row := q.db.QueryRow(ctx, getFiltersFromMerchByType, arg.Name, arg.MinPrice)
+	var i GetFiltersFromMerchByTypeRow
+	err := row.Scan(&i.Min, &i.Max, &i.FirmCountMap)
+	return i, err
+}
+
+const getFiltersFromSnickers = `-- name: GetFiltersFromSnickers :one
+WITH combined_products AS (
+    -- Данные из snickers
+    SELECT 
+        pr.global_id,
+        s.firm,
+        s.minprice,
+        s.maxprice,
+        s."3.5", s."4", s."4.5", s."5", s."5.5", 
+        s."6", s."6.5", s."7", s."7.5", s."8", 
+        s."8.5", s."9", s."9.5", s."10", s."10.5", 
+        s."11", s."11.5", s."12", s."12.5", s."13",
+        s.type
+    FROM snickers s
+    JOIN product_registry pr ON pr.internal_id = s.id AND pr.source_table = 'snickers'
+     WHERE 
+        s.name ILIKE '%' || $1::text || '%' 
+        AND ($2::numeric IS NULL OR s.minprice >= $2)  -- Фильтр по мин. цене
+        AND ($3::numeric IS NULL OR s.maxprice <= $3)   -- Фильтр по макс. цене
+
+),
+firm_counts AS (
+    SELECT firm, COUNT(global_id) AS firm_count
+    FROM combined_products
+    GROUP BY firm
+)
+SELECT
+    COUNT(NULLIF(cp."3.5", 0)) AS "3.5",
+    COUNT(NULLIF(cp."4", 0)) AS "4",
+    COUNT(NULLIF(cp."4.5", 0)) AS "4.5",
+    COUNT(NULLIF(cp."5", 0)) AS "5",
+    COUNT(NULLIF(cp."5.5", 0)) AS "5.5",
+    COUNT(NULLIF(cp."6", 0)) AS "6",
+    COUNT(NULLIF(cp."6.5", 0)) AS "6.5",
+    COUNT(NULLIF(cp."7", 0)) AS "7",
+    COUNT(NULLIF(cp."7.5", 0)) AS "7.5",
+    COUNT(NULLIF(cp."8", 0)) AS "8",
+    COUNT(NULLIF(cp."8.5", 0)) AS "8.5",
+    COUNT(NULLIF(cp."9", 0)) AS "9",
+    COUNT(NULLIF(cp."9.5", 0)) AS "9.5",
+    COUNT(NULLIF(cp."10", 0)) AS "10",
+    COUNT(NULLIF(cp."10.5", 0)) AS "10.5",
+    COUNT(NULLIF(cp."11", 0)) AS "11",
+    COUNT(NULLIF(cp."11.5", 0)) AS "11.5",
+    COUNT(NULLIF(cp."12", 0)) AS "12",
+    COUNT(NULLIF(cp."12.5", 0)) AS "12.5",
+    COUNT(NULLIF(cp."13", 0)) AS "13",
+    MIN(cp.minprice)::float AS min,
+    MAX(cp.maxprice)::float AS max,
+    jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) AS firm_count_map
+FROM combined_products cp
+LEFT JOIN firm_counts fc ON cp.firm = fc.firm
+GROUP BY ()
+`
+
+type GetFiltersFromSnickersParams struct {
+	Name     string         `json:"name"`
+	MinPrice pgtype.Numeric `json:"min_price"`
+	MaxPrice pgtype.Numeric `json:"max_price"`
+}
+
+type GetFiltersFromSnickersRow struct {
+	_35          int64   `json:"3.5"`
+	_4           int64   `json:"4"`
+	_45          int64   `json:"4.5"`
+	_5           int64   `json:"5"`
+	_55          int64   `json:"5.5"`
+	_6           int64   `json:"6"`
+	_65          int64   `json:"6.5"`
+	_7           int64   `json:"7"`
+	_75          int64   `json:"7.5"`
+	_8           int64   `json:"8"`
+	_85          int64   `json:"8.5"`
+	_9           int64   `json:"9"`
+	_95          int64   `json:"9.5"`
+	_10          int64   `json:"10"`
+	_105         int64   `json:"10.5"`
+	_11          int64   `json:"11"`
+	_115         int64   `json:"11.5"`
+	_12          int64   `json:"12"`
+	_125         int64   `json:"12.5"`
+	_13          int64   `json:"13"`
+	Min          float64 `json:"min"`
+	Max          float64 `json:"max"`
+	FirmCountMap []byte  `json:"firm_count_map"`
+}
+
+func (q *Queries) GetFiltersFromSnickers(ctx context.Context, arg GetFiltersFromSnickersParams) (GetFiltersFromSnickersRow, error) {
+	row := q.db.QueryRow(ctx, getFiltersFromSnickers, arg.Name, arg.MinPrice, arg.MaxPrice)
+	var i GetFiltersFromSnickersRow
 	err := row.Scan(
 		&i._35,
 		&i._4,
@@ -398,61 +758,161 @@ func (q *Queries) GetFirms(ctx context.Context) ([]GetFirmsRow, error) {
 	return items, nil
 }
 
-const getMerchByIds = `-- name: GetMerchByIds :many
+const getFullProductsInfoByIds = `-- name: GetFullProductsInfoByIds :many
 SELECT 
-    s.minPrice,
-    s.id,
+    s.minprice,
+    s.maxprice,
+    pr.global_id,
     s.image_path,
     s.name,
     s.firm,
     d.maxdiscprice,
-    'snickers' AS producttype
+    s.type,
+    s."3.5", s."4", s."4.5", s."5", s."5.5", 
+    s."6", s."6.5", s."7", s."7.5", s."8", 
+    s."8.5", s."9", s."9.5", s."10", s."10.5", 
+    s."11", s."11.5", s."12", s."12.5", s."13",
+    NULL::integer AS "XS",
+    NULL::integer AS "S",
+    NULL::integer AS "M",
+    NULL::integer AS "L",
+    NULL::integer AS "XL",
+    NULL::integer AS "XXL"
 FROM snickers s
-LEFT JOIN discount d ON s.id = d.productId 
-WHERE s.id = ANY($1::integer[])
+JOIN product_registry pr ON pr.internal_id = s.id AND pr.source_table = 'snickers'
+LEFT JOIN discount d ON s.id = d.productid
+WHERE pr.global_id = ANY($1::integer[])
 
 UNION ALL
 
 SELECT 
     sm.minprice,
-    sm.id,
+    sm.minprice AS maxprice,
+    pr.global_id,
     sm.image_path,
     sm.name,
     sm.firm,
     d.maxdiscprice,
-    'solomerch' AS producttype
+    sm.type,
+    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer, 
+    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer
 FROM solomerch sm
-LEFT JOIN discount d ON sm.id = d.productId 
-WHERE sm.id = ANY($1::integer[])
+JOIN product_registry pr ON pr.internal_id = sm.id AND pr.source_table = 'solomerch'
+LEFT JOIN discount d ON sm.id = d.productid
+WHERE pr.global_id = ANY($1::integer[])
+
+UNION ALL
+
+SELECT 
+    cl.minprice,
+    cl.maxprice,
+    pr.global_id,
+    cl.image_path,
+    cl.name,
+    cl.firm,
+    d.maxdiscprice,
+    cl.type,
+    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer, 
+    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
+    cl.xs::integer AS "XS",
+    cl.s::integer AS "S",
+    cl.m::integer AS "M",
+    cl.l::integer AS "L",
+    cl.xl::integer AS "XL",
+    cl.xxl::integer AS "XXL"
+FROM clothes cl
+JOIN product_registry pr ON pr.internal_id = cl.id AND pr.source_table = 'clothes'
+LEFT JOIN discount d ON cl.id = d.productid
+WHERE pr.global_id = ANY($1::integer[])
+ORDER BY minprice ASC
 `
 
-type GetMerchByIdsRow struct {
+type GetFullProductsInfoByIdsRow struct {
 	Minprice     int32       `json:"minprice"`
-	ID           int32       `json:"id"`
+	Maxprice     int32       `json:"maxprice"`
+	GlobalID     int32       `json:"global_id"`
 	ImagePath    string      `json:"image_path"`
 	Name         string      `json:"name"`
 	Firm         string      `json:"firm"`
 	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-	Producttype  string      `json:"producttype"`
+	Type         int32       `json:"type"`
+	_35          pgtype.Int4 `json:"3.5"`
+	_4           pgtype.Int4 `json:"4"`
+	_45          pgtype.Int4 `json:"4.5"`
+	_5           pgtype.Int4 `json:"5"`
+	_55          pgtype.Int4 `json:"5.5"`
+	_6           pgtype.Int4 `json:"6"`
+	_65          pgtype.Int4 `json:"6.5"`
+	_7           pgtype.Int4 `json:"7"`
+	_75          pgtype.Int4 `json:"7.5"`
+	_8           pgtype.Int4 `json:"8"`
+	_85          pgtype.Int4 `json:"8.5"`
+	_9           pgtype.Int4 `json:"9"`
+	_95          pgtype.Int4 `json:"9.5"`
+	_10          pgtype.Int4 `json:"10"`
+	_105         pgtype.Int4 `json:"10.5"`
+	_11          pgtype.Int4 `json:"11"`
+	_115         pgtype.Int4 `json:"11.5"`
+	_12          pgtype.Int4 `json:"12"`
+	_125         pgtype.Int4 `json:"12.5"`
+	_13          pgtype.Int4 `json:"13"`
+	XS           pgtype.Int4 `json:"XS"`
+	S            pgtype.Int4 `json:"S"`
+	M            pgtype.Int4 `json:"M"`
+	L            pgtype.Int4 `json:"L"`
+	XL           pgtype.Int4 `json:"XL"`
+	XXL          pgtype.Int4 `json:"XXL"`
 }
 
-func (q *Queries) GetMerchByIds(ctx context.Context, dollar_1 []int32) ([]GetMerchByIdsRow, error) {
-	rows, err := q.db.Query(ctx, getMerchByIds, dollar_1)
+func (q *Queries) GetFullProductsInfoByIds(ctx context.Context, dollar_1 []int32) ([]GetFullProductsInfoByIdsRow, error) {
+	rows, err := q.db.Query(ctx, getFullProductsInfoByIds, dollar_1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetMerchByIdsRow
+	var items []GetFullProductsInfoByIdsRow
 	for rows.Next() {
-		var i GetMerchByIdsRow
+		var i GetFullProductsInfoByIdsRow
 		if err := rows.Scan(
 			&i.Minprice,
-			&i.ID,
+			&i.Maxprice,
+			&i.GlobalID,
 			&i.ImagePath,
 			&i.Name,
 			&i.Firm,
 			&i.Maxdiscprice,
-			&i.Producttype,
+			&i.Type,
+			&i._35,
+			&i._4,
+			&i._45,
+			&i._5,
+			&i._55,
+			&i._6,
+			&i._65,
+			&i._7,
+			&i._75,
+			&i._8,
+			&i._85,
+			&i._9,
+			&i._95,
+			&i._10,
+			&i._105,
+			&i._11,
+			&i._115,
+			&i._12,
+			&i._125,
+			&i._13,
+			&i.XS,
+			&i.S,
+			&i.M,
+			&i.L,
+			&i.XL,
+			&i.XXL,
 		); err != nil {
 			return nil, err
 		}
@@ -465,26 +925,24 @@ func (q *Queries) GetMerchByIds(ctx context.Context, dollar_1 []int32) ([]GetMer
 }
 
 const getMerchByLineName = `-- name: GetMerchByLineName :many
-
-
 SELECT name,
     image_path,
     soloMerch.id,
     value,
     article,
-     'solomerch' AS producttype
+    type
 FROM soloMerch
     LEFT JOIN discount ON soloMerch.id = productid 
 WHERE firm = $1
 `
 
 type GetMerchByLineNameRow struct {
-	Name        string      `json:"name"`
-	ImagePath   string      `json:"image_path"`
-	ID          int32       `json:"id"`
-	Value       []byte      `json:"value"`
-	Article     pgtype.Text `json:"article"`
-	Producttype string      `json:"producttype"`
+	Name      string      `json:"name"`
+	ImagePath string      `json:"image_path"`
+	ID        int32       `json:"id"`
+	Value     []byte      `json:"value"`
+	Article   pgtype.Text `json:"article"`
+	Type      int32       `json:"type"`
 }
 
 func (q *Queries) GetMerchByLineName(ctx context.Context, firm string) ([]GetMerchByLineNameRow, error) {
@@ -502,92 +960,7 @@ func (q *Queries) GetMerchByLineName(ctx context.Context, firm string) ([]GetMer
 			&i.ID,
 			&i.Value,
 			&i.Article,
-			&i.Producttype,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getMerchByName = `-- name: GetMerchByName :many
-SELECT 
-    s.minPrice,
-    p.global_id,
-    s.image_path,
-    s.name,
-    s.firm,
-    d.maxdiscprice,
-    'snickers' AS producttype
-FROM snickers s
-JOIN product_registry p ON s.id = p.internal_id AND p.source_table = 'snickers'
-LEFT JOIN discount d ON s.id = d.productId 
-WHERE s.name ILIKE '%' || $1::text || '%'
-UNION ALL
-SELECT 
-    sm.minprice,
-    p.global_id,
-    sm.image_path,
-    sm.name,
-    sm.firm,
-    d.maxdiscprice,
-    'solomerch' AS producttype
-FROM solomerch sm
-   JOIN product_registry p ON sm.id = p.internal_id AND p.source_table = 'solomerch'
-LEFT JOIN discount d ON sm.id = d.productId 
-WHERE sm.name ILIKE '%' || $1::text || '%'
-UNION ALL
-SELECT 
-    cl.minprice,
-    p.global_id,
-    cl.image_path,
-    cl.name,
-    cl.firm,
-    d.maxdiscprice,
-    'clothes' AS producttype
-FROM clothes cl
-   JOIN product_registry p ON cl.id = p.internal_id AND p.source_table = 'solomerch'
-LEFT JOIN discount d ON cl.id = d.productId 
-WHERE cl.name ILIKE '%' || $1::text || '%'
-LIMIT $2
-`
-
-type GetMerchByNameParams struct {
-	Column1 string `json:"column_1"`
-	Limit   int32  `json:"limit"`
-}
-
-type GetMerchByNameRow struct {
-	Minprice     int32       `json:"minprice"`
-	GlobalID     int32       `json:"global_id"`
-	ImagePath    string      `json:"image_path"`
-	Name         string      `json:"name"`
-	Firm         string      `json:"firm"`
-	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-	Producttype  string      `json:"producttype"`
-}
-
-func (q *Queries) GetMerchByName(ctx context.Context, arg GetMerchByNameParams) ([]GetMerchByNameRow, error) {
-	rows, err := q.db.Query(ctx, getMerchByName, arg.Column1, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetMerchByNameRow
-	for rows.Next() {
-		var i GetMerchByNameRow
-		if err := rows.Scan(
-			&i.Minprice,
-			&i.GlobalID,
-			&i.ImagePath,
-			&i.Name,
-			&i.Firm,
-			&i.Maxdiscprice,
-			&i.Producttype,
+			&i.Type,
 		); err != nil {
 			return nil, err
 		}
@@ -600,7 +973,7 @@ func (q *Queries) GetMerchByName(ctx context.Context, arg GetMerchByNameParams) 
 }
 
 const getMerchCollection = `-- name: GetMerchCollection :many
-(
+SELECT minprice, global_id, image_path, name, firm, maxdiscprice, type, total_count FROM (
     SELECT 
         COALESCE(d.minprice, s.minprice) AS minprice,
         p.global_id,
@@ -608,15 +981,15 @@ const getMerchCollection = `-- name: GetMerchCollection :many
         s.name,
         s.firm,
         d.maxdiscprice,
-        'snickers' AS producttype
+        s.type,
+        COUNT(*) OVER() AS total_count
     FROM snickers s
     JOIN product_registry p ON s.id = p.internal_id AND p.source_table = 'snickers'
     LEFT JOIN discount d ON s.id = d.productId 
     WHERE s.firm = $1 OR s.line = $2
-    ORDER BY s.id
-)
-UNION ALL
-(
+
+    UNION ALL
+
     SELECT 
         COALESCE(d.minprice, sm.minprice) AS minprice,
         p.global_id,
@@ -624,29 +997,31 @@ UNION ALL
         sm.name,
         sm.firm,
         d.maxdiscprice,
-        'solomerch' AS producttype
+        sm.type,
+        COUNT(*) OVER() AS total_count
     FROM solomerch sm
-     JOIN product_registry p ON sm.id = p.internal_id AND p.source_table = 'solomerch'
+    JOIN product_registry p ON sm.id = p.internal_id AND p.source_table = 'solomerch'
     LEFT JOIN discount d ON sm.id = d.productId
     WHERE sm.firm = $1 OR sm.line = $2
-    ORDER BY sm.id
-)
-UNION ALL
-(
+
+    UNION ALL
+
     SELECT 
-        COALESCE(d.minprice, sm.minprice) AS minprice,
+        COALESCE(d.minprice, cl.minprice) AS minprice,
         p.global_id,
         cl.image_path,
         cl.name,
         cl.firm,
         d.maxdiscprice,
-        'clothes' AS producttype
+        cl.type ,
+        COUNT(*) OVER() AS total_count
     FROM clothes cl
-     JOIN product_registry p ON cl.id = p.internal_id AND p.source_table = 'clothes'
+    JOIN product_registry p ON cl.id = p.internal_id AND p.source_table = 'clothes'
     LEFT JOIN discount d ON cl.id = d.productId
     WHERE cl.firm = $1 OR cl.line = $2
-    ORDER BY cl.id
-)
+) AS combined_results
+ORDER BY 
+    CASE WHEN COALESCE(minprice, 0) > 0 THEN 0 ELSE 1 END
 LIMIT $3 OFFSET $4
 `
 
@@ -664,7 +1039,8 @@ type GetMerchCollectionRow struct {
 	Name         string      `json:"name"`
 	Firm         string      `json:"firm"`
 	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-	Producttype  string      `json:"producttype"`
+	Type         int32       `json:"type"`
+	TotalCount   int64       `json:"total_count"`
 }
 
 func (q *Queries) GetMerchCollection(ctx context.Context, arg GetMerchCollectionParams) ([]GetMerchCollectionRow, error) {
@@ -688,7 +1064,8 @@ func (q *Queries) GetMerchCollection(ctx context.Context, arg GetMerchCollection
 			&i.Name,
 			&i.Firm,
 			&i.Maxdiscprice,
-			&i.Producttype,
+			&i.Type,
+			&i.TotalCount,
 		); err != nil {
 			return nil, err
 		}
@@ -711,7 +1088,7 @@ WITH combined_products AS (
         s.firm,
         d.maxdiscprice,
         COUNT(*) OVER () AS total_count,
-        'snickers' AS producttype
+        s.type
     FROM snickers s
     LEFT JOIN discount d ON s.id = d.productId
     WHERE s.firm = $1 OR s.line = $2
@@ -727,7 +1104,7 @@ WITH combined_products AS (
         sm.firm,
         d.maxdiscprice,
         NULL::bigint AS total_count,
-        'solomerch' AS producttype
+        sm.type
     FROM solomerch sm
     LEFT JOIN discount d ON sm.id = d.productId
     WHERE sm.firm = $1 OR sm.line = $2
@@ -742,7 +1119,7 @@ WITH combined_products AS (
         cl.firm,
         d.maxdiscprice,
         NULL::bigint AS total_count,
-        'clothes' AS producttype
+        cl.type 
     FROM clothes cl
     LEFT JOIN discount d ON cl.id = d.productId
     WHERE cl.firm = $1 OR cl.line = $2
@@ -754,7 +1131,7 @@ SELECT
     name,
     firm,
     maxdiscprice,
-    producttype,
+    type,
     FIRST_VALUE(total_count) OVER () AS total_count
 FROM combined_products
 ORDER BY name
@@ -775,7 +1152,7 @@ type GetMerchCollectionWithCountRow struct {
 	Name         string      `json:"name"`
 	Firm         string      `json:"firm"`
 	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-	Producttype  string      `json:"producttype"`
+	Type         int32       `json:"type"`
 	TotalCount   interface{} `json:"total_count"`
 }
 
@@ -800,7 +1177,7 @@ func (q *Queries) GetMerchCollectionWithCount(ctx context.Context, arg GetMerchC
 			&i.Name,
 			&i.Firm,
 			&i.Maxdiscprice,
-			&i.Producttype,
+			&i.Type,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err
@@ -970,7 +1347,7 @@ const getMerchProductsByFirmName = `-- name: GetMerchProductsByFirmName :many
         s.id,
         COALESCE(d.minprice, s.minprice) AS value,  -- Используем minprice как value
         s.article,
-       'snickers' AS producttype
+        s.type
     FROM snickers s
     LEFT JOIN discount d ON s.id = d.productid  -- Связь по snickers_id
     WHERE s.firm = $1
@@ -984,7 +1361,7 @@ UNION ALL
         sm.id,
         COALESCE(d.minprice, sm.minprice) AS value,  -- Используем price как value
         sm.article,
-         'solomerch' AS producttype
+        sm.type
     FROM solomerch sm
     LEFT JOIN discount d ON sm.id = d.productid  -- Связь по solo_merch_id
     WHERE sm.firm = $1
@@ -998,7 +1375,7 @@ UNION ALL
         cl.id,
         COALESCE(d.minprice, cl.minprice) AS value,  -- Используем price как value
         cl.article,
-         'clothes' AS producttype
+        cl.type
     FROM clothes cl
     LEFT JOIN discount d ON cl.id = d.productid  -- Связь по solo_merch_id
     WHERE cl.firm = $1
@@ -1007,12 +1384,12 @@ ORDER BY name
 `
 
 type GetMerchProductsByFirmNameRow struct {
-	Name        string      `json:"name"`
-	ImagePath   string      `json:"image_path"`
-	ID          int32       `json:"id"`
-	Value       int32       `json:"value"`
-	Article     pgtype.Text `json:"article"`
-	Producttype string      `json:"producttype"`
+	Name      string      `json:"name"`
+	ImagePath string      `json:"image_path"`
+	ID        int32       `json:"id"`
+	Value     int32       `json:"value"`
+	Article   pgtype.Text `json:"article"`
+	Type      int32       `json:"type"`
 }
 
 func (q *Queries) GetMerchProductsByFirmName(ctx context.Context, firm string) ([]GetMerchProductsByFirmNameRow, error) {
@@ -1030,7 +1407,7 @@ func (q *Queries) GetMerchProductsByFirmName(ctx context.Context, firm string) (
 			&i.ID,
 			&i.Value,
 			&i.Article,
-			&i.Producttype,
+			&i.Type,
 		); err != nil {
 			return nil, err
 		}
@@ -1043,50 +1420,46 @@ func (q *Queries) GetMerchProductsByFirmName(ctx context.Context, firm string) (
 }
 
 const getMerchWithDiscount = `-- name: GetMerchWithDiscount :many
-(
-    -- Данные из таблицы snickers
-    SELECT 
-        s.minPrice,
-        s.qId,
-        s.id,
-        s.image_path,
-        s.name,
-        s.firm,
-        d.maxdiscprice,
-         'snickers' AS producttype
-    FROM snickers s
-    JOIN discount d ON s.id = d.productId
-)
+SELECT 
+    s.minprice,
+    s.qId,
+    s.id,
+    s.image_path,
+    s.name,
+    s.firm,
+    d.maxdiscprice,
+    s.type
+FROM snickers s
+LEFT JOIN discount d ON s.id = d.productId  -- LEFT JOIN вместо JOIN
+
 UNION ALL
-(
-    -- Данные из таблицы soloMerch
-    SELECT 
-        sm.minprice,  -- Используем price вместо minprice
-        sm.qId,
-        sm.id,
-        sm.image_path,
-        sm.name,
-        sm.firm,
-        d.maxdiscprice,
-         'solomerch' AS producttype
-    FROM solomerch sm
-    JOIN discount d ON sm.id = d.productId
-)
+
+SELECT 
+    sm.minprice,
+    sm.qId,
+    sm.id,
+    sm.image_path,
+    sm.name,
+    sm.firm,
+    d.maxdiscprice,
+    sm.type
+FROM solomerch sm
+LEFT JOIN discount d ON sm.id = d.productId  -- LEFT JOIN вместо JOIN
+
 UNION ALL
-(
-    -- Данные из таблицы soloMerch
-    SELECT 
-        cl.minprice,  -- Используем price вместо minprice
-        cl.qId,
-        cl.id,
-        cl.image_path,
-        cl.name,
-        cl.firm,
-        d.maxdiscprice,
-        'clothes' AS producttype
-    FROM clothes cl
-    JOIN discount d ON cl.id = d.productId
-)
+
+SELECT 
+    cl.minprice,
+    cl.qId,
+    cl.id,
+    cl.image_path,
+    cl.name,
+    cl.firm,
+    d.maxdiscprice,
+    cl.type
+FROM clothes cl
+LEFT JOIN discount d ON cl.id = d.productId
+ORDER BY minprice ASC
 `
 
 type GetMerchWithDiscountRow struct {
@@ -1097,9 +1470,11 @@ type GetMerchWithDiscountRow struct {
 	Name         string      `json:"name"`
 	Firm         string      `json:"firm"`
 	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-	Producttype  string      `json:"producttype"`
+	Type         int32       `json:"type"`
 }
 
+// Данные из таблицы solomerch
+// Данные из таблицы clothes
 func (q *Queries) GetMerchWithDiscount(ctx context.Context) ([]GetMerchWithDiscountRow, error) {
 	rows, err := q.db.Query(ctx, getMerchWithDiscount)
 	if err != nil {
@@ -1117,7 +1492,7 @@ func (q *Queries) GetMerchWithDiscount(ctx context.Context) ([]GetMerchWithDisco
 			&i.Name,
 			&i.Firm,
 			&i.Maxdiscprice,
-			&i.Producttype,
+			&i.Type,
 		); err != nil {
 			return nil, err
 		}
@@ -1145,6 +1520,299 @@ func (q *Queries) GetProductSource(ctx context.Context, globalID int32) (GetProd
 	var i GetProductSourceRow
 	err := row.Scan(&i.SourceTable, &i.InternalID)
 	return i, err
+}
+
+const getProductsByIds = `-- name: GetProductsByIds :many
+SELECT 
+    s.minprice,
+    pr.global_id,  -- Используем global_id вместо s.id
+    s.image_path,
+    s.name,
+    s.firm,
+    d.maxdiscprice,
+    s.type
+FROM snickers s
+JOIN product_registry pr ON pr.internal_id = s.id AND pr.source_table = 'snickers'
+LEFT JOIN discount d ON s.id = d.productId 
+WHERE pr.global_id = ANY($1::integer[])
+
+UNION ALL
+
+SELECT 
+    sm.minprice,
+    pr.global_id,  -- Используем global_id вместо sm.id
+    sm.image_path,
+    sm.name,
+    sm.firm,
+    d.maxdiscprice,
+    sm.type
+FROM solomerch sm
+JOIN product_registry pr ON pr.internal_id = sm.id AND pr.source_table = 'solomerch'
+LEFT JOIN discount d ON sm.id = d.productId 
+WHERE pr.global_id = ANY($1::integer[])
+
+UNION ALL
+
+SELECT 
+    cl.minprice,
+    pr.global_id,  -- Используем global_id вместо cl.id
+    cl.image_path,
+    cl.name,
+    cl.firm,
+    d.maxdiscprice,
+    cl.type
+FROM clothes cl
+JOIN product_registry pr ON pr.internal_id = cl.id AND pr.source_table = 'clothes'
+LEFT JOIN discount d ON cl.id = d.productId 
+WHERE pr.global_id = ANY($1::integer[])
+ORDER BY minprice ASC
+`
+
+type GetProductsByIdsRow struct {
+	Minprice     int32       `json:"minprice"`
+	GlobalID     int32       `json:"global_id"`
+	ImagePath    string      `json:"image_path"`
+	Name         string      `json:"name"`
+	Firm         string      `json:"firm"`
+	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
+	Type         int32       `json:"type"`
+}
+
+func (q *Queries) GetProductsByIds(ctx context.Context, dollar_1 []int32) ([]GetProductsByIdsRow, error) {
+	rows, err := q.db.Query(ctx, getProductsByIds, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductsByIdsRow
+	for rows.Next() {
+		var i GetProductsByIdsRow
+		if err := rows.Scan(
+			&i.Minprice,
+			&i.GlobalID,
+			&i.ImagePath,
+			&i.Name,
+			&i.Firm,
+			&i.Maxdiscprice,
+			&i.Type,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProductsByName = `-- name: GetProductsByName :many
+SELECT 
+    s.minprice,
+    p.global_id,
+    s.image_path,
+    s.name,
+    s.firm,
+    d.maxdiscprice,
+    s.type
+FROM snickers s
+JOIN product_registry p ON s.id = p.internal_id AND p.source_table = 'snickers'
+LEFT JOIN discount d ON s.id = d.productId 
+WHERE s.name ILIKE '%' || $1::text || '%'
+UNION ALL
+SELECT 
+    sm.minprice,
+    p.global_id,
+    sm.image_path,
+    sm.name,
+    sm.firm,
+    d.maxdiscprice,
+    sm.type
+FROM solomerch sm
+   JOIN product_registry p ON sm.id = p.internal_id AND p.source_table = 'solomerch'
+LEFT JOIN discount d ON sm.id = d.productId 
+WHERE sm.name ILIKE '%' || $1::text || '%'
+UNION ALL
+SELECT 
+    cl.minprice,
+    p.global_id,
+    cl.image_path,
+    cl.name,
+    cl.firm,
+    d.maxdiscprice,
+    cl.type
+FROM clothes cl
+   JOIN product_registry p ON cl.id = p.internal_id AND p.source_table = 'clothes'
+LEFT JOIN discount d ON cl.id = d.productId 
+WHERE cl.name ILIKE '%' || $1::text || '%'
+ORDER BY minprice ASC
+LIMIT $2
+`
+
+type GetProductsByNameParams struct {
+	Column1 string `json:"column_1"`
+	Limit   int32  `json:"limit"`
+}
+
+type GetProductsByNameRow struct {
+	Minprice     int32       `json:"minprice"`
+	GlobalID     int32       `json:"global_id"`
+	ImagePath    string      `json:"image_path"`
+	Name         string      `json:"name"`
+	Firm         string      `json:"firm"`
+	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
+	Type         int32       `json:"type"`
+}
+
+func (q *Queries) GetProductsByName(ctx context.Context, arg GetProductsByNameParams) ([]GetProductsByNameRow, error) {
+	rows, err := q.db.Query(ctx, getProductsByName, arg.Column1, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductsByNameRow
+	for rows.Next() {
+		var i GetProductsByNameRow
+		if err := rows.Scan(
+			&i.Minprice,
+			&i.GlobalID,
+			&i.ImagePath,
+			&i.Name,
+			&i.Firm,
+			&i.Maxdiscprice,
+			&i.Type,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProductsInfoById = `-- name: GetProductsInfoById :one
+SELECT info,
+    image_path,
+    name,
+    discount.value AS value,
+    article,
+    description,
+    date,
+    image_count
+FROM snickers
+    LEFT JOIN discount ON snickers.id = productid
+WHERE snickers.id = $1
+`
+
+type GetProductsInfoByIdRow struct {
+	Info        []byte      `json:"info"`
+	ImagePath   string      `json:"image_path"`
+	Name        string      `json:"name"`
+	Value       []byte      `json:"value"`
+	Article     pgtype.Text `json:"article"`
+	Description pgtype.Text `json:"description"`
+	Date        pgtype.Text `json:"date"`
+	ImageCount  int32       `json:"image_count"`
+}
+
+func (q *Queries) GetProductsInfoById(ctx context.Context, id int32) (GetProductsInfoByIdRow, error) {
+	row := q.db.QueryRow(ctx, getProductsInfoById, id)
+	var i GetProductsInfoByIdRow
+	err := row.Scan(
+		&i.Info,
+		&i.ImagePath,
+		&i.Name,
+		&i.Value,
+		&i.Article,
+		&i.Description,
+		&i.Date,
+		&i.ImageCount,
+	)
+	return i, err
+}
+
+const getProductsWithDiscount = `-- name: GetProductsWithDiscount :many
+SELECT 
+    snickers.type,
+    snickers.minPrice,
+    snickers.id,
+    snickers.image_path,
+    snickers.name,
+    snickers.firm,
+    discount.maxdiscprice,
+    discount.value AS discount_value
+FROM snickers
+JOIN discount ON snickers.id = discount.productid
+
+UNION ALL
+
+SELECT 
+    clothes.type,
+    clothes.minPrice,
+    clothes.id,
+    clothes.image_path,
+    clothes.name,
+    clothes.firm,  -- если в clothes нет firm
+    discount.maxdiscprice,  -- если в clothes нет maxdiscprice
+    discount.value AS discount_value
+FROM clothes
+JOIN discount ON clothes.id = discount.productid
+
+UNION ALL
+
+SELECT 
+    solomerch.DeliveryType,
+    solomerch.minPrice,
+    solomerch.id,
+    solomerch.image_path,
+    solomerch.name,
+    solomerch.firm,
+    discount.maxdiscprice,
+    discount.value AS discount_value
+FROM solomerch
+JOIN discount ON solomerch.id = discount.productid
+`
+
+type GetProductsWithDiscountRow struct {
+	Type          int32       `json:"type"`
+	Minprice      int32       `json:"minprice"`
+	ID            int32       `json:"id"`
+	ImagePath     string      `json:"image_path"`
+	Name          string      `json:"name"`
+	Firm          string      `json:"firm"`
+	Maxdiscprice  pgtype.Int4 `json:"maxdiscprice"`
+	DiscountValue []byte      `json:"discount_value"`
+}
+
+func (q *Queries) GetProductsWithDiscount(ctx context.Context) ([]GetProductsWithDiscountRow, error) {
+	rows, err := q.db.Query(ctx, getProductsWithDiscount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductsWithDiscountRow
+	for rows.Next() {
+		var i GetProductsWithDiscountRow
+		if err := rows.Scan(
+			&i.Type,
+			&i.Minprice,
+			&i.ID,
+			&i.ImagePath,
+			&i.Name,
+			&i.Firm,
+			&i.Maxdiscprice,
+			&i.DiscountValue,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getSnickersByFirmName = `-- name: GetSnickersByFirmName :many
@@ -1290,7 +1958,7 @@ SELECT snickers.minPrice,
     name,
     firm,
     maxdiscprice,
-    'snickers' AS producttype
+    type
 FROM snickers
     LEFT JOIN discount ON snickers.id = productid
 WHERE name ILIKE '%' || $1::text || '%'
@@ -1309,7 +1977,7 @@ type GetSnickersByNameRow struct {
 	Name         string      `json:"name"`
 	Firm         string      `json:"firm"`
 	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-	Producttype  string      `json:"producttype"`
+	Type         int32       `json:"type"`
 }
 
 func (q *Queries) GetSnickersByName(ctx context.Context, arg GetSnickersByNameParams) ([]GetSnickersByNameRow, error) {
@@ -1328,98 +1996,7 @@ func (q *Queries) GetSnickersByName(ctx context.Context, arg GetSnickersByNamePa
 			&i.Name,
 			&i.Firm,
 			&i.Maxdiscprice,
-			&i.Producttype,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getSnickersInfoById = `-- name: GetSnickersInfoById :one
-SELECT info,
-    image_path,
-    name,
-    value,
-    article,
-    description,
-    date,
-    image_count
-FROM snickers
-    LEFT JOIN discount ON snickers.id = productid
-WHERE snickers.id = $1
-`
-
-type GetSnickersInfoByIdRow struct {
-	Info        []byte      `json:"info"`
-	ImagePath   string      `json:"image_path"`
-	Name        string      `json:"name"`
-	Value       []byte      `json:"value"`
-	Article     pgtype.Text `json:"article"`
-	Description pgtype.Text `json:"description"`
-	Date        pgtype.Text `json:"date"`
-	ImageCount  int32       `json:"image_count"`
-}
-
-func (q *Queries) GetSnickersInfoById(ctx context.Context, id int32) (GetSnickersInfoByIdRow, error) {
-	row := q.db.QueryRow(ctx, getSnickersInfoById, id)
-	var i GetSnickersInfoByIdRow
-	err := row.Scan(
-		&i.Info,
-		&i.ImagePath,
-		&i.Name,
-		&i.Value,
-		&i.Article,
-		&i.Description,
-		&i.Date,
-		&i.ImageCount,
-	)
-	return i, err
-}
-
-const getSnickersWithDiscount = `-- name: GetSnickersWithDiscount :many
-SELECT snickers.minPrice,
-    snickers.qId,
-    snickers.id,
-    image_path,
-    name,
-    firm,
-    maxdiscprice
-FROM snickers
-    JOIN discount ON snickers.id = productid
-`
-
-type GetSnickersWithDiscountRow struct {
-	Minprice     int32       `json:"minprice"`
-	Qid          string      `json:"qid"`
-	ID           int32       `json:"id"`
-	ImagePath    string      `json:"image_path"`
-	Name         string      `json:"name"`
-	Firm         string      `json:"firm"`
-	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-}
-
-func (q *Queries) GetSnickersWithDiscount(ctx context.Context) ([]GetSnickersWithDiscountRow, error) {
-	rows, err := q.db.Query(ctx, getSnickersWithDiscount)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetSnickersWithDiscountRow
-	for rows.Next() {
-		var i GetSnickersWithDiscountRow
-		if err := rows.Scan(
-			&i.Minprice,
-			&i.Qid,
-			&i.ID,
-			&i.ImagePath,
-			&i.Name,
-			&i.Firm,
-			&i.Maxdiscprice,
+			&i.Type,
 		); err != nil {
 			return nil, err
 		}
@@ -1566,20 +2143,22 @@ SELECT
     solomerch.minprice,
     description,
     date,
-    image_count
+    image_count,
+    discount.value AS discount_value
 FROM solomerch
     LEFT JOIN discount ON solomerch.id = productid
 WHERE solomerch.id = $1
 `
 
 type GetSoloMerchInfoByIdRow struct {
-	ImagePath   string      `json:"image_path"`
-	Name        string      `json:"name"`
-	Article     pgtype.Text `json:"article"`
-	Minprice    int32       `json:"minprice"`
-	Description pgtype.Text `json:"description"`
-	Date        pgtype.Text `json:"date"`
-	ImageCount  int32       `json:"image_count"`
+	ImagePath     string      `json:"image_path"`
+	Name          string      `json:"name"`
+	Article       pgtype.Text `json:"article"`
+	Minprice      int32       `json:"minprice"`
+	Description   pgtype.Text `json:"description"`
+	Date          pgtype.Text `json:"date"`
+	ImageCount    int32       `json:"image_count"`
+	DiscountValue []byte      `json:"discount_value"`
 }
 
 func (q *Queries) GetSoloMerchInfoById(ctx context.Context, id int32) (GetSoloMerchInfoByIdRow, error) {
@@ -1593,6 +2172,73 @@ func (q *Queries) GetSoloMerchInfoById(ctx context.Context, id int32) (GetSoloMe
 		&i.Description,
 		&i.Date,
 		&i.ImageCount,
+		&i.DiscountValue,
 	)
 	return i, err
+}
+
+const getTypeIDByCategoryAndName = `-- name: GetTypeIDByCategoryAndName :one
+SELECT id 
+FROM product_types
+WHERE category = $1::product_source_enum 
+AND enum_value = $2
+`
+
+type GetTypeIDByCategoryAndNameParams struct {
+	Category ProductSourceEnum `json:"category"`
+	TypeName string            `json:"type_name"`
+}
+
+func (q *Queries) GetTypeIDByCategoryAndName(ctx context.Context, arg GetTypeIDByCategoryAndNameParams) (int32, error) {
+	row := q.db.QueryRow(ctx, getTypeIDByCategoryAndName, arg.Category, arg.TypeName)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertDiscounts = `-- name: InsertDiscounts :one
+
+
+INSERT INTO public.discount (
+    productid,
+    value,
+    minprice,
+    maxdiscprice
+)
+SELECT 
+    unnest($1::int[]),
+    unnest($2::json[]),
+    NULLIF(unnest($3::int[]), 0),
+    NULLIF(unnest($4::int[]), 0)
+RETURNING id
+`
+
+type InsertDiscountsParams struct {
+	ProductIds     []int32  `json:"product_ids"`
+	DiscountValues [][]byte `json:"discount_values"`
+	MinPrices      []int32  `json:"min_prices"`
+	MaxDiscPrices  []int32  `json:"max_disc_prices"`
+}
+
+func (q *Queries) InsertDiscounts(ctx context.Context, arg InsertDiscountsParams) (int32, error) {
+	row := q.db.QueryRow(ctx, insertDiscounts,
+		arg.ProductIds,
+		arg.DiscountValues,
+		arg.MinPrices,
+		arg.MaxDiscPrices,
+	)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
+const selectMainCategories = `-- name: SelectMainCategories :one
+SELECT enum_range(NULL::main_categories)
+`
+
+func (q *Queries) SelectMainCategories(ctx context.Context) (interface{}, error) {
+	row := q.db.QueryRow(ctx, selectMainCategories)
+	var enum_range interface{}
+	err := row.Scan(&enum_range)
+	return enum_range, err
 }

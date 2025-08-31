@@ -1,4 +1,4 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
+import React, { ReactElement, useEffect, useRef, useState ,memo} from 'react'
 import { userSlice } from 'src/store/reducers/userSlice'
 import { useAppSelector,useAppDispatch } from 'src/store/hooks/redux'
 import { NavLink} from 'react-router-dom'
@@ -25,4 +25,4 @@ const BuyButton: React.FC<any> = (props) => {
 }
 
 
-export default BuyButton
+export default memo(BuyButton)

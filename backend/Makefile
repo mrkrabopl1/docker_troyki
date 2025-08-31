@@ -1,4 +1,4 @@
-DB_URL=postgresql://postgres:s8121996@192.168.1.112:5432/troyki?sslmode=disable
+DB_URL=postgresql://postgres:s8121996@192.168.1.46:5432/troyki?sslmode=disable
 
 migrate_back:
 	migrate -path db/migration -database "$(DB_URL)" force 1

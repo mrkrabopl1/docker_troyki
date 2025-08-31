@@ -1,80 +1,87 @@
-import React, { useEffect, ReactElement, useState, useRef, memo } from 'react'
-
-import MerchSliderField from '../../modules/merchField/MerchSliderField'
-import { getMainInfo } from "src/providers/merchProvider"
-import { useAppSelector } from 'src/store/hooks/redux'
+import React, { useEffect, useState, useMemo, memo,useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCollections, getHistoryInfo, getDiscontInfo } from 'src/providers/merchProvider'
+import { useAppSelector } from 'src/store/hooks/redux';
+import { getCollections, getHistoryInfo, getDiscontInfo } from 'src/providers/merchProvider';
 import { shuffle } from 'src/global';
+import MerchSliderField from '../../modules/merchField/MerchSliderField';
 
-import StickyDispetcherButton from 'src/modules/stickyDispetcherButton/StickyDispetcherButton';
-import MerchBanner from 'src/modules/merchBanner/MerchBanner'
-import s from "./s.module.css"
+interface SliderData {
+  [key: string]: any[];
+}
 
-const MerchComplexSliderField: React.FC<any> = () => {
+interface BannerData {
+  image: string;
+  name: string;
+  id: string;
+}
 
-  const navigate = useNavigate()
+const MAX_COLLECTIONS = 4;
+const DISCOUNT_SIZE = 10;
 
-  const onChangeBanner = (id: string) => {
-    navigate("/collections/" + id)
-  }
-
-  let mainPageRef = useRef<HTMLDivElement>(null)
-  let [slidersData, setSlidersData] = useState({})
-
-  let [imgBanner, setImgBanner] = useState<{ image: string, name: string, id: string }>({ image: "", name: "", id: "" })
-
-  const createUrlImage = (data: { mainText: string, subText: string, img: string, name: string, id: string }[]) => {
-    data.forEach(val => {
-      setImgBanner({ image: val.img, name: val.name, id: val.id, })
-    })
-
-
-  }
-
+const MerchComplexSliderFieldComponent: React.FC = () => {
+  const navigate = useNavigate();
   const { collections } = useAppSelector(state => state.menuReducer);
-  const createSliders = () => {
-    let arr = [];
-    for (let sliderName in slidersData) {
-      arr.push(<MerchSliderField key={sliderName} name={sliderName} merchInfo={slidersData[sliderName]} />)
-    }
-    return arr
-  }
-  useEffect(() => {
-    if (!collections.length) return
-    let colLength = Math.min(4, collections.length);
-    if (colLength > 0) {
-      let randomizeArr = [...collections];
-      shuffle(randomizeArr);
-      randomizeArr.length = colLength
+  
+  const [slidersData, setSlidersData] = useState<SliderData>({});
+  const [merchHistoryFieldData, setMerchHistoryFieldData] = useState<any[]>([]);
+  const [merchDiscountFieldData, setDiscountFieldData] = useState<any[]>([]);
 
-      getCollections({ names: randomizeArr, size: 8, page: 1 }, setSlidersData)
-    }
-  }, [collections])
+  const handleBannerClick = useCallback((id: string) => {
+    navigate(`/collections/${id}`);
+  }, [navigate]);
+
+  // Загрузка данных
   useEffect(() => {
-    getHistoryInfo(setMerchHistoryFieldData)
-    getDiscontInfo(10, setDiscountFieldData)
-  }, [])
-  let [merchFieldData, setMerchFieldData] = useState<any>([])
-  let [merchHistoryFieldData, setMerchHistoryFieldData] = useState<any>([])
-  let [merchDiscountFieldData, setDiscountFieldData] = useState<any>([])
+    getHistoryInfo(setMerchHistoryFieldData);
+    getDiscontInfo(DISCOUNT_SIZE, setDiscountFieldData);
+  }, []);
+
+  // Обработка коллекций
+  useEffect(() => {
+    if (!collections.length) return;
+    
+    const colLength = Math.min(MAX_COLLECTIONS, collections.length);
+    if (colLength > 0) {
+      const randomizeArr = [...collections];
+      shuffle(randomizeArr);
+      randomizeArr.length = colLength;
+
+      getCollections({ 
+        names: randomizeArr, 
+        size: 8, 
+        page: 1 
+      }, setSlidersData);
+    }
+  }, [collections]);
+
+  // Создание слайдеров
+  const sliders = useMemo(() => {
+    return Object.entries(slidersData).map(([sliderName, merchInfo]) => (
+      <MerchSliderField 
+        key={sliderName} 
+        name={sliderName} 
+        merchInfo={merchInfo} 
+      />
+    ));
+  }, [slidersData]);
 
   return (
-
     <div style={{ position: "relative" }}>
-      {createSliders()}
-      {merchHistoryFieldData.length ? <MerchSliderField name={"Your history"} merchInfo={merchHistoryFieldData} /> : null}
-      {merchDiscountFieldData.length ? <MerchSliderField name={"With disount"} merchInfo={merchDiscountFieldData} /> : null}
+      {sliders}
+      {merchHistoryFieldData.length > 0 && (
+        <MerchSliderField 
+          name="Your history" 
+          merchInfo={merchHistoryFieldData} 
+        />
+      )}
+      {merchDiscountFieldData.length > 0 && (
+        <MerchSliderField 
+          name="With discount" 
+          merchInfo={merchDiscountFieldData} 
+        />
+      )}
     </div>
+  );
+};
 
-
-  )
-}
-
-
-function arePropsEqual(oldProps: any, newProps: any) {
-
-  return (oldProps.memo == newProps.memo)
-}
-
-export default memo(MerchComplexSliderField, arePropsEqual)
+export default memo(MerchComplexSliderFieldComponent);

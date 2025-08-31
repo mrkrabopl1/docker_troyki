@@ -1,87 +1,103 @@
-import React, { ReactElement, useRef, useState } from 'react'
-import Search from '../../components/search/Search'
-import { useAppDispatch } from 'src/store/hooks/redux';
-import DropDownList from '../../components/DropDownList'
+import React, { useRef, useState, useCallback, memo } from 'react';
+import Search from '../../components/search/Search';
+import DropDownList from '../../components/DropDownList';
 import MerchLine from '../merchField/MerchLine';
 
-type propsRowType = {
+interface SearchWithListProps {
     className?: {
-        main:string,
-        search?:string,
-        dropList:string
-
-    },
-    searchCallback:(...args: any) => void | null,
-    onDataRecieve?: (...args: any) => void ,
-    onChange?: (...args: any) => void ,
-    val?:string,
-    selectList?:(...args: any) => void 
-}
-const defaultStyle: any = {
-    border: "2px solid blue",
-    position: "relative",
-    backgroundColor: "white"
-
+        main?: string;
+        search?: string;
+        dropList?: string;
+    };
+    searchCallback: (data: any) => void;
+    onDataRecieve?: (data: any) => void;
+    onChange?: (value: string) => void;
+    val?: string;
+    selectList?: (data: any) => void;
 }
 
-let obj = { name: "string", imgs: "string",id:"string",firm:"string",price:"string" }
+interface MerchItem {
+    name: string;
+    img: string;
+    id: string;
+    firm: string;
+    price: string;
+    [key: string]: any;
+}
 
+const SearchWithList: React.FC<SearchWithListProps> = memo(({
+    className = {},
+    val,
+    onDataRecieve,
+    searchCallback,
+    onChange,
+    selectList
+}) => {
+    const trottlingTimerId = useRef<NodeJS.Timeout | null>(null);
+    const mainRef = useRef<HTMLDivElement>(null);
+    const [dropDownListData, setDropDownList] = useState<React.ReactElement[]>([]);
+    const [activeList, setActive] = useState(false);
 
+    const handleSelect = useCallback((data: any) => {
+        selectList?.(data);
+    }, [selectList]);
 
-const SearchWithList: React.FC<propsRowType> = (props) => {
-    let trottlingTimerId = useRef<ReturnType<typeof setTimeout> | null>(null)
-    let { val,className,onDataRecieve,searchCallback, onChange, selectList } = { ...props }
-    let [dropDownListData, setDropDownList] = useState<ReactElement[]>([])
-    let mainRef = useRef<HTMLDivElement|null>(null)
+    const createDropList = useCallback((data: MerchItem[]) => {
+        onDataRecieve?.(data);
+        setDropDownList(
+            data.map((value) => (
+                <MerchLine 
+                    key={`${value.id}-${value.name}`} 
+                    onChange= {handleSelect }
+                    {...value}
+                />
+            ))
+        );
+    }, [onDataRecieve, handleSelect]);
 
-    const onChangeHandler=(data)=>{
-        selectList && selectList(data)
-    }
+    const handleFocus = useCallback(() => {
+        setTimeout(() => setActive(true), 0);
+    }, []);
 
-    const createDropList: (data: any) => void = (data) => {
-        onDataRecieve && onDataRecieve(data)
-        setDropDownList( data.map((value:any) =>
-        {
-            return <MerchLine key={value.name}  data={{...value, onChange:onChangeHandler}}/>    
+    const handleBlur = useCallback((e: React.FocusEvent) => {
+        if (!mainRef.current?.contains(e.relatedTarget as Node)) {
+            setActive(false);
         }
-          
-        ))
-    }
+    }, []);
 
-    let [activeList,setActive] = useState<boolean>(true)
+    const handleSearch = useCallback((data: any) => {
+        setActive(false);
+        searchCallback(data);
+    }, [searchCallback]);
 
-
-    const onFocus=()=>{
-        setTimeout(()=>setActive(true),0)
-    }
-    const onBlur=(e)=>{
-        console.debug(e.relatedTarget)
-        setActive(false)
-    }
-
-    const seatchProxy=(data:any)=>{
-        setActive(false)
-        searchCallback(data)
-    }
-
-    const onClicks = ()=>{
-        console.debug("fmd;fms;dkfms;dm")
-    }
+    const handleClick = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+    }, []);
 
     return (
-        <div onClick={ onClicks}  onBlur={onBlur} ref={mainRef} style = {{position:"relative"}} className={className ? className.main : ""}>
-            <Search className={className ? className.search : ""} val={val} onChange={onChange}  onFocus={onFocus} searchCallback={seatchProxy} onDataRecieve={createDropList}>
-
-            </Search>
-            {/* <div className={className ? className.dropList : ""} style={activeList?{position:"relative"}:{display:"none"}}>
-                {dropDownListData}
-            </div> */}
-            <DropDownList  className={className ? className.dropList : ""} active={activeList}>
+        <div 
+            ref={mainRef}
+            onBlur={handleBlur}
+            onClick={handleClick}
+            style={{ position: "relative" }}
+            className={className.main}
+        >
+            <Search
+                className={className.search}
+                val={val}
+                onChange={onChange}
+                onFocus={handleFocus}
+                searchCallback={handleSearch}
+                onDataRecieve={createDropList}
+            />
+            <DropDownList 
+                className={className.dropList} 
+                active={activeList}
+            >
                 {dropDownListData}
             </DropDownList>
-
         </div>
-    )
-}
+    );
+});
 
-export default SearchWithList
+export default memo(SearchWithList);

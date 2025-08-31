@@ -1,8 +1,8 @@
-import React, { ReactElement, useCallback, useEffect, useRef, useState } from 'react'
-import { getAddressDeliveryData } from 'src/providers/cdek'
-import DropDownList from '../../components/DropDownList'
-import s from './style.module.css'
-import InputWithLabelWithValidation from 'src/components/input/InputWithLabelWithValidation'
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { getAddressDeliveryData } from 'src/providers/cdek';
+import DropDownList from '../../components/DropDownList';
+import s from './style.module.css';
+import InputWithLabelWithValidation from 'src/components/input/InputWithLabelWithValidation';
 
 type AddressObject = {
     town?: string;
@@ -12,7 +12,7 @@ type AddressObject = {
 };
 
 type PropsRowType = {
-    onChange: (address: any) => void;
+    onChange: (address: AddressObject | string) => void;
     onFocus?: (value: string) => void;
     onBlur?: (value: string) => void;
     className?: {
@@ -24,56 +24,48 @@ type PropsRowType = {
     valid: boolean;
 };
 
-const AddressInput: React.FC<PropsRowType> = (props) => {
-    const {
-        onChange,
-        onFocus,
-        onBlur,
-        className,
-        placeholder = "Адрес",
-        val = "",
-        valid
-    } = props;
-
-    const [valState, setVal] = useState<string>(val);
-    const [activeList, setActive] = useState<boolean>(false);
+const AddressInput: React.FC<PropsRowType> = memo(({
+    onChange,
+    onFocus,
+    onBlur,
+    className,
+    placeholder = "Адрес",
+    val = "",
+    valid
+}) => {
+    const [valState, setVal] = useState(val);
+    const [activeList, setActive] = useState(false);
     const addressObjRef = useRef<AddressObject>({});
-    const [dropDownListData, setDropDownList] = useState<ReactElement[]>([]);
+    const [dropDownListData, setDropDownList] = useState<React.ReactElement[]>([]);
     const suggestionsRef = useRef<any[]>([]);
     const timeoutId = useRef<NodeJS.Timeout | null>(null);
-    const [validFlag,setValid] = useState(valid);
-    const isFirstRender = useRef(true);
+    const [validFlag, setValid] = useState(valid);
 
     const updateValidObj = useCallback(() => {
-       setValid(Boolean(
+        const isValid = Boolean(
             addressObjRef.current.coordinates?.[0] && 
             addressObjRef.current.coordinates?.[1]
-        ));
+        );
+        setValid(isValid);
     }, []);
+
+    useEffect(() => {
+        setVal(val);
+    }, [val]);
 
     useEffect(() => {
         return () => {
-            if (timeoutId.current) {
-                clearTimeout(timeoutId.current);
-            }
+            timeoutId.current && clearTimeout(timeoutId.current);
         };
     }, []);
 
-    useEffect(() => {
-        if (isFirstRender.current) {
-            isFirstRender.current = false;
-            return;
-        }
-        updateValidObj();
-    }, [valid, updateValidObj]);
-
     const handleAddressSelect = useCallback((val: any) => {
-        const data = val.data;
+        const { city, street, geo_lon, geo_lat, house } = val.data;
         addressObjRef.current = {
-            town: data.city,
-            street: data.street,
-            coordinates: [data.geo_lon, data.geo_lat],
-            house: data.house
+            town: city,
+            street,
+            coordinates: [geo_lon, geo_lat],
+            house
         };
         setActive(false);
         onChange(addressObjRef.current);
@@ -81,61 +73,58 @@ const AddressInput: React.FC<PropsRowType> = (props) => {
         updateValidObj();
     }, [onChange, updateValidObj]);
 
-    const handleInputChange = useCallback((val: string) => {
-        setVal(val);
+    const createSuggestionElements = useCallback((suggestions: any[]) => {
+        return suggestions.map((suggestion, index) => (
+            <div 
+                key={`${suggestion.value}-${index}`}
+                onClick={() => handleAddressSelect(suggestion)}
+                className={s.addressRow}
+            >
+                {suggestion.value}
+            </div>
+        ));
+    }, [handleAddressSelect]);
 
-        if (timeoutId.current) {
-            clearTimeout(timeoutId.current);
-        }
+    const handleInputChange = useCallback((inputVal: string) => {
+        setVal(inputVal);
+        timeoutId.current && clearTimeout(timeoutId.current);
 
-        if (val === "") {
+        if (!inputVal.trim()) {
             setActive(false);
-            onChange(val);
+            onChange(inputVal);
             return;
         }
 
         timeoutId.current = setTimeout(() => {
-            getAddressDeliveryData(val, (data) => {
-                const suggestions = data.suggestions.map((suggestion, index) => (
-                    <div 
-                        key={`${suggestion.value}-${index}`}
-                        onClick={() => handleAddressSelect(suggestion)}
-                        className={s.addressRow}
-                    >
-                        {suggestion.value}
-                    </div>
-                ));
-
+            getAddressDeliveryData(inputVal, (data) => {
                 suggestionsRef.current = data.suggestions;
-                setDropDownList(suggestions);
+                setDropDownList(createSuggestionElements(data.suggestions));
                 setActive(true);
-                onChange(val);
+                onChange(inputVal);
             });
         }, 500);
-    }, [onChange, handleAddressSelect]);
+    }, [onChange, createSuggestionElements]);
 
     return (
-        <div style={{ width: "100%", position: "relative" }}>
+        <div className={s.addressInputContainer}>
             <InputWithLabelWithValidation
                 invalidText='Введите более точный адрес.'
                 valid={validFlag}
                 val={valState}
                 className={s.inputHolder}
                 placeholder={placeholder}
-                onFocus={(e) => onFocus?.(e.target.value)}
-                onBlur={(e) => onBlur?.(e.target.value)}
+                onFocus={onFocus}
+                onBlur={onBlur}
                 onChange={handleInputChange}
             />
-            <div style={{ width: "100%", position: "relative" }}>
-                <DropDownList 
-                    className={`${s.dropList} ${className?.dropList || ''}`} 
-                    active={activeList}
-                >
-                    {dropDownListData}
-                </DropDownList>
-            </div>
+            <DropDownList 
+                className={`${s.dropList} ${className?.dropList || ''}`} 
+                active={activeList}
+            >
+                {dropDownListData}
+            </DropDownList>
         </div>
     );
-};
+});
 
 export default AddressInput;

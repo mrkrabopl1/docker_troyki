@@ -19,30 +19,35 @@ const isDeepEqual = function (object1: any, object2: any) {
   }
   return true;
 };
+
+
+const clamp = (num: number, min: number, max: number) => {
+  return Math.min(Math.max(num, min), max);
+};
+
+
+
 const isObject = (object: any) => {
   return object != null && typeof object === "object";
 };
 const toPrice = (num) => {
-  let formatedStringArr = []
+  let formatedStringArr = [];
   while (num >= 1) {
-    let remain = num % 1000
-    num = num / 1000
-    if (num < 1) {
-      formatedStringArr.push(String(remain))
-    } else {
-      let stringData = ""
-      if (remain < 10) {
-        stringData = "00" + remain
-      }
-      else if (remain < 100) {
-        stringData = "0" + remain
-      } else {
-        stringData = String(remain)
-      }
-      formatedStringArr.push(stringData)
-    }
+    let remain = Math.floor(num % 1000);
+    num = Math.floor(num / 1000);
+    
+    let stringData = remain.toString().padStart(3, '0');
+    formatedStringArr.push(stringData);
   }
-  return formatedStringArr.reverse().join(".") + " ₽"
+  
+  // Удаляем лидирующие нули у последнего элемента (самой старшей части числа)
+  if (formatedStringArr.length > 0) {
+    formatedStringArr[formatedStringArr.length - 1] = 
+      formatedStringArr[formatedStringArr.length - 1].replace(/^0+/, '') || '0';
+  }
+  
+  formatedStringArr.reverse();
+  return formatedStringArr.join(".") + " ₽"
 };
 function getCookie(name) {
   let matches = document.cookie.match(new RegExp(
@@ -101,4 +106,4 @@ function setCookie(name, value, options: { [key: string]: any } = {}) {
 }
 
 
-export { isDeepEqual, getCookie, setCookie, toPrice, extend, setGlobalScroller, shuffle }
+export { isDeepEqual, getCookie, setCookie, toPrice, extend, setGlobalScroller, shuffle,clamp }

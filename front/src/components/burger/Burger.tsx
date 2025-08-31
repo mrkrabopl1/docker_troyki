@@ -1,38 +1,46 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import check from '../../../public/check.svg'
-import s from "./style.module.css"
+import React, { useState, useEffect, useCallback,memo } from 'react';
+import s from "./style.module.css";
 
-type propsRowType = {
-    onChange:(...args:any)=>void|null
-    activeProps:boolean,
+interface BurgerProps {
+    onChange?: (isActive: boolean) => void;
+    activeProps: boolean;
 }
 
+const Burger: React.FC<BurgerProps> = ({ 
+    onChange = () => null, 
+    activeProps 
+}) => {
+    const [active, setActive] = useState(activeProps);
 
+    const toggleActive = useCallback(() => {
+        const newActive = !active;
+        setActive(newActive);
+        onChange(newActive);
+    }, [active, onChange]);
 
-const Burger: React.FC<propsRowType> = (props) => {
-    let {onChange,activeProps} = {...props}
-    let [active,setAcive] = useState(activeProps)
-    const togleActive = ()=>{
-        setAcive(!active);
-        onChange(!active);
-    }
-    const createMainStyle = (styles) =>{
-        if(active){
-            styles.push(s.is_active)
-        }
-        return styles.join(" ")
-    }
-    useEffect(()=>{
-        setAcive(activeProps)
-    },[activeProps])
+    const getMainClassName = useCallback(() => {
+        const baseClasses = [s.hamburger, s.hamburger_slider];
+        if (active) baseClasses.push(s.is_active);
+        return baseClasses.join(' ');
+    }, [active]);
+
+    useEffect(() => {
+        setActive(activeProps);
+    }, [activeProps]);
+
     return (
-        <div onClick={togleActive} className={createMainStyle([s.hamburger, s.hamburger_slider])}>
-        <div className={s.hamburger_box}>
-          <div className={s.hamburger_inner}></div>
+        <div 
+            onClick={toggleActive} 
+            className={getMainClassName()}
+            role="button"
+            aria-pressed={active}
+            tabIndex={0}
+        >
+            <div className={s.hamburger_box}>
+                <div className={s.hamburger_inner}></div>
+            </div>
         </div>
-      </div>
-      
-    )
-}
+    );
+};
 
-export default Burger
+export default memo(Burger);

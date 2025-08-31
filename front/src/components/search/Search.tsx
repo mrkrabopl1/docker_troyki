@@ -1,53 +1,72 @@
-import React, { ReactElement, useRef, useState } from 'react'
-import {searchNames} from "src/providers/searchProvider"
+import React, { ReactElement, useRef, useState, useCallback } from 'react'
+import { searchNames } from "src/providers/searchProvider"
 import Input from '../input/Input'
 import loupe from "../../../public/loupe.svg";
 import s from "./style.module.css"
 
-type propsRowType = {
-    onDataRecieve: (...args: any) => void | null,
-    searchCallback:(...args: any) => void | null,
-    onChange?:(...args: any) => void ,
-    onFocus?:(...args: any) => void ,
-    onBlur?:(...args: any) => void ,
+type Props = {
+    onDataRecieve: (...args: any) => void,
+    searchCallback: (...args: any) => void,
+    onChange?: (...args: any) => void,
+    onFocus?: (...args: any) => void,
+    onBlur?: (...args: any) => void,
     className?: string,
-    val?:string
-}
-const defaultStyle: any = {
-    border: "2px solid blue",
-    position: "relative",
-    backgroundColor: "white"
+    val?: string
 }
 
-
-const Search: React.FC<propsRowType> = (props) => {
-    let trottlingTimerId = useRef<ReturnType<typeof setTimeout> | null>(null)
-    let { val,className, onDataRecieve,searchCallback, onChange,onBlur,onFocus } = { ...props }
-    let classNameSearch = className ? className : s.search
-    let text = useRef<string>(val?val:"")
-    const handleEnter =(e:React.KeyboardEvent<HTMLDivElement>) =>{
+const Search: React.FC<Props> = ({
+    val = "",
+    className,
+    onDataRecieve,
+    searchCallback, 
+    onChange,
+    onBlur,
+    onFocus
+}) => {
+    const trottlingTimerId = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const text = useRef<string>(val)
+    const classNameSearch = className || s.search
+    
+    const handleEnter = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
         if (e.key === 'Enter') {
-            searchCallback(text.current);
+            searchCallback(text.current)
         }
-    }
-    const createSearchRequest = (val: string) => {
-        onChange && onChange(val);
-        text.current = val;
+    }, [searchCallback])
+
+    const createSearchRequest = useCallback((val: string) => {
+        onChange?.(val)
+        text.current = val
+        
         if (trottlingTimerId.current) {
-            clearTimeout(trottlingTimerId.current);
+            clearTimeout(trottlingTimerId.current)
         }
+        
         trottlingTimerId.current = setTimeout(() => {
-            searchNames(val,5,onDataRecieve)
+            searchNames(val, 5, onDataRecieve)
         }, 1000)
-    }
+    }, [onChange, onDataRecieve])
+
+    const handleSearchClick = useCallback(() => {
+        searchCallback(text.current)
+    }, [searchCallback])
 
     return (
-        <div onKeyUp={handleEnter} className={s.baseSearch + " " + classNameSearch}>
-            <Input val={val} onBlur={onBlur} onFocus={onFocus} className={s.input} onChange={createSearchRequest}>
-            </Input>
-            <img onClick={()=>searchCallback(text.current)} className={s.img} src={loupe} alt="" />
+        <div onKeyUp={handleEnter} className={`${s.baseSearch} ${classNameSearch}`}>
+            <Input 
+                value={val} 
+                onBlur={onBlur} 
+                onFocus={onFocus} 
+                className={s.input} 
+                onChange={createSearchRequest}
+            />
+            <img 
+                onClick={handleSearchClick} 
+                className={s.img} 
+                src={loupe} 
+                alt="Search" 
+            />
         </div>
     )
 }
 
-export default Search
+export default React.memo(Search)

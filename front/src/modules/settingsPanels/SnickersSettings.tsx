@@ -1,74 +1,72 @@
-import React, { useEffect, ReactElement, useState, useRef, memo, useCallback } from 'react'
-import DynamicElement from "src/components/dynamicElement/DynamicElement"
-import s from './style.module.css'
-import DoubleInfoDrop from 'src/components/doubleInfoDrop/DoubleInfoDrop'
-import CheckBoxColumn from 'src/components/checkBoxForm/CheckBoxForm'
-import Scroller from 'src/components/scroller/Scroller'
-import ZoneSliderValueSetter from 'src/modules/sliderValueSetter/ZoneSliderValueSetter'
-type propsRowType = {
-    propsData: any,
-    componentName: string,
+import React, { memo, useCallback } from 'react';
+import DoubleInfoDrop from 'src/components/doubleInfoDrop/DoubleInfoDrop';
+import CheckBoxColumn from 'src/components/checkBoxForm/CheckBoxForm';
+import Scroller from 'src/components/scroller/Scroller';
+import ZoneSliderValueSetter from 'src/modules/sliderValueSetter/ZoneSliderValueSetter';
+import s from './style.module.css';
+
+interface PriceProps {
+    max: number;
+    min: number;
+    dataLeft?: number;
+    dataRight?: number;
+    onChange?: (arg: any) => void;
 }
 
-interface settingModuleInterface {
-    priceProps: {
-        max: number,
-        min: number,
-        dataLeft?: number,
-        dataRight?: number,
-        onChange?: (arg: any) => void
-    },
-    checboxsProps: {
-        name: string,
-        props: any
-    }[],
-    memo?: boolean,
-    onChange?: (arg: any) => void
+interface CheckboxProps {
+    name: string;
+    props: any;
+}
+
+interface SnickersSettingsProps {
+    priceProps: PriceProps;
+    checboxsProps: CheckboxProps[];
+    memo?: boolean;
+    onChange?: (arg: { name: string; data: any }) => void;
     classNames?: {
-        secondPage?: string
-        mainForm?: string
-    }
+        secondPage?: string;
+        mainForm?: string;
+    };
 }
 
-type dataType = { price: number[], sizes: number[] }
-const SnickersSettings: React.FC<settingModuleInterface> = (props) => {
-    let { priceProps, onChange, classNames, checboxsProps } = { ...props }
+const SnickersSettings: React.FC<SnickersSettingsProps> = memo(({ 
+    priceProps, 
+    onChange, 
+    checboxsProps 
+}) => {
+    const handlePriceChange = useCallback((data: any) => {
+        onChange?.({ name: "price", data });
+    }, [onChange]);
 
+    const handleCheckboxChange = useCallback((name: string, data: any) => {
+        onChange?.({ name, data });
+    }, [onChange]);
 
-
-    const onChangeMain = (name: string, data: any) => {
-
-        let obj = {
-            name: name,
-            data: data
-        }
-        onChange && onChange(obj)
-    }
-
-    console.debug(priceProps)
+    const renderCheckboxGroup = useCallback((checkboxProps: CheckboxProps) => (
+        <DoubleInfoDrop key={checkboxProps.name} info={checkboxProps.name}>
+            <div style={{ height: "200px" }}>
+                <Scroller>
+                    <CheckBoxColumn 
+                        onChange={(data) => handleCheckboxChange(checkboxProps.name, data)} 
+                        data={checkboxProps.props} 
+                    />
+                </Scroller>
+            </div>
+        </DoubleInfoDrop>
+    ), [handleCheckboxChange]);
 
     return (
         <div className={s.wrapper}>
-            {React.createElement(DoubleInfoDrop, {info:"price"},  <ZoneSliderValueSetter onChange={(data) => { onChange({ name: "price", data: data }) }} {...priceProps} />)}
-            {/* <DoubleInfoDrop info={"price"}>
-                <ZoneSliderValueSetter onChange={(data) => { onChange({ name: "price", data: data }) }} {...priceProps} />
-            </DoubleInfoDrop> */}
-            {checboxsProps.map((el) => {
-                return <DoubleInfoDrop key={el.name} info={el.name}>
-                    <div style={{height:"200px"}}>
-                        <Scroller>
-                            <CheckBoxColumn onChange={(data) => { onChange({ name: el.name, data: data }) }} data={el.props} /> 
-                        </Scroller>
-                    </div>
-                </DoubleInfoDrop>
-            })}
+            <DoubleInfoDrop info="price">
+                <ZoneSliderValueSetter 
+                    onChange={handlePriceChange} 
+                    {...priceProps} 
+                />
+            </DoubleInfoDrop>
+            
+            {checboxsProps.map(renderCheckboxGroup)}
         </div>
+    );
+}, (prevProps, nextProps) => prevProps.memo === nextProps.memo);
 
-    )
-}
-
-
-function checkMemo(oldData: any, newData: any) {
-    return (oldData.memo === newData.memo)
-}
-export default memo(SnickersSettings, checkMemo)
+export default SnickersSettings;

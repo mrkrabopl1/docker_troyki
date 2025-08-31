@@ -1,85 +1,113 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import s from "./style.module.css";
 
-import s from "./style.module.css"
+type InputValidationProps = {
+    valid: boolean;
+    invalidText: string;
+    validRule?: (value: string) => boolean;
+    onChange: (value: string | null) => void;
+    onFocus?: (value: string) => void;
+    onBlur?: (value: string) => void;
+    className?: string;
+    invalidClassName?: string;
+    placeholder?: string;
+    val?: string;
+};
 
-type propsRowType = {
-    valid: boolean,
-    invalidText: string,
-    validRule?: (valid: string) => boolean
-    onChange: (...args: any) => void | null
-    onFocus?: (...args: any) => void
-    onBlur?: (...args: any) => void
-    className?: string,
-    invalidClassName?: string,
-    placeholder?: string,
-    val?: string
-}
+const defaultValidRule = (val: string) => val !== "";
 
+const InputWithLabelWithValidation: React.FC<InputValidationProps> = ({
+    valid,
+    invalidText,
+    validRule = defaultValidRule,
+    onChange,
+    onFocus,
+    onBlur,
+    className = '',
+    invalidClassName = '',
+    placeholder = '',
+    val = ''
+}) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const startValidationOnBlur = useRef(false);
+    const [value, setValue] = useState(val);
+    const [isValid, setIsValid] = useState(valid);
+     const hasChange = useRef<boolean>(false);
 
-const defaultValidRule = function(val: string){
-    return val != ""
-}
-
-
-const InputWithLabelWithValidation: React.FC<propsRowType> = (props) => {
-    const inputRef = useRef(null)
-    const startValidationOnBlur = useRef<boolean>(false)
-    let { onChange, onFocus, onBlur, className, placeholder, val, valid, invalidText, invalidClassName, validRule } = { ...props }
-    if (!validRule){
-        validRule = defaultValidRule
-    }
-    useEffect(()=>{
-        setVal(val)
-     },[val])
+    // Синхронизация с внешними значениями
     useEffect(() => {
-        setValid(valid)
-    }, [valid])
-    let [validState, setValid] = useState<boolean>(true)
-    const [valState, setVal] = useState<string>(val ? val : "")
+        setValue(val);
+    }, [val]);
+
+    useEffect(() => {
+          if (!hasChange.current && !valid) {
+            hasChange.current = true;
+            return
+        }
+        setIsValid(valid);
+    }, [valid]);
+
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        hasChange.current = true;
+        const newValue = e.target.value;
+        startValidationOnBlur.current = true;
+        setValue(newValue);
+        
+        const isValidValue = validRule(newValue);
+        setIsValid(true);
+        onChange(isValidValue ? newValue : null);
+    }, [onChange, validRule]);
+
+    const handleFocus = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+        onFocus?.(e.target.value);
+    }, [onFocus]);
+
+    const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+        if (startValidationOnBlur.current) {
+            const newValue = e.target.value;
+            const isValidValue = validRule(newValue);
+            setIsValid(isValidValue);
+            onBlur?.(newValue);
+        }
+    }, [onBlur, validRule]);
+
+    const focusInput = useCallback(() => {
+        inputRef.current?.focus();
+    }, []);
+
+    const inputClasses = [
+        s.inputWithLabel,
+        className,
+        !isValid && (invalidClassName || s.invalid)
+    ].filter(Boolean).join(' ');
+
     return (
         <div className={s.inputContainer}>
             <input
-                value={valState}
-                style={{ boxSizing: 'border-box', width: "100%" }}
-                className={validState ? s.inputWithLabel : s.inputWithLabel + " " + s.invalid}
                 ref={inputRef}
-                placeholder=''
-                type='text'
-                onChange={(e) => {
-                    startValidationOnBlur.current = true
-                    setValid(true)
-                    if (onChange) {
-                        let val = e.target.value
-                        let valid = validRule(val)
-                            if (!valid) {
-                                val = null
-                            }
-                        onChange(val)
-                        setVal(e.target.value)
-                    }
-                }}
-                onFocus={(e) => { if (onFocus) { onFocus(e.target.value) } }}
-                onBlur={(e) => {
-                    if(startValidationOnBlur.current){
-                        let val = e.target.value
-                        let valid = validRule(val)
-                        if (!valid) {
-                            setValid(false)
-                        }
-                        if (onBlur) {
-                            onBlur(e.target.value)
-                        }
-                    }
-                }
-                }
+                value={value}
+                className={inputClasses}
+                style={{ boxSizing: 'border-box', width: "100%" }}
+                type="text"
+                onChange={handleChange}
+                onFocus={handleFocus}
+                placeholder=""
+                onBlur={handleBlur}
                 required
+                aria-invalid={!isValid}
             />
-            <label onClick={
-                () => inputRef.current && inputRef.current.focus()
-            } className={s.label}>{placeholder}</label>
-            {!validState ? <label style={{ color: "red" }}>{invalidText}</label> : null}
+            {placeholder && (
+                <label onClick={focusInput} className={s.label}>
+                    {placeholder}
+                </label>
+            )}
+            {!isValid && invalidText && (
+                <div className={s.errorMessage} style={{ color: "red" }}>
+                    {invalidText}
+                </div>
+            )}
         </div>
-    )
-}
+    );
+};
 
-export default InputWithLabelWithValidation
+export default React.memo(InputWithLabelWithValidation);

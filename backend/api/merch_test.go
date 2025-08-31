@@ -23,7 +23,7 @@ func TestHandleGetHistory(t *testing.T) {
 	// 	Username: "testuser",
 	// }
 
-	snickers := []types.SnickersSearchResponse1{
+	snickers := []types.ProductsSearchResponse1{
 		{
 			Id:       1345345,
 			Name:     "Snickers1",
@@ -113,11 +113,11 @@ func TestHandleGetHistory(t *testing.T) {
 	}
 }
 
-func requireBodyMatchSnickers(t *testing.T, body *bytes.Buffer, snickers []types.SnickersSearchResponse1) {
+func requireBodyMatchSnickers(t *testing.T, body *bytes.Buffer, snickers []types.ProductsSearchResponse1) {
 	data, err := io.ReadAll(body)
 	require.NoError(t, err)
 
-	var gotSnickers []types.SnickersSearchResponse1
+	var gotSnickers []types.ProductsSearchResponse1
 	err = json.Unmarshal(data, &gotSnickers)
 
 	fmt.Println("Expected snickers:", gotSnickers)
@@ -127,13 +127,13 @@ func requireBodyMatchSnickers(t *testing.T, body *bytes.Buffer, snickers []types
 	//require.Equal(t, snickers, gotSnickers)
 }
 
-func TestHandleGetSnickersInfo(t *testing.T) {
+func TestHandleGetProductsInfo(t *testing.T) {
 	// user := db.User{
 	// 	ID:       1,
 	// 	Username: "testuser",
 	// }
 
-	snickers := db.GetSnickersInfoByIdRow{
+	snickers := db.GetProductsInfoByIdRow{
 		Info:      []byte(`{"id":1,"name":"Snickers1","firm":"Firm1","image":["image1","image2"],"price":100,"discount":90}`),
 		Name:      "Snickers1",
 		ImagePath: "test",
@@ -155,7 +155,7 @@ func TestHandleGetSnickersInfo(t *testing.T) {
 			cookieValue: "valid-query",
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().
-					GetSnickersInfoByIdComplex(gomock.Any(), gomock.Eq(int32(1))).
+					GetProductsInfoByIdComplex(gomock.Any(), gomock.Eq(int32(1))).
 					Times(1).
 					Return(snickers, nil)
 			},
@@ -169,7 +169,7 @@ func TestHandleGetSnickersInfo(t *testing.T) {
 			cookieValue: "invalid-token",
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().
-					GetSnickersInfoByIdComplex(gomock.Any(), gomock.Any()).
+					GetProductsInfoByIdComplex(gomock.Any(), gomock.Any()).
 					Times(0)
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
@@ -192,7 +192,7 @@ func TestHandleGetSnickersInfo(t *testing.T) {
 			server := newTestServer(t, store, taskDistributor, taskProcessor)
 			recorder := httptest.NewRecorder()
 
-			url := "/snickersInfo"
+			url := "/ProductsInfo"
 			if tc.cookieValue == "valid-query" {
 				url += "?id=1"
 			} else {
@@ -207,11 +207,11 @@ func TestHandleGetSnickersInfo(t *testing.T) {
 		})
 	}
 }
-func requireBodyMatchSnickers1(t *testing.T, body *bytes.Buffer, snickers db.GetSnickersInfoByIdRow) {
+func requireBodyMatchSnickers1(t *testing.T, body *bytes.Buffer, snickers db.GetProductsInfoByIdRow) {
 	data, err := io.ReadAll(body)
 	require.NoError(t, err)
 
-	var gotSnickers db.GetSnickersInfoByIdRow
+	var gotSnickers db.GetProductsInfoByIdRow
 	err = json.Unmarshal(data, &gotSnickers)
 
 	fmt.Println("Expected snickers:", gotSnickers)
@@ -227,7 +227,7 @@ func TestHandleSearchSnickersAndFiltersByString(t *testing.T) {
 	// 	Username: "testuser",
 	// }
 
-	snickers := db.GetSnickersInfoByIdRow{
+	snickers := db.GetProductsInfoByIdRow{
 		Info:      []byte(`{"id":1,"name":"Snickers1","firm":"Firm1","image":["image1","image2"],"price":100,"discount":90}`),
 		Name:      "Snickers1",
 		ImagePath: "test",
@@ -249,7 +249,7 @@ func TestHandleSearchSnickersAndFiltersByString(t *testing.T) {
 			cookieValue: "valid-query",
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().
-					GetSnickersInfoByIdComplex(gomock.Any(), gomock.Eq(int32(1))).
+					GetProductsInfoByIdComplex(gomock.Any(), gomock.Eq(int32(1))).
 					Times(1).
 					Return(snickers, nil)
 			},
@@ -263,7 +263,7 @@ func TestHandleSearchSnickersAndFiltersByString(t *testing.T) {
 			cookieValue: "invalid-token",
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().
-					GetSnickersInfoByIdComplex(gomock.Any(), gomock.Any()).
+					GetProductsInfoByIdComplex(gomock.Any(), gomock.Any()).
 					Times(0)
 			},
 			checkResponse: func(recorder *httptest.ResponseRecorder) {
@@ -286,7 +286,7 @@ func TestHandleSearchSnickersAndFiltersByString(t *testing.T) {
 			server := newTestServer(t, store, taskDistributor, taskProcessor)
 			recorder := httptest.NewRecorder()
 
-			url := "/snickersInfo"
+			url := "/ProductsInfo"
 			if tc.cookieValue == "valid-query" {
 				url += "?id=1"
 			} else {
@@ -301,11 +301,11 @@ func TestHandleSearchSnickersAndFiltersByString(t *testing.T) {
 		})
 	}
 }
-func requireBodyMatchSnickers2(t *testing.T, body *bytes.Buffer, snickers db.GetSnickersInfoByIdRow) {
+func requireBodyMatchSnickers2(t *testing.T, body *bytes.Buffer, snickers db.GetProductsInfoByIdRow) {
 	data, err := io.ReadAll(body)
 	require.NoError(t, err)
 
-	var gotSnickers db.GetSnickersInfoByIdRow
+	var gotSnickers db.GetProductsInfoByIdRow
 	err = json.Unmarshal(data, &gotSnickers)
 
 	fmt.Println("Expected snickers:", gotSnickers)

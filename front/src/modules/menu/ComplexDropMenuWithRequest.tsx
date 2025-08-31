@@ -1,45 +1,42 @@
-import React, { ReactElement, useEffect, useRef, useState, memo } from 'react'
-import Menu from './Menu'
+import React, { useState, useEffect, useCallback, memo } from 'react';
+import { useAppDispatch } from 'src/store/hooks/redux';
+import { getFirms } from 'src/providers/merchProvider';
+import { collections, categories } from '../../store/reducers/menuSlice';
 import ComplexDropMenu from './ComplexDropMenu';
-import { useNavigate } from 'react-router-dom';
 import { isDeepEqual } from 'src/global';
-import axios from "axios";
-import { getFirms } from 'src/providers/merchProvider'
-import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux'
-import { collections } from '../../store/reducers/menuSlice'
 
-interface MerchMenuInterface {
-  className?: string,
-  isReady?: () => {
-
-  }
+interface ComplexDropMenuWithRequestProps {
+  className?: string;
+  isReady?: () => void;
 }
 
-const ComplexDropMenuWithRequest: React.FC<MerchMenuInterface> = (props) => {
-  let dispatch = useAppDispatch()
-  let [merchFieldData, setMerchFieldData] = useState<any>([])
-  const setFirmsData = (firms) => {
-    let collectionsData = [];
-    let fieldData = {};
-    firms.forEach((cols:any) => {
+const ComplexDropMenuWithRequestComponent: React.FC<ComplexDropMenuWithRequestProps> = () => {
+  const dispatch = useAppDispatch();
+  const [merchFieldData, setMerchFieldData] = useState<Record<string, string[]>>({});
+
+  const setFirmsData = useCallback((firms: Array<{ firm: string; collections: string[], categories: string[] }>) => {
+    const fieldData: Record<string, string[]> = {};
+    const collectionsData: string[] = [];
+
+    firms.forEach((cols) => {
       fieldData[cols.firm] = cols.collections;
-      collectionsData = collectionsData.concat(cols.collections)
-    })
-    setMerchFieldData(fieldData)
-    dispatch(collections(collectionsData))
-  }
+      collectionsData.push(...cols.collections);
+    });
+
+    setMerchFieldData(fieldData);
+    dispatch(collections(collectionsData));
+    // dispatch(categories(categories));
+  }, [dispatch]);
+
   useEffect(() => {
-    getFirms(setFirmsData)
-  }, [])
-  return (
-    <ComplexDropMenu complexDropData={merchFieldData} />
-  )
-}
+    getFirms(setFirmsData);
+  }, [setFirmsData]);
 
-function arePropsEqual(oldProps: any, newProps: any) {
+  return <ComplexDropMenu complexDropData={merchFieldData}  />;
+};
 
-  return false
-}
+const arePropsEqual = (prevProps: ComplexDropMenuWithRequestProps, nextProps: ComplexDropMenuWithRequestProps) => {
+  return isDeepEqual(prevProps, nextProps);
+};
 
-
-export default memo(ComplexDropMenuWithRequest, arePropsEqual)
+export default memo(ComplexDropMenuWithRequestComponent, arePropsEqual);

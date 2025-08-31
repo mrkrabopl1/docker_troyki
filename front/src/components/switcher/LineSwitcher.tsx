@@ -1,117 +1,119 @@
-import React, { useRef, useState,memo, useEffect } from "react"
+import React, { useRef, useState, useEffect, useCallback, CSSProperties, memo } from "react"
 
-import { rootTransform, squareTransform, lineTransform, cubeTransform } from "src/functions/mathFunctions"
+type SwitcherType = {
+    onChange?: (isActive: boolean) => void,
+    data: boolean
+}
 
-const defaultWrapStyle: any = {
+const wrapperStyle: CSSProperties = {
     width: "50px",
     height: "30px",
-    border: "solid 2px white",
-    position: "relative"
+    border: "2px solid white",
+    position: "relative",
+    cursor: "pointer"
 }
 
-
-let prev = performance.now();
-let times = 0;
-
-
-function animate(timing: (data: number) => number, draw: (data: number) => void, duration: number) {
-
-    let start = performance.now();
-
-    requestAnimationFrame(function animate(time) {
-        // timeFraction изменяется от 0 до 1
-        let timeFraction = (time - start) / duration;
-        if (timeFraction > 1) timeFraction = 1;
-
-        // вычисление текущего состояния анимации
-        let progress = timing(timeFraction);
-
-        draw(progress); // отрисовать её
-
-        if (timeFraction < 1) {
-            requestAnimationFrame(animate);
-        }
-
-    });
-}
-
-
-const defaultBlockStyle: any = {
+const blockStyle: CSSProperties = {
     position: "absolute",
     width: "30px",
     height: "30px",
     borderRadius: "50%",
     backgroundColor: "white",
+    transition: "left 0.3s ease, background 0.3s ease, border 0.3s ease",
+    zIndex: 2
 }
 
-const defaultLoadStyle: any = {
+const loadLineStyle: CSSProperties = {
     position: "absolute",
     width: "100%",
     margin: "auto",
     height: "20px",
     borderRadius: "10px",
     backgroundColor: "black",
-    top: 0, left: 0, bottom: 0, right: 0,
-
+    top: 0, 
+    left: 0, 
+    bottom: 0, 
+    right: 0,
+    transition: "background 0.3s ease"
 }
-type switchertType = {
-    onChange?:(arg:any)=>void,
-    data:boolean
-}
 
-const LineSwitcher: React.FC<switchertType> = (props) => {
+const animate = (timing: (t: number) => number, draw: (progress: number) => void, duration: number) => {
+    const start = performance.now();
 
-    let {onChange,data} = {...props}
+    const frame = (time: number) => {
+        let timeFraction = (time - start) / duration;
+        if (timeFraction > 1) timeFraction = 1;
 
-    const moveCheckbox = (k: number) => {
-        if (checkBox.current && checkBoxWrap.current && loadLine.current) {
-            let mainWidth = checkBoxWrap.current.clientWidth + 1
-            let checkBoxWidth = checkBox.current.clientWidth + 1
-            let diff = mainWidth - checkBoxWidth
-            if (!position) {
-                loadLine.current.style.background = `linear-gradient(to right, white ${checkBoxWidth * k}px, black ${checkBoxWidth * k}px)`;
-                checkBox.current.style.left = diff * k + "px"
-                checkBox.current.style.background = `linear-gradient(to left, black ${mainWidth * k}px, white ${mainWidth * k}px)`
-                checkBox.current.style.border = " solid white 2px"
+        draw(timing(timeFraction));
 
-            } else {
-                loadLine.current.style.background = `linear-gradient(to  left, black ${mainWidth * k}px,white ${mainWidth * k}px)`;
-                checkBox.current.style.left = diff - diff * k + "px"
-                checkBox.current.style.background = `linear-gradient(to right, white ${checkBoxWidth * k}px, black ${checkBoxWidth * k}px)`;
-                checkBox.current.style.border = " solid black 2px"
-            }
+        if (timeFraction < 1) {
+            requestAnimationFrame(frame);
         }
+    };
 
-    }
+    requestAnimationFrame(frame);
+};
 
-    let [position, setPosition] = useState<boolean>(false)
+const LineSwitcher: React.FC<SwitcherType> = ({ onChange, data }) => {
+    const [isActive, setIsActive] = useState(data);
+    const checkBoxRef = useRef<HTMLDivElement>(null);
+    const loadLineRef = useRef<HTMLDivElement>(null);
+    const wrapperRef = useRef<HTMLDivElement>(null);
 
-    useEffect(()=>{
-        setPosition(data)
-    },[])
+    // Синхронизация с внешним состоянием
+    useEffect(() => {
+        setIsActive(data);
+    }, [data]);
 
-    let checkBox = useRef<HTMLDivElement>(null)
-    let loadLine = useRef<HTMLDivElement>(null)
-    let checkBoxWrap = useRef<HTMLDivElement>(null)
+    const moveCheckbox = useCallback((progress: number) => {
+        if (!checkBoxRef.current || !wrapperRef.current || !loadLineRef.current) return;
 
+        const wrapperWidth = wrapperRef.current.clientWidth;
+        const checkboxWidth = checkBoxRef.current.clientWidth;
+        const diff = wrapperWidth - checkboxWidth;
+
+        if (isActive) {
+            loadLineRef.current.style.background = `linear-gradient(to left, black ${wrapperWidth * progress}px, white ${wrapperWidth * progress}px)`;
+            checkBoxRef.current.style.left = `${diff - (diff * progress)}px`;
+            checkBoxRef.current.style.background = `linear-gradient(to right, white ${checkboxWidth * progress}px, black ${checkboxWidth * progress}px)`;
+            checkBoxRef.current.style.border = "2px solid black";
+        } else {
+            loadLineRef.current.style.background = `linear-gradient(to right, white ${checkboxWidth * progress}px, black ${checkboxWidth * progress}px)`;
+            checkBoxRef.current.style.left = `${diff * progress}px`;
+            checkBoxRef.current.style.background = `linear-gradient(to left, black ${wrapperWidth * progress}px, white ${wrapperWidth * progress}px)`;
+            checkBoxRef.current.style.border = "2px solid white";
+        }
+    }, [isActive]);
+
+    const handleClick = useCallback(() => {
+        const newState = !isActive;
+        setIsActive(newState);
+        onChange?.(newState);
+        animate(Math.sqrt, moveCheckbox, 300);
+    }, [isActive, onChange, moveCheckbox]);
 
     return (
-        <div ref={checkBoxWrap} style={defaultWrapStyle}>
-            <div ref={loadLine} style={defaultLoadStyle}></div>
-            <div ref={checkBox} onClick={() => {
-                setPosition(!position)
-                if(onChange){
-                    onChange(!position)
-                }
-                animate(rootTransform, moveCheckbox, 500)
-            }} style={defaultBlockStyle}></div>
+        <div 
+            ref={wrapperRef} 
+            style={wrapperStyle}
+            onClick={handleClick}
+            role="switch"
+            aria-checked={isActive}
+        >
+            <div ref={loadLineRef} style={loadLineStyle} />
+            <div 
+                ref={checkBoxRef} 
+                style={{
+                    ...blockStyle,
+                    left: isActive ? '20px' : '0px'
+                }} 
+            />
         </div>
-    )
-}
+    );
+};
 
-function checkData(oldProps:any,startProps:any){
-    console.debug(oldProps)
-    return (oldProps.data == startProps.data)
-}
+const arePropsEqual = (prevProps: SwitcherType, nextProps: SwitcherType) => {
+    return prevProps.data === nextProps.data;
+};
 
-export default memo(LineSwitcher,checkData)
+export default memo(LineSwitcher, arePropsEqual);

@@ -24,7 +24,7 @@ func cleanupRedis(client *redis.Client) {
 }
 
 // Test SetMerchantInfo with real Redis
-func TestSetSnickersInfo(t *testing.T) {
+func TestSetProductsInfo(t *testing.T) {
 	ctx := context.Background()
 	redisClient := setupTestRedis()
 	defer cleanupRedis(redisClient) // Ensure cleanup after test
@@ -32,18 +32,18 @@ func TestSetSnickersInfo(t *testing.T) {
 	taskProcessor := &RedisTaskProcessor{redisClient: redisClient}
 
 	// Sample merchant data
-	merchant := db.SnickersInfoResponse{
+	merchant := db.ProductsInfoResponse{
 		Name: "Acme Corp",
 	}
 
 	// Call SetMerchantInfo
-	err := taskProcessor.SetSnickersInfo(ctx, "1", merchant)
+	err := taskProcessor.SetProductsInfo(ctx, "1", merchant)
 
 	// Assertions
 	require.NoError(t, err)
 
 	// Verify data in Redis
-	result, err := taskProcessor.GetSnickersInfo(ctx, string(1))
+	result, err := taskProcessor.GetProductsInfo(ctx, string(1))
 	fmt.Println(result, err)
 	require.NoError(t, err)
 	require.NotEmpty(t, result)

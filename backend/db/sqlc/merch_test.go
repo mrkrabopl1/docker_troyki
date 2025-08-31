@@ -65,7 +65,10 @@ func TestGetFiltersByString1(t *testing.T) {
 
 func TestGetCountIdByFiltersAndFirm(t *testing.T) {
 	snickers, err := testStore.GetCountIdByFiltersAndFirm(context.Background(), "Labubu", types.SnickersFilterStruct{
-		Sizes: []string{},
+		Sizes: types.SizesT{
+			Snickers: []string{},
+			Clothes:  []string{},
+		},
 		Firms: []string{},
 		Price: []float32{},
 	})
@@ -85,26 +88,34 @@ func TestGetOrderedSnickersIByFilters(t *testing.T) {
 }
 
 func TestGetProductsInfoById(t *testing.T) {
-	snickers, err := testStore.GetProductsInfoById(context.Background(), 1)
-	fmt.Println(snickers, err)
+	snickers, err := testStore.GetProductsInfoByIdComplex(context.Background(), 2011)
+	fmt.Println(snickers.ProductType, "fdsfds", err)
 	require.NoError(t, err)
 	require.NotEmpty(t, snickers)
 }
 func TestGetMerchInfoById(t *testing.T) {
-	snickers, err := testStore.GetSoloMerchInfoById(context.Background(), 1)
+	snickers, err := testStore.GetSoloMerchInfoById(context.Background(), 4679)
 	fmt.Println(snickers, err)
 	require.NoError(t, err)
 	require.NotEmpty(t, snickers)
 }
+
+func TestGetClothesInfoByIdComplex(t *testing.T) {
+	snickers, err := testStore.GetClothesInfoByIdComplex(context.Background(), 2011)
+	fmt.Println(snickers.ProductType, "fdsfds", err)
+	require.NoError(t, err)
+	require.NotEmpty(t, snickers)
+}
+
 func TestGetProductsInfoByIdComplex(t *testing.T) {
-	snickers, err := testStore.GetProductsInfoByIdComplex(context.Background(), 1)
+	snickers, err := testStore.GetProductsInfoByIdComplex(context.Background(), 2011)
 	fmt.Println(snickers, err)
 	require.NoError(t, err)
 	require.NotEmpty(t, snickers)
 }
 func TestGetSoloCollection(t *testing.T) {
 	snickers, err := testStore.GetMerchCollection(context.Background(), GetMerchCollectionParams{
-		Firm:   "solomerch",
+		Firm:   "nike",
 		Line:   "",
 		Limit:  40,
 		Offset: 36,
@@ -189,8 +200,8 @@ func TestGetSnickersByName(t *testing.T) {
 	require.NotEmpty(t, snickers)
 }
 
-func TestGetMerchByName(t *testing.T) {
-	snickers, err := testStore.GetMerchByName(context.Background(), GetMerchByNameParams{
+func TestGetProductsByName(t *testing.T) {
+	snickers, err := testStore.GetProductsByName(context.Background(), GetProductsByNameParams{
 		Column1: "A",
 		Limit:   1,
 	})
@@ -199,14 +210,143 @@ func TestGetMerchByName(t *testing.T) {
 	require.NotEmpty(t, snickers)
 }
 
-func TestGetSnickersAndFiltersByString(t *testing.T) {
+func TestGetProductsAndFiltersByString(t *testing.T) {
 	filters := types.SnickersFilterStruct{
 		Firms: []string{},
-		Sizes: []string{},
+		Sizes: types.SizesT{Clothes: []string{"s"}, Snickers: []string{}},
 		Price: []float32{},
 	}
-	snickers, err := testStore.GetSnickersAndFiltersByString(context.Background(), "bal", 1, 8, filters, 0)
+	snickers, err := testStore.GetProductsAndFiltersByString(context.Background(), "ж", 1, 8, filters, 0)
+	fmt.Println(snickers.Filters.Sizes, err)
+	require.NoError(t, err)
+	require.NotEmpty(t, snickers)
+}
+
+func TestCreateDiscounts(t *testing.T) {
+	filters := map[int32]types.DiscountData{
+		17: types.DiscountData{
+			Sizes:   []string{"6", "7", "8"},
+			Percent: 10,
+		},
+		2660: types.DiscountData{
+			Sizes:   []string{},
+			Percent: 10,
+		},
+		2717: types.DiscountData{
+			Sizes:   []string{"S", "M", "L"},
+			Percent: 20,
+		},
+	}
+	err := testStore.CreateDiscounts(context.Background(), filters)
+	fmt.Println(err)
+	require.NoError(t, err)
+}
+
+func TestCGetDiscounts(t *testing.T) {
+
+	val, err := testStore.GetProductsWithDiscountComplex(context.Background())
+	fmt.Println(err)
+	require.NoError(t, err)
+	require.NotEmpty(t, val)
+}
+
+func TestGetSnickersFiltersByType(t *testing.T) {
+	snickers, err := testStore.GetFiltersFromSnickers(context.Background(), GetFiltersFromSnickersParams{
+		Name: "",
+	})
 	fmt.Println(snickers, err)
 	require.NoError(t, err)
 	require.NotEmpty(t, snickers)
+}
+func TestGetClothesFiltersByType(t *testing.T) {
+	snickers, err := testStore.GetFiltersFromClothes(context.Background(), GetFiltersFromClothesParams{
+		Name: "",
+	})
+	fmt.Println(snickers, err)
+	require.NoError(t, err)
+	require.NotEmpty(t, snickers)
+}
+
+func TestGetMerchFiltersByType(t *testing.T) {
+	filter, err := testStore.GetFiltersFromMerchByType(context.Background(), GetFiltersFromMerchByTypeParams{
+		Name: "",
+	})
+	fmt.Println(filter, err)
+	fmt.Println(filter.Max, "filter.FirmCountMap", filter.Min)
+	require.NoError(t, err)
+	require.NotEmpty(t, filter)
+}
+
+func TestGetMerchByFilters(t *testing.T) {
+	merch, err := testStore.GetMerchByFilters(context.Background(), "", types.SnickersFilterStruct{}, 0, 10, 0)
+	fmt.Println(merch, err)
+	require.NoError(t, err)
+	require.NotEmpty(t, merch)
+}
+
+func TestGetSnickersByFilters(t *testing.T) {
+	merch, err := testStore.GetSnickersByFilters(context.Background(), "", types.SnickersFilterStruct{
+		Price: []float32{0, 32},
+	}, 0, 10, 0)
+	fmt.Println(merch, err)
+	require.NoError(t, err)
+	require.NotEmpty(t, merch)
+}
+
+func TestGetClothesByFilters(t *testing.T) {
+	merch, err := testStore.GetClothesByFilters(context.Background(), "", types.SnickersFilterStruct{
+		Price: make([]float32, 0, 32000),
+	}, 0, 10, 0)
+	fmt.Println(merch, err)
+	require.NoError(t, err)
+	require.NotEmpty(t, merch)
+}
+
+func TestGetTypeIdByCategoryAndName(t *testing.T) {
+	merch, err := testStore.GetTypeIDByCategoryAndName(context.Background(), GetTypeIDByCategoryAndNameParams{
+		Category: "solomerch",
+		TypeName: "toys",
+	})
+	fmt.Println(merch, err)
+	require.NoError(t, err)
+	require.NotEmpty(t, merch)
+}
+
+func TestGetSnickersAndFilters(t *testing.T) {
+	merch, err := testStore.GetSnickersAndFilters(context.Background(), []int32{}, types.PostDataAndFiltersByCategoryAndType{
+		Name:        "",
+		Size:        10,
+		Page:        1,
+		OrderedType: 0,
+	},
+	)
+	fmt.Println(merch.Products, err)
+	require.NoError(t, err)
+	require.NotEmpty(t, merch)
+}
+
+func TestGetClothesAndFilters(t *testing.T) {
+	merch, err := testStore.GetClothesAndFilters(context.Background(), []int32{}, types.PostDataAndFiltersByCategoryAndType{
+		Name:        "",
+		Size:        10,
+		Page:        1,
+		OrderedType: 0,
+	},
+	)
+	fmt.Println(merch.Products, err)
+	require.NoError(t, err)
+	require.NotEmpty(t, merch)
+}
+
+func TestGetMerchAndFilters(t *testing.T) {
+	merch, err := testStore.GetMerchAndFilters(context.Background(), []int32{}, types.PostDataAndFiltersByCategoryAndType{
+		Name:        "",
+		Size:        10,
+		Page:        1,
+		OrderedType: 0,
+	},
+	)
+	fmt.Println(merch.Products, err)
+	require.NoError(t, err)
+	require.NotEmpty(t, merch)
 }

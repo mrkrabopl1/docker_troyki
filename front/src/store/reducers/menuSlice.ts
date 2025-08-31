@@ -15,7 +15,8 @@ interface IField {
     }[],
     cartCount:number,
     isVerified:boolean,
-    collections:string[]
+    collections:string[],
+    categories:string[],
 }
 
 const initialState:IField  ={
@@ -24,7 +25,8 @@ const initialState:IField  ={
    shop: [],
    cartCount:0,
    isVerified:false,
-   collections:[]
+   collections:[],
+   categories:[]
 }
 
 const menuSlice = createSlice({
@@ -49,10 +51,13 @@ const menuSlice = createSlice({
         collections(state,action){
             state.collections =[...action.payload]
         },
+        categories(state,action){
+            state.categories =[...action.payload]
+        },
     }
 
 });
 
-export  const {  show, sticky, shopAction, cartCountAction, verified,collections } = menuSlice.actions
+export  const {  show, sticky, shopAction, cartCountAction, verified,collections,categories } = menuSlice.actions
 
 export default menuSlice.reducer

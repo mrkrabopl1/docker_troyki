@@ -66,8 +66,8 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
             <div className={s.caption}>Login</div>
             {invalidRequest?<div>Неверный mail или пароль</div>:null}
             <MailInputWithValidation valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setLoginData(data, "mail") }} placeholder={"Электронный адрес"} />
-            <PasswordInputWithValidation check={true} validRule={validRuleForPass} valid={!validationObject.current.pass} invalidText={invalidPassText.current} onChange={(data) => { setLoginData(data, "pass") }} className={s.loginInput} placeholder="Password" />
-            <Button className={s.loginButton} onChange={() => {
+            <PasswordInputWithValidation showToggle={true} validRule={validRuleForPass} valid={!validationObject.current.pass} invalidText={invalidPassText.current} onChange={(data) => { setLoginData(data, "pass") }} className={s.loginInput} placeholder="Password" />
+            <Button className={s.loginButton} onClick={() => {
                 setInvalidRequest(false)
                 loginUser(loginData.current, (loged) => {
                     if (loged) {

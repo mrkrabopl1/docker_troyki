@@ -50,8 +50,8 @@ const OrderForm: React.FC<sendFormModuleInterface> = (props) => {
 
         <div onClick={(e) => { e.stopPropagation() }} className={s.wrapper}>
             <InputWithValidation val={formData.current.name} valid={!validationObject.current.name} invalidText={"Введите имя."} onChange={(data) => { setFormData(data, "orderId") }} placeholder={"Номер заказа"} />
-            <MailInputWithValidation val={""} valid={!validationObject.current.mail} invalidText={"Пустое поле ввода"} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
-            <Button text='Получит данныые заказа' onChange={() => {
+            <MailInputWithValidation value={""} valid={!validationObject.current.mail} invalidText={"Пустое поле ввода"} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
+            <Button text='Получит данныые заказа' onClick={() => {
                 if (Object.values(validationObject.current).length > 0) {
                     setRefresh(!refresh)
                 } else {

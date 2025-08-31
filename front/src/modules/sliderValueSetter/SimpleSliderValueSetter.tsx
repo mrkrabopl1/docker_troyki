@@ -1,6 +1,6 @@
 import React, { ReactElement, useEffect, useRef, useState } from 'react'
 import Slider from 'src/components/slider/Slider'
-import NumInput from 'src/components/NumInput'
+import NumInput from 'src/components/input/NumInput'
 
 
 type SliderSetterType = {
@@ -42,7 +42,7 @@ const  SimpleSliderValueSetter: React.FC<SliderSetterType> = ({data,max,min}) =>
     return(
         <div>
             <Slider data={data?data/max:0} callback={convertSliderData}/>
-            <NumInput data={numData} callback={changeNumData}/>
+            <NumInput   showArrows={true} value={numData} onChange={changeNumData}/>
         </div>
     )
 }

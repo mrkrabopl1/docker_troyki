@@ -1,25 +1,29 @@
-import React, { ReactElement, useRef, useState } from 'react'
+import React, { ReactNode,ReactElement, useRef, useState,memo,useMemo } from 'react'
 import s from "./style.module.css"
 import ColumnHeader from './ColumnHeader'
-type columnType = {
-    table: string[]|never[]
+type ColumnType = {
+    table: string[]|never[],
+    children: ReactNode
 }
 
-const Column: React.FC<columnType> = (props) => {
-    let { table, children} = { ...props }
+const Column: React.FC<ColumnType> = ({ table, children} ) => {
+
+    const tableCreateHandler = useMemo(() => {
+        return table.map((val, id) => {
+                return <div key={id}>{val}</div>
+            })
+    }, [table])
     return (
         <div className={s.priceBlock} >
 
             <ColumnHeader>
                 {children}
             </ColumnHeader>
-            {table.map((val, id) => {
-                return <div key={id}>{val}</div>
-            })}
+            {tableCreateHandler}
 
         </div>
 
     )
 }
 
-export default Column
+export default memo(Column)

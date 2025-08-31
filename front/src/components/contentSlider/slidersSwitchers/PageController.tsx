@@ -1,92 +1,120 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import Button from '../../Button'
-import s from "./linkController.module.scss"
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import s from "./linkController.module.scss";
 
-
-type ContentSliderType = {
-    currentPosition: number,
-    positions: number,
-    seenPage?: number,
-    callback: (page: number) => void
+interface PageControllerProps {
+    currentPosition: number;
+    positions: number;
+    seenPage?: number;
+    callback: (page: number) => void;
 }
 
+const PageController: React.FC<PageControllerProps> = ({
+    seenPage = 3,
+    currentPosition,
+    positions,
+    callback
+}) => {
+    const [active, setActive] = useState(currentPosition);
 
-const PageController: React.FC<ContentSliderType> = (data) => {
-    const { seenPage, currentPosition, positions, callback } = { ...data }
-    let seenElement = seenPage ? seenPage : 3;
-    let [active, setActive] = useState<number>(currentPosition)
     useEffect(() => {
-        setActive(currentPosition)
-    }, [currentPosition])
-    const createPage = (currentPosition: number, positions: number) => {
-        let arr = [];
+        setActive(currentPosition);
+    }, [currentPosition]);
+
+    const generatePageNumbers = useCallback((current: number, total: number) => {
+        const result: (number | null)[] = [];
         let count = 1;
-        while (count <= positions) {
-            if (count > seenElement && count < currentPosition - 1) {
-                console.debug(count, "test")
-                count = currentPosition - 1
-                arr.push(null)
-                arr.push(count)
-                count = count + 1
-            } else if (count > currentPosition + 1 && count < positions - seenElement + 1) {
-                count = positions - seenElement + 1
-                arr.push(null)
-                arr.push(count)
-                count = count + 1
-            } else {
-                arr.push(count)
-                count = count + 1
+
+        while (count <= total) {
+            if (count > seenPage && count < current - 1) {
+                count = current - 1;
+                result.push(null);
+            } else if (count > current + 1 && count < total - seenPage + 1) {
+                count = total - seenPage + 1;
+                result.push(null);
             }
+            result.push(count);
+            count++;
         }
 
+        return result;
+    }, [seenPage]);
 
-        let divArr: any[] = [];
+    const renderPageButtons = useMemo(() => {
+        const pageNumbers = generatePageNumbers(active, positions);
 
-        arr.forEach((val,index) => {
+        return pageNumbers.map((val, index) => {
             if (val === null) {
-                divArr.push(<span key={val+""+index} style={{ margin: " 0 5px", textAlign: "center", width: "30px", marginTop: "auto" }} >...</span>)
-            } else {
-                divArr.push(<div  key={val+""+index} style={{ position: "relative" }} className={s.buttonStyle} onClick={() => {
-                    setActive(val)
-                    callback(val)
-                }}><span className={s.spanStyle} style={active === val ? { color: "red" }:{}}>{val}</span></div>)
+                return (
+                    <span 
+                        key={`ellipsis-${index}`}
+                        className={s.ellipsis}
+                    >
+                        ...
+                    </span>
+                );
             }
-        })
 
-        return divArr
-    }
+            return (
+                <div 
+                    key={`page-${val}`}
+                    className={s.buttonStyle}
+                    onClick={() => {
+                        setActive(val);
+                        callback(val);
+                    }}
+                >
+                    <span 
+                        className={s.spanStyle}
+                        style={{ color: active === val ? "red" : "" }}
+                    >
+                        {val}
+                    </span>
+                </div>
+            );
+        });
+    }, [active, positions, generatePageNumbers, callback]);
 
-    const leftFunc = () => {
+    const handleLeftClick = useCallback(() => {
         if (active > 1) {
-            callback(active - 1)
+            callback(active - 1);
         }
-    }
+    }, [active, callback]);
 
-
-    const rightFunc = () => {
+    const handleRightClick = useCallback(() => {
         if (active < positions) {
-            callback(active + 1)
+            callback(active + 1);
         }
-    }
+    }, [active, positions, callback]);
 
     return (
-        <div style={{ justifyContent: "center", display: "flex" }}>
-
-            <div style={{ width: "30px", position: "relative" }}>
-                <button onClick={() => leftFunc()} className={s.paginate + " " + s.right1}><i className={s.pg}></i><i className={s.pg} ></i></button>
+        <div className={s.paginationContainer}>
+            <div className={s.paginationArrow}>
+                <button 
+                    onClick={handleLeftClick}
+                    className={`${s.paginate} ${s.right1}`}
+                    disabled={active === 1}
+                >
+                    <i className={s.pg}></i>
+                    <i className={s.pg}></i>
+                </button>
             </div>
 
-            <div style={{ cursor: "pointer", margin: "auto 0", justifyContent: "center", display: "flex" }} >
-                {createPage(active, positions)}
+            <div className={s.paginationPages}>
+                {renderPageButtons}
             </div>
 
-            <div style={{ width: "30px", position: "relative" }}>
-                <button onClick={() => rightFunc()} className={s.paginate + " " + s.right}><i className={s.pg}></i><i className={s.pg}></i></button>
+            <div className={s.paginationArrow}>
+                <button 
+                    onClick={handleRightClick}
+                    className={`${s.paginate} ${s.right}`}
+                    disabled={active === positions}
+                >
+                    <i className={s.pg}></i>
+                    <i className={s.pg}></i>
+                </button>
             </div>
-
         </div>
-    )
-}
+    );
+};
 
-
-export default PageController
+export default React.memo(PageController);

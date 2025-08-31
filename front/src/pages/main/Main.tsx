@@ -1,93 +1,72 @@
-import React, { useEffect, ReactElement, useState, useRef, memo, useCallback } from 'react'
-
-import MerchSliderField from '../../modules/merchField/MerchSliderField'
-import { getMainInfo } from "src/providers/merchProvider"
-import { useAppSelector } from 'src/store/hooks/redux'
+import React, { memo, useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCollections,getHistoryInfo } from 'src/providers/merchProvider'
-import MerchComplexSliderField from 'src/modules/merchField/MerchComplexSliderField';
-
+import { useAppSelector } from 'src/store/hooks/redux';
+import { getHistoryInfo } from 'src/providers/merchProvider';
+import MerchBanner from 'src/modules/merchBanner/MerchBanner';
 import StickyDispetcherButton from 'src/modules/stickyDispetcherButton/StickyDispetcherButton';
-import MerchBanner from 'src/modules/merchBanner/MerchBanner'
-import s from "./s.module.css"
-
 import ContentSliderWithSwitcher from 'src/components/contentSlider/ContentSliderWithSwitcher';
+import MerchComplexSliderField from 'src/modules/merchField/MerchComplexSliderField';
+import s from "./s.module.css";
 
-
-const TextArray = {
-  text:[
-  "Мы открылись",
-  "Мероприятия"
-  ],
-  subText:[
-    "",
-    ""
-  ],
-  btnText:[
-    "К колекции",
-    "К мероприятию"
-    ]
+interface BannerData {
+  btnText: string;
+  image: string;
+  name: string;
+  id: string;
 }
 
+const BANNER_TEXT = {
+  text: ["Мы открылись", "Мероприятия"],
+  subText: ["", ""],
+  btnText: ["К коллекции", "К мероприятию"]
+};
 
+const Main: React.FC = memo(() => {
+  const navigate = useNavigate();
+  const { chousenName } = useAppSelector(state => state.complexDropReducer);
+  const [bannerData, setBannerData] = useState<BannerData>({ 
+    btnText: "", 
+    image: "", 
+    name: "", 
+    id: "" 
+  });
+  const [merchHistoryFieldData, setMerchHistoryFieldData] = useState<any[]>([]);
 
-const Main: React.FC<any> = () => {
+  const handleBannerClick = useCallback((e) => {
+    navigate(`/collections/${bannerData.id}`);
+  }, [navigate]);
 
-  const navigate = useNavigate()
+  const createBanners = useCallback(() => {
+    return BANNER_TEXT.btnText.map((btnText, i) => (
+      <MerchBanner
+        key={i}
+        className={{
+          main: s.mainBanner,
+          button: s.buttonBanner,
+          contentHolder: s.contentHolder
+        }}
+        btnText={btnText}
+        onChange={handleBannerClick}
+        title=""
+        img={`/images/main/${i}.png`}
+      />
+    ));
+  }, [handleBannerClick]);
 
-  const onChangeBanner = (id: string) => {
-    navigate("/collections/" + id)
-  }
-
-  let mainPageRef = useRef<HTMLDivElement>(null)
-
-  let [imgBanner, setImgBanner] = useState<{btnText:string, image: string, name: string, id: string }>({ btnText:"",image: "", name: "", id: "" })
- 
-  const createUrlImage = (data: {mainText:string,subText:string, img: string, name: string, id: string ,btnText:string}[]) => {
-    data.forEach(val => {
-      setImgBanner({ image: val.img, name: val.name, id: val.id, btnText:val.btnText })
-    })
-
-
-  }
-
-  const { chousenName } = useAppSelector(state => state.complexDropReducer)
-
-  const createMerchBanner = useCallback(()=>{
-    let arr:any = [];
-    for(let i = 0;i<2;i++){
-      arr.push(<MerchBanner className={{
-        main:s.mainBanner,
-        button:s.buttonBanner,
-        contentHolder:s.contentHolder
-      }} btnText={TextArray.btnText[i]} onChange={onChangeBanner} id={imgBanner.id} title={""} img={"/images/main/"+i+".png"} />)
-    }
-    return arr
-  },[])
-
-  useEffect(() => {
-    getHistoryInfo(setMerchHistoryFieldData )
-  }, [])
-  let [merchFieldData, setMerchFieldData] = useState<any>([])
-  let [merchHistoryFieldData, setMerchHistoryFieldData] = useState<any>([])
-
+  // useEffect(() => {
+  //   getHistoryInfo(setMerchHistoryFieldData);
+  // }, []);
 
   return (
-
-    <div style={{position:"relative"}}>
-      <StickyDispetcherButton top='80%' left="80%"/>
-      <ContentSliderWithSwitcher className={{slider:s.sliderHolder}} content={createMerchBanner()}/>
-      <MerchComplexSliderField/>
+    <div style={{ position: "relative" }}>
+      <StickyDispetcherButton top="20%" left="80%" />
+      <ContentSliderWithSwitcher 
+        className={{ slider: s.sliderHolder }} 
+        content={createBanners()} 
+      />
+      <MerchComplexSliderField />
     </div>
+  );
+});
 
-
-  )
-}
-
-
-function arePropsEqual(oldProps: any, newProps: any) {
-
-  return (oldProps.memo == newProps.memo)
-}
-
-export default memo(Main, arePropsEqual)
+export default Main;

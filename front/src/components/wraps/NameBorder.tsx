@@ -1,4 +1,4 @@
-import React, { ReactElement, RefObject, useRef, useState } from 'react'
+import React, { ReactElement, RefObject, useRef, useState,memo } from 'react'
 
 
 const NameBorder = React.forwardRef((props:{content:ReactElement,name:string},ref:React.Ref<HTMLDivElement>) => {
@@ -14,4 +14,4 @@ const NameBorder = React.forwardRef((props:{content:ReactElement,name:string},re
       
     )
 })
-export default NameBorder
+export default memo(NameBorder)

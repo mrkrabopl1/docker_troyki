@@ -27,7 +27,7 @@ func (q *Queries) GetCartCount(ctx context.Context, hash string) (int32, error) 
 
 }
 
-func (q *Queries) UpdatePreorder(ctx context.Context, id int32, size string, sourceTable string, hash string) (int32, error) {
+func (q *Queries) UpdatePreorder(ctx context.Context, id int32, size string, sourceTable ProductSourceEnum, hash string) (int32, error) {
 	orderId, err := q.GetPreorderIdByHashUrl(ctx, hash)
 	fmt.Println(orderId, "orderId")
 	if err != nil {
@@ -79,7 +79,7 @@ func (q *Queries) UpdatePreorder(ctx context.Context, id int32, size string, sou
 
 }
 
-func (q *Queries) CreatePreorder(ctx context.Context, id int32, size string, sourceTable string) (string, error) {
+func (q *Queries) CreatePreorder(ctx context.Context, id int32, size string, sourceTable ProductSourceEnum) (string, error) {
 	fmt.Println(id, size, sourceTable, "createPreorderssssssssssssssssssssssssssssssssssssssssssssssss")
 	currentTime := time.Now()
 	hashedStr := xxhash.Sum64([]byte((currentTime.String() + fmt.Sprint(id))))
@@ -248,15 +248,18 @@ func (store *SQLStore) GetCartData(ctx context.Context, hash string) ([]types.Sn
 	var dataQuery []types.SnickersCart
 	prId, err := store.GetPreorderIdByHashUrl(ctx, hash)
 	if err != nil {
+		fmt.Println("Error getting preorder ID:", err)
 		return dataQuery, err
 	} else {
 		prData, err := store.GetPreorderDataById(ctx, prId)
 		if err != nil {
+			fmt.Println("Error getting preorder data:", err)
 			return dataQuery, err
 		} else {
 			fmt.Println(prData, "prData")
 			data, err := store.GetSnickersPreorderData(ctx, prData)
 			if err != nil {
+				fmt.Println("Error getting preorder Snickers data:", err)
 				return dataQuery, err
 			}
 			return data, nil
@@ -341,10 +344,10 @@ func (store *SQLStore) GetOrderDataByMail(ctx context.Context, mail string, id i
 	}
 }
 
-func NewSnickersSearchResponse3(snickersSearch []GetSnickersWithDiscountRow) []types.SnickersSearchResponse1 {
+func NewProductsSearchResponse3(ProductsSearch []GetProductsWithDiscountRow) []types.ProductsSearchResponse1 {
 
-	list := []types.SnickersSearchResponse1{}
-	for _, info := range snickersSearch {
+	list := []types.ProductsSearchResponse1{}
+	for _, info := range ProductsSearch {
 		var imgArr []string
 		for i := 1; i < 3; i++ {
 			str := "images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
@@ -356,7 +359,7 @@ func NewSnickersSearchResponse3(snickersSearch []GetSnickersWithDiscountRow) []t
 		} else {
 			discount = nil
 		}
-		list = append(list, types.SnickersSearchResponse1{
+		list = append(list, types.ProductsSearchResponse1{
 			Image:    imgArr,
 			Price:    int(info.Minprice),
 			Id:       int(info.ID),

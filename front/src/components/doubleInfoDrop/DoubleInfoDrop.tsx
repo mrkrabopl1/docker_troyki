@@ -1,69 +1,70 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import s from "./style.module.css"
-type propsRowType = {
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import s from "./style.module.css";
+
+type PropsRowType = {
     className?: {
-        main: string,
-        second: string
-    },
-    info: string
+        main?: string;
+        second?: string;
+    };
+    info: string;
+    children: React.ReactNode;
+};
 
-}
+const DoubleInfoDrop: React.FC<PropsRowType> = ({ 
+    className = {}, 
+    info, 
+    children 
+}) => {
+    const [active, setActive] = useState(false);
+    const dropRef = useRef<HTMLDivElement>(null);
+    
+    // Мемоизированный обработчик переключения
+    const toggleActive = useCallback(() => {
+        setActive(prev => !prev);
+    }, []);
 
-
-const DoubleInfoDrop: React.FC<propsRowType> = (props) => {
-    let { className, children, info } = { ...props }
-    let [active, setActive] = useState<boolean>(false)
-    let [refresh,setRefresh] = useState<boolean>(true)
-
-   
-    const [initialChildren, setChildren] = useState(children);
-
-    // Используем useEffect для обновления children, когда изменяются props
-    useEffect(() => {
-      setChildren(children);
-    }, [children]);
-    let secondDropStyle1 = {
-        transition: "height 0.5s ",
-        height: "0px",
+    // Мемоизированные стили для выпадающего блока
+    const dropStyle = useMemo(() => ({
+        transition: "height 0.3s ease-in-out",
+        height: active ? `${dropRef.current?.scrollHeight}px` : "0px",
         overflow: "hidden"
+    }), [active]);
 
+    // Мемоизированные классы для стрелок
+    const arrowLeftClass = useMemo(() => (
+        [s.arrowLeft, active ? s.arrowLeftOpen : null].filter(Boolean).join(" ")
+    ), [active]);
 
-    }
-    let drop = useRef<HTMLDivElement>(null)
+    const arrowRightClass = useMemo(() => (
+        [s.arrowRight, active ? s.arrowRightOpen : null].filter(Boolean).join(" ")
+    ), [active]);
 
-    useEffect(()=>{
-        if(active){
-            setRefresh(!refresh)
-        }
-    },[])
-
-    let secondDropStyle = {
-        transition: "height 0.5s ",
-        height: drop.current?.clientHeight + "px",
-        overflow: "hidden"
-    }
+    // Мемоизированный класс для текста
+    const textClass = useMemo(() => (
+        active && className.second ? className.second : ""
+    ), [active, className.second]);
 
     return (
-        <div style={{ position: "relative" }} className={className ? className.main : ""}>
+        <div style={{ position: "relative" }} className={className.main || ""}>
             <div
-                onClick={() => {
-                    setActive(!active)
-                }}
-                style={{ display: "flex", cursor:"pointer" }} >
-                <p style={{paddingRight:"15px"}} className={active && className?className.second:""}>{info}</p>
-
+                onClick={toggleActive}
+                style={{ display: "flex", cursor: "pointer" }}
+                role="button"
+                aria-expanded={active}
+            >
+                <p style={{ paddingRight: "15px" }} className={textClass}>
+                    {info}
+                </p>
                 <div className={s.arrowMain}>
-                    <span className={[s.arrowLeft , active?s.arrowLeftOpen:null].join(" ")}></span>
-                    <span className={[s.arrowRight , active?s.arrowRightOpen:null].join(" ")}></span>
+                    <span className={arrowLeftClass}></span>
+                    <span className={arrowRightClass}></span>
                 </div>
-                {/* <span  transform:active?"rotate(0deg)":"rotate(90deg)"}}>{ "\u142F"}</span> */}
             </div>
-            <div style={active ? secondDropStyle : secondDropStyle1}>
-                <div ref={drop}>{initialChildren}</div>
+            <div style={dropStyle}>
+                <div ref={dropRef}>{children}</div>
             </div>
-
         </div>
-    )
-}
+    );
+};
 
-export default DoubleInfoDrop
+export default React.memo(DoubleInfoDrop);

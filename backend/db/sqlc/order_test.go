@@ -78,7 +78,7 @@ func TestCreatePreorder(t *testing.T) {
 
 func TestGetCartData(t *testing.T) {
 
-	preorder, err := testStore.GetCartData(context.Background(), "4963521833281056534")
+	preorder, err := testStore.GetCartData(context.Background(), "2254621703478224862")
 	now := time.Now()
 	expiration := time.Now().Add(2 * time.Hour)
 	fmt.Println(preorder, now)
@@ -139,7 +139,7 @@ func TestDeleteFromPreorderItems(t *testing.T) {
 }
 
 func TestCreateOrder(t *testing.T) {
-	orderData := types.CreateOrderType{
+	orderData := CreateOrderType{
 		PreorderHash: "7563840074177507240",
 		PersonalData: types.PersonalData{
 			Name:       "name",
@@ -155,9 +155,9 @@ func TestCreateOrder(t *testing.T) {
 			House:  "house",
 			Flat:   "flat",
 		},
-		Delivery: types.Delivery{
+		Delivery: Delivery{
 			DeliveryPrice: 10000,
-			Type:          1,
+			Type:          "own",
 		},
 		Save: true,
 	}

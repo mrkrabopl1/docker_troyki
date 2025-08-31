@@ -23,7 +23,7 @@ type urlParamsType = {
     contactInfo: any,
     onChange: (data: any) => void,
     onChangeInfo: (info: any) => void
-    coords:number[]
+    coords:[number,number]
 };
 
 const DeliveryPage: React.FC<urlParamsType> = (props) => {
@@ -40,7 +40,7 @@ const DeliveryPage: React.FC<urlParamsType> = (props) => {
 
     return (
         <div>
-            <MapComponent location = {co}/>
+            <MapComponent location = {coords}/>
             <ContactInfo address={address} contactInfo={contactInfo} onChange={onChangeInfo} />
             <DeliveryTypeRadioGroup onChange={onChange} />
         </div>

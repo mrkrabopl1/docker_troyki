@@ -1,147 +1,132 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import s from "./style.module.css";
 
+type InputType = 'email' | 'phone'| 'text';
+type InputMode = 'email' | 'phone' | 'auto';
+
 type Props = {
-  valid: boolean;
-  invalidText: string;
-  onChange: (value: any) => void;
+  valid?: boolean;
+  invalidText?: string;
+  onChange: (value: { type: InputType; value: string }) => void;
   onFocus?: (value: string) => void;
   onBlur?: (value: string) => void;
-  onValid: (value: boolean) => void;
+  onValid?: (isValid: boolean) => void;
   className?: string;
   invalidClassName?: string;
   placeholder?: string;
   val?: string;
-  type?: 'email' | 'phone' | 'auto'; // Добавил тип для явного указания
+  type?: InputMode;
 };
 
-const EmailPhoneInput: React.FC<Props> = (props) => {
-  const {
-    onChange,
-    onFocus,
-    onBlur,
-    onValid,
-    className,
-    placeholder,
-    val = "",
-    valid = true,
-    invalidText,
-    type = 'auto'
-  } = props;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^[\d\+][\d\(\)\ -]{4,14}\d$/;
 
+const EmailPhoneInput: React.FC<Props> = ({
+  onChange,
+  onFocus,
+  onBlur,
+  onValid,
+  className = '',
+  placeholder = '',
+  val = '',
+  valid = true,
+  invalidText = '',
+  type = 'auto'
+}) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const invalidTextRef = useRef<string>(invalidText);
-  const startValidationOnBlur = useRef<boolean>(false);
-  const [validState, setValid] = useState<boolean>(valid);
-  const [valState, setVal] = useState<string>(val);
-  const [inputType, setInputType] = useState<'email' | 'tel' | 'text'>('text');
+  const [inputValue, setInputValue] = useState(val);
+  const [isValid, setIsValid] = useState(valid);
+  const [currentType, setCurrentType] = useState<InputType>('text');
 
-  // Валидация email
-  const validateEmail = (email: string): boolean => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-  };
-
-  // Валидация телефона (простая, можно доработать)
-  const validatePhone = (phone: string): boolean => {
-    const re = /^[\d\+][\d\(\)\ -]{4,14}\d$/;
-    return re.test(phone);
-  };
-
-  // Автоматическое определение типа ввода
-  const detectInputType = (value: string): 'email' | 'tel' | 'text' => {
+  // Определение типа ввода
+  const detectInputType = useCallback((value: string): InputType => {
     if (type === 'email') return 'email';
-    if (type === 'phone') return 'tel';
-    
+    if (type === 'phone') return 'phone';
     if (value.includes('@')) return 'email';
-    if (/[\d\+]/.test(value[0])) return 'tel';
-    
+    if (/[\d\+]/.test(value[0])) return 'phone';
     return 'text';
-  };
+  }, [type]);
 
+  // Валидация ввода
+  const validateInput = useCallback((value: string, type: InputType): boolean => {
+    if (!value) return true;
+    return type === 'email' 
+      ? EMAIL_REGEX.test(value) 
+      : type === 'phone' 
+        ? PHONE_REGEX.test(value) 
+        : true;
+  }, []);
+
+  // Обновление состояния при изменении внешнего значения
   useEffect(() => {
-    invalidTextRef.current = invalidText;
-    setValid(valid);
-  }, [valid, invalidText]);
+    setInputValue(val);
+    const detectedType = detectInputType(val);
+    setCurrentType(detectedType);
+    setIsValid(valid);
+  }, [val, valid, detectInputType]);
 
-  useEffect(() => {
-    setVal(val);
-    setInputType(detectInputType(val));
-  }, [val]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Обработчик изменения значения
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setVal(value);
-    startValidationOnBlur.current = true;
-    const currentType = detectInputType(value);
-    setInputType(currentType);
-    let isValid = false;
-    if (currentType === 'email') {
-      isValid = validateEmail(value);
-    } else if (currentType === 'tel') {
-      isValid = validatePhone(value);
-    }
-    if(validState!==isValid){
-      setValid(isValid)
-      onValid(isValid);
-    }
-    isValid && onChange({type:inputType, value: valState} as any);
-  };
+    const detectedType = detectInputType(value);
+    const isValidInput = validateInput(value, detectedType);
 
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    if (!startValidationOnBlur.current) return;
+    setInputValue(value);
+    setCurrentType(detectedType);
+    setIsValid(isValidInput);
 
+    if (isValidInput) {
+      onChange({ type: detectedType, value });
+    }
+
+    onValid?.(isValidInput);
+  }, [detectInputType, onChange, onValid, validateInput]);
+
+  // Обработчик потери фокуса
+  const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    let isValid = false;
-    let errorText = '';
+    const isValidInput = validateInput(value, currentType);
+    setIsValid(isValidInput);
+    onBlur?.(value);
+    onValid?.(isValidInput);
+  }, [currentType, onBlur, onValid, validateInput]);
 
-    if (value) {
-      if (inputType === 'email') {
-        isValid = validateEmail(value);
-        errorText = 'Введите корректный email';
-      } else if (inputType === 'tel') {
-        isValid = validatePhone(value);
-        errorText = 'Введите корректный телефон';
-      }
-    }
-
-    if (!isValid) {
-      invalidTextRef.current = errorText;
-      setValid(false);
-    }
-
-    if (onBlur) {
-      onBlur(value);
-    }
-  };
+  // Классы для инпута
+  const inputClasses = [
+    s.inputWithLabel,
+    className,
+    !isValid ? s.invalid : ''
+  ].filter(Boolean).join(' ');
 
   return (
     <div className={s.inputContainer}>
       <input
         ref={inputRef}
-        value={valState}
-        type={inputType}
-        className={validState ? s.inputWithLabel : s.inputWithLabel + " " + s.invalid}
+        value={inputValue}
+        type={currentType}
+        className={inputClasses}
         style={{ boxSizing: 'border-box', width: "100%" }}
-        placeholder=""
+        placeholder={placeholder}
         onChange={handleChange}
         onFocus={(e) => onFocus?.(e.target.value)}
         onBlur={handleBlur}
-        required
+        aria-invalid={!isValid}
       />
-      <label 
-        onClick={() => inputRef.current?.focus()} 
-        className={s.label}
-      >
-        {placeholder}
-      </label>
-      {!validState && (
-        <label style={{ color: "red" }}>
-          {invalidTextRef.current}
+      {placeholder && (
+        <label 
+          onClick={() => inputRef.current?.focus()} 
+          className={s.label}
+        >
+          {placeholder}
         </label>
+      )}
+      {!isValid && invalidText && (
+        <div className={s.errorMessage}>
+          {invalidText}
+        </div>
       )}
     </div>
   );
 };
 
-export default EmailPhoneInput;
+export default React.memo(EmailPhoneInput);

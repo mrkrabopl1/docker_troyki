@@ -1,23 +1,41 @@
-import React, { useRef, useState } from 'react'
+import React, { memo, useCallback } from 'react';
 
-
-interface IButton {
+interface IButtonProps {
     text?: string;
-    onChange:(e:React.MouseEvent)=>any;
-    className?:string
+    onClick: (e: React.MouseEvent) => void;
+    className?: string;
+    style?: React.CSSProperties;
+    disabled?: boolean;
 }
 
-const proxyClick=function(e:React.MouseEvent,clickMethod:(e:React.MouseEvent)=>any){
-    e.stopPropagation();
-    clickMethod(e)
-}
+const Button: React.FC<IButtonProps> = ({ 
+    text, 
+    onClick, 
+    className,
+    style,
+    disabled = false 
+}) => {
+    const handleClick = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+       onClick(e);
+    }, [onClick]);
 
+    const buttonStyle: React.CSSProperties = {
+        cursor: 'pointer',
+        display: 'inline-block',
+        ...style
+    };
 
-const Button:  React.FC<IButton> = ({ text,onChange,className }) => {
-    return (<button style={{cursor:"pointer",display:"inine-block"}} className={className} 
-        onMouseDown={e=>{proxyClick(e,onChange)}}>
-        {text}
-    </button>)
-}
+    return (
+        <button 
+            style={buttonStyle}
+            className={className}
+            onClick={handleClick}
+            disabled={disabled}
+        >
+            {text}
+        </button>
+    );
+};
 
-export default Button
+export default memo(Button);

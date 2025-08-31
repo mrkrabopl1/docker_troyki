@@ -6,7 +6,7 @@ const getMerchInfo = function (id: string, callback: (val: any) => void) {
     axios({
         withCredentials: true,
         method: 'get',
-        url: `${API_URL}/ProductsInfo` + "?" + "id=" + id,
+        url: `${API_URL}/productsInfo` + "?" + "id=" + id,
         headers: {}
     }
     ).then((res: any) => {
@@ -85,20 +85,6 @@ const getCollection = function (reqData: { name: string, page: number, size: num
     })
 }
 
-const getCountCollection = function (name: string , callback: (val: any) => void) {
-    axios({
-        method: 'get',
-        url: `${API_URL}/collectionCount` + "?" + "name=" + name,
-        headers: {
-           
-        }
-    }
-    ).then((res: any) => {
-        callback(res.data)
-    },  (error: any) => {
-        console.warn(error)
-    })
-}
 
 const getCollections = function (reqData: { names: string[], page: number, size: number }, callback: (val: any) => void) {
     axios({
@@ -141,4 +127,4 @@ const getSizeTable = function (callback: (val: any) => void) {
         console.warn(error)
     })
 }
-export { getMerchInfo, getSizeTable, getMainInfo, getCollections, getFirms, getHistoryInfo, getDiscontInfo, getCollection,getCountCollection }
+export { getMerchInfo, getSizeTable, getMainInfo, getCollections, getFirms, getHistoryInfo, getDiscontInfo, getCollection }

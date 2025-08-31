@@ -107,10 +107,11 @@ func CachedMiddleware(s *Server) gin.HandlerFunc {
 		if err == nil {
 			fmt.Println("reddis", ProductsInfo.Info, ProductsInfo.Image, "redisTest")
 			ctx.JSON(http.StatusOK, db.ProductsInfoResponse{
-				Info:     ProductsInfo.Info,
-				Image:    ProductsInfo.Image,
-				Name:     ProductsInfo.Name,
-				Discount: ProductsInfo.Discount,
+				Info:        ProductsInfo.Info,
+				Image:       ProductsInfo.Image,
+				Name:        ProductsInfo.Name,
+				Discount:    ProductsInfo.Discount,
+				ProductType: ProductsInfo.ProductType,
 			})
 			if errC != nil {
 				fmt.Println(errC, "ssssssssssssssssssssss")

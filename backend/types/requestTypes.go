@@ -65,6 +65,17 @@ type PostDataSnickersAndFiltersByString struct {
 	Filters     SnickersFilterStruct `json:"filters"`
 	OrderedType int                  `json:"orderedType"`
 }
+
+type PostDataAndFiltersByCategoryAndType struct {
+	// Define your struct to represent the JSON data
+	Name        string               `json:"name"`
+	Page        int                  `json:"page"`
+	Size        int                  `json:"size"`
+	Filters     SnickersFilterStruct `json:"filters"`
+	OrderedType int                  `json:"OrderedType"`
+	Category    string               `json:"category"`
+	Type        string               `json:"type"`
+}
 type VerifyData struct {
 	Token string `json:"token"`
 }
@@ -75,4 +86,9 @@ type ChangePassType struct {
 type OrderRequest struct {
 	OrderId int32  `json:"orderId"`
 	Mail    string `json:"mail"`
+}
+
+type DiscountData struct {
+	Sizes   []string `json:"sizes"`
+	Percent int32    `json:"percent"`
 }

@@ -2,7 +2,7 @@ import React, { ReactElement, useRef, useState, memo } from 'react'
 import s from "./style.module.css"
 import Lamp from './Lamp'
 
-type propsLampType = {
+type PropsLampType = {
     onChange:(...args:any)=>void|null
     name?:string,
     text?:string,
@@ -13,7 +13,7 @@ type propsLampType = {
 
 
 
-const IconLamp: React.FC<propsLampType> = (props) => {
+const IconLamp: React.FC<PropsLampType> = (props) => {
     let {onChange, name, text, checked, description, icon} = {...props}
     return (
         <div className={s.iconLamp}>
@@ -28,4 +28,4 @@ const IconLamp: React.FC<propsLampType> = (props) => {
     )
 }
 
-export default memo(IconLamp, ()=>false)
+export default memo(IconLamp)

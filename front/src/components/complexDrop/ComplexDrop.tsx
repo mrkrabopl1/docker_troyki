@@ -1,104 +1,97 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import s from "./style.module.css"
-import { useAppDispatch } from 'src/store/hooks/redux'
-import { complexDropSlice } from 'src/store/reducers/complexDropSlice'
-import global from "src/global.css"
-
-interface dataInterface {
+import React, { useState, useRef, useCallback, useMemo } from 'react';
+import s from "./style.module.css";
+import { useAppDispatch } from 'src/store/hooks/redux';
+import { complexDropSlice } from 'src/store/reducers/complexDropSlice';
+import ContentSliderWithSwitcherForShift from '../contentSlider/ContentSliderWithSwitcherForShift';
+interface DataInterface {
     [key: string]: string[];
 }
-type changeType = { main?: string, sub?: string }
-interface propsType {
-    data: dataInterface,
-    onChange: (data: changeType) => void
+
+type ChangeType = { main?: string; sub?: string };
+
+interface PropsType {
+    data: DataInterface;
+    onChange: (data: ChangeType) => void;
 }
 
-let animateDropStyle: any = {
-    display: "block",
-    position: "absolute",
-    width: "100%",
-    top: "100%",
-    zIndex: 200
-}
+const ComplexDrop: React.FC<PropsType> = ({ data, onChange }) => {
+    const dispatch = useAppDispatch();
+    const { setName, clear } = complexDropSlice.actions;
+    
+    const inputRefs = useRef<HTMLDivElement[]>([]);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const leftPos = useRef<number>(0);
+    
+    const [showDrop, setShowDrop] = useState(false);
+    const [chosen, setChosen] = useState<string | null>(null);
 
+    // Мемоизированная функция создания контента для основного меню
+    const createMainContent = useCallback(() => {
+        return Object.keys(data).map((val, index) => (
+            <div
+                key={val}
+                onClick={() => onChange({ main: val })}
+                ref={el => {
+                    if (el) inputRefs.current[index] = el;
+                }}
+                className={s.mainElem}
+                onMouseLeave={() => {
+                    setChosen(val);
+                    timeoutRef.current = setTimeout(() => setShowDrop(false), 100);
+                }}
+                onMouseEnter={() => {
+                    if (timeoutRef.current) {
+                        clearTimeout(timeoutRef.current);
+                    }
+                    if (inputRefs.current[index]) {
+                        leftPos.current = inputRefs.current[index].offsetLeft;
+                    }
+                    setChosen(val);
+                    setShowDrop(true);
+                }}
+            >
+                {val.toUpperCase()}
+            </div>
+        ));
+    }, [data, onChange]);
 
-const ComplexDrop: React.FC<propsType> = (props) => {
-    let mainRef = useRef(null)
+    // Мемоизированная функция создания выпадающего контента
+    const createDropContent = useMemo(() => {
+        if (!chosen || !data[chosen] || data[chosen].length <= 1) return null;
+        
+        return data[chosen].map(val => (
+            <div 
+                key={val} 
+                onClick={() => onChange({ sub: val })}
+                className={s.dropItem}
+            >
+                {val.toUpperCase()}
+            </div>
+        ));
+    }, [chosen, data, onChange]);
 
-    const inputRef = useRef<HTMLDivElement[]>([]);
-    let dispatch = useAppDispatch()
-    let { data, onChange } = { ...props }
+    // Проверка, нужно ли показывать выпадающее меню
+    const shouldShowDrop = chosen && data[chosen] && data[chosen].length > 1 && showDrop;
 
-    let leftPos = useRef<number>(0)
-
-    let [showDrop, setShowDrop] = useState<boolean>(false)
-    let [chosen, setChosen] = useState<string | null>(null)
-    let timeoutRef = useRef<any>(null)
-    const { setName, clear } = { ...complexDropSlice.actions }
-    // useEffect(()=>{
-    //     if(chosen){
-
-    //     }
-
-    // },[chosen])
-    const createCont = () => {
-        let arr: any = []
-
-        Object.keys(data).forEach((val, indx) => {
-            arr.push(
-                <div key={val}
-                    onClick={() => { onChange({ main: val }) }}
-                    ref={el => inputRef.current[indx] = el}
-                    className={s.mainElem}
-                    onMouseLeave={() => { setChosen(val); timeoutRef.current = setTimeout(() => { setShowDrop(false) }, 100) }}
+    return (
+        <div className={s.complexDrop}>
+            <ContentSliderWithSwitcherForShift content={createMainContent()} />
+            {shouldShowDrop && (
+                <div
                     onMouseEnter={() => {
                         if (timeoutRef.current) {
                             clearTimeout(timeoutRef.current);
                         }
-                        leftPos.current = inputRef.current[indx].offsetLeft
-                        setChosen(val);
-                        setShowDrop(true)
-                    }}>
-                    {val.toUpperCase()}
+                    }}
+                    onMouseLeave={() => setShowDrop(false)}
+                    style={{ left: `${leftPos.current}px` }}
+                    className={s.dropField}
+                >
+                    {createDropContent}
                 </div>
-            )
-        })
-        return arr
-    }
-
-    const createDropContent = () => {
-        if (chosen) {
-            let arr: any = []
-            let dropData = data[chosen]
-            if (dropData.length > 1) {
-                dropData.forEach((val) => {
-                    arr.push(<div key={val} onClick={() => { onChange({ sub: val }) }} >{val.toUpperCase()}</div>)
-                })
-                // setShowDrop(true)
-            } else {
-                // setShowDrop(false)
-            }
-            return arr
-        }
-
-    }
-
-    return (
-        <div ref={mainRef} className={s.complexDrop} >
-            {createCont()}
-            <div
-                onMouseEnter={() => { clearTimeout(timeoutRef.current) }}
-                onMouseLeave={() => { setShowDrop(false) }}
-                style={data[chosen] && data[chosen].length>1 && showDrop ? { left: leftPos.current + "px" } : { display: "none" }} className={s.dropField} >
-                {createDropContent()}
-            </div>
+            )}
         </div>
-    )
-}
+    );
+};
 
-
-export default ComplexDrop
-
-function setNameComplexDrop(arg0: string): any {
-    throw new Error('Function not implemented.')
-}
+export default React.memo(ComplexDrop);

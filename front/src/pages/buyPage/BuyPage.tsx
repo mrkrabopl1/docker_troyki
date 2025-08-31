@@ -1,101 +1,85 @@
-import React, { useEffect, ReactElement, useState, useRef, memo } from 'react'
-import { getCartData, deleteCartData } from 'src/providers/shopProvider'
-import { shopAction, cartCountAction } from 'src/store/reducers/menuSlice'
-import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
-import DynamicTable from 'src/components/table/simpleTable/DynamicTable'
-import Button from 'src/components/Button'
-import { setSnickers } from '../../store/reducers/formSlice'
-import s from "./style.module.css"
-import { useNavigate } from 'react-router-dom'
-import { getCookie } from 'src/global'
-import MerchTable from 'src/modules/merchField/MerchTable'
-import { toPrice } from 'src/global'
-type respCartType = {
-    id: number,
-    img: string,
-    name: string,
+import React, { useEffect, useState, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux';
+import { getCartData } from 'src/providers/shopProvider';
+import { getCookie } from 'src/global';
+import { toPrice } from 'src/global';
+import MerchTable from 'src/modules/merchField/MerchTable';
+import Button from 'src/components/Button';
+import s from "./style.module.css";
+
+interface CartItem {
+    id: number;
+    img: string;
+    name: string;
+    price: number;
+    quantity: number;
     sizes: {
-        [key: string]: number
-    }
-}
-type dinamicElementType = {
-    componentName: string,
-    propsData: any
+        [key: string]: number;
+    };
 }
 
-const BuyPage: React.FC<any> = () => {
+const BuyPage: React.FC = memo(() => {
     const navigate = useNavigate();
-    let [recalc, setRecalc] = useState<boolean>(true);
-    let table = useRef<{ [key: string]: (dinamicElementType | string)[] }>({});
     const dispatch = useAppDispatch();
-    let [tableData, setTableData] = useState<Array<any>>([])
-    let { shop } = { ...useAppSelector(state => state.menuReducer) }
-    let cart = getCookie("cart")
-    let refCopyShop = useRef<any>([...shop])
-    let requestSizes = useRef<any>({})
-    let fullPrice = useRef<number>(0)
-    const { cartCount } = useAppSelector(state => state.menuReducer)
-    let [active, setActive] = useState<boolean>(!!cartCount)
+    const { cartCount, shop } = useAppSelector(state => state.menuReducer);
+    const [tableData, setTableData] = useState<CartItem[]>([]);
+    const [totalPrice, setTotalPrice] = useState<number>(0);
+    const cart = getCookie("cart");
 
-    // let arrData:propsRowType[]=[
-    //     {componentName:"modules/merchBuyBlock", propsData:{data:dataRef.current.sizes.map(val=>{
-    //        return {enable:true,activeData:false,name:val}
-    //         }
-    //     )}},
-    //     {componentName:"modules/sliderValueSetter/ZoneSliderValueSetter",propsData:{min:dataRef.current.price[0],max:dataRef.current.price[1]}}
+    const hasItems = cartCount > 0;
 
-    // ]
-    let cartCountRef = useRef<number>(0)
-    cartCountRef.current = cartCount
-    let activeRef = useRef<boolean>(active)
-    activeRef.current = !!cartCount
-   // setActive(!!cartCountRef.current)
     useEffect(() => {
-        setActive(activeRef.current)
-        if (!cartCountRef.current) return
-        getCartData(cart, (data) => {
-            fullPrice.current = 0;
-            data.cartData.forEach(val=>{
-                fullPrice.current +=val.price*val.quantity
-            })
-            setTableData(data.cartData)
-        })
-        
-    }, [cartCountRef.current])
+        if (!hasItems) return;
 
-    const formBuyHandle = () => {
-        navigate("/form/" + cart)
+        getCartData(cart, (data) => {
+                    const calculatedTotal = data.cartData.reduce(
+                        (sum, item) => sum + (item.price * item.quantity), 0
+                    );
+
+                    setTotalPrice(calculatedTotal);
+                    setTableData(data.cartData);
+                })
+    }, [cart, hasItems]);
+
+    const handleCheckout = () => {
+        navigate(`/form/${cart}`);
+    };
+
+    if (!hasItems) {
+        return (
+            <div className={s.emptyCart}>
+                <div>Корзина пуста</div>
+                <Button
+                    className={`${s.btn} btnStyle`}
+                    text='Продолжить покупки'
+                    onClick={handleCheckout}
+                />
+            </div>
+        );
     }
 
     return (
-        <div>
-            {!active ? <div className={s.emptyCart}>
-                <div>Корзинга пуста</div>
-                <Button className={s.btn + " btnStyle"} text='Продолжить покупки' onChange={formBuyHandle} />
-            </div> :
-                <div className={s.main} >
-                    <h2>
-                        Корзина
-                    </h2>
-                    <MerchTable tableData={tableData} />
-                    <div>
-                        <div className={s.fullPrice}>
-                            Промежуточный итог {toPrice(fullPrice.current) }
-                        </div>
-                        <p>
-                            Все налоги и таможенные сборы включены.<br/>Стоимость доставки рассчитывается на этапе оформления заказа. 
-                        </p>
-                        <Button className={s.btn + " btnStyle"} text='Оформить заказ' onChange={formBuyHandle} />
-                    </div>
+        <div className={s.main}>
+            <h2>Корзина</h2>
+            <MerchTable tableData={tableData} />
+
+            <div className={s.summarySection}>
+                <div className={s.fullPrice}>
+                    Промежуточный итог: {toPrice(totalPrice)}
                 </div>
-            }
+                <p>
+                    Все налоги и таможенные сборы включены.<br />
+                    Стоимость доставки рассчитывается на этапе оформления заказа.
+                </p>
+                <Button
+                    className={`${s.btn} btnStyle`}
+                    text='Оформить заказ'
+                    onClick={handleCheckout}
+                />
+            </div>
         </div>
-    )
-}
+    );
+});
 
-function arePropsEqual(oldProps: any, newProps: any) {
-
-    return false
-}
-
-export default memo(BuyPage, arePropsEqual)
+export default BuyPage;

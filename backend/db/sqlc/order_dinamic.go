@@ -57,8 +57,10 @@ func insertIntoOrderItemsQuery(products []GetOrderDataByIdRow, orderID int) stri
 
 func (q *Queries) GetSnickersPreorderData(ctx context.Context, snickersPreorder []GetPreorderDataByIdRow) ([]types.SnickersCart, error) {
 	orderQuery := getSnickersPreorderDataQuery(snickersPreorder)
+	fmt.Println("Executing query:", orderQuery)
 	rows, err := q.db.Query(ctx, orderQuery)
 	if err != nil {
+		fmt.Println("Error executing query:", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -101,15 +103,23 @@ func (q *Queries) InsertManyPreorderItems(ctx context.Context, products []GetPre
 func getSnickersPreorderDataQuery(snickersPreorder []GetPreorderDataByIdRow) string {
 	var conditionStr string
 
+	fmt.Println("Generating Snickers preorder data query", snickersPreorder)
+
 	for i, sn := range snickersPreorder {
 		// Определяем таблицу источника и параметры
 		tableName := "snickers"
+		fmt.Println("Processing snickers:", sn.Size)
 		sizeField := fmt.Sprintf("'%s'", sn.Size.String)  // Для snickers берем размер
-		priceField := fmt.Sprintf(`"%s"`, sn.Size.String) // Для snickers цена из размера
+		priceField := fmt.Sprintf(`'%s'`, sn.Size.String) // Для snickers цена из размера
 
 		if sn.SourceTable == "solomerch" {
 			tableName = "solomerch"
 			sizeField = "''"        // Для solomerch размер пустой
+			priceField = "minprice" // Для solomerch берем minprice
+		}
+
+		if sn.SourceTable == "clothes" {
+			tableName = "clothes"
 			priceField = "minprice" // Для solomerch берем minprice
 		}
 

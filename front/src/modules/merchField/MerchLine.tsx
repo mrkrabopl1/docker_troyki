@@ -1,27 +1,26 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import MerchBlock from "./MerchBlock"
+import React, { useCallback,memo } from 'react'
 import s from "./style.module.css"
 
 
 
-interface merchInterface { name: string, img: string, id: string, firm: string, price: string, onChange:(val)=>void }
+interface MerchInterface { name: string, img: string, id: string, firm: string, price: string, onChange:(val)=>void }
 
-const MerchLine: React.FC<{ data: merchInterface }> = (props) => {
-    let { data } = { ...props }
+const MerchLine: React.FC< MerchInterface > = ( { name, img, id, firm, price, onChange} ) => {
+    const handleChange = useCallback(() => {
+        onChange(id);
+    }, [id, onChange]);
     return (
-        <div onMouseDown={(e)=>{e.preventDefault()}} onClick={() => {
-            data.onChange(data.id)
-        }} className={s.merchLine}>
-            <img className={s.img} style={{ width: "30%", flexShrink: 0 }} src={"/" + data.img} alt="" />
-            <div>
+        <div onMouseDown={(e)=>{e.preventDefault()}} onClick={handleChange} className={s.merchLine}>
+            <img className={s.img} style={{ flexShrink: 0, width:"120px" }} src={"/" + img} alt="" />
+            <div style={{ flexShrink: 0,width:"100%" }}>
                 <p>
-                    {data.firm.toUpperCase()}
+                    {firm.toUpperCase()}
                 </p>
                 <p>
-                    {data.name}
+                    {name}
                 </p>
                 <p>
-                    {data.price}
+                    {price}
                 </p>
             </div>
         </div>
@@ -29,4 +28,4 @@ const MerchLine: React.FC<{ data: merchInterface }> = (props) => {
 }
 
 
-export default MerchLine
+export default memo(MerchLine)

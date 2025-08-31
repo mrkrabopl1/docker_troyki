@@ -1,144 +1,170 @@
-import React, { useEffect, ReactElement, useState, useRef, memo, useCallback } from 'react'
-
-import Input from "src/components/input/Input"
-import InputWithLabel from "src/components/input/InputWithLabel"
-import InputWithLabelWithValidation from "src/components/input/InputWithLabelWithValidation"
-import PhoneInputWithValidation from "src/components/input/PhoneInputWithValidation"
-import Combobox from "src/components/combobox/Combobox"
-import Checkbox from "src/components/checkbox/Checkbox"
-import s from './style.module.css'
+import React, { memo, useEffect, useCallback, useState } from 'react';
+import InputWithLabel from "src/components/input/InputWithLabel";
+import InputWithLabelWithValidation from "src/components/input/InputWithLabelWithValidation";
+import PhoneInputWithValidation from "src/components/input/PhoneInputWithValidation";
+import Checkbox from "src/components/checkbox/Checkbox";
+import s from './style.module.css';
 import Button from 'src/components/Button';
-import { verified } from 'src/store/reducers/menuSlice'
-import DeliveryInfo from '../deliveryInfo/DeliveryInfo'
-import AddressForm from './AddressForm'
-import AddressInput from './AddressInput'
-import MailInputWithValidation from 'src/components/input/MailInputWithValidation'
-import { extend } from 'src/global'
+import { verified } from 'src/store/reducers/menuSlice';
+import MailInputWithValidation from 'src/components/input/MailInputWithValidation';
+import AddressInput from './AddressInput';
 
-
-interface sendFormModuleInterface {
-    className?: {
-        input?: string,
-        checkbox?: string,
-        combobox?: string
-    }
-    onChange: (data: any) => void,
-    onValid?:(data: any) => void,
-    valid: boolean,
-    formValue?: {
-        name: string,
-        secondname?: string,
-        mail:string,
-        address: {
-            town: string,
-            region: string,
-            index: string,
-            street: string,
-            house?: string,
-            flat?: string,
-        },
-        phone: string
-    },
-    memo:boolean
+interface Address {
+    town: string;
+    region: string;
+    index: string;
+    street: string;
+    house?: string;
+    flat?: string;
 }
 
-const SendForm: React.FC<sendFormModuleInterface> = (props) => {
+interface FormData {
+    name: string;
+    secondName?: string;
+    mail: string;
+    address: Address | null;
+    phone: string;
+}
 
+interface SendFormProps {
+    className?: {
+        input?: string;
+        checkbox?: string;
+        combobox?: string;
+    };
+    onChange: (data: FormData & { save?: boolean }) => void;
+    onValid?: (isValid: boolean) => void;
+    valid: boolean;
+    formValue?: Partial<FormData>;
+    memo: boolean;
+}
 
-    let addressFormMemo = useRef<boolean>(true)
-    let validationObject = useRef<any>({})
-    const firstUpdate = useRef(true);
-    let formData = useRef<any>({
+const SendForm: React.FC<SendFormProps> = memo(({
+    className,
+    onChange,
+    onValid,
+    valid,
+    formValue,
+    memo
+}) => {
+    const [formData, setFormData] = useState<FormData>({
         name: "",
         mail: "",
         address: null,
-        phone: ""
-    })
+        phone: "",
+        ...formValue
+    });
 
-    let unvalidFormData = useRef<any>({
-        secondName: ""
-    })
+    const [unvalidFormData, setUnvalidFormData] = useState({
+        secondName: formValue?.secondName || ""
+    });
 
-    let saveData = useRef<boolean>(false)
-    let [refresh, setRefresh] = useState<boolean>(false)
+    const [saveData, setSaveData] = useState(false);
+    const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
 
-    let invalidMailText = useRef<string>("Пустое поле ввода")
-    let { className, onChange, valid, formValue,memo,onValid } = { ...props }
-
-    useEffect(()=>{
-        addressFormMemo.current = !addressFormMemo.current
-        extend(formData.current, formValue)
-        extend(unvalidFormData.current, formValue)
-        setRefresh(prev=>!prev)
-    },[])
-
-    const setFormData = (data: string, name: string) => {
-        formData.current[name] = data
-        updateValidObj();  
-        const finalObj = { ...formData.current }
-        finalObj["save"] = saveData.current
-        onChange(finalObj)
-    }
+    // Initialize form with prop values
     useEffect(() => {
-        if (!firstUpdate.current) {
-            updateValidObj()
-            setRefresh(prev=>!prev)
+        if (formValue) {
+            setFormData(prev => ({ ...prev, ...formValue }));
+            setUnvalidFormData(prev => ({ ...prev, secondName: formValue.secondName || "" }));
         }
-        firstUpdate.current = false
-    }, [memo])
-    const updateValidObj = () => {
-        let entries = Object.entries(formData.current)
-        for (let i = 0; i < entries.length; i++) {
-            if (!entries[i][1]) {
-                validationObject.current[entries[i][0]] = true
-            } else {
-                if (validationObject.current[entries[i][0]]) {
-                    delete validationObject.current[entries[i][0]]
-                }
+    }, [formValue]);
+
+    // Update validation when form data changes
+    useEffect(() => {
+        const errors: Record<string, boolean> = {};
+        let hasErrors = false;
+
+        (Object.keys(formData) as Array<keyof FormData>).forEach(key => {
+            if (!formData[key]) {
+                errors[key] = true;
+                hasErrors = true;
             }
-        }
-        let valid = !(Object.values(validationObject.current).length > 0)
-        onValid(valid)
-    }
+        });
+
+        setValidationErrors(errors);
+        onValid?.(!hasErrors);
+    }, [formData, memo, onValid]);
+
+    const handleChange = useCallback((field: keyof FormData, value: any) => {
+        setFormData(prev => {
+            const newData = { ...prev, [field]: value };
+            onChange({ ...newData, save: saveData });
+            return newData;
+        });
+    }, [onChange, saveData]);
+
+    const handleUnvalidChange = useCallback((value: string) => {
+        setUnvalidFormData(prev => ({ ...prev, secondName: value }));
+    }, []);
+
+    const handleSaveDataChange = useCallback((value: boolean) => {
+        setSaveData(value);
+    }, []);
 
     return (
-
         <div className={s.wrapper}>
             <div>Контактная информация</div>
-            <MailInputWithValidation val={formData.current.mail} valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
+            <MailInputWithValidation 
+                value={formData.mail} 
+                valid={!validationErrors.mail} 
+                invalidText="Пустое поле ввода" 
+                onChange={(data) => handleChange('mail', data)} 
+                placeholder="Электронный адрес" 
+            />
+            
             <div className='flex pdn'>
                 <div style={{ marginTop: "auto", marginBottom: "auto", paddingRight: "5px" }}>
-                    <Checkbox activeData={false} enable={true} onChange={() => { }} />
+                    <Checkbox activeData={false} enable={true} onChange={() => {}} />
                 </div>
                 <div>Отправляйте мне новости и предложения</div>
             </div>
+            
             <div className='flex'>
-                <InputWithLabelWithValidation val={formData.current.name} valid={!validationObject.current.name} invalidText={"Введите имя."} className={className?.input} onChange={(data) => { setFormData(data, "name") }} placeholder={"Имя"} />
-                <InputWithLabel val={unvalidFormData.current.secondName} onChange={(data) => { setFormData(data, "secondName") }} placeholder={"Фамилия"} />
+                <InputWithLabelWithValidation 
+                    val={formData.name} 
+                    valid={!validationErrors.name} 
+                    invalidText="Введите имя." 
+                    className={className?.input} 
+                    onChange={(data) => handleChange('name', data)} 
+                    placeholder="Имя" 
+                />
+                <InputWithLabel 
+                    val={unvalidFormData.secondName} 
+                    onChange={handleUnvalidChange} 
+                    placeholder="Фамилия" 
+                />
             </div>
-            <AddressInput  valid={!validationObject.current.address} onChange={(data) => { setFormData(data, "address") }}/>
-            {/* <AddressForm memo={addressFormMemo.current} formValue={formData.current.address} className={{}} valid={!validationObject.current.address} onChange={(data) => { setFormData(data, "address") }} /> */}
-            <PhoneInputWithValidation val={formData.current.phone} invalidIncorrect={"Неверный формат"} invalidEmpty={"Введите телефон"} valid={!validationObject.current.phone} className={className?.input} onChange={(data) => { setFormData(data, "phone") }} placeholder={"Телефон"} />
-            {verified ? <div className='flex pdn'>
-                <div style={{ marginTop: "auto", marginBottom: "auto", paddingRight: "5px" }}>
-                    <Checkbox activeData={false} enable={true} onChange={(data) => {
-                        saveData.current = data
-                    }} />
+            
+            <AddressInput  
+                valid={!validationErrors.address} 
+                onChange={(data) => handleChange('address', data)}
+            />
+            
+            <PhoneInputWithValidation 
+                val={formData.phone} 
+                invalidIncorrect="Неверный формат" 
+                invalidEmpty="Введите телефон" 
+                valid={!validationErrors.phone} 
+                className={className?.input} 
+                onChange={(data) => handleChange('phone', data)} 
+                placeholder="Телефон" 
+            />
+            
+            {verified && (
+                <div className='flex pdn'>
+                    <div style={{ marginTop: "auto", marginBottom: "auto", paddingRight: "5px" }}>
+                        <Checkbox 
+                            activeData={false} 
+                            enable={true} 
+                            onChange={handleSaveDataChange} 
+                        />
+                    </div>
+                    <span>Сохранить эту информацию на будущее</span>
                 </div>
-                <span>Сохранить эту информацию на будущее</span>
-            </div> : null}
-            {/* <div style={{ display: "flex" }}>
-                <Checkbox activeData={false} enable={true} onChange={() => { }} />
-                <span>Отправляйте мне SMS-сообщения о новостях и предложениях</span>
-            </div> */}
-            {/* <DeliveryInfo/> */}
-
+            )}
         </div>
+    );
+}, (prevProps, nextProps) => prevProps.memo === nextProps.memo);
 
-    )
-}
-
-function checkMemo(oldData: any, newData: any) {
-    return (oldData.memo === newData.memo)
-}
-export default memo(SendForm, checkMemo)
+export default SendForm;

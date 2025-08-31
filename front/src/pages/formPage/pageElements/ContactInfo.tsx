@@ -35,11 +35,11 @@ const ContactInfo: React.FC<urlParamsType> = (props) => {
         <div>
             {Object.values(contactInfo).join("")?<div className={s.infoBlock}>
                 {createDataField("Контактная информация", Object.entries(contactInfo))}
-                <Button className={s.btn} onChange={onChange} text={"Изменить"} />
+                <Button className={s.btn} onClick={onChange} text={"Изменить"} />
             </div>:null}
             {address ?<div className={s.infoBlock}>
                  {createDataField("Адресс", Object.entries(address)) }
-                <Button className={s.btn} onChange={onChange} text={"Изменить"} />
+                <Button className={s.btn} onClick={onChange} text={"Изменить"} />
             </div>:null}
             {/* {
                 deliveryInfo ?

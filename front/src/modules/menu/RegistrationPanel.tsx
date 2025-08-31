@@ -2,50 +2,13 @@ import React, { ReactElement, useEffect, useRef, useState } from 'react'
 import { userSlice } from 'src/store/reducers/userSlice'
 import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux'
 import { searchSlice } from 'src/store/reducers/searchSlice'
-import { NavLink } from 'react-router-dom'
-import { useNavigate } from 'react-router-dom';
-import LineSwitcher from 'src/components/switcher/LineSwitcher'
 import s from "./style.module.css"
 import { verified } from 'src/store/reducers/menuSlice'
 import RegistrationForm from  '../loginForm/RegistrationForm'
 import LoginForm from '../loginForm/LoginForm'
-import { registerUser, loginUser } from 'src/providers/userProvider'
 import ForgetPass from '../loginForm/ForgetPass'
-import SearchWithList from '../searchWithList/SearchWithList'
 import Modal from 'src/components/modal/Modal'
 
-// import global from "src/global.css"
-type propsRowType = {
-    data: any,
-    callback: (...args: any) => void | null
-}
-
-
-let imgWrapStyle: any = {
-    width: "100px",
-    height: "100px",
-    borderRadius: "50%",
-    // backgroundColor:"red",
-
-    display: "flex"
-
-}
-
-
-let imgStyle: any = {
-    width: "100%",
-    height: "100%",
-    objectFit: "contain",
-    display: " block",
-    margin: "0 auto"
-
-}
-
-
-let textLogo: any = {
-    margin: "auto",
-    fontSize: "38px"
-}
 
 enum State  {
     none=0,

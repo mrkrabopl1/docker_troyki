@@ -1,42 +1,63 @@
-import React, { ReactElement, useRef, useState } from 'react'
-import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux'
-import Checkbox from '../checkbox/Checkbox'
-import Scroller from '../scroller/Scroller'
+import React, { useRef, useState, useEffect, useCallback, memo } from 'react';
+import Checkbox from '../checkbox/Checkbox';
 
-type checkBoxType = {enable:boolean,activeData:boolean,name:string}
-type columnType = {
-   data:checkBoxType[],
-   onChange?:(data:any)=>void
+interface CheckBoxType {
+    enable: boolean;
+    activeData: boolean;
+    name: string;
 }
-const CheckBoxColumn: React.FC<columnType> = (props) => {
-    let { data, onChange} = { ...props }
-    let dataRef = useRef<checkBoxType[]>([])
-    let valRef = useRef([])
-    let timeOutId = useRef<ReturnType<typeof setTimeout> | null>(null)
-    dataRef.current = data
-    const onChangeForm  = (id:number,active:boolean)=>{
-        dataRef.current[id].activeData = active
-        valRef.current[id] = active
-        if (timeOutId.current) {
-            clearTimeout(timeOutId.current);
+
+interface ColumnProps {
+    data: CheckBoxType[];
+    onChange?: (data: boolean[]) => void;
+}
+
+const CheckBoxColumn: React.FC<ColumnProps> = ({ data, onChange }) => {
+    const dataRef = useRef<CheckBoxType[]>(data);
+    const valRef = useRef<boolean[]>([]);
+    const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Обновляем ref при изменении данных
+    useEffect(() => {
+        dataRef.current = data;
+        valRef.current = data.map(item => item.activeData);
+    }, [data]);
+
+    const handleChange = useCallback((id: number, active: boolean) => {
+        dataRef.current[id].activeData = active;
+        valRef.current[id] = active;
+
+        if (timeoutId.current) {
+            clearTimeout(timeoutId.current);
         }
-        timeOutId.current = setTimeout(()=>{
-            onChange && onChange([... valRef.current])
-        },500)
-    }
+
+        timeoutId.current = setTimeout(() => {
+            onChange?.(valRef.current);
+        }, 500);
+    }, [onChange]);
+
+    useEffect(() => {
+        return () => {
+            if (timeoutId.current) {
+                clearTimeout(timeoutId.current);
+            }
+        };
+    }, []);
+
     return (
-        <div style={{paddingLeft:"5px"}}  >
-                {dataRef.current.map((val,id)=>{
-                   valRef.current.push(val.activeData)
-                   return( <div key={val.name} style={{display:"flex"}}>
-                        {<Checkbox onChange={onChangeForm.bind(this,id)} enable={val.enable} activeData={val.activeData}/>}
-                        <p>{val.name}</p>
-                    </div>)
-                })}
-
+        <div style={{ paddingLeft: "5px" }}>
+            {data.map((val, id) => (
+                <div key={`${val.name}-${id}`} style={{ display: "flex" }}>
+                    <Checkbox 
+                        onChange={(active) => handleChange(id, active)} 
+                        enable={val.enable} 
+                        activeData={val.activeData} 
+                    />
+                    <p>{val.name}</p>
+                </div>
+            ))}
         </div>
+    );
+};
 
-    )
-}
-
-export default CheckBoxColumn
+export default memo(CheckBoxColumn);

@@ -110,9 +110,9 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
                 }} aria-hidden="true">Sign up</label>
                 {validRegister?<div className={s.warning}>{validRegister}</div>:null}
                 <MailInputWithValidation  valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
-                <PasswordInputWithValidation check={true} validRule={validRuleForPass} valid={!validationObject.current.pass} invalidText={invalidPassText.current} onChange={(data) => { setFormData(data, "pass") }} className={s.loginInput} placeholder="Password" />
+                <PasswordInputWithValidation showToggle={true} validRule={validRuleForPass} valid={!validationObject.current.pass} invalidText={invalidPassText.current} onChange={(data) => { setFormData(data, "pass") }} className={s.loginInput} placeholder="Password" />
                 <PasswordInput check={true} onChange={(data) => { passCheck.current = data }} className={s.loginInput} placeholder="Repeat password" />
-                <Button className={s.loginButton} onChange={() => {
+                <Button className={s.loginButton} onClick={() => {
                     updateValidObj()
                     if (Object.values(validationObject.current).length > 0) {
                         setRefresh(!refresh)
@@ -137,7 +137,7 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
                 }} aria-hidden="true">Login</label>
                 <InputWithLabelWithValidation valid={!validationObject.current.login} invalidText={"Введите login."} className={s.loginInput} onChange={(data) => { setLoginData(data, "login") }} placeholder={"Login"} />
                 <PasswordInput check={true} onChange={(data) => { setLoginData(data, "pass")}} className={s.loginInput} placeholder="" />
-                <Button className={s.loginButton} onChange={() => {onLogin(loginData.current) }} text='Log in' />
+                <Button className={s.loginButton} onClick={() => {onLogin(loginData.current) }} text='Log in' />
             </div>
         </div>
     )

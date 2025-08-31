@@ -75,7 +75,7 @@ const SettingsModuleOld: React.FC<settingModuleInterface> = (props) => {
                 {<DynamicForm onChange={useCallback(onChangeForm, [])} form={filters} />}
                 {<div className={classNames?.secondPage}>
                     <DynamicElement onChange={onChangeMain} {...secondElemName} />
-                    <Button text={"принять"} onChange={onClose}></Button>
+                    <Button text={"принять"} onClick={onClose}></Button>
                 </div>}
             </DropWrapper>}
         </div>

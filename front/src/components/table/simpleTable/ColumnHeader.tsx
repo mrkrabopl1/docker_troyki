@@ -1,26 +1,16 @@
-import React, { ReactElement, useRef, useState } from 'react'
-import s from "./style.module.css"
+import React, { ReactNode, memo } from 'react';
+import s from "./style.module.css";
 
-type sortedType = {
-    index: number,
-    direction: boolean
+interface ColumnHeaderProps {
+    children: ReactNode;
 }
 
-
-
-
-
-
-const ColumnHeader: React.FC= (props) => {
-    let {children} = { ...props }
+const ColumnHeader: React.FC<ColumnHeaderProps> = ({ children }) => {
     return (
-        <div  style={{position:"fixed", top:0}}>
-
+        <div style={{ position: "fixed", top: 0 }}>
             {children}
-
         </div>
+    );
+};
 
-    )
-}
-
-export default ColumnHeader
+export default memo(ColumnHeader);
