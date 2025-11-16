@@ -27,9 +27,9 @@ func (q *Queries) GetCartCount(ctx context.Context, hash string) (int32, error) 
 
 }
 
-func (q *Queries) UpdatePreorder(ctx context.Context, id int32, size string, sourceTable ProductSourceEnum, hash string) (int32, error) {
+func (q *Queries) UpdatePreorder(ctx context.Context, id int32, size string, price int32, name string, image_path string, hash string) (int32, error) {
 	orderId, err := q.GetPreorderIdByHashUrl(ctx, hash)
-	fmt.Println(orderId, "orderId")
+	fmt.Println(orderId, "orderId", err)
 	if err != nil {
 		return 0, err
 	}
@@ -45,17 +45,19 @@ func (q *Queries) UpdatePreorder(ctx context.Context, id int32, size string, sou
 	fmt.Println(quantity, "quantity", err1)
 
 	if errors.Is(err1, sql.ErrNoRows) {
-		_, err2 := q.InsertPreorderItems(ctx, InsertPreorderItemsParams{
+		_, err2 := q.InsertPreorderItem(ctx, InsertPreorderItemParams{
 			Orderid: orderId,
 			Size: pgtype.Text{
 				String: size,
 				Valid:  true, // Mark as valid (not NULL)
 			},
-			Productid:   id,
-			SourceTable: sourceTable,
+			Productid: id,
+			Price:     price,
+			Name:      name,
+			ImagePath: image_path,
 		})
 		if err2 != nil {
-			fmt.Println(err2, ";ldms;flmds;lfmds", sourceTable)
+			fmt.Println(err2)
 		}
 		return 1, nil
 	} else if err1 != nil {
@@ -79,8 +81,7 @@ func (q *Queries) UpdatePreorder(ctx context.Context, id int32, size string, sou
 
 }
 
-func (q *Queries) CreatePreorder(ctx context.Context, id int32, size string, sourceTable ProductSourceEnum) (string, error) {
-	fmt.Println(id, size, sourceTable, "createPreorderssssssssssssssssssssssssssssssssssssssssssssssss")
+func (q *Queries) CreatePreorder(ctx context.Context, id int32, size string, price int32, name string, image_path string) (string, error) {
 	currentTime := time.Now()
 	hashedStr := xxhash.Sum64([]byte((currentTime.String() + fmt.Sprint(id))))
 	orderId, err := q.InsertPreorder(ctx, InsertPreorderParams{
@@ -89,17 +90,20 @@ func (q *Queries) CreatePreorder(ctx context.Context, id int32, size string, sou
 			Time: currentTime,
 		},
 	})
+
 	if err != nil {
 		return "", err
 	}
-	_, err2 := q.InsertPreorderItems(ctx, InsertPreorderItemsParams{
+	_, err2 := q.InsertPreorderItem(ctx, InsertPreorderItemParams{
 		Orderid: orderId,
 		Size: pgtype.Text{
 			String: size,
 			Valid:  true, // Mark as valid (not NULL)
 		},
-		Productid:   id,
-		SourceTable: sourceTable,
+		Productid: id,
+		Price:     price,
+		Name:      name,
+		ImagePath: image_path,
 	})
 	if err2 != nil {
 		fmt.Println(err2)
@@ -118,6 +122,12 @@ type CreateOrderType struct {
 	Address      types.Address      `json:"address"`
 	Delivery     Delivery           `json:"delivery"`
 	Save         bool               `json:"save"`
+}
+
+type OrderItemJSON struct {
+	ProductID int32  `json:"product_id"`
+	Quantity  int32  `json:"quantity"`
+	Size      string `json:"size"`
 }
 
 func (store *SQLStore) CreateOrder(ctx context.Context, orderData *CreateOrderType) (int32, int32, string, error) {
@@ -189,7 +199,38 @@ func (store *SQLStore) CreateOrder(ctx context.Context, orderData *CreateOrderTy
 	if err3 != nil {
 		return 0, 0, "", err3
 	}
-	err4 := store.Queries.InsertManyPreorderItems(ctx, prData, int(orderId))
+
+	// Подготавливаем массивы для UNNEST
+	productIDs := make([]int32, len(prData))
+	quantities := make([]int32, len(prData))
+	sizes := make([]string, len(prData))
+	prices := make([]int32, len(prData))       // если есть price
+	image_paths := make([]string, len(prData)) // если есть image_path
+	names := make([]string, len(prData))       // если есть name
+
+	for i, item := range prData {
+		productIDs[i] = item.ID
+		quantities[i] = item.Quantity
+		sizes[i] = item.Size.String
+		image_paths[i] = item.ImagePath
+		names[i] = item.Name
+		prices[i] = item.Price
+	}
+
+	// Используем UNNEST версию
+	err4 := store.Queries.InsertManyOrderItems(ctx, InsertManyOrderItemsParams{
+		ProductIds: productIDs,
+		Quantities: quantities,
+		Sizes:      sizes,
+		Prices:     prices, // если есть price
+		Names:      names,
+		ImagePaths: image_paths,
+		OrderID:    orderId,
+	})
+	if err4 != nil {
+		fmt.Println(err4, "error in InsertManyOrderItems", prData)
+		return 0, 0, "", err4
+	}
 	if err4 != nil {
 		fmt.Println(err4, "error in InsertManyPreorderItems", prData)
 		return 0, 0, "", err4
@@ -206,7 +247,7 @@ func (store *SQLStore) CreateOrder(ctx context.Context, orderData *CreateOrderTy
 type GetOrderData struct {
 	UserInfo     GetUnregisterCustomerRow
 	State        string
-	SnickersCart []types.SnickersCart
+	SnickersCart []GetOrderDataByIdRow
 	OrderId      int
 	Address      GetOrderAddressByIdRow
 }
@@ -218,17 +259,25 @@ func (store *SQLStore) GetOrderData(ctx context.Context, hash string) (GetOrderD
 	if err != nil {
 		return GetOrderData{}, err
 	} else {
-		snickers, err := store.GetCartDataFromOrderById(ctx, orderInfo.ID)
+		snickers, err := store.GetOrderDataById(ctx, orderInfo.ID)
 		if err != nil {
+			fmt.Println(err, "error in GetOrderDataById")
 			return GetOrderData{}, err
 		}
-		address, err := store.GetOrderAddressById(ctx, orderInfo.ID)
-		if err != nil {
-			return GetOrderData{}, err
+		var address GetOrderAddressByIdRow
+		if orderInfo.Deliverytype != DeliveryEnumOwn {
+			address, err = store.GetOrderAddressById(ctx, orderInfo.ID)
+
+			if err != nil {
+				fmt.Println(err, "error in GetOrderAddressById")
+				return GetOrderData{}, err
+			}
 		}
+
 		if orderInfo.Unregistercustomerid.Valid {
 			unregData, err1 := store.Queries.GetUnregisterCustomer(ctx, orderInfo.Unregistercustomerid.Int32)
 			if err1 != nil {
+				fmt.Println(err1, "error in GetUnregisterCustomer")
 				return GetOrderData{}, err1
 			}
 			return GetOrderData{
@@ -244,62 +293,44 @@ func (store *SQLStore) GetOrderData(ctx context.Context, hash string) (GetOrderD
 		}
 	}
 }
-func (store *SQLStore) GetCartData(ctx context.Context, hash string) ([]types.SnickersCart, error) {
-	var dataQuery []types.SnickersCart
+func (store *SQLStore) GetCartData(ctx context.Context, hash string) ([]GetPreorderDataByIdRow, error) {
+
 	prId, err := store.GetPreorderIdByHashUrl(ctx, hash)
 	if err != nil {
 		fmt.Println("Error getting preorder ID:", err)
-		return dataQuery, err
+		return nil, err
 	} else {
 		prData, err := store.GetPreorderDataById(ctx, prId)
+
 		if err != nil {
 			fmt.Println("Error getting preorder data:", err)
-			return dataQuery, err
-		} else {
-			fmt.Println(prData, "prData")
-			data, err := store.GetSnickersPreorderData(ctx, prData)
-			if err != nil {
-				fmt.Println("Error getting preorder Snickers data:", err)
-				return dataQuery, err
-			}
-			return data, nil
+			return nil, err
 		}
+		return prData, nil
 
 	}
 }
 
-func (store *SQLStore) GetCartDataFromOrderById(ctx context.Context, id int32) ([]types.SnickersCart, error) {
-	orderData, err := store.Queries.GetOrderDataById(ctx, id)
-	if err != nil {
-		return []types.SnickersCart{}, err
-	}
-	snickersOrder, err1 := store.GetSnickersOrderData(ctx, orderData)
-	if err1 != nil {
-		return []types.SnickersCart{}, err
-	}
-	return snickersOrder, nil
-}
-
-func (store *SQLStore) GetCartDataFromOrderByHash(ctx context.Context, hash string) ([]types.SnickersCart, error) {
+func (store *SQLStore) GetCartDataFromOrderByHash(ctx context.Context, hash string) ([]GetOrderDataByIdRow, error) {
 	orderId, err := store.Queries.GetOrderIdByHashUrl(ctx, hash)
 	if err != nil {
-		return []types.SnickersCart{}, err
+		return nil, err
 	}
-	snickers, err1 := store.GetCartDataFromOrderById(ctx, orderId)
+	snickers, err1 := store.GetOrderDataById(ctx, orderId)
 	if err1 != nil {
-		return []types.SnickersCart{}, err1
+		return nil, err1
 	}
 	return snickers, nil
 }
 
-func (store *SQLStore) GetCartDataFromPreorderByHash(ctx context.Context, hash string) ([]types.SnickersCart, error) {
+func (store *SQLStore) GetCartDataFromPreorderByHash(ctx context.Context, hash string) ([]GetOrderDataByIdRow, error) {
 	orderId, err := store.Queries.GetPreorderIdByHashUrl(ctx, hash)
 	if err != nil {
-		return []types.SnickersCart{}, err
+		return nil, err
 	}
-	snickers, err1 := store.GetCartDataFromOrderById(ctx, orderId)
+	snickers, err1 := store.GetOrderDataById(ctx, orderId)
 	if err1 != nil {
-		return []types.SnickersCart{}, err1
+		return nil, err1
 	}
 	return snickers, nil
 }
@@ -307,7 +338,7 @@ func (store *SQLStore) GetCartDataFromPreorderByHash(ctx context.Context, hash s
 type OrderDataResp struct {
 	UserInfo     GetUnregisterCustomerRow `json:"userInfo"`
 	State        StatusEnum               `json:"state"`
-	CartResponse []types.SnickersCart     `json:"cartResponse"`
+	CartResponse []GetOrderDataByIdRow    `json:"cartResponse"`
 	OrderId      int32                    `json:"orderId"`
 	Address      types.Address            `json:"address"`
 }
@@ -331,7 +362,7 @@ func (store *SQLStore) GetOrderDataByMail(ctx context.Context, mail string, id i
 			return orderData, "", err
 		} else {
 			unregisterCustomerData, err := store.Queries.GetUnregisterCustomer(ctx, orderInfo.Unregistercustomerid.Int32)
-			snickers, err := store.GetCartDataFromOrderById(ctx, orderInfo.ID)
+			snickers, err := store.GetOrderDataById(ctx, orderInfo.ID)
 			if err != nil {
 				return orderData, "", err
 			}

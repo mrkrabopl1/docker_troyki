@@ -59,22 +59,22 @@ type PostData struct {
 }
 type PostDataSnickersAndFiltersByString struct {
 	// Define your struct to represent the JSON data
-	Name        string               `json:"name"`
-	Page        int                  `json:"page"`
-	Size        int                  `json:"size"`
-	Filters     SnickersFilterStruct `json:"filters"`
-	OrderedType int                  `json:"orderedType"`
+	Name     string               `json:"name"`
+	Page     int                  `json:"page"`
+	Size     int                  `json:"size"`
+	Filters  ProductsFilterStruct `json:"filters"`
+	SortType int                  `json:"orderedType"`
+	Type     int32                `json:"type"`
+	Category int32                `json:"category"`
 }
 
 type PostDataAndFiltersByCategoryAndType struct {
 	// Define your struct to represent the JSON data
-	Name        string               `json:"name"`
-	Page        int                  `json:"page"`
-	Size        int                  `json:"size"`
-	Filters     SnickersFilterStruct `json:"filters"`
-	OrderedType int                  `json:"OrderedType"`
-	Category    string               `json:"category"`
-	Type        string               `json:"type"`
+	Name     string               `json:"name"`
+	Page     int                  `json:"page"`
+	Size     int                  `json:"size"`
+	Filters  ProductsFilterStruct `json:"filters"`
+	SortType int32                `json:"sortType"`
 }
 type VerifyData struct {
 	Token string `json:"token"`

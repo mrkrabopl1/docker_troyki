@@ -25,3 +25,16 @@
     height: 700px;
     position: relative;
 }
+
+@media (max-width: 768px) {
+    .mainBanner{
+        height: 500px;
+    }
+    .contentHolder{
+        top: 75%;
+    }
+    .sliderHolder{
+        height: 500px;
+        position: relative;
+    }
+}

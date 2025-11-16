@@ -72,11 +72,10 @@ func (s *Server) setupRouter() {
 	snickersRoute.Use(CachedMiddleware(s))
 	snickersRoute.GET("/productsInfo", s.handleGetProductsInfoById)
 
-	router.POST("/searchMerch", s.handleSearchMerch)
-	router.POST("/getProductsAndFiltersByString", s.handleSearchSnickersAndFiltersByString)
+	router.POST("/searchProducts", s.handleSearchProducts)
+	router.POST("/getProductsAndFiltersByNameCategoryAndType", s.handleSearchSnickersAndFiltersByNameCategoryAndType)
 	router.POST("/getProductsByString", s.handleSearchProductsByString)
 	router.POST("/collection", s.handleGetSoloCollection)
-	router.POST("/collections", s.handleGetCollection)
 	router.POST("/disconts", s.handleGetDiscounts)
 	router.GET("/setUniqueCustomer", s.handleSetUniqueCustomer)
 	router.POST("/createPreorder", s.handleCreatePreorder)
@@ -92,6 +91,7 @@ func (s *Server) setupRouter() {
 	router.POST("/registerUser", s.handleRegisterUser)
 	router.POST("/login", s.handleLogin)
 	router.GET("/unlogin", s.handleUnlogin)
+	router.GET("/categoriesWithTypes", s.handleGetCategoriesWithTypes)
 	router.GET("/pasetoAutorise", s.handlePasetoAutorise)
 	router.GET("/getUserData", s.handleGetUserData)
 	router.POST("/verify", s.handleVerifyUser)
@@ -99,9 +99,9 @@ func (s *Server) setupRouter() {
 	router.GET("/forgetPass", s.handleForgetPass)
 	router.POST("/verifyChangePass", s.handleVerifyForgetPass)
 	router.POST("/changeForgetPass", s.handleChangeForgetPass)
-	router.POST("/createDiscounts", s.createDiscounts)
-	router.POST("/getDataAndFilterByCategories", s.handleSearchProductsAndFiltersByCategories)
 	router.POST("/getDataByCategoriesAndFilters", s.handleSearchProductByCategoriesAndFilters)
+
+	router.GET("/getMainPage", s.handleGetMainPageInfo)
 
 	router.GET("/checkCustomerData", s.handleCheckCustomerData)
 

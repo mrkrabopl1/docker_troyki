@@ -52,7 +52,9 @@ const SliderDefaultController: React.FC<ContentSliderType> = (data) => {
   }, []);
 
   // Функция для левой кнопки (использует ref'ы)
-  const leftFunc = useCallback(() => {
+  const leftFunc = useCallback((e) => {
+     e.preventDefault();
+    e.stopPropagation();
     if (activeRef.current > 1) {
       const newPosition = Math.max(activeRef.current - stepSize, 0);
       activeRef.current = newPosition;
@@ -64,7 +66,9 @@ const SliderDefaultController: React.FC<ContentSliderType> = (data) => {
   }, [onChange, clearHoldInterval]);
 
   // Функция для правой кнопки (использует ref'ы)
-  const rightFunc = useCallback(() => {
+  const rightFunc = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (activeRef.current < positionsRef.current) {
       const newPosition = Math.min(activeRef.current + stepSize, positionsRef.current);
       activeRef.current = newPosition;
@@ -76,29 +80,29 @@ const SliderDefaultController: React.FC<ContentSliderType> = (data) => {
   }, [onChange, clearHoldInterval,stepSize]);
 
   // Функция для начала зажатия (влево)
-  const startHoldLeft = useCallback(() => {
+  const startHoldLeft = useCallback((e) => {
     if (!onHold) return;
     
     isHoldingRef.current = true;
-    leftFunc(); // Первое нажатие сразу
+    leftFunc(e); // Первое нажатие сразу
     
     intervalRef.current = setInterval(() => {
       if (isHoldingRef.current) {
-        leftFunc();
+        leftFunc(e);
       }
     }, 200); // Интервал 200ms для повторных нажатий
   }, [onHold, leftFunc]);
 
   // Функция для начала зажатия (вправо)
-  const startHoldRight = useCallback(() => {
+  const startHoldRight = useCallback((e) => {
     if (!onHold) return;
     
     isHoldingRef.current = true;
-    rightFunc(); // Первое нажатие сразу
+    rightFunc(e); // Первое нажатие сразу
     
     intervalRef.current = setInterval(() => {
       if (isHoldingRef.current) {
-        rightFunc();
+        rightFunc(e);
       }
     }, 200); // Интервал 200ms для повторных нажатий
   }, [onHold, rightFunc]);
@@ -111,7 +115,7 @@ const SliderDefaultController: React.FC<ContentSliderType> = (data) => {
   const buttonSize = presetEnum[preset];
 
   return (
-    <div style={{ justifyContent: "center", display: "flex" }}>
+    <div className={s.controllerHolder} >
       
         <ArrowButton className = {s.leftArrowHolder} onHold ={true} direction={"left"} onClick={leftFunc}/>
       

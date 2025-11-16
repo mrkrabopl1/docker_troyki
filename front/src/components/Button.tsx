@@ -22,7 +22,7 @@ const Button: React.FC<IButtonProps> = ({
 
     const buttonStyle: React.CSSProperties = {
         cursor: 'pointer',
-        display: 'inline-block',
+      
         ...style
     };
 

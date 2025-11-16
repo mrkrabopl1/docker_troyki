@@ -1,20 +1,22 @@
-import React, { useState, useEffect, useMemo, useCallback, memo,useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from 'src/store/hooks/redux';
 import { isDeepEqual } from 'src/global';
 import Menu from './Menu';
 import ComplexDrop from 'src/components/complexDrop/ComplexDrop';
-import ComplexDropVertical from 'src/components/complexDrop/ComplexDropVertical';
 import s from "./style.module.css";
-import toy from "/public/toy.svg";
-import sneakers from "/public/sneakers.svg";
-import clothes from "/public/clothes.svg";
-import {getProductsByCategories} from "src/providers/searchProvider"
+import ComplexDropWithNodes from 'src/components/complexDrop/ComplexDropWithNodes';
+
 interface ComplexDropMenuProps {
     className?: string;
     complexDropData: {
         [key: string]: string[];
     };
+    categories: {
+        type: number;
+        name: string,
+        image_path: string
+    }[]
 }
 
 const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
@@ -22,19 +24,10 @@ const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
     complexDropData,
 }) => {
     const navigate = useNavigate();
-    const { show, sticky } = useAppSelector(state => state.menuReducer);
+    const { show, sticky, typesVal, categories } = useAppSelector(state => state.menuReducer);
     const [showMenu, setShowMenu] = useState(false);
 
-    const categories = useRef<{  [key: string]: {
-        category: string;
-        type?: string;
-        img: string;
-    } }>({
-        "Обувь": { category: "snickers", img: sneakers },
-        "Одежда": { category: "clothes", img: clothes },
-        "Игрушки": { category: "solomerch", type: "toys" ,img: toy},
-    });
-  
+
 
     // Обработчик изменения меню
     const handleMenuChange = useCallback((data: boolean) => {
@@ -42,12 +35,17 @@ const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
     }, []);
 
     // Обработчик выбора в ComplexDrop
-    const handleComplexDrop = useCallback((data: { main?: string; sub?: string }) => {
-        const collection = data.main || data.sub;
-        if (collection) {
-            navigate(`/collections/${collection}`);
+
+    const handleCategoriesSelect = useCallback((data: { main?: string; sub?: string }) => {
+        if (!data.sub) {
+            navigate(`/search?category=${data.main}&type=""`);
+        } else {
+            navigate(`/search?type=${data.sub}&category=${data.main}`);
         }
+
     }, [navigate]);
+
+
 
     // Стили меню
     const menuStyle = useMemo(() => {
@@ -62,48 +60,55 @@ const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
         return style;
     }, [sticky]);
 
-const categoriesLines = useMemo(() => {
-    return Object.entries(categories.current).map((cat) => (
-        <div
-        onClick={()=>{
-           navigate(`/settingsMenu?category=${cat[1].category}&type=${cat[1].type||""}`);
-        }}
-         className={s.categoryLine} key={cat[0]}> 
-            <img src={cat[1].img} alt={cat[0]} />  
-            <span className={s.categoryText}>{cat[0]}</span>
-        </div>
-    ));
-}, [categories]);
+    const categoriesLines = useMemo(() => {
+        let convertedData = {};
+        Object.entries(categories).forEach(([key, value]) => {
+            convertedData[key] = {
+                main: (<div
+                    onClick={() => {
+                        navigate(`/search?category=${key}&type=""`);
+                    }}
+                    className={s.categoryLine} key={key}>
+                    <img src={"/" + value.image_path} alt={key} />
+                    <span className={s.categoryText}>{value.category_name}</span>
+                </div>),
+                subs: Object.values(typesVal).filter(cat => cat.category_key === key).map(cat => cat.name)
+            }
+
+        });
+        return convertedData;
+    }, [categories, typesVal]);
+
+
+
     // Классы для обертки меню
     const menuWrapClass = useMemo(() => {
         const baseClass = s.menuWrapWithList;
         return show ? `${baseClass} ${s.is_visible}` : `${baseClass} ${s.is_hidden}`;
     }, [show]);
 
+
+
     return (
         <div style={menuStyle} className={menuWrapClass}>
-            <Menu onChange={handleMenuChange} />
+            <Menu firms={Object.keys(complexDropData)} onChange={handleMenuChange} />
 
             <div className={s.categoriesContainer}>
-                {categoriesLines}
+
+                <ComplexDropWithNodes
+                    onChange={handleCategoriesSelect}
+                    data={categoriesLines}
+                />
             </div>
 
-            {showMenu && (
-                <div className={s.complexVertical}>
-                    <ComplexDropVertical
-                        onChange={handleComplexDrop}
-                        data={complexDropData}
-                    />
-                </div>
-            )}
 
-            <div className={s.horizontalList}>
-                
+            {/* <div className={s.horizontalList}>
+
                 <ComplexDrop
                     onChange={handleComplexDrop}
                     data={complexDropData}
                 />
-            </div>
+            </div> */}
         </div>
     );
 };

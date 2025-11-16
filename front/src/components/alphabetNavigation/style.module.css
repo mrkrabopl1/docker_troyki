@@ -1,0 +1,29 @@
+.alphabetTable{
+    display: flex;
+    flex-direction: row;
+  
+    height: 100%;
+    width: 25%;
+    text-align: left;
+    padding:10px;
+    
+}
+
+.alphabetContainer{
+    display: flex;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    height: 100%;
+    flex-wrap: wrap;
+}
+
+.alphabetName{
+    cursor: pointer;
+}
+.alphabetKey{
+    padding-right: 10px;
+    margin-bottom: auto;
+    font-size: 32px;
+    margin-left: 20%;
+}

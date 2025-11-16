@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux';
 import { cartCountAction } from 'src/store/reducers/menuSlice';
@@ -15,21 +15,27 @@ import Modal from 'src/components/modal/Modal';
 import DoubleInfoDrop from 'src/components/doubleInfoDrop/DoubleInfoDrop';
 import Scroller from 'src/components/scroller/Scroller';
 import TableWithComboboxColumn from 'src/components/table/simpleTable/TableWithComboboxColumn';
-import ContentSlider from 'src/components/contentSlider/ContentSliderWithControl';
+import ContentSlider from 'src/components/contentSlider/ContentSliderWithSwitcher';
 import MerchComplexSliderField from 'src/modules/merchField/MerchComplexSliderField';
 import s from "./style.module.css";
+import { ReactComponent as CopySvg } from "/public/copy.svg";
+import SVGIcon from 'src/components/svgIcon/SvgIcon';
+
+import merchType from 'src/types/merchType';
 
 type ProductType = "snickers" | "clothes" | "solomerch";
 
 interface ProductInfo {
     imgs: string[];
     name: string;
-    info: Record<string, number>;
+    info: merchType;
     discount?: Record<string, number>;
+    store?: Record<string, number>;
     firm?: string;
     id?: string;
     producttype: ProductType;
     minprice?: number;
+    article: string;
 }
 
 interface SizeTable {
@@ -41,110 +47,78 @@ interface SizeTable {
 const PRICE_MATCH_TEXT = "Если вы нашли данную модель где-либо в наличии по более низкой цене — пришлите нам ссылку на данную модель в другом магазине. Мы будем рады предложить вам скидку, компенсирующую разницу в стоимости, и лучшую цену относительно конкурентов. Обратите внимание, что акция распространяется только на российские платформы.";
 
 const ProductsInfo: React.FC = () => {
+
     const { snickers } = useParams<{ snickers: string }>();
     const { widthProps } = useAppSelector(state => state.resizeReducer);
     const { cartCount } = useAppSelector(state => state.menuReducer);
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
 
-    const [merchInfo, setMerchInfo] = useState<ProductInfo>({ imgs: [], name: "", info: {}, producttype: "snickers" });
+    const [merchInfo, setMerchInfo] = useState<ProductInfo>({ article: "", imgs: [], name: "", info: {}, producttype: "snickers" });
+    console.log("render ProductsInfo", merchInfo);
     const [tableInfo, setTableInfo] = useState<SizeTable>({
         sizes: {},
         table: [{ table: [], title: "" }],
         comboTable: [{ table: [], title: "" }]
     });
     const [activeModal, setActiveModal] = useState(false);
+    const [activeProductsModal, setActiveProductsModal] = useState(false);
     const [local] = useState("ru");
 
-    const [currentPrice,setCurrentPrice] = useState<number>(0);
+    const [currentPrice, setCurrentPrice] = useState<number>(0);
     const [emptyPage, setEmptyPage] = useState(false);
     const currentSize = useRef<string>("");
     const currentDiscount = useRef<number>(0);
     const currentPriceDiscount = useRef<number>(0);
-    const pricesArr = useRef<Array<{ discount: number; price: number; size: string, availability: boolean }>>([]);
+    const pricesArr = useRef<merchType>({});
     const merchType = useRef<ProductType>("snickers");
 
     const setMerchInfoHandler = useCallback((val: ProductInfo) => {
         merchType.current = val.producttype;
 
-        switch (val.producttype) {
-            case "solomerch":
-                processSoloMerch(val);
-                break;
-            case "snickers":
-                processSnickers(val);
-                break;
-            case "clothes":
-                processClothes(val);
-                break;
+        processProducts(val);
+    }, []);
+
+
+
+    const processProducts = useCallback((val: ProductInfo) => {
+        merchType.current = val.producttype;
+
+        if (Object.keys(val.info).length === 0) {
+            // ВСЕ обновления для случая "пусто"
+            setEmptyPage(true);
+            setMerchInfo(val);
+            setCurrentPrice(0);
+        } else {
+            // ВСЕ обновления для случая "есть данные"
+            pricesArr.current = val.info;
+            val.discount && Object.entries(val.discount).forEach(data => {
+                pricesArr.current[data[0]].discount = data[1]
+            })
+
+            currentSize.current = Object.keys(val.info)[0] || "";
+            const discount = val.discount?.[currentSize.current] || 0;
+            const price = Number(Object.values(val.info)[0]?.price) || 0;
+
+            setEmptyPage(false);
+            currentDiscount.current = discount;
+            currentPriceDiscount.current = price;
+            setCurrentPrice(price - discount);
+            setMerchInfo(val);
         }
     }, []);
 
-    const processSoloMerch = (val: ProductInfo) => {
-        if (val.minprice === undefined || val.minprice === 0) {
-            setEmptyPage(true);
-        } else {
-            pricesArr.current = [];
-            const discount = val.discount?.[currentSize.current] || 0;
-           setCurrentPrice((val.minprice || 0) - discount);
-            setEmptyPage(false);
-        }
-        setMerchInfo(val);
-    };
 
-    const processSnickers = (val: ProductInfo) => {
-        if (Object.keys(val.info).length === 0) {
-            setEmptyPage(true);
-
-        } else {
-            pricesArr.current = [];
-            currentSize.current = Object.keys(val.info)[0] || "";
-            const discount = val.discount?.[currentSize.current] || 0;
-            setCurrentPrice(Number(Object.values(val.info)[0]) || 0 - discount);
-
-            pricesArr.current = Object.entries(val.info).map(([size, price]) => {
-                const discount = val.discount?.[size] || 0;
-                const ruSize = local === "ru"
-                    ? String(sizes.sizes["ru"][sizes.sizes["us"].indexOf(Number(size))])
-                    : size;
-
-                return { discount, price, size: ruSize, availability: true };
-            });
-            setEmptyPage(false);
-        }
-        setMerchInfo(val);
-    };
-
-    const processClothes = (val: ProductInfo) => {
-        if (Object.keys(val.info).length === 0) {
-            setEmptyPage(true);
-        } else {
-            pricesArr.current = [];
-            currentSize.current = Object.keys(val.info)[0] || "";
-            const discount = val.discount?.[currentSize.current] || 0;
-            setCurrentPrice(Number(Object.values(val.info)[0]) || 0 - discount);
-
-            pricesArr.current = Object.entries(val.info).map(([size, price]) => ({
-                discount: val.discount?.[size] || 0,
-                price,
-                size,
-                availability: true
-            }));
-            setEmptyPage(false);
-        }
-        setMerchInfo(val);
-    };
-
-    const priceChangeHandler = useCallback((index: number) => {
+    const priceChangeHandler = useCallback((index: string) => {
         const priceBlock = pricesArr.current[index];
-        setCurrentPrice(priceBlock.price - priceBlock.discount);
-        currentDiscount.current = priceBlock.discount;
+        setCurrentPrice(priceBlock.price - (priceBlock.discount ?? 0));
+        currentDiscount.current = pricesArr.current[index].discount ?? 0;
 
-        if (local === "ru") {
-            currentSize.current = String(
-                tableInfo.sizes["us"][tableInfo.sizes["ru"].indexOf(Number(priceBlock.size))]
-            );
-        }
+        // if (local === "ru") {
+        //     currentSize.current = String(
+        //         tableInfo.sizes["us"][tableInfo.sizes["ru"].indexOf(Number(priceBlock.size))]
+        //     );
+        // }
 
         currentPriceDiscount.current = priceBlock.price;
     }, [local, tableInfo.sizes]);
@@ -152,21 +126,26 @@ const ProductsInfo: React.FC = () => {
     const handleBuyClick = useCallback(() => {
         const data = {
             id: Number(snickers),
-            size: String(currentSize.current) ,
-            sourceTable: merchType.current
+            size: String(currentSize.current),
+            price: currentPrice,
+            name: merchInfo.name,
+            image_path: merchInfo.imgs[0]
         };
 
         createPreorder(data, (hash) => {
             navigate(`/form/${hash}`);
+            dispatch(cartCountAction(1));
         });
-    }, [snickers, navigate]);
+    }, [snickers, navigate, merchInfo, currentPrice]);
 
     const handleAddToCart = useCallback(() => {
         const cart = getCookie("cart");
         const data = {
             id: Number(snickers),
-            size: currentSize.current ,
-            sourceTable: merchType.current
+            size: currentSize.current,
+            price: currentPrice,
+            name: merchInfo.name,
+            image_path: merchInfo.imgs[0]
         };
 
         if (cart) {
@@ -178,7 +157,7 @@ const ProductsInfo: React.FC = () => {
                 dispatch(cartCountAction(cartCount + 1));
             });
         }
-    }, [snickers, cartCount, dispatch]);
+    }, [snickers, cartCount, dispatch, merchInfo, currentPrice]);
 
     const renderImagePresentation = useCallback(() => {
         if (merchInfo.imgs.length > 1) {
@@ -188,7 +167,9 @@ const ProductsInfo: React.FC = () => {
                         <ImagePresantationBlock image={img} />
                     </div>
                 ))} />
-                : <ImagePresantation images={merchInfo.imgs} />;
+                : <ImagePresantation onClick={(ind) => {
+                    setActiveProductsModal(true)
+                }} images={merchInfo.imgs} />;
         }
         return <ImagePresantationBlock image={merchInfo.imgs[0]} />;
     }, [merchInfo.imgs, widthProps]);
@@ -200,24 +181,25 @@ const ProductsInfo: React.FC = () => {
     }, [snickers, setMerchInfoHandler]);
 
     useEffect(() => {
-        getSizeTable(setTableInfo);
-    }, []);
+        getSizeTable(merchType.current, setTableInfo);
+    }, [merchType.current]);
 
     return (
         <div>
             <div className={widthProps ? "" : s.mainWrap}>
                 <div className={widthProps ? null : s.leftPart} style={widthProps ? { width: "100%" } : {}}>
                     {renderImagePresentation()}
+                    <div>
+                        <img src={merchInfo.firm} alt="" />
+                        <span>{merchInfo.firm}</span>
+                    </div>
                 </div>
 
                 <div className={s.controllPanel}>
-                    {merchType.current === "snickers" && (
-                        <Button text="размеры" onClick={() => setActiveModal(true)} />
-                    )}
 
                     <h1 className={s.merchName}>{merchInfo.name}</h1>
 
-                    <div>
+                    {currentPrice ? <div>
                         {currentDiscount.current > 0 && (
                             <>
                                 <span className={s.discountPrice}>
@@ -229,7 +211,7 @@ const ProductsInfo: React.FC = () => {
                             </>
                         )}
                         <span>{toPrice(currentPrice)}</span>
-                    </div>
+                    </div> : null}
 
                     {merchType.current !== "solomerch" && (
                         <PriceHolder
@@ -242,6 +224,15 @@ const ProductsInfo: React.FC = () => {
                         emptyPage ? <div className={s.buttonGroup}>
                             Товар отсутствует
                         </div> : <div className={s.buttonGroup}>
+                            <div className={s.articleHolder}>
+                                <div className={s.article}>
+                                    <span className={s.articleText}>{merchInfo.article}</span>
+                                    <CopySvg className={s.articleBtn} />
+                                </div>
+                                <div onClick={() => setActiveModal(true)} className={s.sizeLabel}>
+                                    <SVGIcon spritePath='shoe_size' />
+                                </div>
+                            </div>
                             <Button
                                 text="Купить"
                                 className={`btnStyle ${s.buyMerch}`}
@@ -275,6 +266,13 @@ const ProductsInfo: React.FC = () => {
                         </Scroller>
                     </div>
                 </Modal>
+                <Modal onChange={setActiveProductsModal} active={activeProductsModal}>
+                    <ContentSlider className={{ holder: s.modalImageHolder, slider: s.modalSlider }} content={merchInfo.imgs.map(img => (
+                        <div style={{ width: "100%", flexShrink: 0, height: "100%" }}>
+                            <ImagePresantationBlock image={img} />
+                        </div>
+                    ))} />
+                </Modal>
             </div>
 
             <MerchComplexSliderField />
@@ -282,4 +280,4 @@ const ProductsInfo: React.FC = () => {
     );
 };
 
-export default ProductsInfo;
+export default memo(ProductsInfo);

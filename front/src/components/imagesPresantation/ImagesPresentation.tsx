@@ -6,9 +6,10 @@ import { isDeepEqual } from 'src/global';
 
 type ImagePresentationProps = {
     images: string[];
+    onClick?: (ind:number) => void;
 };
 
-const ImagePresentation: React.FC<ImagePresentationProps> = ({ images }) => {
+const ImagePresentation: React.FC<ImagePresentationProps> = ({ images ,onClick}) => {
     const presentationRef = useRef<HTMLDivElement>(null);
     const [mainImage, setMainImage] = useState<string>(images[0]);
     const [isExpanded, setIsExpanded] = useState<boolean>(false);
@@ -22,13 +23,11 @@ const ImagePresentation: React.FC<ImagePresentationProps> = ({ images }) => {
         setMainImage(images[0]);
     }, [images]);
 
-    const handleExpand = useCallback(() => {
+    const handleExpand = useCallback((ind) => {
+        onClick(ind)
         setIsExpanded(true);
     }, []);
 
-    const handleCloseExpanded = useCallback(() => {
-        setIsExpanded(false);
-    }, []);
 
     const handleThumbnailHover = useCallback((image: string) => {
         setMainImage(image);
@@ -36,24 +35,20 @@ const ImagePresentation: React.FC<ImagePresentationProps> = ({ images }) => {
 
     return (
         <div ref={presentationRef} className={s.imgComponentWrap}>
-            {isExpanded && (
-                <ExpandedImagePresentation 
-                    onClose={handleCloseExpanded} 
-                    images={images} 
+
+            <div className={s.topBlock}>
+                <ImagePresentationBlock
+                    onClick={()=>{handleExpand(0)}}
+                    image={mainImage}
                 />
-            )}
-            
-            <ImagePresentationBlock 
-                onClick={handleExpand} 
-                image={mainImage} 
-            />
-            
+            </div>
+
             <div className={s.bottomFlexBlock}>
                 {images.slice(1).map((image, index) => (
-                    <div key={`${image}-${index}`} style={{height:"100%"}}>
-                        <ImagePresentationBlock 
+                    <div key={`${image}-${index}`} style={{ height: "100%" }}>
+                        <ImagePresentationBlock
                             onOut={handleThumbnailLeave}
-                            onClick={handleExpand}
+                            onClick={()=>{handleExpand(index+1)}}
                             onHover={handleThumbnailHover}
                             image={image}
                         />

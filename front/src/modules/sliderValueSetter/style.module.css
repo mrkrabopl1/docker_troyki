@@ -1,3 +1,46 @@
-.numInput{
-    width: 100%;
+.inputContainer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 
+        inset 1px 1px 3px rgba(0, 0, 0, 0.1),
+        inset -1px -1px 3px rgba(255, 255, 255, 0.8),
+        0 2px 4px rgba(0, 0, 0, 0.08),
+        0 0 0 1px rgba(0, 0, 0, 0.03),
+        0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.numInput {
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    background: #ffffff;
+    font-size: 14px;
+    text-align: center;
+    min-width: 60px;
+    box-shadow: 
+        inset 1px 1px 2px rgba(0, 0, 0, 0.1),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.9),
+        0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.numInput:focus {
+    outline: none;
+    box-shadow: 
+        inset 1px 1px 3px rgba(0, 0, 0, 0.15),
+        inset -1px -1px 3px rgba(255, 255, 255, 0.8),
+        0 0 0 2px rgba(42, 42, 42, 0.1),
+        0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.inputContainer span {
+    color: #2a2a2a;
+    font-weight: 500;
+    font-size: 14px;
+    opacity: 0.7;
 }

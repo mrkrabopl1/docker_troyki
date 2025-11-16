@@ -9,7 +9,7 @@ type ColumnType = {
 
 type TableProps = {
     table: ColumnType[];
-    comboTable: ColumnType[];
+    comboTable?: ColumnType[];
     className?: string;
 };
 
@@ -19,16 +19,16 @@ const tableStyle: React.CSSProperties = {
     width: "100%"
 };
 
-const TableWithComboboxColumn: React.FC<TableProps> = ({ 
-    table, 
-    comboTable, 
-    className 
+const TableWithComboboxColumn: React.FC<TableProps> = ({
+    table,
+    comboTable,
+    className
 }) => {
     const [selectedIndex, setSelectedIndex] = useState<string>("0");
     const columnWidth = `${100 / (table.length + 1)}%`;
 
-    const comboBoxHeaders = useMemo(() => 
-        comboTable.map(val => val.title), 
+    const comboBoxHeaders = useMemo(() =>
+        comboTable ? comboTable.map(val => val.title) : [],
         [comboTable]
     );
 
@@ -41,15 +41,15 @@ const TableWithComboboxColumn: React.FC<TableProps> = ({
                     </div>
                 </th>
             ))}
-            <th key="combo-header" style={{ width: columnWidth }}>
+            {comboTable ?<th key="combo-header" style={{ width: columnWidth }}>
                 <div>
-                    <Combobox 
-                        enumProp={true} 
-                        data={comboBoxHeaders} 
-                        onChangeIndex={setSelectedIndex} 
+                    <Combobox
+                        enumProp={true}
+                        data={comboBoxHeaders}
+                        onChangeIndex={setSelectedIndex}
                     />
                 </div>
-            </th>
+            </th>:null}
         </>
     ), [table, comboBoxHeaders, columnWidth]);
 
@@ -63,17 +63,20 @@ const TableWithComboboxColumn: React.FC<TableProps> = ({
                         {col.table[rowIndex]}
                     </td>
                 ))}
-                <td key={`combo-cell-${rowIndex}`}>
-                    {comboTable[selectedIndex]?.table[rowIndex]}
-                </td>
+                {
+                    comboTable ?
+                        <td key={`combo-cell-${rowIndex}`}>
+                            {comboTable[selectedIndex]?.table[rowIndex]}
+                        </td> : null
+                }
             </tr>
         ));
     }, [table, comboTable, selectedIndex]);
 
     return (
-        <table 
-            onClick={(e) => e.stopPropagation()} 
-            className={className} 
+        <table
+            onClick={(e) => e.stopPropagation()}
+            className={className}
             style={tableStyle}
         >
             <thead>

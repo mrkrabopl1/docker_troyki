@@ -45,15 +45,15 @@ const CheckBoxColumn: React.FC<ColumnProps> = ({ data, onChange }) => {
     }, []);
 
     return (
-        <div style={{ paddingLeft: "5px" }}>
+        <div>
             {data.map((val, id) => (
-                <div key={`${val.name}-${id}`} style={{ display: "flex" }}>
+                <div key={`${val.name}-${id}`} style={{ display: "flex", padding: "5px 0" }}>
                     <Checkbox 
                         onChange={(active) => handleChange(id, active)} 
                         enable={val.enable} 
                         activeData={val.activeData} 
                     />
-                    <p>{val.name}</p>
+                    <p  style={{  paddingLeft: "5px" }}>{val.name}</p>
                 </div>
             ))}
         </div>

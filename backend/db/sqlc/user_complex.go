@@ -75,11 +75,12 @@ func NewProductsSearchResponse5(ProductsSearch []GetProductsByIdsRow) []types.Pr
 		}
 		list = append(list, types.ProductsSearchResponse1{
 			Image:    imgArr,
-			Price:    100, //int(info.Minprice),
+			Price:    int(info.Minprice),
 			Id:       int(info.GlobalID),
 			Name:     info.Name,
 			Firm:     info.Firm,
 			Discount: discount,
+			Article:  info.Article,
 		})
 
 	}

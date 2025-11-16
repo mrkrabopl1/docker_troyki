@@ -4,10 +4,10 @@ import s from "./style.module.css";
 import { useAppSelector } from 'src/store/hooks/redux';
 import merchType from 'src/types/merchType';
 
-type MerchType = merchType[];
+type MerchType = merchType;
 interface PriceHolderProps {
     elems: MerchType | null;
-    onChange: (index: number) => void;
+    onChange: (index: string) => void;
     activeInd?: number;
 }
 
@@ -19,23 +19,24 @@ const PriceHolderComponent: React.FC<PriceHolderProps> = ({
     const [activeState, setActiveState] = useState<number>(activeInd);
     const priceState = useAppSelector(state => state.priceReducer);
 
-    const handleActiveChange = useCallback((ind: number) => {
-        onChange(ind);
+    const handleActiveChange = useCallback((size: string,ind:number) => {
+        onChange(size);
         setActiveState(ind);
     }, [onChange]);
 
     const priceBlocks = useMemo(() => {
         if (!elems) return [];
         
-        return elems.map((val, ind) => (
+        return Object.entries(elems).map(([size,val], ind) => (
             <PricesBlock 
-                key={`${val.size}-${ind}`} // Более уникальный ключ
-                onChange={() => handleActiveChange(ind)}
+                key={`${size}-${ind}`} // Более уникальный ключ
+                onChange={() => handleActiveChange(size,ind)}
                 active={activeState === ind}
-                size={val.size}
-                price={val.price - val.discount}
+                size={size}
+                price={val.price - (val.discount||0)}
                 discount={val.discount}
                 id={ind}
+                in_stock={val.in_stock}
             />
         ));
     }, [elems, activeState, handleActiveChange]);

@@ -6,7 +6,7 @@ import { toPrice } from 'src/global';
 import { ReactComponent as Bin } from "../../../public/bin.svg";
 
 
-interface merchInterface { name: string, img: string, id: string, firm: string, price: string, quantity: number, size: number }
+interface merchInterface { name: string, img: string, id: string, firm: string, price: number, quantity: number, size: number }
 
 const MerchFormBlock: React.FC<{ data: merchInterface, onChange: () => void }> = (props) => {
     let { data, onChange } = { ...props }

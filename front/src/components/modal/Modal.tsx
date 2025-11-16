@@ -20,8 +20,12 @@ const Modal: React.FC<ModalProps> = ({ active, onChange, children }) => {
 
     // Обработчик клика по фону
     const handleBackdropClick = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        onChange(false);
+        // if (e.target === e.currentTarget ) {
+        //     e.stopPropagation();
+        //     onChange(false);
+        // }
+         e.stopPropagation();
+            onChange(false);
     }, [onChange]);
 
     // Обработчик колеса мыши
@@ -41,7 +45,10 @@ const Modal: React.FC<ModalProps> = ({ active, onChange, children }) => {
         >
             <div 
                 className={s.modalContent}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                    //  e.stopPropagation()
+                   //handleBackdropClick(e)
+                }}
             >
                 {children}
             </div>

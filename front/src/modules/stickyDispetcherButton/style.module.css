@@ -11,7 +11,6 @@
 .dispetchers{
     bottom:100%;
     position:absolute;
-    background-color: azure;
     right:0;
     border-radius: 5px;
 }
@@ -22,4 +21,17 @@
     text-decoration: none;
 
 }
+.linkBtn{
+    width:40px;
+    height:40px;
+     background-color: azure;
+     margin:10px;
+    border-radius: 100%;
+    display: flex;
+}
 
+.logo{
+    width: 70%;
+    height:70%;
+    margin:auto
+}

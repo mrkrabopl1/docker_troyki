@@ -11,9 +11,11 @@ import (
 )
 
 type PreorderType struct {
-	Id          int32                `json:"id"`
-	Size        string               `json:"size"`
-	SourceTable db.ProductSourceEnum `json:"sourceTable"`
+	Id         int32  `json:"id"`
+	Size       string `json:"size"`
+	Price      int32  `json:"price"`
+	Name       string `json:"name"`
+	Image_path string `json:"image_path"`
 }
 type UpdataPreorderType struct {
 	PreorderType
@@ -28,9 +30,9 @@ func (s *Server) handleCreatePreorder(ctx *gin.Context) {
 		return
 	}
 
-	fmt.Println(preorderData.Size)
+	fmt.Println(preorderData, "fkdsmflkdsnflsdnlfnsdlfndslkfnldsknf")
 
-	hashUrl, err := s.store.CreatePreorder(ctx, preorderData.Id, preorderData.Size, preorderData.SourceTable)
+	hashUrl, err := s.store.CreatePreorder(ctx, preorderData.Id, preorderData.Size, preorderData.Price, preorderData.Name, preorderData.Image_path)
 
 	if err != nil {
 		//log.WithCaller().Err(err)
@@ -124,7 +126,7 @@ func (s *Server) handleUpdatePreorder(ctx *gin.Context) {
 		return
 	}
 	fmt.Println("yes1", preorderData)
-	quantity, _ := s.store.UpdatePreorder(ctx, preorderData.Id, preorderData.Size, preorderData.SourceTable, cookie)
+	quantity, _ := s.store.UpdatePreorder(ctx, preorderData.Id, preorderData.Size, preorderData.Price, preorderData.Name, preorderData.Image_path, cookie)
 	fmt.Println("yes3", quantity)
 	// Print the result and the time taken
 
@@ -163,9 +165,8 @@ func (s *Server) handleGetCart(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	responseData := SnickersCartResponseWithourFullPrice(cartData)
 
-	ctx.JSON(http.StatusOK, responseData)
+	ctx.JSON(http.StatusOK, cartData)
 }
 
 func (s *Server) handleGetCartFromOrder(ctx *gin.Context) {
@@ -173,7 +174,6 @@ func (s *Server) handleGetCartFromOrder(ctx *gin.Context) {
 
 	cartData, err := s.store.GetCartDataFromOrderByHash(ctx, hashUrl)
 	fmt.Println(cartData)
-	responseData := SnickersCartResponseWithourFullPrice(cartData)
 
 	if err != nil {
 		// log.WithCaller().Err(err).Msg("")
@@ -183,34 +183,7 @@ func (s *Server) handleGetCartFromOrder(ctx *gin.Context) {
 	// log.Log.Info().Interface("snickers", responseData)
 	// log.Log.Info().Msg("snickers")
 
-	ctx.JSON(http.StatusOK, responseData)
-}
-func SnickersCartResponseWithourFullPrice(cart []types.SnickersCart) types.FullCartRespone {
-	data := types.FullCartRespone{}
-	fullPrice := 0
-	list := []types.CartResponse{}
-	for _, info := range cart {
-		img_path := "images/" + info.Image + "/img1.png"
-
-		fullPrice += info.Price * info.Quantity
-
-		list = append(list, types.CartResponse{
-			Image:    img_path,
-			Id:       int(info.Id),
-			Name:     info.Name,
-			Size:     info.Size,
-			Quantity: info.Quantity,
-			Price:    info.Price,
-			Firm:     info.Firm,
-			PrId:     info.PrId,
-		})
-
-	}
-
-	data.CartData = list
-	data.FullPice = fullPrice
-
-	return data
+	ctx.JSON(http.StatusOK, cartData)
 }
 
 func (s *Server) handleGetOrderDataByHash(ctx *gin.Context) {
@@ -238,19 +211,23 @@ func (s *Server) handleGetOrderDataByHash(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, orderResponse)
 }
 
+type FullCartRespone struct {
+	CartData []db.GetOrderDataByIdRow `json:"cartData"`
+	FullPice int                      `json:"fullPrice"`
+}
 type OrderDataResp struct {
-	UserInfo     types.UnregisterCustomerResponse `json:"userInfo"`
-	State        string                           `json:"state"`
-	CartResponse types.FullCartRespone            `json:"cartResponse"`
-	OrderId      int                              `json:"orderId"`
-	Address      db.GetOrderAddressByIdRow        `json:"address"`
+	UserInfo types.UnregisterCustomerResponse `json:"userInfo"`
+	State    string                           `json:"state"`
+	OrderId  int                              `json:"orderId"`
+	Address  db.GetOrderAddressByIdRow        `json:"address"`
+	CartData []db.GetOrderDataByIdRow         `json:"cartData"`
 }
 
 func orderResponseFunc(orderData db.GetOrderData) OrderDataResp {
 	var orderResponse OrderDataResp
 	customerInfo := orderData.UserInfo
 	orderAddress := orderData.Address
-	cartData := SnickersCartResponseWithourFullPrice(orderData.SnickersCart)
+	cartData := orderData.SnickersCart
 	data := types.UnregisterCustomerResponse{
 		Name:       customerInfo.Name,
 		SecondName: customerInfo.Secondname.String,
@@ -260,7 +237,7 @@ func orderResponseFunc(orderData db.GetOrderData) OrderDataResp {
 
 	orderResponse.UserInfo = data
 	orderResponse.State = orderData.State
-	orderResponse.CartResponse = cartData
+	orderResponse.CartData = cartData
 	orderResponse.OrderId = orderData.OrderId
 	orderResponse.Address = orderAddress
 	return orderResponse
@@ -272,6 +249,7 @@ type OrderDataResp1 struct {
 	CartResponse types.FullCartRespone            `json:"cartResponse"`
 	OrderId      int                              `json:"orderId"`
 	Address      types.Address                    `json:"address"`
+	CartData     []db.GetOrderDataByIdRow         `json:"cartData"`
 }
 
 func (s *Server) handleGetOrderDataByMail(ctx *gin.Context) {
@@ -314,7 +292,6 @@ func (s *Server) handleDeleteCartData(ctx *gin.Context) {
 func orderResponseFunc1(orderData db.OrderDataResp) OrderDataResp1 {
 	var orderResponse OrderDataResp1
 	customerInfo := orderData.UserInfo
-	cartData := SnickersCartResponseWithourFullPrice(orderData.CartResponse)
 	data := types.UnregisterCustomerResponse{
 		Name:       customerInfo.Name,
 		SecondName: customerInfo.Secondname.String,
@@ -324,7 +301,7 @@ func orderResponseFunc1(orderData db.OrderDataResp) OrderDataResp1 {
 
 	orderResponse.UserInfo = data
 	orderResponse.State = orderData.State
-	orderResponse.CartResponse = cartData
+	orderResponse.CartData = orderData.CartResponse
 	orderResponse.OrderId = int(orderData.OrderId)
 	orderResponse.Address = orderData.Address
 

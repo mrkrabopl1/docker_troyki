@@ -13,6 +13,11 @@ interface ComplexDropMenuWithRequestProps {
 const ComplexDropMenuWithRequestComponent: React.FC<ComplexDropMenuWithRequestProps> = () => {
   const dispatch = useAppDispatch();
   const [merchFieldData, setMerchFieldData] = useState<Record<string, string[]>>({});
+    const [categories, setCategories] = useState<{
+         type: number;
+         name:string,
+         image_path:string
+    }[]>([]);
 
   const setFirmsData = useCallback((firms: Array<{ firm: string; collections: string[], categories: string[] }>) => {
     const fieldData: Record<string, string[]> = {};
@@ -32,7 +37,7 @@ const ComplexDropMenuWithRequestComponent: React.FC<ComplexDropMenuWithRequestPr
     getFirms(setFirmsData);
   }, [setFirmsData]);
 
-  return <ComplexDropMenu complexDropData={merchFieldData}  />;
+  return <ComplexDropMenu complexDropData={merchFieldData}  categories={categories}/>;
 };
 
 const arePropsEqual = (prevProps: ComplexDropMenuWithRequestProps, nextProps: ComplexDropMenuWithRequestProps) => {

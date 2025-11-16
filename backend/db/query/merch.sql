@@ -3,58 +3,22 @@ SELECT
     firm,
     array_agg(DISTINCT line) AS collections
 FROM (
-    SELECT firm, line FROM snickers WHERE line IS NOT NULL
-    UNION ALL
-    SELECT firm, line FROM soloMerch WHERE line IS NOT NULL
-    UNION ALL
-    SELECT firm, line FROM clothes WHERE line IS NOT NULL
+    SELECT firm, line FROM products WHERE line IS NOT NULL
 ) AS combined_products
 GROUP BY firm
 ORDER BY firm;
 -- name: GetMerchProductsByFirmName :many
-(
-    -- Товары из таблицы snickers
-    SELECT 
-        s.name,
-        s.image_path,
-        s.id,
-        COALESCE(d.minprice, s.minprice) AS value,  -- Используем minprice как value
-        s.article,
-        s.type
-    FROM snickers s
-    LEFT JOIN discount d ON s.id = d.productid  -- Связь по snickers_id
-    WHERE s.firm = $1
-)
-UNION ALL
-(
-    -- Товары из таблицы soloMerch
-    SELECT 
-        sm.name,
-        sm.image_path,
-        sm.id,
-        COALESCE(d.minprice, sm.minprice) AS value,  -- Используем price как value
-        sm.article,
-        sm.type
-    FROM solomerch sm
-    LEFT JOIN discount d ON sm.id = d.productid  -- Связь по solo_merch_id
-    WHERE sm.firm = $1
-)
-UNION ALL
-(
-    -- Товары из таблицы soloMerch
-    SELECT 
-        cl.name,
-        cl.image_path,
-        cl.id,
-        COALESCE(d.minprice, cl.minprice) AS value,  -- Используем price как value
-        cl.article,
-        cl.type
-    FROM clothes cl
-    LEFT JOIN discount d ON cl.id = d.productid  -- Связь по solo_merch_id
-    WHERE cl.firm = $1
-)
-ORDER BY name;  --
-
+SELECT 
+    p.name,
+    p.image_path,
+    p.id,
+    COALESCE(d.minprice, p.minprice) AS value,
+    p.article,
+    p.type
+FROM products p
+LEFT JOIN discount d ON p.id = d.productid
+WHERE p.firm = $1
+ORDER BY p.name;
 
 -- name: InsertDiscounts :one
 INSERT INTO public.discount (
@@ -75,959 +39,493 @@ RETURNING id;
 -- name: SelectMainCategories :one
 SELECT enum_range(NULL::main_categories);
 
--- name: GetMerchByLineName :many
-SELECT name,
-    image_path,
-    soloMerch.id,
-    value,
-    article,
-    type
-FROM soloMerch
-    LEFT JOIN discount ON soloMerch.id = productid 
-WHERE firm = $1;
-WITH 
-firm_counts_snickers AS (
-    SELECT s.firm, COUNT(s.id) AS firm_count
-    FROM snickers AS s
-    WHERE s.name ILIKE '%' || $1::text || '%'
-    GROUP BY s.firm
-),
-firm_counts_soloMerch AS (
-    SELECT sm.firm, COUNT(sm.id) AS firm_count
-    FROM soloMerch AS sm
-    WHERE sm.name ILIKE '%' || $1::text || '%'
-    GROUP BY sm.firm
-),
-firm_counts_clothes AS (
-    SELECT cl.firm, COUNT(cl.id) AS firm_count
-    FROM clothes AS cl
-    WHERE cl.name ILIKE '%' || $1::text || '%'
-    GROUP BY cl.firm
-),
-combined_firm_counts AS (
-    SELECT firm, SUM(firm_count) AS firm_count
-    FROM (
-        SELECT firm, firm_count FROM firm_counts_snickers
-        UNION ALL
-        SELECT firm, firm_count FROM firm_counts_soloMerch
-        UNION ALL
-        SELECT firm, firm_count FROM firm_counts_clothes
-    ) AS combined
-    GROUP BY firm
-)
-SELECT
-    COUNT(s."3.5") AS "3.5",
-    COUNT(s."4") AS "4",
-    COUNT(s."4.5") AS "4.5",
-    COUNT(s."5") AS "5",
-    COUNT(s."5.5") AS "5.5",
-    COUNT(s."6") AS "6",
-    COUNT(s."6.5") AS "6.5",
-    COUNT(s."7") AS "7",
-    COUNT(s."7.5") AS "7.5",
-    COUNT(s."8") AS "8",
-    COUNT(s."8.5") AS "8.5",
-    COUNT(s."9") AS "9",
-    COUNT(s."9.5") AS "9.5",
-    COUNT(s."10") AS "10",
-    COUNT(s."10.5") AS "10.5",
-    COUNT(s."11") AS "11",
-    COUNT(s."11.5") AS "11.5",
-    COUNT(s."12") AS "12",
-    COUNT(s."12.5") AS "12.5",
-    COUNT(s."13") AS "13",
-    LEAST(MIN(s.minprice), MIN(sm.minprice)) AS min,
-    GREATEST(MAX(s.maxprice), MAX(sm.minprice)) AS max,
-    jsonb_object_agg(COALESCE(cfc.firm, 'Unknown'), cfc.firm_count) AS firm_count_map,
-    s.type
-FROM snickers AS s
-FULL OUTER JOIN soloMerch AS sm ON 1=0  -- Это нужно чтобы объединить результаты обоих таблиц без реального соединения
-LEFT JOIN combined_firm_counts cfc ON s.firm = cfc.firm OR sm.firm = cfc.firm
-WHERE s.name ILIKE '%' || $1::text || '%' OR sm.name ILIKE '%' || $1::text || '%';
--- name: GetMerchCountIdByName :many
-SELECT firm, SUM(count) as count
-FROM (
 
-    SELECT firm, COUNT(id) as count
-    FROM snickers
-    WHERE name ILIKE '%' || $1::text || '%'
-    GROUP BY firm
-    
-    UNION ALL
-
-    SELECT firm, COUNT(id) as count
-    FROM solomerch
-    WHERE name ILIKE '%' || $1::text || '%'
-    GROUP BY firm
-) combined_results
-GROUP BY firm
-ORDER BY count DESC;
 
 
 -- name: GetMerchCollection :many
-SELECT * FROM (
-    SELECT 
-        COALESCE(d.minprice, s.minprice) AS minprice,
-        p.global_id,
-        s.image_path,
-        s.name,
-        s.firm,
-        d.maxdiscprice,
-        s.type,
-        COUNT(*) OVER() AS total_count
-    FROM snickers s
-    JOIN product_registry p ON s.id = p.internal_id AND p.source_table = 'snickers'
-    LEFT JOIN discount d ON s.id = d.productId 
-    WHERE s.firm = $1 OR s.line = $2
-
-    UNION ALL
-
-    SELECT 
-        COALESCE(d.minprice, sm.minprice) AS minprice,
-        p.global_id,
-        sm.image_path,
-        sm.name,
-        sm.firm,
-        d.maxdiscprice,
-        sm.type,
-        COUNT(*) OVER() AS total_count
-    FROM solomerch sm
-    JOIN product_registry p ON sm.id = p.internal_id AND p.source_table = 'solomerch'
-    LEFT JOIN discount d ON sm.id = d.productId
-    WHERE sm.firm = $1 OR sm.line = $2
-
-    UNION ALL
-
-    SELECT 
-        COALESCE(d.minprice, cl.minprice) AS minprice,
-        p.global_id,
-        cl.image_path,
-        cl.name,
-        cl.firm,
-        d.maxdiscprice,
-        cl.type ,
-        COUNT(*) OVER() AS total_count
-    FROM clothes cl
-    JOIN product_registry p ON cl.id = p.internal_id AND p.source_table = 'clothes'
-    LEFT JOIN discount d ON cl.id = d.productId
-    WHERE cl.firm = $1 OR cl.line = $2
-) AS combined_results
+SELECT 
+    COALESCE(d.minprice, p.minprice) AS minprice,
+    p.id AS global_id,
+    p.image_path,
+    p.name,
+    p.firm,
+    d.maxdiscprice,
+    st.productid,
+    p.type,
+    COUNT(*) OVER() AS total_count
+FROM products p
+LEFT JOIN discount d ON p.id = d.productid
+LEFT JOIN store_house st ON p.id = st.productid
+WHERE p.firm = $1 OR p.line = $2
 ORDER BY 
-    CASE WHEN COALESCE(minprice, 0) > 0 THEN 0 ELSE 1 END
+    CASE WHEN COALESCE(COALESCE(d.minprice, p.minprice), 0) > 0 THEN 0 ELSE 1 END
 LIMIT $3 OFFSET $4;
 
 -- name: GetProductsByName :many
 SELECT 
-    s.minprice,
-    p.global_id,
-    s.image_path,
-    s.name,
-    s.firm,
+    p.id as global_id,
+    p.image_path,
+    p.name,
+    p.firm,
+    p.minprice,
+    p.maxprice,
     d.maxdiscprice,
-    s.type
-FROM snickers s
-JOIN product_registry p ON s.id = p.internal_id AND p.source_table = 'snickers'
-LEFT JOIN discount d ON s.id = d.productId 
-WHERE s.name ILIKE '%' || $1::text || '%'
-UNION ALL
-SELECT 
-    sm.minprice,
-    p.global_id,
-    sm.image_path,
-    sm.name,
-    sm.firm,
-    d.maxdiscprice,
-    sm.type
-FROM solomerch sm
-   JOIN product_registry p ON sm.id = p.internal_id AND p.source_table = 'solomerch'
-LEFT JOIN discount d ON sm.id = d.productId 
-WHERE sm.name ILIKE '%' || $1::text || '%'
-UNION ALL
-SELECT 
-    cl.minprice,
-    p.global_id,
-    cl.image_path,
-    cl.name,
-    cl.firm,
-    d.maxdiscprice,
-    cl.type
-FROM clothes cl
-   JOIN product_registry p ON cl.id = p.internal_id AND p.source_table = 'clothes'
-LEFT JOIN discount d ON cl.id = d.productId 
-WHERE cl.name ILIKE '%' || $1::text || '%'
-ORDER BY minprice ASC
+    p.type,
+    p.article,
+    p.type,
+    p.category
+FROM products p
+LEFT JOIN discount d ON p.id = d.productid 
+WHERE p.name ILIKE '%' || $1::text || '%'
+ORDER BY 
+    CASE WHEN COALESCE(p.minprice, 0) > 0 THEN 0 ELSE 1 END,
+    p.name
 LIMIT $2;
 -- name: GetProductsByIds :many
 SELECT 
-    s.minprice,
-    pr.global_id,  -- Используем global_id вместо s.id
-    s.image_path,
-    s.name,
-    s.firm,
+    p.minprice,
+    p.id as global_id,  -- Теперь id products это global_id
+    p.image_path,
+    p.name,
+    p.firm,
     d.maxdiscprice,
-    s.type
-FROM snickers s
-JOIN product_registry pr ON pr.internal_id = s.id AND pr.source_table = 'snickers'
-LEFT JOIN discount d ON s.id = d.productId 
-WHERE pr.global_id = ANY($1::integer[])
-
-UNION ALL
-
-SELECT 
-    sm.minprice,
-    pr.global_id,  -- Используем global_id вместо sm.id
-    sm.image_path,
-    sm.name,
-    sm.firm,
-    d.maxdiscprice,
-    sm.type
-FROM solomerch sm
-JOIN product_registry pr ON pr.internal_id = sm.id AND pr.source_table = 'solomerch'
-LEFT JOIN discount d ON sm.id = d.productId 
-WHERE pr.global_id = ANY($1::integer[])
-
-UNION ALL
-
-SELECT 
-    cl.minprice,
-    pr.global_id,  -- Используем global_id вместо cl.id
-    cl.image_path,
-    cl.name,
-    cl.firm,
-    d.maxdiscprice,
-    cl.type
-FROM clothes cl
-JOIN product_registry pr ON pr.internal_id = cl.id AND pr.source_table = 'clothes'
-LEFT JOIN discount d ON cl.id = d.productId 
-WHERE pr.global_id = ANY($1::integer[])
-ORDER BY minprice ASC;
+    p.type,
+    p.article
+FROM products p
+LEFT JOIN discount d ON p.id = d.productid 
+WHERE p.id = ANY($1::integer[])
+ORDER BY p.minprice ASC;
 -- name: GetMerchWithDiscount :many
 SELECT 
-    s.minprice,
-    s.qId,
-    s.id,
-    s.image_path,
-    s.name,
-    s.firm,
+    p.minprice,
+    p.qId,
+    p.id,
+    p.image_path,
+    p.name,
+    p.firm,
     d.maxdiscprice,
-    s.type
-FROM snickers s
-LEFT JOIN discount d ON s.id = d.productId  -- LEFT JOIN вместо JOIN
-
-UNION ALL
-
--- Данные из таблицы solomerch
-SELECT 
-    sm.minprice,
-    sm.qId,
-    sm.id,
-    sm.image_path,
-    sm.name,
-    sm.firm,
-    d.maxdiscprice,
-    sm.type
-FROM solomerch sm
-LEFT JOIN discount d ON sm.id = d.productId  -- LEFT JOIN вместо JOIN
-
-UNION ALL
-
--- Данные из таблицы clothes
-SELECT 
-    cl.minprice,
-    cl.qId,
-    cl.id,
-    cl.image_path,
-    cl.name,
-    cl.firm,
-    d.maxdiscprice,
-    cl.type
-FROM clothes cl
-LEFT JOIN discount d ON cl.id = d.productId
-ORDER BY minprice ASC;
+    p.type
+FROM products p
+LEFT JOIN discount d ON p.id = d.productid
+ORDER BY p.minprice ASC;
 
 -- name: GetMerchCountOfCollectionsOrFirms :one
-SELECT 
-    (SELECT COUNT(id) FROM snickers WHERE snickers.firm = $1 OR snickers.line = $2) +
-     (SELECT COUNT(id) FROM clothes WHERE clothes.firm = $1 OR clothes.line = $2) +
-    (SELECT COUNT(id) FROM soloMerch WHERE soloMerch.firm = $1 OR soloMerch.line = $2) AS total_count;
-    
+SELECT COUNT(*) AS total_count
+FROM products
+WHERE firm = $1 OR line = $2;
 -- name: GetMerchCollectionWithCount :many
-WITH combined_products AS (
-    -- Data from snickers
-    SELECT 
-        COALESCE(d.minprice, s.minprice) AS minprice,
-        s.id,
-        s.image_path,
-        s.name,
-        s.firm,
-        d.maxdiscprice,
-        COUNT(*) OVER () AS total_count,
-        s.type
-    FROM snickers s
-    LEFT JOIN discount d ON s.id = d.productId
-    WHERE s.firm = $1 OR s.line = $2
-    
-    UNION ALL
-    
-    -- Data from solomerch
-    SELECT 
-        COALESCE(d.minprice, sm.minprice) AS minprice,
-        sm.id,
-        sm.image_path,
-        sm.name,
-        sm.firm,
-        d.maxdiscprice,
-        NULL::bigint AS total_count,
-        sm.type
-    FROM solomerch sm
-    LEFT JOIN discount d ON sm.id = d.productId
-    WHERE sm.firm = $1 OR sm.line = $2
-      UNION ALL
-    
-    -- Data from solomerch
-    SELECT 
-        COALESCE(d.minprice, sm.minprice) AS minprice,
-        cl.id,
-        cl.image_path,
-        cl.name,
-        cl.firm,
-        d.maxdiscprice,
-        NULL::bigint AS total_count,
-        cl.type 
-    FROM clothes cl
-    LEFT JOIN discount d ON cl.id = d.productId
-    WHERE cl.firm = $1 OR cl.line = $2
-)
 SELECT 
-    minprice,
-    id,
-    image_path,
-    name,
-    firm,
-    maxdiscprice,
-    type,
-    FIRST_VALUE(total_count) OVER () AS total_count
-FROM combined_products
-ORDER BY name
+    COALESCE(d.minprice, p.minprice) AS minprice,
+    p.id,
+    p.image_path,
+    p.name,
+    p.firm,
+    d.maxdiscprice,
+    p.type,
+    COUNT(*) OVER () AS total_count
+FROM products p
+LEFT JOIN discount d ON p.id = d.productid
+WHERE p.firm = $1 OR p.line = $2
+ORDER BY p.name
 LIMIT $3 OFFSET $4;
 
--- name: GetClothesInfoById :one
-SELECT
-    info,
-    image_path,
-    name,
-    article,
-    clothes.minprice,
-    description,
-    date,
-    image_count,
-    discount.value AS discount_value
-FROM clothes
-    LEFT JOIN discount ON clothes.id = productid
-WHERE clothes.id = $1;
-
--- name: GetSoloMerchInfoById :one
-SELECT
-    image_path,
-    name,
-    article,
-    solomerch.minprice,
-    description,
-    date,
-    image_count,
-    discount.value AS discount_value
-FROM solomerch
-    LEFT JOIN discount ON solomerch.id = productid
-WHERE solomerch.id = $1;
 
 -- name: GetFirms :many
-SELECT firm,
+SELECT 
+    firm,
     array_agg(DISTINCT line) AS array_of_data
-FROM "snickers"
-GROUP BY firm;
+FROM products
+GROUP BY firm
+ORDER BY firm;
 -- name: GetSnickersByFirmName :many
 SELECT name,
     image_path,
-    snickers.id,
+    products.id,
     value,
     article
-FROM snickers
-    LEFT JOIN discount ON snickers.id = productid
+FROM    products
+    LEFT JOIN discount ON products.id = productid
 WHERE firm = $1;
--- name: GetProductSource :one
-SELECT source_table, internal_id 
-FROM product_registry 
-WHERE global_id = $1;
--- name: GetSnickersByLineName :many
+
+-- name: GetProductsByLineName :many
 SELECT line,
     array_agg(id) AS id,
     array_agg(image_path) AS image_path,
     array_agg(name) AS name_data
-FROM snickers
+FROM products
 WHERE line = $1
 GROUP BY line;
 -- name: GetCombinedFiltersByString :one
-WITH combined_products AS (
-    -- Data from snickers (only shoe sizes)
+WITH product_data AS (
     SELECT 
-        s.minprice AS minprice,
-        s.maxprice AS maxprice,
-        s.firm,
-        s."3.5", s."4", s."4.5", s."5", s."5.5", 
-        s."6", s."6.5", s."7", s."7.5", s."8", 
-        s."8.5", s."9", s."9.5", s."10", s."10.5", 
-        s."11", s."11.5", s."12", s."12.5", s."13",
-        NULL AS "XS", -- These will always be NULL for snickers
-        NULL AS "S",
-        NULL AS "M",
-        NULL AS "L",
-        NULL AS "XL",
-        NULL AS "XXL"
-    FROM snickers s
-    WHERE s.name ILIKE '%' || $1::text || '%'
-    
-    UNION ALL
-    
-    -- Data from solomerch (no size columns)
-    SELECT 
-        sm.minprice AS minprice,
-        sm.minprice AS maxprice,
-        sm.firm,
-        NULL, NULL, NULL, NULL, NULL, 
-        NULL, NULL, NULL, NULL, NULL,
-        NULL, NULL, NULL, NULL, NULL,
-        NULL, NULL, NULL, NULL, NULL,
-        NULL, NULL, NULL, NULL, NULL, NULL
-    FROM solomerch sm
-    WHERE sm.name ILIKE '%' || $1::text || '%'
-    
-    UNION ALL
-    
-    -- Data from clothes (only clothing sizes)
-    SELECT 
-        cl.minprice AS minprice,
-        cl.maxprice AS maxprice,
-        cl.firm,
-        NULL, NULL, NULL, NULL, NULL, 
-        NULL, NULL, NULL, NULL, NULL,
-        NULL, NULL, NULL, NULL, NULL,
-        NULL, NULL, NULL, NULL, NULL,
-        cl."XS",
-        cl."S",
-        cl."M",
-        cl."L",
-        cl."XL",
-        cl."XXL"
-    FROM clothes cl
-    WHERE cl.name ILIKE '%' || $1::text || '%'
+        p.minprice,
+        p.maxprice,
+        p.firm,
+        p.sizes
+    FROM products p
+    WHERE p.name ILIKE '%' || $1::text || '%'
 ),
 firm_counts AS (
     SELECT firm, COUNT(*) AS firm_count
-    FROM combined_products
+    FROM product_data
     GROUP BY firm
-)
-SELECT
-    -- Shoe sizes (only from snickers)
-    COUNT(NULLIF(cp."3.5", 0)) AS "3.5",
-    COUNT(NULLIF(cp."4", 0)) AS "4",
-    COUNT(NULLIF(cp."4.5", 0)) AS "4.5",
-    COUNT(NULLIF(cp."5", 0)) AS "5",
-    COUNT(NULLIF(cp."5.5", 0)) AS "5.5",
-    COUNT(NULLIF(cp."6", 0)) AS "6",
-    COUNT(NULLIF(cp."6.5", 0)) AS "6.5",
-    COUNT(NULLIF(cp."7", 0)) AS "7",
-    COUNT(NULLIF(cp."7.5", 0)) AS "7.5",
-    COUNT(NULLIF(cp."8", 0)) AS "8",
-    COUNT(NULLIF(cp."8.5", 0)) AS "8.5",
-    COUNT(NULLIF(cp."9", 0)) AS "9",
-    COUNT(NULLIF(cp."9.5", 0)) AS "9.5",
-    COUNT(NULLIF(cp."10", 0)) AS "10",
-    COUNT(NULLIF(cp."10.5", 0)) AS "10.5",
-    COUNT(NULLIF(cp."11", 0)) AS "11",
-    COUNT(NULLIF(cp."11.5", 0)) AS "11.5",
-    COUNT(NULLIF(cp."12", 0)) AS "12",
-    COUNT(NULLIF(cp."12.5", 0)) AS "12.5",
-    COUNT(NULLIF(cp."13", 0)) AS "13",
-    
-    -- Clothing sizes (only from clothes)
-    COUNT(NULLIF(cp."XS", 0)) AS "XS",
-    COUNT(NULLIF(cp."S", 0)) AS "S",
-    COUNT(NULLIF(cp."M", 0)) AS "M",
-    COUNT(NULLIF(cp."L", 0)) AS "L",
-    COUNT(NULLIF(cp."XL", 0)) AS "XL",
-    COUNT(NULLIF(cp."XXL", 0)) AS "XXL",
-    
-    -- Price ranges
-    MIN(cp.minprice) AS min_price,
-    MAX(cp.maxprice) AS max_price,
-    
-    -- Firm counts
-    jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) FILTER (WHERE fc.firm IS NOT NULL) AS firm_count_map
-FROM combined_products cp
-LEFT JOIN firm_counts fc ON cp.firm = fc.firm
-GROUP BY 1;
--- name: GetMerchFiltersByString :one
-WITH combined_products AS (
-    -- Данные из snickers
-  
-    
-    -- Данные из solomerch
-    SELECT 
-        sm.minprice AS minprice,
-        sm.minprice AS maxprice, -- Для solomerch используем price для обоих значений
-        sm.firm,
-        NULL, NULL, NULL, NULL, NULL, 
-        NULL, NULL, NULL, NULL, NULL,
-        NULL, NULL, NULL, NULL, NULL,
-        NULL, NULL, NULL, NULL, NULL
-    FROM solomerch sm
-    WHERE sm.name ILIKE '%' || $1::text || '%'
 ),
-firm_counts AS (
-    SELECT firm, COUNT(*) AS firm_count
-    FROM combined_products
-    GROUP BY firm
+size_counts AS (
+    SELECT 
+        size_key,
+        COUNT(*) as size_count
+    FROM product_data pd
+    CROSS JOIN LATERAL jsonb_object_keys(pd.sizes) as size_key
+    WHERE (pd.sizes -> size_key -> 'price')::numeric > 0
+    GROUP BY size_key
 )
 SELECT
+    -- Все размеры в виде JSON объекта с количеством
+    jsonb_object_agg(size_key, size_count) as sizes,
+    
+    -- Диапазон цен
+    MIN(minprice) AS min_price,
+    MAX(maxprice) AS max_price,
+    
+    -- Количество товаров по брендам
+    jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) AS firm_count_map
+FROM product_data pd
+CROSS JOIN size_counts sc
+LEFT JOIN firm_counts fc ON pd.firm = fc.firm
+GROUP BY ();
 
-    MIN(cp.minprice) AS min_price,
-    MAX(cp.maxprice) AS max_price,
-    jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) AS firm_count_map
-FROM combined_products cp
-LEFT JOIN firm_counts fc ON cp.firm = fc.firm;
--- name: GetFiltersByString :one
-WITH combined_products AS (
-    -- Данные из snickers
+
+-- name: GetProductsByNameCategoryAndType :many
+ SELECT 
+        p.id as global_id,
+        p.firm,
+        p.minprice,
+        p.maxprice,
+        p.sizes,
+        p.bodytype
+    FROM products p
+    WHERE 
+        (sqlc.narg('type')::int IS NULL OR p.type = sqlc.narg('type')::int) AND
+         (sqlc.narg('category')::int IS NULL OR p.category = sqlc.narg('category')) AND
+        (sqlc.narg('name')::text IS NULL OR p.name ILIKE '%' || sqlc.narg('name')::text || '%');
+
+
+-- name: GetFiltersByNameCategoryAndType :one
+WITH product_data AS (
     SELECT 
-        pr.global_id,
-        s.firm,
-        s.minprice,
-        s.maxprice,
-        s."3.5", s."4", s."4.5", s."5", s."5.5", 
-        s."6", s."6.5", s."7", s."7.5", s."8", 
-        s."8.5", s."9", s."9.5", s."10", s."10.5", 
-        s."11", s."11.5", s."12", s."12.5", s."13",
-        NULL::integer AS "XS",
-        NULL::integer AS "S",
-        NULL::integer AS "M",
-        NULL::integer AS "L",
-        NULL::integer AS "XL",
-        NULL::integer AS "XXL",
-        s.type 
-    FROM snickers s
-    JOIN product_registry pr ON pr.internal_id = s.id AND pr.source_table = 'snickers'
-    WHERE s.name ILIKE '%' || $1::text || '%'
-    
-    UNION ALL
-    
-    -- Данные из solomerch
+        p.id as global_id,
+        p.firm,
+        p.minprice,
+        p.maxprice,
+        p.sizes,
+        p.bodytype,
+        p.type as product_type_id
+    FROM products p
+    WHERE 
+        (sqlc.narg('type')::int IS NULL OR p.type = sqlc.narg('type')::int) AND
+         (sqlc.narg('category')::int IS NULL OR p.category = sqlc.narg('category')) AND
+        (sqlc.narg('name')::text IS NULL OR p.name ILIKE '%' || sqlc.narg('name')::text || '%')
+),
+size_data AS (
     SELECT 
-        pr.global_id,
-        sm.firm,
-        sm.minprice,
-        sm.minprice,
-        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer, 
-        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-        sm.type
-    FROM solomerch sm
-    JOIN product_registry pr ON pr.internal_id = sm.id AND pr.source_table = 'solomerch'
-    WHERE sm.name ILIKE '%' || $1::text || '%'
-    
-    UNION ALL
-    
-    -- Данные из clothes
-    SELECT 
-        pr.global_id,
-        cl.firm,
-        cl.minprice,
-        cl.maxprice,
-        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer, 
-        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-        cl.XS,
-        cl.S,
-        cl.M,
-        cl.L,
-        cl.XL,
-        cl.XXL,
-        cl.type
-    FROM clothes cl
-     JOIN product_registry pr ON pr.internal_id = cl.id AND pr.source_table = 'clothes'
-    WHERE cl.name ILIKE '%' || $1::text || '%'
+        size_key,
+        COUNT(*) as count
+    FROM product_data
+    CROSS JOIN LATERAL jsonb_object_keys(sizes) as size_key
+    WHERE (sizes -> size_key -> 'price')::numeric > 0
+    GROUP BY size_key
 ),
 firm_counts AS (
-    SELECT firm, COUNT(global_id) AS firm_count
-    FROM combined_products
+    SELECT firm, COUNT(*) AS firm_count
+    FROM product_data
     GROUP BY firm
+),
+bodytype_counts AS (
+    SELECT 
+        bodytype,
+        COUNT(*) as count
+    FROM product_data
+    GROUP BY bodytype
+),
+price_range AS (
+    SELECT 
+        COALESCE(MIN(minprice), 0) AS min_price,
+        COALESCE(MAX(maxprice), 0) AS max_price
+    FROM product_data
+),
+type_data AS (
+    SELECT 
+        product_type_id,
+        COUNT(*) as type_count
+    FROM product_data
+    -- Optional: Join to a 'product_types' table to get the type name
+    -- INNER JOIN product_types pt ON pt.id = product_data.product_type_id
+    GROUP BY product_type_id
 )
 SELECT
-    COUNT(NULLIF(cp."3.5", 0)) AS "3.5",
-    COUNT(NULLIF(cp."4", 0)) AS "4",
-    COUNT(NULLIF(cp."4.5", 0)) AS "4.5",
-    COUNT(NULLIF(cp."5", 0)) AS "5",
-    COUNT(NULLIF(cp."5.5", 0)) AS "5.5",
-    COUNT(NULLIF(cp."6", 0)) AS "6",
-    COUNT(NULLIF(cp."6.5", 0)) AS "6.5",
-    COUNT(NULLIF(cp."7", 0)) AS "7",
-    COUNT(NULLIF(cp."7.5", 0)) AS "7.5",
-    COUNT(NULLIF(cp."8", 0)) AS "8",
-    COUNT(NULLIF(cp."8.5", 0)) AS "8.5",
-    COUNT(NULLIF(cp."9", 0)) AS "9",
-    COUNT(NULLIF(cp."9.5", 0)) AS "9.5",
-    COUNT(NULLIF(cp."10", 0)) AS "10",
-    COUNT(NULLIF(cp."10.5", 0)) AS "10.5",
-    COUNT(NULLIF(cp."11", 0)) AS "11",
-    COUNT(NULLIF(cp."11.5", 0)) AS "11.5",
-    COUNT(NULLIF(cp."12", 0)) AS "12",
-    COUNT(NULLIF(cp."12.5", 0)) AS "12.5",
-    COUNT(NULLIF(cp."13", 0)) AS "13",
-    COUNT(NULLIF(cp."XS", 0)) AS "XS",
-    COUNT(NULLIF(cp."S", 0)) AS "S",
-    COUNT(NULLIF(cp."M", 0)) AS "M",
-    COUNT(NULLIF(cp."L", 0)) AS "L",
-    COUNT(NULLIF(cp."XL", 0)) AS "XL",
-    COUNT(NULLIF(cp."XXL", 0)) AS "XXL",
-    MIN(cp.minprice) AS min,
-    MAX(cp.maxprice) AS max,
-    jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) AS firm_count_map
-FROM combined_products cp
-LEFT JOIN firm_counts fc ON cp.firm = fc.firm
-GROUP BY ();  
+    -- Все размеры в виде JSON объекта
+    COALESCE(
+        (SELECT jsonb_object_agg(size_key, count) FROM size_data),
+        '{}'::jsonb
+    ) as sizes,
+    
+    -- Статистика по типам тела
+    COALESCE(
+        (SELECT jsonb_object_agg(bodytype::text, count) FROM bodytype_counts),
+        '{}'::jsonb
+    ) as bodytypes,
+    
+    -- Минимальная и максимальная цена
+    (SELECT min_price FROM price_range) as min_price,
+    (SELECT max_price FROM price_range) as max_price,
+    
+    -- Статистика по брендам
+    COALESCE(
+        (SELECT jsonb_object_agg(COALESCE(firm, 'Unknown'), firm_count) FROM firm_counts),
+        '{}'::jsonb
+    ) as firms,
+     COALESCE(
+        (SELECT jsonb_agg(product_type_id) FROM type_data),
+        '[]'::jsonb
+    ) as product_types;
 -- name: GetCountIdByName :many
 SELECT firm,
     COUNT(id) count
-FROM snickers
+FROM products
 WHERE name ILIKE '%' || CAST($1 AS text) || '%'
 GROUP BY $1;
 -- name: GetProductsInfoById :one
-SELECT info,
+SELECT sizes,
     image_path,
     name,
     discount.value AS value,
+    COALESCE(
+        jsonb_object_agg(st.size, st.quantity) FILTER (WHERE st.size IS NOT NULL),
+        '{}'::jsonb
+    ) as store_info,
     article,
     description,
+    line,
+    type,
     date,
+    firm,
     image_count
-FROM snickers
-    LEFT JOIN discount ON snickers.id = productid
-WHERE snickers.id = $1;
+FROM products
+    LEFT JOIN discount ON products.id = productid
+    LEFT JOIN store_house st ON products.id = st.productid
+WHERE products.id = $1
+GROUP BY products.id, discount.value;
 -- name: GetSoloCollection :many
-SELECT COALESCE(discount.minprice, snickers.minprice) AS minprice,
-    snickers.id,
+SELECT COALESCE(discount.minprice, products.minprice) AS minprice,
+    products.id,
     image_path,
     name,
     firm,
     maxdiscprice
-FROM snickers
-    LEFT JOIN discount ON snickers.id = productid
+FROM products
+    LEFT JOIN discount ON products.id = productid
 WHERE firm = $1
     OR line = $2
 LIMIT $3 OFFSET $4;
--- name: GetSnickersByName :many
-SELECT snickers.minPrice,
-    snickers.id,
-    image_path,
-    name,
-    firm,
-    maxdiscprice,
-    type
-FROM snickers
-    LEFT JOIN discount ON snickers.id = productid
-WHERE name ILIKE '%' || $1::text || '%'
-LIMIT $2;
--- name: GetSnickersByIds :many
-SELECT 
-    COALESCE(d.minprice, s.minprice) AS price,
-    s.id,
-    s.image_path, 
-    s.name, 
-    s.firm, 
-    d.maxdiscprice
-FROM snickers s
-LEFT JOIN discount d ON s.id = d.productid 
-WHERE s.id = ANY($1::int[]);
-
-
-
 
 
 -- name: GetProductsWithDiscount :many
 SELECT 
-    snickers.type,
-    snickers.minPrice,
-    snickers.id,
-    snickers.image_path,
-    snickers.name,
-    snickers.firm,
-    discount.maxdiscprice,
-    discount.value AS discount_value
-FROM snickers
-JOIN discount ON snickers.id = discount.productid
-
-UNION ALL
-
-SELECT 
-    clothes.type,
-    clothes.minPrice,
-    clothes.id,
-    clothes.image_path,
-    clothes.name,
-    clothes.firm,  -- если в clothes нет firm
-    discount.maxdiscprice,  -- если в clothes нет maxdiscprice
-    discount.value AS discount_value
-FROM clothes
-JOIN discount ON clothes.id = discount.productid
-
-UNION ALL
-
-SELECT 
-    solomerch.DeliveryType,
-    solomerch.minPrice,
-    solomerch.id,
-    solomerch.image_path,
-    solomerch.name,
-    solomerch.firm,
-    discount.maxdiscprice,
-    discount.value AS discount_value
-FROM solomerch
-JOIN discount ON solomerch.id = discount.productid;
+    p.type,
+    p.minprice,
+    p.id,
+    p.image_path,
+    p.name,
+    p.firm,
+    d.maxdiscprice,          -- из таблицы discount
+    d.value AS discount_value -- из таблицы discount
+FROM products p
+JOIN discount d ON p.id = d.productid;  
 
 -- name: GetCountOfCollectionsOrFirms :one
-SELECT COUNT(snickers.id) AS count 
-FROM snickers
+SELECT COUNT(products.id) AS count 
+FROM products
 WHERE firm = $1
     OR line = $2;
     
 -- name: GetSoloCollectionWithCount :many    
-SELECT COALESCE(discount.minprice, snickers.minprice) AS minprice,
-    snickers.id,
+SELECT COALESCE(discount.minprice, products.minprice) AS minprice,
+    products.id,
     image_path,
     name,
     firm,
     maxdiscprice,
     COUNT(*) OVER () AS total_count
-FROM snickers
-    LEFT JOIN discount ON snickers.id = productid
+FROM products
+    LEFT JOIN discount ON products.id = productid
 WHERE firm = $1
     OR line = $2
 LIMIT $3 OFFSET $4;
 
 -- name: GetFullProductsInfoByIds :many
 SELECT 
-    s.minprice,
-    s.maxprice,
-    pr.global_id,
-    s.image_path,
-    s.name,
-    s.firm,
+    p.minprice,
+    p.maxprice,
+    p.id as global_id,
+    p.image_path,
+    p.name,
+    p.firm,
     d.maxdiscprice,
-    s.type,
-    s."3.5", s."4", s."4.5", s."5", s."5.5", 
-    s."6", s."6.5", s."7", s."7.5", s."8", 
-    s."8.5", s."9", s."9.5", s."10", s."10.5", 
-    s."11", s."11.5", s."12", s."12.5", s."13",
-    NULL::integer AS "XS",
-    NULL::integer AS "S",
-    NULL::integer AS "M",
-    NULL::integer AS "L",
-    NULL::integer AS "XL",
-    NULL::integer AS "XXL"
-FROM snickers s
-JOIN product_registry pr ON pr.internal_id = s.id AND pr.source_table = 'snickers'
-LEFT JOIN discount d ON s.id = d.productid
-WHERE pr.global_id = ANY($1::integer[])
+    p.type,
+    p.sizes as sizes_jsonb  -- Все размеры в JSONB формате
+FROM products p
+LEFT JOIN discount d ON p.id = d.productid
+WHERE p.id = ANY($1::integer[])
+ORDER BY p.minprice ASC;
 
-UNION ALL
 
+-- name: GetProductsByFiltersNewTest :many
 SELECT 
-    sm.minprice,
-    sm.minprice AS maxprice,
-    pr.global_id,
-    sm.image_path,
-    sm.name,
-    sm.firm,
+    p.id,
+    p.name,
     d.maxdiscprice,
-    sm.type,
-    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer, 
-    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer
-FROM solomerch sm
-JOIN product_registry pr ON pr.internal_id = sm.id AND pr.source_table = 'solomerch'
-LEFT JOIN discount d ON sm.id = d.productid
-WHERE pr.global_id = ANY($1::integer[])
-
-UNION ALL
-
-SELECT 
-    cl.minprice,
-    cl.maxprice,
-    pr.global_id,
-    cl.image_path,
-    cl.name,
-    cl.firm,
-    d.maxdiscprice,
-    cl.type,
-    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer, 
-    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-    NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-    cl.xs::integer AS "XS",
-    cl.s::integer AS "S",
-    cl.m::integer AS "M",
-    cl.l::integer AS "L",
-    cl.xl::integer AS "XL",
-    cl.xxl::integer AS "XXL"
-FROM clothes cl
-JOIN product_registry pr ON pr.internal_id = cl.id AND pr.source_table = 'clothes'
-LEFT JOIN discount d ON cl.id = d.productid
-WHERE pr.global_id = ANY($1::integer[])
-ORDER BY minprice ASC;
-
-
-
--- name: GetFiltersFromSnickers :one
-WITH combined_products AS (
-    -- Данные из snickers
-    SELECT 
-        pr.global_id,
-        s.firm,
-        s.minprice,
-        s.maxprice,
-        s."3.5", s."4", s."4.5", s."5", s."5.5", 
-        s."6", s."6.5", s."7", s."7.5", s."8", 
-        s."8.5", s."9", s."9.5", s."10", s."10.5", 
-        s."11", s."11.5", s."12", s."12.5", s."13",
-        s.type
-    FROM snickers s
-    JOIN product_registry pr ON pr.internal_id = s.id AND pr.source_table = 'snickers'
-     WHERE 
-        s.name ILIKE '%' || @name::text || '%' 
-        AND (@min_price::numeric IS NULL OR s.minprice >= @min_price)  -- Фильтр по мин. цене
-        AND (@max_price::numeric IS NULL OR s.maxprice <= @max_price)   -- Фильтр по макс. цене
-
-),
-firm_counts AS (
-    SELECT firm, COUNT(global_id) AS firm_count
-    FROM combined_products
-    GROUP BY firm
-)
-SELECT
-    COUNT(NULLIF(cp."3.5", 0)) AS "3.5",
-    COUNT(NULLIF(cp."4", 0)) AS "4",
-    COUNT(NULLIF(cp."4.5", 0)) AS "4.5",
-    COUNT(NULLIF(cp."5", 0)) AS "5",
-    COUNT(NULLIF(cp."5.5", 0)) AS "5.5",
-    COUNT(NULLIF(cp."6", 0)) AS "6",
-    COUNT(NULLIF(cp."6.5", 0)) AS "6.5",
-    COUNT(NULLIF(cp."7", 0)) AS "7",
-    COUNT(NULLIF(cp."7.5", 0)) AS "7.5",
-    COUNT(NULLIF(cp."8", 0)) AS "8",
-    COUNT(NULLIF(cp."8.5", 0)) AS "8.5",
-    COUNT(NULLIF(cp."9", 0)) AS "9",
-    COUNT(NULLIF(cp."9.5", 0)) AS "9.5",
-    COUNT(NULLIF(cp."10", 0)) AS "10",
-    COUNT(NULLIF(cp."10.5", 0)) AS "10.5",
-    COUNT(NULLIF(cp."11", 0)) AS "11",
-    COUNT(NULLIF(cp."11.5", 0)) AS "11.5",
-    COUNT(NULLIF(cp."12", 0)) AS "12",
-    COUNT(NULLIF(cp."12.5", 0)) AS "12.5",
-    COUNT(NULLIF(cp."13", 0)) AS "13",
-    MIN(cp.minprice)::float AS min,
-    MAX(cp.maxprice)::float AS max,
-    jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) AS firm_count_map
-FROM combined_products cp
-LEFT JOIN firm_counts fc ON cp.firm = fc.firm
-GROUP BY ();  
-
-
--- name: GetFiltersFromClothes :one
-WITH combined_products AS (
-    SELECT 
-        pr.global_id,
-        cl.firm,
-        cl.minprice,
-        cl.maxprice,
-        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer, 
-        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-        NULL::integer, NULL::integer, NULL::integer, NULL::integer, NULL::integer,
-    cl.xs::integer AS "XS",
-    cl.s::integer AS "S",
-    cl.m::integer AS "M",
-    cl.l::integer AS "L",
-    cl.xl::integer AS "XL",
-    cl.xxl::integer AS "XXL",
-        cl.type
-    FROM clothes cl
-     JOIN product_registry pr ON pr.internal_id = cl.id AND pr.source_table = 'clothes'
-    WHERE cl.name ILIKE '%' || @name::text || '%'
-        AND (@min_price::numeric IS NULL OR cl.minprice >= @min_price)  -- Фильтр по мин. цене
-        AND (@max_price::numeric IS NULL OR cl.maxprice <= @max_price)      -- Фильтр по макс. цене
-),
-firm_counts AS (
-    SELECT firm, COUNT(global_id) AS firm_count
-    FROM combined_products
-    GROUP BY firm
-)
-SELECT
-       COUNT(NULLIF(cp."XS", 0)) AS "XS",
-    COUNT(NULLIF(cp."S", 0)) AS "S",
-    COUNT(NULLIF(cp."M", 0)) AS "M",
-    COUNT(NULLIF(cp."L", 0)) AS "L",
-    COUNT(NULLIF(cp."XL", 0)) AS "XL",
-    COUNT(NULLIF(cp."XXL", 0)) AS "XXL",
-    MIN(cp.minprice)::float AS min,
-    MAX(cp.maxprice)::float AS max,
-    jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) AS firm_count_map
-FROM combined_products cp
-LEFT JOIN firm_counts fc ON cp.firm = fc.firm
-GROUP BY (); 
-
--- name: GetFiltersFromMerchByType :one
-WITH combined_products AS (
-    SELECT 
-        pr.global_id,
-        sm.firm,
-        sm.minprice,
-        sm.minprice AS maxprice,  -- Исправлено: дублирование minprice
-        sm.type
-    FROM solomerch sm
-    JOIN product_registry pr ON pr.internal_id = sm.id AND pr.source_table = 'solomerch'
-    WHERE sm.name ILIKE '%' || @name::text || '%'
-      AND (@min_price::numeric IS NULL OR sm.minprice >= @min_price)  -- Исправлено: s → sm
-),
-firm_counts AS (
-    SELECT firm, COUNT(global_id) AS firm_count
-    FROM combined_products
-    GROUP BY firm
-)
-SELECT
-    MIN(cp.minprice)::float AS min,
-    MAX(cp.maxprice)::float AS max,
-    jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) AS firm_count_map
-FROM combined_products cp
-LEFT JOIN firm_counts fc ON cp.firm = fc.firm;
-
--- name: GetCategoryByTypeId :one
-SELECT 
-    pt.category AS product_category,
-    pt.type_name AS type_name,
-    pt.enum_value AS type_enum
-FROM 
-    product_types pt
+    p.image_path
+FROM products p
+LEFT JOIN discount d ON p.id = d.productid
 WHERE 
-    pt.id = @type_id;
+    -- Размеры (самое сложное условие оставляем как есть)
+    (COALESCE(array_length(@sizes::text[], 1), 0) = 0 OR EXISTS (
+        SELECT 1
+        FROM jsonb_object_keys(p.sizes) AS size_key
+        WHERE size_key = ANY(@sizes::text[])
+        AND (p.sizes -> size_key ->> 'price')::numeric > 0
+    ))
+    AND(@name::text IS NULL OR @name::text = '' OR p.name ILIKE '%' || @name::text || '%')
+    -- Простые условия для массивов
+    AND (COALESCE(array_length(@categories::int[], 1), 0) = 0 OR p.category = ANY(@categories::int[]))
+    AND (COALESCE(array_length(@product_types::int[], 1), 0) = 0 OR p.type = ANY(@product_types::int[]))
+    AND (COALESCE(array_length(@firms::text[], 1), 0) = 0 OR p.firm = ANY(@firms::text[]))
+    AND (COALESCE(array_length(@bodytypes::text[], 1), 0) = 0 OR p.bodytype = ANY(@bodytypes::body_enum[]))
+    -- Условия для цен
+    AND (sqlc.narg('minprice')::int IS NULL OR p.minprice >= sqlc.narg('minprice')::int)
+    AND (sqlc.narg('maxprice')::int IS NULL OR p.maxprice <= sqlc.narg('maxprice')::int);
+-- name: GetCategories :many
+SELECT 
+    pc.name,
+    pc.id,
+    pc.image_path
+FROM 
+    product_categories pc;
 
--- name: GetTypeIDByCategoryAndName :one
-SELECT id 
-FROM product_types
-WHERE category = @category::product_source_enum 
-AND enum_value = @type_name;
+-- name: GetCategoriesWithTypes :many
+SELECT 
+    pc.id as category_id,
+    pc.enum_key as category_key,
+    pc.name as category_name,
+    pc.image_path as image_path,
+    pt.id as type_id, 
+    pt.enum_key as type_key,
+    pt.type_name as type_name
+FROM product_categories pc
+LEFT JOIN product_types pt ON pc.id = pt.category_id
+ORDER BY pc.name, pt.type_name;
+-- name: GetProductsByFilters :many
+SELECT 
+    p.id,
+    p.name,
+    p.image_path,
+    p.firm,
+    p.minprice,
+    p.maxprice,
+    d.maxdiscprice,
+    COUNT(*) OVER() AS total_count
+FROM products p
+LEFT JOIN discount d ON p.id = d.productid
+LEFT JOIN store_house sh ON p.id = sh.productid
+WHERE 
+    -- Размеры (самое сложное условие оставляем как есть)
+    (COALESCE(array_length(@sizes::text[], 1), 0) = 0 OR EXISTS (
+        SELECT 1
+        FROM jsonb_object_keys(p.sizes) AS size_key
+        WHERE size_key = ANY(@sizes::text[])
+        AND (p.sizes -> size_key ->> 'price')::numeric > 0
+    ))
+     AND(@name::text IS NULL OR @name::text = '' OR p.name ILIKE '%' || @name::text || '%')
+    -- Простые условия для массивов
+    AND (COALESCE(array_length(@categories::int[], 1), 0) = 0 OR p.category = ANY(@categories::int[]))
+    AND (COALESCE(array_length(@product_types::int[], 1), 0) = 0 OR p.type = ANY(@product_types::int[]))
+    AND (COALESCE(array_length(@firms::text[], 1), 0) = 0 OR p.firm = ANY(@firms::text[]))
+    AND (COALESCE(array_length(@bodytypes::text[], 1), 0) = 0 OR p.bodytype = ANY(@bodytypes::body_enum[]))
+    -- Условия для цен
+    AND (sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int)
+    AND (sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int)
+    AND (@has_discount::boolean IS NULL OR @has_discount::boolean = false OR d.id IS NOT NULL)
+    AND (@in_store::boolean IS NULL OR @in_store::boolean = false OR (sh.id IS NOT NULL AND sh.quantity > 0))
+    AND (@with_price::boolean IS NULL OR @with_price::boolean = false OR  p.minprice > 0)
+
+ORDER BY 
+    CASE WHEN @sort_type::int = 1 THEN p.name END ASC,
+    CASE WHEN @sort_type::int = 2 THEN p.name END DESC,
+    
+    -- Сортировка по цене
+    CASE WHEN @sort_type::int = 3 THEN p.minprice END ASC,
+    CASE WHEN @sort_type::int = 4 THEN p.minprice END DESC,
+    
+    -- Сортировка по умолчанию
+    CASE WHEN @sort_type::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    -- Стабильная сортировка
+    p.id ASC
+LIMIT CASE WHEN @limitVal::integer > 0 THEN @limitVal::integer ELSE 50 END
+OFFSET CASE WHEN @offsetVal::integer > 0 THEN @offsetVal::integer ELSE 0 END;
+
+-- name: BulkInsertDiscounts :exec
+INSERT INTO discount (productid, value, minprice, maxdiscprice)
+SELECT 
+    unnest(@product_ids::integer[]),
+    unnest(@discount_values::jsonb[]),
+    unnest(@min_prices::integer[]),
+    unnest(@max_disc_prices::integer[])
+ON CONFLICT (productid) 
+DO UPDATE SET 
+    value = EXCLUDED.value,
+    minprice = EXCLUDED.minprice,
+    maxdiscprice = EXCLUDED.maxdiscprice,
+    updated_at = NOW();
+
+-- name: GetProductsBasicInfo :many
+SELECT 
+    id,
+    minprice,
+    maxprice,
+    sizes
+FROM products 
+WHERE id = ANY(@product_ids::int[]);
+
+
 -- name: ClearDiscounts :exec
 DELETE FROM discount;
+
+
+-- name: GetMainPageInfo :many
+SELECT 
+    p.category,
+    COUNT(*) OVER (PARTITION BY p.category) as category_product_count,
+    p.id,
+    p.firm,
+    p.name,
+    p.minprice,
+    p.maxprice,
+    p.image_path,
+    p.bodytype
+FROM (
+    SELECT 
+        p.id,
+        p.firm,
+        p.name,
+        p.minprice,
+        p.maxprice,
+        p.image_path,
+        p.bodytype,
+        p.category,
+        ROW_NUMBER() OVER (PARTITION BY p.category ORDER BY p.id) as row_num
+    FROM products p
+    WHERE p.minprice IS NOT NULL AND p.minprice > 0
+) p
+WHERE p.row_num <= sqlc.arg('products_per_category')::int
+ORDER BY p.category, p.row_num;
+

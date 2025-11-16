@@ -2,6 +2,8 @@ import React, { useState, memo,CSSProperties } from 'react';
 import { useAppSelector } from 'src/store/hooks/redux';
 import { NavLink } from 'react-router-dom';
 import s from './style.module.css';
+import { ReactComponent as Telegram } from "/public/telegram.svg";
+import { ReactComponent as Whatsapp } from "/public/whatsapp.svg";
 
 interface StickyDispatcherButtonProps {
     top?: string;
@@ -37,22 +39,13 @@ const StickyDispatcherButton: React.FC<StickyDispatcherButtonProps> = memo(({
         >
             {show && (
                 <div className={s.dispetchers}>
-                    <NavLink 
-                        to='https://t.me/TSUMcollectBot' 
-                        className={s.dispetcherA}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        WhatsApp
-                    </NavLink>
-                    <NavLink 
-                        to="" 
-                        className={s.dispetcherA}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        Telegram
-                    </NavLink>
+                    <div className={s.linkBtn}>
+                        <Telegram className={s.logo}/>
+                    </div>
+                    <div className={s.linkBtn}>
+                        <Whatsapp className={s.logo}/>
+                    </div>
+                   
                 </div>
             )}
         </div>

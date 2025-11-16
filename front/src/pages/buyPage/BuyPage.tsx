@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux';
 import { getCartData } from 'src/providers/shopProvider';
 import { getCookie } from 'src/global';
 import { toPrice } from 'src/global';
+import { createPreorder, updatePreorder } from 'src/providers/orderProvider';
 import MerchTable from 'src/modules/merchField/MerchTable';
 import Button from 'src/components/Button';
 import s from "./style.module.css";
@@ -33,17 +34,17 @@ const BuyPage: React.FC = memo(() => {
         if (!hasItems) return;
 
         getCartData(cart, (data) => {
-                    const calculatedTotal = data.cartData.reduce(
-                        (sum, item) => sum + (item.price * item.quantity), 0
-                    );
+            const calculatedTotal = data.reduce(
+                (sum, item) => sum + (item.price * item.quantity), 0
+            );
 
-                    setTotalPrice(calculatedTotal);
-                    setTableData(data.cartData);
-                })
+            setTotalPrice(calculatedTotal);
+            setTableData(data);
+        })
     }, [cart, hasItems]);
 
     const handleCheckout = () => {
-        navigate(`/form/${cart}`);
+       navigate("/form/" + cart)
     };
 
     if (!hasItems) {

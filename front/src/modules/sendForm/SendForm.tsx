@@ -76,7 +76,7 @@ const SendForm: React.FC<SendFormProps> = memo(({
         let hasErrors = false;
 
         (Object.keys(formData) as Array<keyof FormData>).forEach(key => {
-            if (!formData[key]) {
+            if (!formData[key] && !unvalidFormData[key]) {
                 errors[key] = true;
                 hasErrors = true;
             }

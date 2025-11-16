@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { getAddressDeliveryData } from 'src/providers/cdek';
-import DropDownList from '../../components/DropDownList';
+import DropDownList from '../../components/dropComponents/DropDownList';
 import s from './style.module.css';
 import InputWithLabelWithValidation from 'src/components/input/InputWithLabelWithValidation';
 

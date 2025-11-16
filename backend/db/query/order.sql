@@ -1,23 +1,26 @@
 -- name: GetPreorderDataById :many
 SELECT 
-    id,
-    ProductId,
+    ProductId AS id,
     size,
     quantity,
-    source_table
+    price,
+    image_path,
+    name
 FROM preorderItems
 WHERE orderid = $1;
+
 -- name: GetPreorderIdByHashUrl :one
 SELECT id
 FROM preorder
 WHERE hashUrl = $1;
 -- name: GetOrderDataById :many
 SELECT 
-    id,
-    ProductId,
+  ProductId AS id,
     size,
+    price,
     quantity,
-    source_table
+    image_path,
+    name
 FROM orderItems
 WHERE orderid = $1;
 -- name: GetOrderAddressById :one
@@ -77,14 +80,18 @@ INSERT INTO preorderItems (
     orderid,
     ProductId,
     size,
-    source_table,
+    price,
+    image_path,
+    name,
     quantity
 
 ) VALUES (
     $1,  -- orderid
     $2,  -- snickersId (0 преобразуется в NULL)
     $3,  -- soloMerchId (0 преобразуется в NULL)
-    $4,  -- soloMerchId (0 преобразуется в NULL)
+    $4,  -- price (0 преобразуется в NULL)
+    $5,  -- image_path
+    $6,  -- name
     1    -- quantity
 )
 RETURNING id;
@@ -126,7 +133,9 @@ SELECT id,
     hash,
     status,
     customerId,
-    unregistercustomerid
+    unregistercustomerid,
+    deliveryprice,
+    deliverytype
 FROM orders
 WHERE hash = $1;
 -- name: GetOrderById :one
@@ -143,7 +152,7 @@ INSERT INTO orderItems (
     ProductId,
     quantity,
     size,
-    source_table
+    price
 ) VALUES (
     $1,  -- orderid
    $2,  -- snickersId (assuming 0 means NULL)
@@ -160,7 +169,24 @@ SELECT
     (SELECT json_agg(a) FROM preorderAddress a WHERE a.orderid = $1) AS address,
     (SELECT json_agg(i) FROM preorderItems i WHERE i.orderid = $1) AS items;
 
--- name: InsertPreorderItems :one
-INSERT INTO preorderItems (orderid, productid, size, source_table, quantity)
-VALUES ($1, $2, $3, $4, 1)
-RETURNING id;    
+-- name: InsertManyOrderItems :exec
+INSERT INTO orderItems (productid, quantity, size, price, image_path, name, orderid)
+SELECT 
+    unnest(@product_ids::integer[]),
+    unnest(@quantities::integer[]),
+    unnest(@sizes::text[]),
+    unnest(@prices::integer[]),
+    unnest(@image_paths::text[]),
+    unnest(@names::text[]),
+    @order_id::integer
+WHERE 
+    array_length(@product_ids::integer[], 1) IS NOT NULL;
+
+-- name: InsertManyPreorderItems :exec    
+INSERT INTO preorderItems (productid, quantity, size, orderid)
+SELECT 
+    (item->>'product_id')::int,
+    (item->>'quantity')::int,
+    item->>'size',
+    @preorder_id::int
+FROM jsonb_array_elements(@items::jsonb) AS item;

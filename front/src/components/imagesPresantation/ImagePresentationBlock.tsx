@@ -46,15 +46,6 @@ const ImagePresentationBlock: React.FC<IconProps> = ({
             role="button"
             aria-label="Image presentation block"
         >
-            {isHovered && (
-                <img 
-                    loading="lazy"
-                    onMouseDown={handleImageMouseDown}
-                    className={s.loop} 
-                    src={loop} 
-                    alt="Zoom icon" 
-                />
-            )}
             <img 
                 loading="lazy"
                 onMouseDown={handleImageMouseDown}

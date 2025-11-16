@@ -1,7 +1,7 @@
-import React, { ReactElement, useRef, useState, useCallback } from 'react'
+import React, { useRef, useCallback,useState } from 'react'
 import { searchNames } from "src/providers/searchProvider"
 import Input from '../input/Input'
-import loupe from "../../../public/loupe.svg";
+import { ReactComponent as LoupeIcon } from "../../../public/loupe.svg"
 import s from "./style.module.css"
 
 type Props = {
@@ -11,7 +11,8 @@ type Props = {
     onFocus?: (...args: any) => void,
     onBlur?: (...args: any) => void,
     className?: string,
-    val?: string
+    val?: string,
+    placeholder?: string
 }
 
 const Search: React.FC<Props> = ({
@@ -21,10 +22,13 @@ const Search: React.FC<Props> = ({
     searchCallback, 
     onChange,
     onBlur,
-    onFocus
+    onFocus,
+    placeholder = "Search..."
 }) => {
     const trottlingTimerId = useRef<ReturnType<typeof setTimeout> | null>(null)
     const text = useRef<string>(val)
+    const [isFocused, setIsFocused] = useState(false)
+    
     const classNameSearch = className || s.search
     
     const handleEnter = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -50,21 +54,37 @@ const Search: React.FC<Props> = ({
         searchCallback(text.current)
     }, [searchCallback])
 
+    const handleFocus = useCallback(() => {
+        setIsFocused(true)
+        onFocus && onFocus()
+    }, [onFocus])
+
+    const handleBlur = useCallback(() => {
+        setIsFocused(false)
+        onBlur && onBlur()
+    }, [onBlur])
+
     return (
-        <div onKeyUp={handleEnter} className={`${s.baseSearch} ${classNameSearch}`}>
+        <div 
+            onKeyUp={handleEnter} 
+            className={`${s.baseSearch} ${classNameSearch} ${isFocused ? s.focused : ''}`}
+        >
             <Input 
                 value={val} 
-                onBlur={onBlur} 
-                onFocus={onFocus} 
+                onBlur={handleBlur} 
+                onFocus={handleFocus} 
                 className={s.input} 
                 onChange={createSearchRequest}
+                placeholder={placeholder}
             />
-            <img 
+            <button 
                 onClick={handleSearchClick} 
-                className={s.img} 
-                src={loupe} 
-                alt="Search" 
-            />
+                className={s.searchButton}
+                type="button"
+                aria-label="Search"
+            >
+                <LoupeIcon className={s.searchIcon} />
+            </button>
         </div>
     )
 }

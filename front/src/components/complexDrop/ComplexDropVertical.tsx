@@ -5,7 +5,7 @@ import { complexDropSlice } from 'src/store/reducers/complexDropSlice';
 import Scroller from '../scroller/Scroller';
 
 interface DataInterface {
-    [key: string]: string[];
+    [key: string]:  { main: string; subs: string[] };
 }
 
 type ChangeType = { main?: string; sub?: string };
@@ -23,17 +23,16 @@ const ComplexDropVertical: React.FC<PropsType> = ({ data, onChange }) => {
     const inputRefs = useRef<HTMLDivElement[]>([]);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
     const leftPos = useRef<number>(0);
-    const chosen = useRef<string>("");
+    const [chosen,setChosen] = useState<string>("");
     
-    const [showDrop, setShowDrop] = useState(false);
+    //const [showDrop, setShowDrop] = useState(false);
 
     // Обработчик клика по основному элементу
     const handleMainItemClick = useCallback((val: string, index: number) => {
         if (inputRefs.current[index]) {
             leftPos.current = inputRefs.current[index].offsetLeft;
         }
-        chosen.current = val;
-        setShowDrop(true);
+        setChosen(val);
     }, []);
 
     // Создание контента для основного меню
@@ -53,9 +52,9 @@ const ComplexDropVertical: React.FC<PropsType> = ({ data, onChange }) => {
 
     // Создание контента для выпадающего меню
     const dropContent = useMemo(() => {
-        if (!chosen.current || !data[chosen.current]) return null;
+        if (!chosen || !data[chosen]) return null;
         
-        return data[chosen.current].map((val, index) => (
+        return data[chosen].subs.map((val, index) => (
             <div 
                 key={`${val}-${index}`}
                 onClick={() => onChange({ sub: val })}
@@ -64,12 +63,12 @@ const ComplexDropVertical: React.FC<PropsType> = ({ data, onChange }) => {
                 {val}
             </div>
         ));
-    }, [data, onChange]);
+    }, [data, onChange,chosen]);
 
     // Стили для выпадающего меню
     const dropFieldClass = useMemo(() => (
-        `${s.dropFieldVertical} ${showDrop ? s.show : s.hide}`
-    ), [showDrop]);
+        `${s.dropFieldVertical} ${chosen ? s.show : s.hide}`
+    ), [chosen]);
 
     // Обработчик колеса мыши
     const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -82,27 +81,22 @@ const ComplexDropVertical: React.FC<PropsType> = ({ data, onChange }) => {
             className={s.complexDropVertical}
             onWheel={handleWheel}
         >
-            <Scroller className={s.scrollStyle}>
-                <div>{mainContent}</div>
-            </Scroller>
+            <div style = {{zIndex: 201, width: "100%"}}>{mainContent}</div>
 
-            {showDrop && (
-                <div
+           <div
                     onMouseEnter={() => timeoutRef.current && clearTimeout(timeoutRef.current)}
-                    onMouseLeave={() => setShowDrop(false)}
                     className={dropFieldClass}
                 >
                     <Scroller className={s.scrollStyle}>
                         <div 
-                            onClick={() => setShowDrop(false)} 
+                            onClick={() => setChosen("")} 
                             className={`flex ${s.backPointer}`}
                         >
-                            {chosen.current}
+                            {chosen}
                         </div>
                         <div>{dropContent}</div>
                     </Scroller>
                 </div>
-            )}
         </div>
     );
 };

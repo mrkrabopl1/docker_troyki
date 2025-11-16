@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
-import s from "./style.module.css";
+import s from "./numInput.module.css";
 import { clamp } from 'src/global';
 
 type NumInputProps = {

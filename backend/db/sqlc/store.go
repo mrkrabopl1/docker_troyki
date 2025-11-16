@@ -10,15 +10,12 @@ import (
 // Store defines all functions to execute db queries and transactions
 type Store interface {
 	Querier
-	GetCountIdByFiltersAndFirm(ctx context.Context, name string, filters types.SnickersFilterStruct) (int64, error)
-	GetOrderedProductsByFilters(ctx context.Context, name string, filters types.SnickersFilterStruct, orderType int, limit int, offset int) ([]types.ProductsSearch, error)
-	GetSnickersOrderData(ctx context.Context, snickersPreorder []GetOrderDataByIdRow) ([]types.SnickersCart, error)
+
 	//InsertIntoOrderItems(ctx context.Context, products []types.ProductsInsert, orderID int) error
 	SetSnickersHistory(ctx context.Context, idSnickers int32, idCustomer int32) error
-	CreatePreorder(ctx context.Context, id int32, size string, sourceTable ProductSourceEnum) (string, error)
-	GetSnickersByNameComplex(ctx context.Context, name string, limit int32) ([]types.ProductsSearchResponse, error)
+	CreatePreorder(ctx context.Context, id int32, size string, price int32, name string, image_path string) (string, error)
 	GetProductsByNameComplex(ctx context.Context, name string, limit int32) ([]types.ProductsSearchResponse, error)
-	UpdatePreorder(ctx context.Context, id int32, size string, sourceTable ProductSourceEnum, hash string) (int32, error)
+	UpdatePreorder(ctx context.Context, id int32, size string, price int32, name string, image_path string, hash string) (int32, error)
 	GetSoloCollectionComplex(ctx context.Context, arg GetSoloCollectionParams) ([]types.ProductsSearchResponse1, error)
 	GetMerchCollectionComplex(ctx context.Context, arg GetMerchCollectionParams) ([]types.MerchSearchResponse, error)
 	GetCartCount(ctx context.Context, hash string) (int32, error)
@@ -26,13 +23,11 @@ type Store interface {
 	InsertVerification(ctx context.Context, arg InsertVerificationParams) error
 	RegisterUser(ctx context.Context, pass string, mail string) (int32, error)
 	CreateOrder(ctx context.Context, orderData *CreateOrderType) (int32, int32, string, error)
-	GetCartData(ctx context.Context, hash string) ([]types.SnickersCart, error)
+	GetCartData(ctx context.Context, hash string) ([]GetPreorderDataByIdRow, error)
 	GetProductsInfoByIdComplex(ctx context.Context, id int32) (ProductsInfoResponse, error)
-	GetSoloMerchInfoByIdComplex(ctx context.Context, id int32) (SoloMerchInfoResponse, error)
-	GetClothesInfoByIdComplex(ctx context.Context, id int32) (ClothesInfoResponse, error)
+	GetMainPageInfoComplex(ctx context.Context, limit int32) (map[int32]CategoryData, error)
 	VerifyUser(ctx context.Context, token string) (int32, error)
-	GetCartDataFromOrderByHash(ctx context.Context, hash string) ([]types.SnickersCart, error)
-	GetCartDataFromOrderById(ctx context.Context, id int32) ([]types.SnickersCart, error)
+	GetCartDataFromOrderByHash(ctx context.Context, hash string) ([]GetOrderDataByIdRow, error)
 	SetUnregisterCustomer(ctx context.Context, arg SetUnregisterCustomerParams) (int32, error)
 	UpdateCustomerPass(ctx context.Context, arg UpdateCustomerPassParams) error
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (int32, error)
@@ -42,17 +37,10 @@ type Store interface {
 	UpdateForgetPass(ctx context.Context, mail string) error
 	GetProductsWithDiscountComplex(ctx context.Context) ([]types.ProductsSearchResponse1, error)
 	GetSnickersHistoryComplex(ctx context.Context, idCustomer int32) ([]types.ProductsSearchResponse1, error)
-	GetCollections1(ctx context.Context, names []string, limit int, offset int) (map[string][]types.ProductsSearchResponse1, error)
-	GetProductsAndFiltersByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (RespSearchProductsAndFiltersByString, error)
-	GetProductsByString(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (RespSearchProductsByString, error)
+	GetProductsAndFiltersByNameCategoryAndType(ctx context.Context, filterParams GetFiltersByNameCategoryAndTypeParams, page int, size int, filters types.ProductsFilterStruct, orderedType int) (RespSearchProductsAndFiltersByString, error)
+	GetProductsByString(ctx context.Context, name string, page int, size int, filters types.ProductsFilterStruct, orderedType int) (RespSearchProductsByString, error)
 	CreateDiscounts(ctx context.Context, discountData map[int32]types.DiscountData) error
-	GetProductsByFilters(ctx context.Context, name string, page int, size int, filters types.SnickersFilterStruct, orderedType int) (RespProductsByStringStruct, error)
-	GetMerchByFilters(ctx context.Context, name string, filters types.SnickersFilterStruct, orderType int, limit int, offset int) ([]types.ProductsSearchResponse1, error)
-	GetClothesByFilters(ctx context.Context, name string, filters types.SnickersFilterStruct, orderType int, limit int, offset int) ([]types.ProductsSearchResponse1, error)
-	GetSnickersByFilters(ctx context.Context, name string, filters types.SnickersFilterStruct, orderType int, limit int, offset int) ([]types.ProductsSearchResponse1, error)
-	GetSnickersAndFilters(ctx context.Context, typeIds []int32, postData types.PostDataAndFiltersByCategoryAndType) (SnickersResp, error)
-	GetClothesAndFilters(ctx context.Context, typeIds []int32, postData types.PostDataAndFiltersByCategoryAndType) (SnickersResp, error)
-	GetMerchAndFilters(ctx context.Context, typeIds []int32, postData types.PostDataAndFiltersByCategoryAndType) (SnickersResp, error)
+	GetProductsByFiltersComplex(ctx context.Context, name string, page int, size int, filters types.ProductsFilterStruct, orderedType int32) (RespProductsByStringStruct, error)
 }
 
 // SQLStore provides all functions to execute SQL queries and transactions

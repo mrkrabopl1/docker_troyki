@@ -25,7 +25,7 @@ const MerchField: React.FC<{ size: number, data: merchInterface[] }> = (props) =
                 data.shift()
             }
 
-            arr.push(<div className={s.merchField}>
+            arr.push(<div className={s.merchField + " " + s.gridHeight6}>
                 {arrSm}
             </div>)
         }

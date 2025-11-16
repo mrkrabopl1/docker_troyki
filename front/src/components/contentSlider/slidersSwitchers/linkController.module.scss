@@ -1,208 +1,139 @@
-
-$size: 10px;
-$sizeDef: 90px;
-$thickness: 2px;
-$angle: 40deg;
-$angleHover: 30deg;
-$angleActive: 25deg;
-@mixin arrowTransform( $angle, $x: 0, $y: 0 ) {
-    i:first-child {
-      transform: translate( $x, $y ) rotate( $angle );
-    }
-  
-    i:last-child {
-      transform: translate( $x, -$y ) rotate( -$angle );
-    }
-  }
+.controller {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
 .default {
-    cursor: pointer;
-    border-radius: 50%;
-    width: 25px;
-    height: 25px;
-    background-color:bisque;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  background-color: bisque;
 }
 
 button {
-    -webkit-appearance: none;
-    background: transparent;
-    border: none;
-    outline: 0;
-  }
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  outline: 0;
+}
+
+.paginate {
+  position: absolute;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  outline: 0;
+  cursor: pointer;
+  transform: translate3d(0, 0, 0); // fixes flicker in webkit
+  top: 0;
+  bottom: 0;
+  margin: auto;
+}
+
+.buttonStyle {
+
+  width: 30px;
+  height: 30px;
+  margin: 0 5px;
+  border-radius: 3px;
+  border: solid 2px rgb(35, 28, 28);
+  box-shadow: inset 0 0 2px #040300;
+  box-sizing: border-box;
+}
+.controllerHolder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.leftArrowHolder {
+  left:5px;
+  z-index: 200;
+}
+
+.rightArrowHolder {
+  right: 5px;
+   z-index: 200;
+}
+
+.link {
+  width: 32px;
+  height: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
   
-  .paginate {
-    position:absolute;
-    -webkit-appearance: none;
-    background: transparent;
-    border: none;
-    outline: 0;
-    width: $size;
-    height: $size;
-    cursor: pointer;
-    transform: translate3d(0,0,0); // fixes flicker in webkit
-    top: 0;
-    bottom: 0;
-    margin: auto;
-    left: 0;
-    right: 0;
+  background: #e0e0e0;
+  box-shadow: 
+    inset 1px 1px 2px rgba(0, 0, 0, 0.1),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.8),
+    0 1px 3px rgba(0, 0, 0, 0.08);
+
+  &:hover {
+    background: #d0d0d0;
+    transform: scaleY(1.2);
+    box-shadow: 
+      inset 1px 1px 2px rgba(0, 0, 0, 0.15),
+      inset -1px -1px 2px rgba(255, 255, 255, 0.9),
+      0 2px 6px rgba(0, 0, 0, 0.12);
   }
 
-  .paginateDef {
-    position:absolute;
-    -webkit-appearance: none;
-    background: transparent;
-    border: none;
-    outline: 0;
-    width: $sizeDef;
-    height:$sizeDef;
-    cursor: pointer;
-    transform: translate3d(0,0,0); // fixes flicker in webkit
-    top: 0;
-    bottom: 0;
-  }
-  iDef {
-    background-color: black;
-    position: absolute;
-    top: 40%;
-    left: 0;
-    width: $sizeDef;
-    height: $thickness;
-    border-radius: $thickness / 2;
-    transition: all 0.15s ease;
+  &.active {
+    background: #2a2a2a;
+    transform: scaleY(1.2);
+    box-shadow: 
+      inset 1px 1px 2px rgba(255, 255, 255, 0.3),
+      inset -1px -1px 2px rgba(0, 0, 0, 0.4),
+      0 2px 8px rgba(0, 0, 0, 0.25);
   }
 
-  .right {
-
-    i {
-      transform-origin: 100% 50%
-    }
+  // Эффект при наведении - показывает номер страницы
+  // &:hover::before {
+  //   content: attr(data-tooltip);
+  //   position: absolute;
+  //   bottom: 100%;
+  //   left: 50%;
+  //   transform: translateX(-50%);
+  //   background: #2a2a2a;
+  //   color: white;
+  //   padding: 6px 10px;
+  //   border-radius: 6px;
+  //   font-size: 12px;
+  //   font-weight: 500;
+  //   white-space: nowrap;
+  //   margin-bottom: 12px;
+  //   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  // }
 }
 
-
-    @include arrowTransform( $angle, 0, 0px );
-
-    .right:hover {
-      @include arrowTransform( $angleHover, 0, 0px );
-    }
-
-    .right:active {
-      @include arrowTransform( $angleActive,0px, 0px );
-    }
-
-
-
-    .right1 {
-
-        i {
-            transform-origin: 0% 50%
-        }
-    }
-    
-    
-        @include arrowTransform( $angle, 0, 0px );
-    
-        .right1:hover {
-          @include arrowTransform( $angleHover, 0, 0px );
-        }
-    
-        .right1:active {
-          @include arrowTransform( $angleActive,0px, 0px );
-        }
-
-  .buttonStyle{
-
-    width: 30px;
-    height: 30px;
-    margin: 0 5px;
-    border-radius: 3px;
-    border: solid 2px rgb(35, 28, 28) ;
-    box-shadow: inset 0 0 2px #040300;
-    box-sizing: border-box;
-    position: relative;
+@keyframes pulse {
+  0% {
+    transform: scaleY(1.2);
+    opacity: 1;
   }
-
-
-  .spanStyle{
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    position:absolute;
-    margin:auto
+  50% {
+    transform: scaleY(1.4);
+    opacity: 0.8;
   }
-
-  .left {
-
-    i {
-        transform-origin: 0% 50%
-    }   
-   
+  100% {
+    transform: scaleY(1.2);
+    opacity: 1;
   }
-  .left:hover {
-    @include arrowTransform( $angleHover, 0, 0px );
-  }
-
-  .letft:active {
-    @include arrowTransform( $angleHover, 0px, 0px );
-  }
-
-  .right {
-
-    i {
-      transform-origin: 100% 50%
-    }
 }
 
-
-    @include arrowTransform( $angle, 0, 0px );
-
-    .right:hover {
-      @include arrowTransform( $angleHover, 0, 0px );
-    }
-
-    .right:active {
-      @include arrowTransform( $angleActive,0px, 0px );
-    }
-
-
-
-    .right1 {
-
-        i {
-            transform-origin: 0% 50%
-        }
-    }
-    
-    
-        @include arrowTransform( $angle, 0, 0px );
-    
-        .right1:hover {
-          @include arrowTransform( $angleHover, 0, 0px );
-        }
-    
-        .right1:active {
-          @include arrowTransform( $angleActive,0px, 0px );
-        }
-
-  .pg {
-    background-color: black;
-    position: absolute;
-    top: 40%;
-    left: 0;
-    width: $size;
-    height: $thickness;
-    border-radius: $thickness / 2;
-    transition: all 0.15s ease;
-  }
-
-
-
-
-//   [data-state=disabled] {
-//     @include arrowTransform( 0deg, -5px, 0 );
-
-//     .left:hover {
-//       @include arrowTransform( 0deg, -5px, 0 );
-//     }
-//   }
+// Добавляем анимацию пульсации для активного элемента (без обводки)
+.link.active {
+  animation: pulse 2s ease-in-out infinite;
+}
 .paginationContainer{ justify-content: center; display: flex; }
 
 .paginationArrow{ width: 30px; position: relative }

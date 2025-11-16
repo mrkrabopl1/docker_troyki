@@ -148,7 +148,7 @@ const handleDigitInput = useCallback((digit: string, cursorPosition: number) => 
     if (formatted.length <= PHONE_FORMAT.fullLength) {
         setPhoneValue(formatted);
         setCursorPosition(newCursorPosition);
-        // validatePhone(formatted);
+        validatePhone(formatted);
     }
 }, [phoneValue, formatPhoneNumber]);
 

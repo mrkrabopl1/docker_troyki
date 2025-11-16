@@ -1,118 +1,232 @@
-.merchField{
+.merchField {
     display: flex;
     position: relative;
     flex-wrap: wrap;
     background-color: #fff;
 }
 
-.merchName{
+.merchName {
     font-size: 20px;
 }
-.littlePrice{
+
+.firmName {
+    font-size: 30px;
+}
+
+.littlePrice {
     white-space: nowrap;
 }
-.merchLine{
+
+.merchLine {
     display: flex;
-    height:90px;
+    height: 140px;
+    background-color: #ffffff;
+    border: 1px solid #f0f0f0;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.merchLine:hover {
+    border-color: #e0e0e0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+}
+
+.merchBuyLine {
+    display: flex;
+    height: 130px;
     background-color: #fff;
     border-color: black;
 }
-.merchBuyLine{
-       display: flex;
-    height:130px;
-    background-color: #fff;
-    border-color: black;
-}
-.img{
+
+.img {
     width: 100%;
     object-fit: contain;
-    height:100%;
+    height: 100%;
 }
-.buyImg{
+
+.buyImg {
     width: 100%;
     object-fit: contain;
 }
-.imgName{
+
+.imgName {
     text-align: center;
 }
-.merchCount{
-    position:absolute;
+
+.textHolder {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 1;
+    width: 100%;
+    padding: 10px;
+}
+
+.merchCount {
+    position: absolute;
     width: 22px;
-    height:22px;
+    height: 22px;
     border-radius: 15px;
     display: flex;
     justify-content: center;
     background-color: black;
     color: white;
 }
-.merchWrap{
+
+.merchWrap {
     position: relative;
     flex-shrink: 0;
     height: auto;
     flex-direction: column;
     display: flex;
-    height:100%;
+    height: 100%;
+    padding:5px;
 }
-.discount{
+
+.discount {
     text-decoration: line-through;
-    color :gray;
+    color: gray;
 }
-.colorLayout{
-    border-radius:5px;
+
+.price {
+    font-size: 16px;
+    text-wrap: nowrap;
+    margin-top: auto;
+}
+
+.colorLayout {
+    border-radius: 5px;
     background-color: #fff;
-     position: relative;
+    position: relative;
     flex-shrink: 0;
     height: auto;
     flex-direction: column;
     display: flex;
-    height:100%;
+    height: 100%;
 }
 
-.discountMarker{
+.discountMarker {
     position: absolute;
     bottom: 0;
-    left:0;
+    left: 0;
     background-color: red;
     z-index: 200;
-    color:white;
-    border-radius: 200px ;
+    color: white;
+    border-radius: 200px;
     padding: 5px;
 }
 
-.textContainer{
+.nameHolder {
+    font-size: 18px;
+    line-height: 1.2em;
+    overflow: hidden;
+    width: 100%;
+    height: 2.4em;
+    flex-shrink: 0;
+    text-align: center;
+    /* Для 2 строк с многоточием */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+}
+
+.textContainer {
     display: grid;
-    grid-template-rows: max-content minmax(0,1fr) max-content auto;
+    grid-template-rows: max-content minmax(0, 1fr) max-content auto;
     flex-shrink: 0;
 }
-.mbwd{
-    width:25%
+
+.mbwd {
+    width: 25%
 }
-@media(max-width:900px){
-    .mbwd{
-        width:33%
-    }
-}
-@media(max-width:700px){
-    .mbwd{
-        width:50%
+
+@media(max-width:900px) {
+    .mbwd {
+        width: 33%
     }
 }
 
-.globalMerchField{
-   
+@media(max-width:700px) {
+    .mbwd {
+        width: 50%
+    }
+}
+
+.globalMerchField {
+
     margin-bottom: 10px;
 }
 
-.imageBlock{
-    flex-shrink:1;
-    position: relative; 
-    height:"100%";
+.imageBlock {
+    flex-shrink: 1;
+    position: relative;
+    /* height: 100%; */
     min-height: 80%;
     background-color: #fff;
 }
-.deleteBtn{
+
+.productNameHolder {
+    /* Fallback для старых браузеров */
+    max-height: 4.5em;
+    /* Высота = line-height × количество строк */
+    line-height: 1.5em;
+    overflow: hidden;
+    position: relative;
+    font-size: 22px;
+}
+
+/* 
+.productNameHolder::after {
+  content: "...";
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding-left: 5px;
+  background: linear-gradient(to right, transparent, white 20%);
+} */
+.deleteBtn {
     background: url("../../../public/bin.svg") center no-repeat;
     width: 30px;
     height: 30px;
     object-fit: contain;
+}
+
+/* Стили для бесконечного скролла */
+.scrollContainer {
+    height: 100%;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.loadingIndicator {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    font-size: 16px;
+    color: #666;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
+.dependetHeight {
+    min-height: 200px;
+}
+
+.dependetHeight1 {
+    min-height: 150px;
+}
+
+.gridHeight4{
+   height: 500px
+}
+
+.gridHeight6{
+   height: 300px
 }

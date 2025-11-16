@@ -115,10 +115,10 @@ const getMainInfo = function (callback: (val: any) => void) {
     })
 }
 
-const getSizeTable = function (callback: (val: any) => void) {
+const getCategoriesAndTypes = function (callback: (val: any) => void) {
     axios({
         method: 'get',
-        url: `${API_URL}/sizeTable`,
+        url: `${API_URL}/categoriesWithTypes`,
         headers: {}
     }
     ).then((res: any) => {
@@ -127,4 +127,31 @@ const getSizeTable = function (callback: (val: any) => void) {
         console.warn(error)
     })
 }
-export { getMerchInfo, getSizeTable, getMainInfo, getCollections, getFirms, getHistoryInfo, getDiscontInfo, getCollection }
+
+const getSizeTable = function (category: string, callback: (val: any) => void) {
+    axios({
+        method: 'get',
+        url: `${API_URL}/sizeTable?category=` + category,
+        headers: {}
+    }
+    ).then((res: any) => {
+        callback(res.data)
+    },  (error: any) => {
+        console.warn(error)
+    })
+}
+
+
+const getMainPage = function (callback: (val: any) => void) {
+    axios({
+        method: 'get',
+        url: `${API_URL}/getMainPage`,
+        headers: {}
+    }
+    ).then((res: any) => {
+        callback(res.data)
+    },  (error: any) => {
+        console.warn(error)
+    })
+}
+export { getMerchInfo, getSizeTable, getMainInfo, getCollections, getFirms, getHistoryInfo, getDiscontInfo, getCollection,getCategoriesAndTypes, getMainPage }

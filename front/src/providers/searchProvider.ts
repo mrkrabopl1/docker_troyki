@@ -4,7 +4,7 @@ const searchNames = function (searchName:string,max:number,callback:(val:any)=>v
 
     axios({
         method: 'post',
-        url: `${API_URL}/searchMerch`,
+        url: `${API_URL}/searchProducts`,
         headers: {
             'Content-Type': 'application/json'
         },
@@ -92,7 +92,7 @@ const getProductsByString = function (searchName:string,callback:(val:any)=>void
         console.warn(error)
     })
 }
-const getProductsByCategoriesAndFilters = function(searchName:string,category:string,callback:(val:any)=>void, page:number,size:number, filters:any, orderType:number){
+const getProductsByCategoriesAndFilters = function(params:any,callback:(val:any)=>void, page:number,size:number, filters:any, sortType:number){
      axios({
         method: 'post',
         url: `${API_URL}/getDataByCategoriesAndFilters`,
@@ -100,12 +100,11 @@ const getProductsByCategoriesAndFilters = function(searchName:string,category:st
             'Content-Type': 'application/json'
         },
         data:JSON.stringify({
-            name:searchName,
             page:page,
             size:size,
             filters:filters,
-            orderType:orderType,
-            category:category
+            sortType:sortType,
+            ...params
         })
     }
     ).then((res:any)=>{
@@ -117,9 +116,10 @@ const getProductsByCategoriesAndFilters = function(searchName:string,category:st
 }
 const getProductsAndFiltersByString = function (searchName:string,callback:(val:any)=>void, page:number,size:number, filters:any, orderType:number){
 
+    
     axios({
         method: 'post',
-        url: `${API_URL}/getProductsAndFiltersByString`,
+        url: `${API_URL}/getProductsAndFiltersByNameCategoryAndType`,
         headers: {
             'Content-Type': 'application/json'
         },
@@ -127,8 +127,9 @@ const getProductsAndFiltersByString = function (searchName:string,callback:(val:
             name:searchName,
             page:page,
             size:size,
-            filters:filters,
-            orderType:orderType
+            orderType:orderType,
+            category:0,
+            type:0
         })
     }
     ).then((res:any)=>{
@@ -139,11 +140,11 @@ const getProductsAndFiltersByString = function (searchName:string,callback:(val:
     })
 }
 
-const getProductsAndFiltersByCategoryAndType = function (searchName:string,callback:(val:any)=>void, page:number,size:number,  orderType:string, category:string,type:string){
+const getProductsAndFiltersByCategoryAndType = function (searchName:string,callback:(val:any)=>void, page:number,size:number,  orderType:string, category:number,type:number){
 
     axios({
         method: 'post',
-        url: `${API_URL}/getDataAndFilterByCategories`,
+        url: `${API_URL}/getProductsAndFiltersByNameCategoryAndType`,
         headers: {
             'Content-Type': 'application/json'
         },

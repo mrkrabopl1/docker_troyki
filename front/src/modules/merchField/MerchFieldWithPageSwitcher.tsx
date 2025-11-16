@@ -30,7 +30,7 @@ const MerchFieldWithPageSwitcher: React.FC<MerchFieldProps> = ({
     onChange
 }) => {
     const blockWidth = `${100 / size}%`;
-    const heightClass = size === 3 ? "dependetHeight" : "dependetHeight1";
+    const heightClass = size === 3 ? s.gridHeight6 : s.gridHeight4;
 
     const rows = useMemo(() => {
         const result = [];

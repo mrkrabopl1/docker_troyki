@@ -1,17 +1,44 @@
-import React, { ReactElement, RefObject, useRef, useState,memo } from 'react'
+import React, { ReactElement, RefObject, useRef, useState, memo } from 'react'
+import s from "./style.module.css"
 
+interface NameBorderProps {
+    content: ReactElement;
+    name: string;
+    onClick?: () => void;
+}
 
-const NameBorder = React.forwardRef((props:{content:ReactElement,name:string},ref:React.Ref<HTMLDivElement>) => {
-    let {content,name} = {...props}
+const NameBorder = React.forwardRef<HTMLDivElement, NameBorderProps>((props, ref) => {
+    const { content, name, onClick } = props;
+    
+    const handleClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onClick?.();
+    };
+
+    const isClickable = Boolean(onClick);
+
     return (
-        <div  ref={ref}>
-            <fieldset style={{ padding:"20px", margin:"10px"}}>
-                <legend>{name}</legend>
+        <div 
+            ref={ref} 
+            onClick={handleClick}
+            onMouseUp={(e)=>{
+                e.preventDefault()
+            }}
+              onMouseDown={(e) => {
+            e.stopPropagation(); // Блокируем всплытие mousedown
+        }}
+            className={`${s.nameBorder} ${isClickable ? s.clickable : ''}`}
+        >
+            <div  onMouseDown={e=>{
+                e.stopPropagation()
+            }} className={s.fieldset}>
+                <legend className={s.legend}>
+                    {name}
+                </legend>
                 {content}
-            </fieldset>
+            </div>
         </div>
-      
-      
-    )
-})
-export default memo(NameBorder)
+    );
+});
+
+export default memo(NameBorder);

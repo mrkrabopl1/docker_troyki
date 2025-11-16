@@ -26,4 +26,9 @@
    height: 30%;
    flex-wrap:wrap;
    justify-content: space-between;
+   margin-top: 10px;
+ }
+
+  .topBlock{
+   height: 70%;
  }

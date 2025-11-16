@@ -1,13 +1,16 @@
 import React, { useRef, useState, useCallback, memo } from 'react';
 import Search from '../../components/search/Search';
-import DropDownList from '../../components/DropDownList';
+import DropDownList from '../../components/dropComponents/DropDownList';
 import MerchLine from '../merchField/MerchLine';
+import s from './style.module.css';
 
 interface SearchWithListProps {
     className?: {
         main?: string;
         search?: string;
         dropList?: string;
+        input?: string
+        searchHolder?:string
     };
     searchCallback: (data: any) => void;
     onDataRecieve?: (data: any) => void;
@@ -46,9 +49,9 @@ const SearchWithList: React.FC<SearchWithListProps> = memo(({
         onDataRecieve?.(data);
         setDropDownList(
             data.map((value) => (
-                <MerchLine 
-                    key={`${value.id}-${value.name}`} 
-                    onChange= {handleSelect }
+                <MerchLine
+                    key={`${value.id}-${value.name}`}
+                    onChange={handleSelect}
                     {...value}
                 />
             ))
@@ -75,27 +78,30 @@ const SearchWithList: React.FC<SearchWithListProps> = memo(({
     }, []);
 
     return (
-        <div 
+        <div
             ref={mainRef}
             onBlur={handleBlur}
             onClick={handleClick}
             style={{ position: "relative" }}
-            className={className.main}
+            className={`${s.searchHolder} ${className.main}`}
+            
         >
-            <Search
-                className={className.search}
-                val={val}
-                onChange={onChange}
-                onFocus={handleFocus}
-                searchCallback={handleSearch}
-                onDataRecieve={createDropList}
-            />
-            <DropDownList 
-                className={className.dropList} 
-                active={activeList}
-            >
-                {dropDownListData}
-            </DropDownList>
+            <div className={`${className.searchHolder}`}>
+                <Search
+                    className={className.search}
+                    val={val}
+                    onChange={onChange}
+                    onFocus={handleFocus}
+                    searchCallback={handleSearch}
+                    onDataRecieve={createDropList}
+                />
+                {dropDownListData.length ? <DropDownList
+                    className={className.dropList}
+                    active={true}
+                >
+                    {dropDownListData}
+                </DropDownList> : null}
+            </div>
         </div>
     );
 });

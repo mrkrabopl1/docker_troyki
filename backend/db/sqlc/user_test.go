@@ -135,14 +135,6 @@ func TestGetSnickersHistoryComplex(t *testing.T) {
 	require.NotEmpty(t, data)
 }
 
-func TestGetSnickersByIds(t *testing.T) {
-	data1 := []int32{2548, 2637, 2401}
-	data, err := testStore.GetSnickersByIds(context.Background(), data1)
-	fmt.Println(data)
-	require.NoError(t, err)
-	require.NotEmpty(t, data)
-}
-
 func TestSetSnickersHistory(t *testing.T) {
 	err := testStore.SetSnickersHistory(context.Background(), 718, 718)
 	require.NoError(t, err)

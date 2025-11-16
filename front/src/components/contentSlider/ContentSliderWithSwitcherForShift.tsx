@@ -20,6 +20,8 @@ const ContentSliderWithSwitcherForShift: React.FC<ContentSliderProps> = ({
     totalSteps: 1
   });
 
+  const [hover, setHover] = useState<boolean>(false);
+
   // Мемоизированный обработчик изменения шага
   const handleStepChange = useCallback((newStep: number) => {
     setSliderState(prev => ({ ...prev, currentStep: newStep }));
@@ -53,13 +55,13 @@ const ContentSliderWithSwitcherForShift: React.FC<ContentSliderProps> = ({
   // Мемоизированный стиль контейнера
   const containerStyle:CSSProperties = useMemo(() => ({
     position: "relative",
-    width: "100%"
+    width: "100%",
   }), []);
 
   return (
-    <div style={containerStyle} className={className.holder}>
+    <div onMouseOver={() => setHover(true)} onMouseLeave={() => setHover(false)} style={containerStyle} className={className.holder}>
       <ContentSlider {...contentSliderProps} />
-     <SliderDefaultController stepSize={20} preset={"small"} onHold={true} {...controllerProps} />
+     {(hover && !!sliderState.totalSteps) && <SliderDefaultController stepSize={20} preset={"small"} onHold={true} {...controllerProps} />}
     </div>
   );
 };

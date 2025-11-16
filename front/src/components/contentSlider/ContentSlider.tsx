@@ -113,13 +113,15 @@ const ContentSlider: React.FC<SliderProps> = ({
     transform: `translateX(${internalPosition}px)`,
     transition: `transform ${transitionDuration}ms ease-out`,
     willChange: 'transform',
+    justifyContent:"space-between"
   }), [internalPosition, transitionDuration]);
 
   // Стиль контейнера
   const containerStyle: CSSProperties = useMemo(() => ({
     overflow: 'hidden',
     width: '100%',
-    position: 'relative'
+    position: 'relative',
+    height: '100%'
   }), []);
 
   return (

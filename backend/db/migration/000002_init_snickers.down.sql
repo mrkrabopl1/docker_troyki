@@ -1,1 +1,1 @@
-DELETE FROM public.snickers;
+DELETE FROM public.products;

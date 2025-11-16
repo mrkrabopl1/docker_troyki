@@ -12,18 +12,49 @@
     font-style: normal;
     font-display: swap;
 }
-
+.article{
+    height:40px;
+    display: flex;
+}
+.articleBtn{
+    cursor: pointer;
+   width: auto;
+   height:100%
+}
+.articleText{
+    width: auto;
+    margin-top: auto;
+    margin-bottom: auto;
+    font-size: 25px;
+    padding-right: 20px;
+}
+.articleHolder{
+    display: flex;
+    justify-content: space-between;
+}
 .leftPart{
-    width:70%;
+    width:65%;
     flex-shrink: 0;
-    height: 650px;
+    height: 950px;
+    padding-right: 10px;
 }
 th{
     padding: 5px;
     width: 30%;
 }
+.sizeLabel{
+    width:50px;
+    display: inline-block;
+    height:50px;
+    cursor: pointer;
+}
 
-
+.modalImageHolder{
+    height:100%
+}
+.modalSlider{
+    height:100%
+}
 .addToBascket{
     width: 100%;
     font-size: 20px;
@@ -36,7 +67,8 @@ th{
 
 .buyMerch{
     width: 100%;
-    font-size: 20px;
+    font-size: 30px;
+    margin: 10px 0px;
 }
 
 
@@ -54,7 +86,7 @@ th{
 
 .merchName{
     font-family: "Quicksand";
-    font-size:50px
+    font-size:40px
 }
 @media (max-width:1200px) {
     .merchName{
@@ -68,6 +100,7 @@ th{
     }
     .leftPart{
         width:60%;
+         height: 750px;
     }
     
 }
@@ -75,6 +108,7 @@ th{
 @media (max-width:800px) {
     .leftPart{
         width:50%;
+         height: 550px;
     }
     
 }
@@ -108,7 +142,7 @@ th{
 }
 
 .controllPanel{
-    width: 100%;
+    width: 35%;
     display: flex;
     flex-direction: column;
     gap:10px;

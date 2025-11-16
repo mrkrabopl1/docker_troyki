@@ -6,15 +6,15 @@ import (
 	"github.com/lib/pq"
 )
 
-type SizesT struct {
-	Snickers []string `json:"snickers"`
-	Clothes  []string `json:"clothes"`
-}
-type SnickersFilterStruct struct {
-	Firms []string  `json:"firms"`
-	Sizes SizesT    `json:"sizes"`
-	Price []float32 `json:"price"`
-	Types []int32   `json:"types"`
+type ProductsFilterStruct struct {
+	Firms       []string  `json:"firms"`
+	Sizes       []string  `json:"sizes"`
+	Price       []float32 `json:"price"`
+	Types       []int32   `json:"types"`
+	Bodytypes   []string  `json:"bodytypes"`
+	InStore     bool      `json:"store"`
+	HasDiscount bool      `json:"discount"`
+	WithPrice   bool      `json:"withPrice"`
 }
 type MainPage struct {
 	Text    string `db:"maintext"`
@@ -96,15 +96,14 @@ type Filter struct {
 	FirmFilter      map[string]int
 }
 type SnickersCart struct {
-	Name        string `db:"name"`
-	Price       int    `db:"price"`
-	Size        string `db:"size"`
-	Image       string `db:"image_path"`
-	Id          int16  `db:"id"`
-	Quantity    int    `db:"quantity"`
-	PrId        int    `db:"prid"`
-	Firm        string `db:"firm"`
-	SourceTable string `db:"source_table"`
+	Name     string `db:"name"`
+	Price    int    `db:"price"`
+	Size     string `db:"size"`
+	Image    string `db:"image_path"`
+	Id       int16  `db:"id"`
+	Quantity int    `db:"quantity"`
+	PrId     int    `db:"prid"`
+	Firm     string `db:"firm"`
 }
 
 type SnickersPreorder struct {

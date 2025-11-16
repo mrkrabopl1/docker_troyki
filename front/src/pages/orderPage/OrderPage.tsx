@@ -36,10 +36,7 @@ interface OrderState {
 
 const OrderPage: React.FC = () => {
     const { hash = '' } = useParams<{ hash?: string }>();
-    const [snickers, setSnickers] = useState({
-        cartData: [],
-        fullPrice: 0
-    });
+    const [products, setProducts] = useState([]);
     const [order, setOrder] = useState<OrderState>({
         orderData: {
             name: "",
@@ -67,7 +64,7 @@ const OrderPage: React.FC = () => {
     useEffect(() => {
         if (cookie.current) {
             getOrderDataByHash(hash, (data) => {
-                setSnickers(data.cartResponse);
+                setProducts(data.cartData);
                 setOrder({
                     address: data.address,
                     orderData: data.userInfo,
@@ -77,7 +74,7 @@ const OrderPage: React.FC = () => {
         } else {
             getOrderCartData(hash, (data) => {
                 fullPrice.current = data.fullPrice;
-                setSnickers(data);
+                setProducts(data);
             });
         }
     }, [hash]);
@@ -109,7 +106,7 @@ const OrderPage: React.FC = () => {
             </div>
             
             <div className={s.merchSection}>
-                <BuyMerchField data={snickers} />
+                <BuyMerchField data={products} />
             </div>
         </div>
     );

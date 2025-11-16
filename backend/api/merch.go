@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
 	"github.com/mrkrabopl1/go_db/types"
 )
@@ -33,18 +34,9 @@ func (s *Server) handleGetSnickersByFirmName(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, snickers)
 }
-func (s *Server) handleGetSnickersByLineName(ctx *gin.Context) {
-	line := ctx.Query("line")
-	snickers, err := s.store.GetSnickersByLineName(ctx, line)
-	if err != nil {
-		//log.WithCaller().Err(err)
-		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
-		return
-	}
-	// firmsList := NewSnickersLineResponse(firms)
-	ctx.JSON(http.StatusOK, snickers)
-}
+
 func (s *Server) handleGetSizes(ctx *gin.Context) {
+	category := ctx.Query("category")
 	file, err := os.ReadFile("json/sizeTable.json")
 	if err != nil {
 		//log.WithCaller().Err(err)
@@ -53,7 +45,14 @@ func (s *Server) handleGetSizes(ctx *gin.Context) {
 	}
 	var data interface{}
 	json.Unmarshal(file, &data)
-	ctx.JSON(http.StatusOK, data)
+	var resp interface{}
+	if category == "snickers" {
+		resp = data.(map[string]interface{})["snickers"]
+	}
+	if category == "clothes" {
+		resp = data.(map[string]interface{})["clothes"]
+	}
+	ctx.JSON(http.StatusOK, resp)
 }
 
 func (s *Server) handleGetCollectionCount(ctx *gin.Context) {
@@ -71,50 +70,20 @@ func (s *Server) handleGetCollectionCount(ctx *gin.Context) {
 }
 func (s *Server) handleGetProductsInfoById(ctx *gin.Context) {
 	id := ctx.Query("id")
-	fmt.Println("id", id)
 	numId, err := strconv.ParseInt(id, 10, 32)
 	if err != nil {
-		fmt.Println("dmsa;mdasmd;aslmd;asl;l")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	int32Value := int32(numId)
-	prInfo, err := s.store.GetProductSource(ctx, int32Value)
-	if err != nil {
-		fmt.Println("dmsa;mdasmd;aslmd;asl;l")
+
+	ProductsInfo, err2 := s.store.GetProductsInfoByIdComplex(ctx, int32(numId))
+	if err2 != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	if prInfo.SourceTable == "snickers" {
-		ProductsInfo, err2 := s.store.GetProductsInfoByIdComplex(ctx, prInfo.InternalID)
-		if err2 != nil {
-			fmt.Println("dmsa;mdasmd;aslmd;asl;l")
-			ctx.JSON(http.StatusBadRequest, errorResponse(err))
-			return
-		}
-		s.taskProcessor.SetProductsInfo(ctx, id, ProductsInfo)
-		ctx.JSON(http.StatusOK, ProductsInfo)
-	}
-	if prInfo.SourceTable == "solomerch" {
-		ProductsInfo, err2 := s.store.GetSoloMerchInfoByIdComplex(ctx, prInfo.InternalID)
-		if err2 != nil {
-			fmt.Println("dmsa;mdasmd;aslmd;asl;l")
-			ctx.JSON(http.StatusBadRequest, errorResponse(err))
-			return
-		}
-		//s.taskProcessor.SetProductsInfo(ctx, id, ProductsInfo)
-		ctx.JSON(http.StatusOK, ProductsInfo)
-	}
-	if prInfo.SourceTable == "clothes" {
-		ProductsInfo, err2 := s.store.GetClothesInfoByIdComplex(ctx, prInfo.InternalID)
-		if err2 != nil {
-			fmt.Println("dmsa;mdasmd;aslmd;asl;l")
-			ctx.JSON(http.StatusBadRequest, errorResponse(err))
-			return
-		}
-		//s.taskProcessor.SetProductsInfo(ctx, id, ProductsInfo)
-		ctx.JSON(http.StatusOK, ProductsInfo)
-	}
+
+	s.taskProcessor.SetProductsInfo(ctx, id, ProductsInfo)
+	ctx.JSON(http.StatusOK, ProductsInfo)
 
 	cookie, errC := ctx.Cookie("unique")
 
@@ -143,9 +112,9 @@ type ProductsResponseD struct {
 }
 
 type RespSearchProductsAndFiltersByString struct {
-	Products []ProductsResponseD   `json:"products"`
-	Pages    int                   `json:"pages"`
-	Filters  FiltersSearchResponse `json:"filters"`
+	Products   []ProductsResponseD   `json:"products"`
+	TotalCount int                   `json:"totalCount"`
+	Filters    FiltersSearchResponse `json:"filters"`
 }
 
 type Clothes struct {
@@ -155,11 +124,12 @@ type Clothes struct {
 	XL  int64 `json:"xl"`
 	XXL int64 `json:"xxl"`
 }
-type SnickersFilterStruct struct {
-	Firms []string  `json:"firmsCount"`
-	Sizes SizeData  `json:"sizes"`
-	Price []float32 `json:"price"`
-	Type  *int32    `json:"type"`
+type ProductsFilterStruct struct {
+	Firms      []string               `json:"firmsCount"`
+	Sizes      map[string]interface{} `json:"sizes"`
+	Price      []float32              `json:"price"`
+	Types      []int32                `json:"types"`
+	Categories []int32                `json:"categories"`
 }
 type Snickers struct {
 	Size35  int64 `json:"3.5"`
@@ -195,13 +165,20 @@ type FiltersSearchResponse struct {
 	Type       *int           `json:"type"`
 }
 
-func (s *Server) handleSearchSnickersAndFiltersByString(ctx *gin.Context) {
+func (s *Server) handleSearchSnickersAndFiltersByNameCategoryAndType(ctx *gin.Context) {
 	var postData types.PostDataSnickersAndFiltersByString
 	if err := ctx.BindJSON(&postData); err != nil {
+		fmt.Println(err, "error in handleSearchProductsByCategories")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	ProductsInfo, err1 := s.store.GetProductsAndFiltersByString(ctx, postData.Name, postData.Page, postData.Size, postData.Filters, postData.OrderedType)
+	params := db.GetFiltersByNameCategoryAndTypeParams{
+		Name:     pgtype.Text{String: postData.Name, Valid: postData.Name != ""},
+		Category: pgtype.Int4{Int32: postData.Category, Valid: postData.Category != 0},
+		Type:     pgtype.Int4{Int32: postData.Type, Valid: postData.Type != 0},
+	}
+	fmt.Println(params.Type.Valid, params.Category.Valid, params.Name.Valid, "kfdnkjfndskjfbnklvkfnkjfbgfkjbjkewbqfjgvkjdsv jnsdfkbdsdkfsdkfnkdsjfnsdnfkjdsqkwpek")
+	ProductsInfo, err1 := s.store.GetProductsAndFiltersByNameCategoryAndType(ctx, params, postData.Page, postData.Size, postData.Filters, postData.SortType)
 	if err1 != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err1))
 		return
@@ -216,119 +193,65 @@ func (s *Server) handleSearchProductByCategoriesAndFilters(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	fmt.Println("test", postData.Category, "kfdnkjfndskjfbnklvkfnkjfbgfkjbjkewbqfjgvkjdsv jnsdfkbdsdkfsdkfnkdsjfnsdnfkjdsqkwpek")
-	category := postData.Category
-	typeQ := postData.Type
-	typeIds := make([]int32, 0)
-	if typeQ != "" {
-		typeId, err1 := s.store.GetTypeIDByCategoryAndName(ctx, db.GetTypeIDByCategoryAndNameParams{
-			Category: db.ProductSourceEnum(category),
-			TypeName: typeQ,
-		})
-		if err1 != nil {
-			fmt.Println(err1, "error in GetTypeIDByCategoryAndName")
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err1.Error()})
-			return
-		}
-		typeIds = append(typeIds, typeId)
-	}
-	var productsInfo db.SnickersResp
-	switch category {
-	case "snickers":
-		resp, err := s.store.GetSnickersByFilters(ctx, "", postData.Filters, 0, postData.Size, (postData.Page-1)*postData.Size)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		if len(resp) != 0 {
-			productsInfo.Pages = resp[0].TotalCount / int64(postData.Size)
-		} else {
-			productsInfo.Pages = 0
-		}
-		productsInfo.Products = resp
-		ctx.JSON(http.StatusOK, productsInfo)
-	case "solomerch":
-		resp, err := s.store.GetMerchByFilters(ctx, "", postData.Filters, 0, postData.Size, (postData.Page-1)*postData.Size)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		if len(resp) != 0 {
-			productsInfo.Pages = resp[0].TotalCount / int64(postData.Size)
-		} else {
-			productsInfo.Pages = 0
-		}
-		productsInfo.Products = resp
-		ctx.JSON(http.StatusOK, productsInfo)
-	case "clothes":
-		resp, err := s.store.GetClothesByFilters(ctx, "", postData.Filters, 0, postData.Size, (postData.Page-1)*postData.Size)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		if len(resp) != 0 {
-			productsInfo.Pages = resp[0].TotalCount / int64(postData.Size)
-		} else {
-			productsInfo.Pages = 0
-		}
-		productsInfo.Products = resp
-		ctx.JSON(http.StatusOK, productsInfo)
 
-	default:
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category"})
+	//fmt.Println(postData.Filters.Price, "postData postData postData postData postData postData postData postData ")
+	fmt.Println(postData.Filters.InStore, postData.Filters.HasDiscount, "postData postData postData postData postData postData postData postData ")
+
+	resp, err := s.store.GetProductsByFiltersComplex(ctx, "", postData.Page, postData.Size, postData.Filters, postData.SortType)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	ctx.JSON(http.StatusOK, resp)
 }
-func (s *Server) handleSearchProductsAndFiltersByCategories(ctx *gin.Context) {
-	fmt.Println("handleSearchProductsByCategories")
+
+func (s *Server) handleGetMainPageInfo(ctx *gin.Context) {
+	fmt.Println("mainpageinwcdczcfo mainpageinfo mainpageinfo mainpageinfo mainpageinfo ")
+	resp, err := s.store.GetMainPageInfoComplex(ctx, 15)
+	fmt.Println(resp, "mainpageinfo mainpageinfo mainpageinfo mainpageinfo mainpageinfo ")
+	if err != nil {
+		fmt.Println(err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, resp)
+}
+
+func (s *Server) handleSearchProductAndByCategoriesAndFilters(ctx *gin.Context) {
 	var postData types.PostDataAndFiltersByCategoryAndType
 	if err := ctx.BindJSON(&postData); err != nil {
 		fmt.Println(err, "error in handleSearchProductsByCategories")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	category := postData.Category
-	typeQ := postData.Type
-	typeIds := make([]int32, 0)
-	if typeQ != "" {
-		typeId, err1 := s.store.GetTypeIDByCategoryAndName(ctx, db.GetTypeIDByCategoryAndNameParams{
-			Category: db.ProductSourceEnum(category),
-			TypeName: typeQ,
-		})
-		if err1 != nil {
-			fmt.Println(err1, "error in GetTypeIDByCategoryAndName")
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err1.Error()})
-			return
-		}
-		typeIds = append(typeIds, typeId)
-	}
-	switch category {
-	case "snickers":
-		resp, err := s.store.GetSnickersAndFilters(ctx, typeIds, postData)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		ctx.JSON(http.StatusOK, resp)
-	case "solomerch":
-		resp, err := s.store.GetMerchAndFilters(ctx, typeIds, postData)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		ctx.JSON(http.StatusOK, resp)
-	case "clothes":
-		resp, err := s.store.GetClothesAndFilters(ctx, typeIds, postData)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		ctx.JSON(http.StatusOK, resp)
 
-	default:
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category"})
+	fmt.Println(postData.Filters.InStore, "dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+
+	resp, err := s.store.GetProductsByFiltersComplex(ctx, "", 0, postData.Page, postData.Filters, postData.SortType)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	ctx.JSON(http.StatusOK, resp)
+}
+
+type GetFiltersByNameCategoryAndTypeReq struct {
+}
+
+func (s *Server) handleGetFiltersByNameCategoryAndType(ctx *gin.Context) {
+	var params db.GetFiltersByNameCategoryAndTypeParams
+	if err := ctx.BindJSON(&params); err != nil {
+		fmt.Println(err, "error in handleSearchProductsByCategories")
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+	fmt.Println("test", params, "kfdnkjfndskjfbnklvkfnkjfbgfkjbjkewbqfjgvkjdsv jnsdfkbdsdkfsdkfnkdsjfnsdnfkjdsqkwpek")
+	resp, err := s.store.GetFiltersByNameCategoryAndType(ctx, params)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, resp)
 }
 
 type RespSearchProductsByString struct {
@@ -347,13 +270,18 @@ func (s *Server) handleSearchProductsByString(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, ProductsInfo)
 }
 
-func (s *Server) handleSearchMerch(ctx *gin.Context) {
+func (s *Server) handleSearchProducts(ctx *gin.Context) {
 	var postData types.PostData
 	if err := ctx.BindJSON(&postData); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 	response, _ := s.store.GetProductsByNameComplex(ctx, postData.Name, postData.Max)
+	ctx.JSON(http.StatusOK, response)
+}
+
+func (s *Server) handleGetCategoriesWithTypes(ctx *gin.Context) {
+	response, _ := s.store.GetCategoriesWithTypes(ctx)
 	ctx.JSON(http.StatusOK, response)
 }
 
@@ -374,23 +302,6 @@ func (s *Server) handleGetSoloCollection(ctx *gin.Context) {
 		})
 	ctx.JSON(http.StatusOK, response)
 }
-func (s *Server) handleGetCollection(ctx *gin.Context) {
-	fmt.Println("fd;slfs;dl")
-	var postData types.PostDataCollection
-	if err := ctx.BindJSON(&postData); err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return
-	}
-	offset := (postData.Page - 1) * postData.Size
-	fullResponse, err1 := s.store.GetCollections1(ctx, postData.Names, postData.Size, offset)
-	if err1 != nil {
-		//log.WithCaller().Err(err1).Msg("")
-		ctx.JSON(http.StatusBadRequest, errorResponse(err1))
-		return
-	}
-
-	ctx.JSON(http.StatusOK, fullResponse)
-}
 
 func (s *Server) handleGetDiscounts(ctx *gin.Context) {
 	searchData, err := s.store.GetProductsWithDiscountComplex(ctx)
@@ -409,39 +320,39 @@ type DiscountsData struct {
 	Value            interface{} `json:"value"`
 }
 
-func (s *Server) createDiscounts(ctx *gin.Context) {
-	var discounts []int32
-	if err := ctx.BindJSON(&discounts); err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return
-	}
-	products, err := s.store.GetProductsByIds(ctx, discounts)
+// func (s *Server) createDiscounts(ctx *gin.Context) {
+// 	var discounts []int32
+// 	if err := ctx.BindJSON(&discounts); err != nil {
+// 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+// 		return
+// 	}
+// 	products, err := s.store.GetProductsByIds(ctx, discounts)
 
-	var discountsData map[int32]types.DiscountData
+// 	var discountsData map[int32]types.DiscountData
 
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return
-	}
-	if len(products) == 0 {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "No products found for the provided IDs"})
-		return
-	} else {
-		for _, product := range products {
-			if product.Maxdiscprice.Int32 == 0 {
+// 	if err != nil {
+// 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+// 		return
+// 	}
+// 	if len(products) == 0 {
+// 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "No products found for the provided IDs"})
+// 		return
+// 	} else {
+// 		for _, product := range products {
+// 			if product.Maxdiscprice.Int32 == 0 {
 
-			} else {
+// 			} else {
 
-			}
-		}
+// 			}
+// 		}
 
-	}
+// 	}
 
-	err1 := s.store.CreateDiscounts(ctx, discountsData)
-	if err1 != nil {
-		//log.WithCaller().Err(err1).Msg("")
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return
-	}
-	ctx.JSON(http.StatusOK, 0)
-}
+// 	err1 := s.store.CreateDiscounts(ctx, discountsData)
+// 	if err1 != nil {
+// 		//log.WithCaller().Err(err1).Msg("")
+// 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+// 		return
+// 	}
+// 	ctx.JSON(http.StatusOK, 0)
+// }

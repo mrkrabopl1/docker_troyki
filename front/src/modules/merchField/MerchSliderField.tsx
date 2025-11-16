@@ -1,8 +1,9 @@
 import React, { memo, useMemo } from 'react';
 import MerchBlock from "./MerchBlock";
 import NameBorder from 'src/components/wraps/NameBorder';
-import ContentSlider from 'src/components/contentSlider/ContentSliderWithControl';
+import ContentSlider from 'src/components/contentSlider/ContentSliderWithScroll';
 import s from "./style.module.css";
+
 
 type MerchInfoType = {
     price: string;
@@ -16,9 +17,10 @@ type MerchInfoType = {
 interface MerchInterface { 
     name: string;
     merchInfo: MerchInfoType[];
+      onClick?: () => void;
 }
 
-const MerchSliderField: React.FC<MerchInterface> = memo(({ name, merchInfo }) => {
+const MerchSliderField: React.FC<MerchInterface> = memo(({ name, merchInfo,onClick }) => {
     const sliderContent = useMemo(() => 
         merchInfo.map(item => (
             <MerchBlock 
@@ -30,11 +32,14 @@ const MerchSliderField: React.FC<MerchInterface> = memo(({ name, merchInfo }) =>
         [merchInfo]
     );
 
+
+
     return (
         <div>
             <NameBorder 
-                content={<ContentSlider className="dependetHeight" content={sliderContent} />} 
+                content={<ContentSlider className={s.gridHeight6} content={sliderContent} />} 
                 name={name} 
+                onClick={onClick}
             />
         </div>
     );

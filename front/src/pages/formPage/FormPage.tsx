@@ -9,7 +9,6 @@ import { createOrder, getOrderDataByHash } from 'src/providers/orderProvider';
 import { checkCustomerData } from 'src/providers/userProvider';
 import OrderInfo from 'src/components/orderInfo/orderInfo';
 import MailInputWithValidation from 'src/components/input/MailInputWithValidation';
-import { setSnickers } from 'src/store/reducers/formSlice';
 import { useNavigate } from 'react-router-dom';
 import DeliveryRadioGroup from './pageElements/DeliveryRadio';
 import Button from 'src/components/Button';
@@ -40,7 +39,7 @@ const BACK_ROUTE = [
 const FormPage: React.FC = () => {
     const navigate = useNavigate();
     const { hash } = useParams<urlParamsType>();
-    const [snickers, setSnickers] = useState<any>({ cartData: [], fullPrice: "" });
+    const [products, setProducts] = useState<any[]>([]);
     const delivery = useRef(0);
     const contactInfo = useRef<Record<string, string>>({
         "Имя": "",
@@ -67,7 +66,7 @@ const FormPage: React.FC = () => {
     useEffect(() => {
         getCartData(hash, (data) => {
             fullPrice.current = data.fullPrice;
-            setSnickers(data);
+            setProducts(data);
             checkCustomerData((customerData) => {
                 if (customerData) {
                     memoSendForm.current = !memoSendForm.current;
@@ -284,7 +283,7 @@ const FormPage: React.FC = () => {
                 </div>
             </div>
             <div style={{ marginLeft: "20px", width: "50%", paddingRight: "90px" }}>
-                <BuyMerchField data={snickers} />
+                <BuyMerchField data={products} />
             </div>
         </div>
     );

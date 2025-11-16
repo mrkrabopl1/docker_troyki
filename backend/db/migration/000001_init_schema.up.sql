@@ -7,130 +7,162 @@ CREATE TYPE public.snickers_enum AS ENUM ('slepowers','other');
 CREATE TYPE public.body_enum AS ENUM ('child', 'woman', 'man');
 
 
-CREATE TABLE product_registry (
-    global_id SERIAL PRIMARY KEY,
-    source_table public.product_source_enum  NOT NULL,
-    internal_id INT NOT NULL,
-    UNIQUE (source_table, internal_id)
+CREATE TABLE colors (
+    id SERIAL PRIMARY KEY,
+    enum_key VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    hex_code VARCHAR(9) NOT NULL
+);
+
+
+        INSERT INTO colors (enum_key, name, hex_code) 
+        VALUES ('red', 'Красный', '#FF0000'),
+('green', 'Зеленый', '#00FF00'),
+('blue', 'Синий', '#0000FF'),
+('yellow', 'Желтый', '#FFFF00'),
+('black', 'Черный', '#000000'),
+('white', 'Белый', '#FFFFFF'),
+('orange', 'Оранжевый', '#FFA500'),
+('purple', 'Фиолетовый', '#800080'),
+('pink', 'Розовый', '#FFC0CB'),
+('brown', 'Коричневый', '#A52A2A'),
+('gray', 'Серый', '#808080'),
+('beige', 'Бежевый', '#F5F5DC'),
+('navy', 'Темно-синий', '#000080'),
+('turquoise', 'Бирюзовый', '#40E0D0'),
+('gold', 'Золотой', '#FFD700'),
+('silver', 'Серебряный', '#C0C0C0'),
+('multicolor', 'Разноцветный', '#FFFFFF'),
+('transparent', 'Прозрачный', '#FFFFFF00')
+        ON CONFLICT (enum_key) DO NOTHING;
+    
+
+CREATE TABLE product_categories (
+    id SERIAL PRIMARY KEY,
+	image_path TEXT,
+    name VARCHAR(50) NOT NULL UNIQUE,           -- Название категории (человекочитаемое)
+    enum_key VARCHAR(50) NOT NULL UNIQUE        -- Ключ для ENUM (например, 'ELECTRONICS')
 );
 
 CREATE TABLE product_types (
     id SERIAL PRIMARY KEY,
-    category product_source_enum NOT NULL,  -- Категория из product_source_enum
-    type_name VARCHAR(50) NOT NULL,         -- Название типа (дублирует значение из соответствующего ENUM)
-    enum_value VARCHAR(50) NOT NULL,        -- Значение из соответствующего ENUM
-    UNIQUE (category, enum_value)           -- Уникальная связка категория+значение
+    category_id INTEGER NOT NULL REFERENCES product_categories(id) ON DELETE CASCADE,
+    type_name VARCHAR(50) NOT NULL,              -- Название типа (человекочитаемое)
+    enum_key VARCHAR(50) NOT NULL,               -- Ключ для ENUM типа
+    UNIQUE (category_id, enum_key)               -- Уникальная комбинация категория+тип
 );
 
-INSERT INTO product_types (category, type_name, enum_value) VALUES
--- Одежда (clothes_enum)
-('clothes', 'Футболка', 't-shirt'),
-('clothes', 'Худи', 'hoodie'),
-('clothes', 'Свитшот', 'sweatshirt'),
-('clothes', 'Куртка', 'jacket'),
-('clothes', 'Штаны', 'pants'),
-('clothes', 'Шорты', 'shorts'),
-('clothes', 'Другое', 'other'),
-
--- Мерч (merch_enum)
-('solomerch', 'Кепка', 'hat'),
-('solomerch', 'Игрушки', 'toys'),
-('solomerch', 'Сумка', 'bag'),
-('solomerch', 'Другое', 'other'),
-
--- Кроссовки (snickers_enum)
-('snickers', 'Слепауэрс', 'slepowers'),
-('snickers', 'Другое', 'other');
+-- Индексы для производительности
+CREATE INDEX idx_product_types_category ON product_types(category_id);
+CREATE INDEX idx_product_types_enum_key ON product_types(enum_key);
 
 
-CREATE TABLE public.snickers (
+INSERT INTO product_categories (name, enum_key, image_path) VALUES
+('Одежда', 'clothes', 'clothes.svg'),
+('Мерч', 'merch', 'merch.svg'),
+('Кроссовки', 'sneakers', 'sneakers.svg'),
+('toys', 'toys', 'toys.svg') ON CONFLICT (enum_key) DO NOTHING;
+
+INSERT INTO product_types (category_id, type_name, enum_key) VALUES
+((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'Другое', 'other'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'gloves', 'gloves'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'basketball', 'basketball'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Другое', 'other'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Скейтбординг', 'skateboarding'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'running', 'running'),
+((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'running', 'running'),
+((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'training', 'training'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'Другое', 'other'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'heels', 'heels'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'cleats', 'cleats'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'scarves', 'scarves'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'boots', 'boots'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'lifestyle', 'lifestyle'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'rings', 'rings'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'earrings', 'earrings'),
+((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'basketball', 'basketball'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'hats', 'hats'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'training', 'training'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'outdoors', 'outdoors'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'boots', 'boots'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'eyewear', 'eyewear'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'belts', 'belts'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'necklaces', 'necklaces'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Тапочки', 'slippers'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'sandals', 'sandals'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'bracelets', 'bracelets'),
+((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'shoulder', 'shoulder'),
+((SELECT id FROM product_categories WHERE enum_key = 'toys'), 'boots', 'boots'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'flats', 'flats'),
+((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'travel', 'travel'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'sandals', 'sandals') ON CONFLICT (category_id, enum_key) DO NOTHING;
+
+CREATE TABLE public.products (
     id serial PRIMARY KEY NOT NULL,
     qId text  NOT NULL,
     name text NOT NULL,
-    info json NOT NULL,
     firm text NOT NULL,
     line text NOT NULL,
     image_path text NOT NULL,
     minprice integer NOT NULL,
     maxprice integer NOT NULL,
     type INTEGER NOT NULL REFERENCES product_types(id),
-    article text,
+	category INTEGER NOT NULL REFERENCES product_categories(id),
+    article text NOT NULL,
     date text,
     description text,
 	bodytype public.body_enum NOT NULL DEFAULT 'man',
 	image_count integer NOT NULL,
-    "3.5" integer,
-    "4" integer,
-    "4.5" integer,
-    "5" integer,
-    "5.5" integer,
-    "6" integer,
-    "6.5" integer,
-    "7" integer,
-    "7.5" integer,
-    "8" integer,
-    "8.5" integer,
-    "9" integer,
-    "9.5" integer,
-    "10" integer,
-    "10.5" integer,
-    "11" integer,
-    "11.5" integer,
-    "12" integer,
-    "12.5" integer,
-    "13" integer
+    sizes JSONB
+);
+CREATE TABLE product_colors (
+    product_id INT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    color_id INT NOT NULL REFERENCES colors(id) ON DELETE CASCADE,
+    PRIMARY KEY (product_id, color_id) 
 );
 
 
-CREATE TABLE public.solomerch (
-    id serial PRIMARY KEY NOT NULL,
-    qId text  NOT NULL,
-    name text NOT NULL,
-    firm text NOT NULL,
-    line text ,
-    image_path text NOT NULL,
-	image_count integer NOT NULL,
-    minprice integer NOT NULL,
-    article text,
-    type INTEGER NOT NULL REFERENCES product_types(id),
-    date text,
-    description text
-);
+     
+    
 
-CREATE TABLE public.clothes (
-    id serial PRIMARY KEY NOT NULL,
-    qId text  NOT NULL,
-    name text NOT NULL,
-    firm text NOT NULL,
-	info json NOT NULL,
-    line text ,
-    image_path text NOT NULL,
-	image_count integer NOT NULL,
-    minprice integer NOT NULL,
-	maxprice integer NOT NULL,
-    article text,
-	bodytype public.body_enum NOT NULL DEFAULT 'man',
-    date text,
-    description text,
-    type INTEGER NOT NULL REFERENCES product_types(id),
-    XS integer,
-	S integer,
-	M integer,
-	L integer,
-	XL integer,
-	XXL integer
-);
-
-CREATE INDEX idx_qId ON public.snickers(qId);
+CREATE INDEX idx_qId ON public.products(qId);
 
 
 CREATE TABLE IF NOT EXISTS public.discount (
     id serial PRIMARY KEY NOT NULL,
-    productid INT NOT NULL,
-    value JSON NOT NULL,
-    minprice INT,
-    maxdiscprice INT
+    productid INT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    value JSONB NOT NULL CHECK (jsonb_typeof(value) = 'object'),
+    minprice INT NOT NULL CHECK (minprice >= 0),
+    maxdiscprice INT CHECK (maxdiscprice >= 0),
+	  created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    
+    CONSTRAINT unique_product_discount UNIQUE (productid)
 );
+
+
+
+-- Индексы для производительности
+CREATE INDEX idx_discount_productid ON discount(productid);
+CREATE INDEX idx_discount_minprice ON discount(minprice);
+
+CREATE TABLE IF NOT EXISTS public.store_house (
+    id serial PRIMARY KEY NOT NULL,
+    productid INT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    size TEXT NOT NULL,
+    quantity INT NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    -- Уникальная комбинация товара и размера
+    CONSTRAINT unique_product_size UNIQUE (productid, size)
+);
+
+-- Индексы
+CREATE INDEX idx_store_house_productid ON store_house(productid);
+CREATE INDEX idx_store_house_size ON store_house(size);
+
 CREATE TABLE IF NOT EXISTS public.customers (
 		id serial PRIMARY KEY NOT NULL ,
 		name TEXT,
@@ -193,8 +225,10 @@ CREATE TABLE public.orderitems (
 	id serial PRIMARY KEY NOT NULL,
 	OrderID integer NOT NULL,
 	ProductId INT NOT NULL ,
-	source_table  product_source_enum NOT NULL,
 	Quantity integer NOT NULL,
+	Price integer NOT NULL,
+		Image_path TEXT NOT NULL,
+				Name TEXT NOT NULL,
 	Size text,
 	FOREIGN KEY (OrderID) REFERENCES public.orders(id)
 );
@@ -209,7 +243,9 @@ CREATE TABLE IF NOT EXISTS public.preorderitems (
 				OrderID INT NOT NULL,
 				ProductId INT NOT NULL ,
 				Quantity INT NOT NULL,
-				source_table  product_source_enum NOT NULL,
+				Price integer NOT NULL,
+				Image_path TEXT NOT NULL,
+				Name TEXT NOT NULL,
 				Size TEXT,
 				FOREIGN KEY (OrderID) REFERENCES public.preorder(id)
 );

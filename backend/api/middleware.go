@@ -112,6 +112,7 @@ func CachedMiddleware(s *Server) gin.HandlerFunc {
 				Name:        ProductsInfo.Name,
 				Discount:    ProductsInfo.Discount,
 				ProductType: ProductsInfo.ProductType,
+				Article:     ProductsInfo.Article,
 			})
 			if errC != nil {
 				fmt.Println(errC, "ssssssssssssssssssssss")

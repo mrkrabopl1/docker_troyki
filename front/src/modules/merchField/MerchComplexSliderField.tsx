@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useMemo, memo,useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from 'src/store/hooks/redux';
-import { getCollections, getHistoryInfo, getDiscontInfo } from 'src/providers/merchProvider';
+import { getCollections, getHistoryInfo, getDiscontInfo, } from 'src/providers/merchProvider';
 import { shuffle } from 'src/global';
-import MerchSliderField from '../../modules/merchField/MerchSliderField';
+
+import MerchSliderField from 'src/modules/merchField/MerchSliderField';
 
 interface SliderData {
   [key: string]: any[];

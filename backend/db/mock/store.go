@@ -291,7 +291,7 @@ func (mr *MockStoreMockRecorder) GetCollections1(arg0, arg1, arg2, arg3 interfac
 }
 
 // GetCountIdByFiltersAndFirm mocks base method.
-func (m *MockStore) GetCountIdByFiltersAndFirm(arg0 context.Context, arg1 string, arg2 types.SnickersFilterStruct) (int64, error) {
+func (m *MockStore) GetCountIdByFiltersAndFirm(arg0 context.Context, arg1 string, arg2 types.ProductsFilterStruct) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetCountIdByFiltersAndFirm", arg0, arg1, arg2)
 	ret0, _ := ret[0].(int64)
@@ -487,7 +487,7 @@ func (mr *MockStoreMockRecorder) GetOrderIdByHashUrl(arg0, arg1 interface{}) *go
 }
 
 // GetOrderedProductsByFilters mocks base method.
-func (m *MockStore) GetOrderedProductsByFilters(arg0 context.Context, arg1 string, arg2 types.SnickersFilterStruct, arg3, arg4, arg5 int) ([]types.ProductsSearch, error) {
+func (m *MockStore) GetOrderedProductsByFilters(arg0 context.Context, arg1 string, arg2 types.ProductsFilterStruct, arg3, arg4, arg5 int) ([]types.ProductsSearch, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOrderedProductsByFilters", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].([]types.ProductsSearch)
@@ -547,7 +547,7 @@ func (mr *MockStoreMockRecorder) GetPreorderIdByHashUrl(arg0, arg1 interface{}) 
 }
 
 // GetProductsAndFiltersByString mocks base method.
-func (m *MockStore) GetProductsAndFiltersByString(arg0 context.Context, arg1 string, arg2, arg3 int, arg4 types.SnickersFilterStruct, arg5 int) (db.RespSearchProductsAndFiltersByString, error) {
+func (m *MockStore) GetProductsAndFiltersByString(arg0 context.Context, arg1 string, arg2, arg3 int, arg4 types.ProductsFilterStruct, arg5 int) (db.RespSearchProductsAndFiltersByString, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetProductsAndFiltersByString", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(db.RespSearchProductsAndFiltersByString)
@@ -637,7 +637,7 @@ func (mr *MockStoreMockRecorder) GetSnickersByNameComplex(arg0, arg1, arg2 inter
 }
 
 // GetSnickersByString mocks base method.
-func (m *MockStore) GetProductsByString(arg0 context.Context, arg1 string, arg2, arg3 int, arg4 types.SnickersFilterStruct, arg5 int) (db.RespSearchProductsByString, error) {
+func (m *MockStore) GetProductsByString(arg0 context.Context, arg1 string, arg2, arg3 int, arg4 types.ProductsFilterStruct, arg5 int) (db.RespSearchProductsByString, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSnickersByString", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(db.RespSearchProductsByString)

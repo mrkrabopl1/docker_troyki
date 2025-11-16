@@ -33,27 +33,23 @@ const ContentSliderWithoutSteps: React.FC<SliderProps> = ({
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const animationFrameId = useRef<number | null>(null);
 
-  // Расчет размеров и параметров слайдера
-  const calculateDimensions = useCallback(() => {
+
+// И в calculateDimensions:
+const calculateDimensions = useCallback(() => {
     if (!trackRef.current || !containerRef.current) return;
 
     const containerWidth = containerRef.current.clientWidth;
     const trackWidth = trackRef.current.scrollWidth;
     
-    if (
-      dimensions.containerWidth === containerWidth && 
-      dimensions.trackWidth === trackWidth
-    ) {
-      return;
-    }
-    
     setDimensions({
-      containerWidth,
-      trackWidth
+        containerWidth,
+        trackWidth
     });
 
-    onChange?.(trackWidth);
-  }, [content.length, dimensions, onChange]);
+    // Передаем общую ширину трека
+    onChange?.(trackWidth - containerWidth);
+}, [onChange]);
+  // Расчет размеров и параметров слайдера
 
   // Оптимизированная версия с requestAnimationFrame
   const debouncedCalculateDimensions = useCallback(() => {
@@ -67,10 +63,11 @@ const ContentSliderWithoutSteps: React.FC<SliderProps> = ({
   }, [calculateDimensions]);
 
   // Обновление позиции при изменении currentShift
-  useEffect(() => {
-    const newPosition = - currentShift;
+useEffect(() => {
+    if (!containerRef.current) return;
+    const newPosition = -currentShift; // Умножаем на ширину контейнера
     setInternalPosition(newPosition);
-  }, [currentShift]);
+}, [currentShift]);
 
   // Инициализация ResizeObserver
   useEffect(() => {
@@ -99,8 +96,9 @@ const ContentSliderWithoutSteps: React.FC<SliderProps> = ({
   const trackStyle = useMemo((): CSSProperties => ({
     display: 'flex',
     transform: `translateX(${internalPosition}px)`,
-    transition: `transform ${transitionDuration}ms ease-out`,
+    //transition: `transform ${transitionDuration}ms ease-out`,
     willChange: 'transform',
+    justifyContent: "space-between"
   }), [internalPosition, transitionDuration]);
 
   // Стиль контейнера

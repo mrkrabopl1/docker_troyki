@@ -55,11 +55,13 @@ button {
 }
 
 .leftArrowHolder {
-  left: 0;
+  left:5px;
+  z-index: 200;
 }
 
 .rightArrowHolder {
-  right: 0;
+  right: 5px;
+   z-index: 200;
 }
 
 .spanStyle {
@@ -136,6 +138,17 @@ button {
 }
 
 
+.controllerHolder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
 
 
 //   [data-state=disabled] {
@@ -145,3 +158,8 @@ button {
 //       @include arrowTransform( 0deg, -5px, 0 );
 //     }
 //   }
+.paginationContainer{ justify-content: center; display: flex; }
+
+.paginationArrow{ width: 30px; position: relative }
+
+.paginationPages{ cursor: pointer; margin: auto 0; justify-content: center; display: flex; }

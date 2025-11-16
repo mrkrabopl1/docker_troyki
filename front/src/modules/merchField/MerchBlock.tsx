@@ -1,16 +1,16 @@
-import React, { ReactElement, useRef, useState,memo } from 'react'
+import React, { ReactElement, useRef, useState, memo } from 'react'
 import s from "./style.module.css"
 import { useNavigate } from 'react-router-dom';
 import { toPrice } from 'src/global';
 
 
 
-interface MerchInterface { name: string, imgs: string[], id: string, price: string, discount?: number }
+interface MerchInterface { name: string, imgs: string[],image_path?:string, id: string, price: string, discount?: number }
 
 
 
 
-const MerchBlock: React.FC<{ className?:string,width?:string, data: MerchInterface }> = (props) => {
+const MerchBlock: React.FC<{ className?: string, width?: string, data: MerchInterface }> = (props) => {
     const navigate = useNavigate();
     let { data, className, width } = { ...props }
     let [compOpacity, setOpacity] = useState(0)
@@ -34,7 +34,7 @@ const MerchBlock: React.FC<{ className?:string,width?:string, data: MerchInterfa
 
     const firstImgStyle: any = {
         transitionDuration: "0.3s",
-        scale: compScale+"",
+        scale: compScale + "",
         transitionTimingFunction: "ease-out",
         // opacity: Number(!compOpacity),
         zIndex: 1,
@@ -85,8 +85,11 @@ const MerchBlock: React.FC<{ className?:string,width?:string, data: MerchInterfa
 
     return (
         <div
-            style={width&&{width:width}}
-            onClick={() => navigate('/product/' + data.id)}
+            style={width && { width: width }}
+            onClick={(e) => {
+                e.stopPropagation();
+                navigate('/product/' + data.id)
+            }}
             onMouseEnter={() => {
                 // if (data.imgs.length > 1) {
                 //     showAnimation.current = true
@@ -95,21 +98,32 @@ const MerchBlock: React.FC<{ className?:string,width?:string, data: MerchInterfa
                 setScale(1)
             }}
             onMouseLeave={() => {
-               setScale(0.9)
+                setScale(0.9)
             }}
             className={s.merchWrap + " " + className}
         >
             <div className={s.colorLayout}>
                 <div className={s.imageBlock}>
-                    <img loading={"lazy"} className={s.img} style={firstImgStyle} src={"/" + data.imgs[0]} alt="airJordan" />
+                    <img loading={"lazy"} className={s.img} style={firstImgStyle} src={"/" + (data.imgs?data.imgs[0]:data.image_path+0)} alt="airJordan" />
                     {data.discount ? <div className={s.discountMarker}>
                         "Sale"
                     </div> : null}
                 </div>
+                <div className={s.nameHolder}>
+                    {data.name}
+                </div>
                 {/* {data.imgs.length > 1 ? <img loading={"lazy"} className={s.img} style={secondImgStyle} src={"/" + data.imgs[1]} alt="airJordan" /> : null} */}
                 <div className={s.textContainer}>
-                    <div className={s.imgName}>{data.name}</div>
-                    <div style={{ textAlign: "center", marginTop:"auto"}}>{data.discount ? <span className={s.discount}>{toPrice(data.discount)}</span> : null}<span className={s.imgName}>{"От " + toPrice(data.price)}</span></div>
+                    <div style={{ textAlign: "center", marginTop: "auto" }}>
+                        {data.price ? <div>
+                            {data.discount ?
+                                <span className={s.discount}>{toPrice(data.discount)}</span>
+                                : null
+                            }
+                            <span className={s.imgName}>{"От " + toPrice(data.price)}</span>
+                        </div>
+                            : <span className={s.imgName}>{"Нет в наличии"}</span>}
+                    </div>
                 </div>
             </div>
         </div>

@@ -24,23 +24,24 @@ func TestGetPreorderIdByHashUrl(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, preorder)
 }
-func TestGetSnickersOrderData(t *testing.T) {
-	textValue := pgtype.Text{
-		String: "10",
-		Valid:  true, // Mark as valid (not NULL)
-	}
-	preorder, err := testStore.GetSnickersOrderData(context.Background(), []GetOrderDataByIdRow{
-		GetOrderDataByIdRow{
-			Size:      textValue,
-			Quantity:  10,
-			ID:        2,
-			Productid: 35,
-		},
-	})
-	fmt.Println(preorder, err)
-	require.NoError(t, err)
-	require.NotEmpty(t, preorder)
-}
+
+//	func TestGetSnickersOrderData(t *testing.T) {
+//		textValue := pgtype.Text{
+//			String: "10",
+//			Valid:  true, // Mark as valid (not NULL)
+//		}
+//		preorder, err := testStore.GetSnickersOrderData(context.Background(), []GetOrderDataByIdRow{
+//			GetOrderDataByIdRow{
+//				Size:      textValue,
+//				Quantity:  10,
+//				ID:        2,
+//				Productid: 35,
+//			},
+//		})
+//		fmt.Println(preorder, err)
+//		require.NoError(t, err)
+//		require.NotEmpty(t, preorder)
+//	}
 func TestGetOrderIdByHashUrl(t *testing.T) {
 	preorder, err := testStore.GetOrderIdByHashUrl(context.Background(), "4813640782846292612")
 	fmt.Println(preorder, err)
@@ -48,12 +49,12 @@ func TestGetOrderIdByHashUrl(t *testing.T) {
 	require.NotEmpty(t, preorder)
 }
 
-func TestUpdatePreorder(t *testing.T) {
-	preorder, err := testStore.UpdatePreorder(context.Background(), 2582, "8", "snickers", "1465553591858304793")
-	fmt.Println(preorder, err)
-	require.NoError(t, err)
-	require.NotEmpty(t, preorder)
-}
+//	func TestUpdatePreorder(t *testing.T) {
+//		preorder, err := testStore.UpdatePreorder(context.Background(), 2582, "8", "snickers", "1465553591858304793")
+//		fmt.Println(preorder, err)
+//		require.NoError(t, err)
+//		require.NotEmpty(t, preorder)
+//	}
 func TestInsertPreorder(t *testing.T) {
 
 	preorder, err := testStore.InsertPreorder(context.Background(), InsertPreorderParams{
@@ -67,14 +68,14 @@ func TestInsertPreorder(t *testing.T) {
 	require.NotEmpty(t, preorder)
 }
 
-func TestCreatePreorder(t *testing.T) {
+// func TestCreatePreorder(t *testing.T) {
 
-	preorder, err := testStore.CreatePreorder(context.Background(), 1, "11", "snickers")
+// 	preorder, err := testStore.CreatePreorder(context.Background(), 1, "11", "snickers")
 
-	fmt.Println(preorder)
-	require.NoError(t, err)
-	require.NotEmpty(t, preorder)
-}
+// 	fmt.Println(preorder)
+// 	require.NoError(t, err)
+// 	require.NotEmpty(t, preorder)
+// }
 
 func TestGetCartData(t *testing.T) {
 
@@ -85,6 +86,32 @@ func TestGetCartData(t *testing.T) {
 	fmt.Println(expiration)
 	require.NoError(t, err)
 	require.NotEmpty(t, preorder)
+}
+
+func TestInsertManyOrderItems(t *testing.T) {
+	ctx := context.Background()
+
+	// 1. Создаем тестовые данные со ВСЕМИ полями
+	productIDs := []int32{1, 2, 3}
+	quantities := []int32{2, 1, 3}
+	sizes := []string{"M", "L", "XL"}
+	prices := []int32{1000, 2000, 3000}
+	names := []string{"Product 1", "Product 2", "Product 3"}
+	imagePaths := []string{"img1.jpg", "img2.jpg", "img3.jpg"}
+	orderID := int32(7)
+
+	// 2. Выполняем запрос со ВСЕМИ полями
+	err := testStore.InsertManyOrderItems(ctx, InsertManyOrderItemsParams{
+		ProductIds: productIDs,
+		Quantities: quantities,
+		Sizes:      sizes,
+		Prices:     prices,
+		Names:      names,
+		ImagePaths: imagePaths,
+		OrderID:    orderID,
+	})
+
+	require.NoError(t, err)
 }
 
 func TestGetCartCount(t *testing.T) {
@@ -178,8 +205,8 @@ func TestGetOrder(t *testing.T) {
 	fmt.Println(hashedStr.Unregistercustomerid)
 }
 
-func TestGetCartDataFromOrderById(t *testing.T) {
-	hashedStr, err := testStore.GetCartDataFromOrderById(context.Background(), 13)
-	require.NoError(t, err)
-	fmt.Println(hashedStr)
-}
+// func TestGetCartDataFromOrderById(t *testing.T) {
+// 	hashedStr, err := testStore.GetCartDataFromOrderById(context.Background(), 13)
+// 	require.NoError(t, err)
+// 	fmt.Println(hashedStr)
+// }

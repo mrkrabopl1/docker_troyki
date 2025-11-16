@@ -1,4 +1,4 @@
-.modalBack{
+.modalBack {
     width: 100vw;
     height: 100vh;
     background: transparent;
@@ -6,21 +6,42 @@
     top: 0;
     z-index: 200;
     left: 0;
-    background-color: rgba(210, 68, 85, 0.2);
     backdrop-filter: blur(2px);
     display: flex;
+    background: rgba(255, 255, 255, 0.2);
+    /* Полупрозрачный белый фон */
+    backdrop-filter: blur(10px);
+    /* Размытие фона за элементом */
+    -webkit-backdrop-filter: blur(10px);
+    /* Для поддержки в Safari */
+    padding: 2rem;
+    border-radius: 16px;
+    /* Скругленные углы */
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    /* Тень для объема */
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    /* Светлая граница */
+   
+    text-align: center;
+    color: #333;
 }
 
-.none{
+.modalContent {
+    padding: 20px;
+    width: 100%;
+}
+
+.none {
     display: none;
 }
-.modalWrap1{
+
+.modalWrap1 {
     position: absolute;
     width: 75%;
     margin: auto;
     top: 0;
-    right:0;
-    left:0;
+    right: 0;
+    left: 0;
     bottom: 0;
     height: 60%;
     padding: 5px;
@@ -28,7 +49,7 @@
 }
 
 
-.close{
+.close {
     font-size: 50px;
     position: absolute;
     padding: 10px;
@@ -38,4 +59,3 @@
     font-family: 'Open Sans', 'Helvetica Neue', 'Segoe UI', 'Calibri', 'Arial', sans-serif;
 
 }
-

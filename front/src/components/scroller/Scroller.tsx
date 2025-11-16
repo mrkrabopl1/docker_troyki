@@ -65,8 +65,8 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children }) => {
         const maxScroll = scroller.clientHeight - scrollCont.clientHeight;
         if (maxScroll >= 0) return;
 
-        const scrollAmount = proportion ? maxScroll * deltaScroll : deltaScroll;
-        let newTop = contTop + scrollAmount;
+        //const scrollAmount = proportion ? maxScroll * deltaScroll : deltaScroll;
+        let newTop = proportion ? maxScroll * deltaScroll : contTop + deltaScroll;
 
         if (newTop > 0) {
             newTop = 0;
@@ -75,7 +75,7 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children }) => {
             newTop = maxScroll;
             scrollMetrics.current.vertPos = 1;
         } else {
-            scrollMetrics.current.vertPos = newTop / maxScroll;
+            scrollMetrics.current.vertPos = proportion ? deltaScroll : newTop / maxScroll;
         }
 
         setContTop(newTop);
@@ -108,8 +108,8 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children }) => {
 
     // Обработчик колеса мыши
     const handleWheel = useCallback((e: React.WheelEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+        // e.preventDefault();
+        // e.stopPropagation();
         scrollVertical(e.deltaY > 0 ? -10 : 10);
     }, [scrollVertical]);
 
@@ -117,7 +117,7 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children }) => {
     const scrollerStyle: CSSProperties = {
         position: "relative",
         width: "100%",
-        height: "440px",
+        height:"100%",
         overflow: "hidden",
         ...(className ? { className } : {})
     };
@@ -126,7 +126,6 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children }) => {
         position: "absolute",
         top: `${contTop}px`,
         left: `${contLeft}px`,
-        width: "inherit"
     };
 
     return (
