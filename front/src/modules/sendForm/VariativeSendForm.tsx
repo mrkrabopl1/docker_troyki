@@ -100,7 +100,7 @@ const VariativeSendForm: React.FC<sendFormModuleInterface> = (props) => {
                 <Checkbox activeData={false} enable={true} onChange={() => { }} />
                 <span>Отправляйте мне SMS-сообщения о новостях и предложениях</span>
             </div>
-            <Button text='Оформить заказ' onChange={() => {
+            <Button text='Оформить заказ' onClick={() => {
                 updateValidObj()
                 if (Object.values(validationObject.current).length > 0) {
                     setRefresh(!refresh)

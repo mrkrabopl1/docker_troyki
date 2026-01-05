@@ -1,0 +1,14 @@
+     
+ .dropList{
+    position: absolute;
+    top: 100%;
+    width: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    background-color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    margin-top: 4px;
+    padding:10px
+ }    

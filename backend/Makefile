@@ -1,4 +1,4 @@
-DB_URL=postgresql://postgres:s8121996@192.168.1.112:5432/troyki?sslmode=disable
+DB_URL=postgresql://postgres:s8121996@192.168.1.46:5432/troyki?sslmode=disable
 
 migrate_back:
 	migrate -path db/migration -database "$(DB_URL)" force 1
@@ -25,7 +25,7 @@ new_migration:
 	migrate create -ext sql -dir db/migration -seq $(name)	
 
 mock:
-	mockgen -package mockdb -destination db/mock/store.go github.com/mrkrabopl1/go_db/db/sqlc Store
+	mockgen -package mockdb -destination db/mock/store.go github.com/mrkrabopl1//db/sqlc Store
 	mockgen -package mockwk -destination worker/mock/distributor.go github.com/mrkrabopl1/go_db/worker TaskDistributor
 	mockgen -package mockwk -destination worker/mock/processor.go github.com/mrkrabopl1/go_db/worker TaskProcessor
 redis:

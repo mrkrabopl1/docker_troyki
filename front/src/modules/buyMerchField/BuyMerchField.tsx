@@ -1,51 +1,47 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import Form from "src/modules/sendForm/SendForm"
-import MerchFormBlock from "src/modules/merchField/MerchFormBlock"
-import { getCartData } from 'src/providers/shopProvider'
-import s from "./style.module.css"
-import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
-import Input from 'src/components/input/Input'
-import Button from 'src/components/Button'
+
+import React, { memo, useEffect} from 'react'
+import MerchFormBlock from "src/modules/merchField/MerchFormBlock";
 import { toPrice } from 'src/global';
+import s from "./style.module.css";
 
-interface merchInterface {
-    cartData: {
-        name: string, img: string, id: string, firm: string, price: string, quantity: number, totalPrice: string, size: number
-    }[],
-    fullPrice: number
+interface CartItem {
+    name: string;
+    img: string;
+    id: string;
+    firm: string;
+    price: number;
+    quantity: number;
+    totalPrice: string;
+    size: number;
 }
 
-interface dataType {
-    data: merchInterface
+
+
+interface BuyMerchFieldProps {
+    data: CartItem[];
 }
 
-const BuyMerchField: React.FC<dataType> = (props) => {
-    let { data } = { ...props }
-    let promoCode = useRef<string>("")
+const BuyMerchFieldComponent: React.FC<BuyMerchFieldProps> = ({ data }) => {
+    const [totalPrice, setTotalPrice] = React.useState(0);
+    useEffect(() => {
+        setTotalPrice(data.reduce((sum, item) => sum + item.price*item.quantity, 0));
+    }, [data]);
     return (
         <div style={{ width: "100%" }}>
-
-            {
-                data.cartData.map((data) => {
-                    return <MerchFormBlock key={data.name} data={data} onChange={() => { }} />
-                })
-            }
-
-            {/* <div style={{ display: "flex" }}>
-                <Input placeholder='Промокод' onChange={(val) => { promoCode.current = val }} /> <Button text='Применить' onChange={() => { }} />
-            </div> */}
+            {data.map((item) => (
+                <MerchFormBlock 
+                    key={`${item.id}-${item.size}`} // Более уникальный ключ
+                    data={item} 
+                    onChange={() => {}} 
+                />
+            ))}
+            
             <div className={s.fullPrice}>
-                <span>
-                    Всего
-                </span>
-                <span>
-                    {toPrice(data.fullPrice)}
-                </span>
+                <span>Всего</span>
+                <span>{toPrice(totalPrice)}</span>
             </div>
         </div>
+    );
+};
 
-    )
-}
-
-
-export default BuyMerchField
+export default memo(BuyMerchFieldComponent);

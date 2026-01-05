@@ -1,5 +1,5 @@
 import axios from "axios";
-const createPreorder = function (data: { id: number, info: { size: string } }, callback: (val: any) => void) {
+const createPreorder = function (data: { id: number, size: string }, callback: (val: any) => void) {
     let jsonData = JSON.stringify(data)
     axios({
         withCredentials: true,
@@ -12,7 +12,7 @@ const createPreorder = function (data: { id: number, info: { size: string } }, c
     })
 }
 
-const updatePreorder = function (data: { id: number, hashUrl: string, info: { size: string } }, callback: (val: any) => void) {
+const updatePreorder = function (data: { id: number, hashUrl: string,  size: string  }, callback: (val: any) => void) {
     let jsonData = JSON.stringify(data)
     axios({
         withCredentials: true,

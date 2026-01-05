@@ -1,0 +1,79 @@
+.inputHolder {
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 
+        inset 1px 1px 3px rgba(0, 0, 0, 0.1),
+        inset -1px -1px 3px rgba(255, 255, 255, 0.8),
+        0 2px 4px rgba(0, 0, 0, 0.08),
+        0 0 0 1px rgba(0, 0, 0, 0.03),
+        0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.inputHolder:focus-within {
+    box-shadow: 
+        inset 1px 1px 3px rgba(0, 0, 0, 0.15),
+        inset -1px -1px 3px rgba(255, 255, 255, 0.8),
+        0 0 0 2px rgba(42, 42, 42, 0.1),
+        0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.numInput {
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    text-align: center;
+    min-width: 80px;
+    outline: none;
+    box-shadow: none;
+}
+
+.numInput::placeholder {
+    color: #999;
+}
+
+.arrows {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border-left: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.arrowUp,
+.arrowDown {
+    border: none;
+    background: transparent;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 10px;
+    color: #2a2a2a;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.arrowUp:hover,
+.arrowDown:hover {
+    background: rgba(42, 42, 42, 0.05);
+    box-shadow: 
+        inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.arrowUp:active,
+.arrowDown:active {
+    background: rgba(42, 42, 42, 0.1);
+    box-shadow: 
+        inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.arrowUp {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}

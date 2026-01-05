@@ -4,9 +4,9 @@ import axios from "axios";
 
 const getMerchInfo = function (id: string, callback: (val: any) => void) {
     axios({
-        //withCredentials: true,
+        withCredentials: true,
         method: 'get',
-        url: `${API_URL}/snickersInfo` + "?" + "id=" + id,
+        url: `${API_URL}/productsInfo` + "?" + "id=" + id,
         headers: {}
     }
     ).then((res: any) => {
@@ -85,20 +85,6 @@ const getCollection = function (reqData: { name: string, page: number, size: num
     })
 }
 
-const getCountCollection = function (name: string , callback: (val: any) => void) {
-    axios({
-        method: 'get',
-        url: `${API_URL}/collectionCount` + "?" + "name=" + name,
-        headers: {
-           
-        }
-    }
-    ).then((res: any) => {
-        callback(res.data)
-    },  (error: any) => {
-        console.warn(error)
-    })
-}
 
 const getCollections = function (reqData: { names: string[], page: number, size: number }, callback: (val: any) => void) {
     axios({
@@ -129,10 +115,10 @@ const getMainInfo = function (callback: (val: any) => void) {
     })
 }
 
-const getSizeTable = function (callback: (val: any) => void) {
+const getCategoriesAndTypes = function (callback: (val: any) => void) {
     axios({
         method: 'get',
-        url: `${API_URL}/sizeTable`,
+        url: `${API_URL}/categoriesWithTypes`,
         headers: {}
     }
     ).then((res: any) => {
@@ -141,4 +127,31 @@ const getSizeTable = function (callback: (val: any) => void) {
         console.warn(error)
     })
 }
-export { getMerchInfo, getSizeTable, getMainInfo, getCollections, getFirms, getHistoryInfo, getDiscontInfo, getCollection,getCountCollection }
+
+const getSizeTable = function (category: string, callback: (val: any) => void) {
+    axios({
+        method: 'get',
+        url: `${API_URL}/sizeTable?category=` + category,
+        headers: {}
+    }
+    ).then((res: any) => {
+        callback(res.data)
+    },  (error: any) => {
+        console.warn(error)
+    })
+}
+
+
+const getMainPage = function (callback: (val: any) => void) {
+    axios({
+        method: 'get',
+        url: `${API_URL}/getMainPage`,
+        headers: {}
+    }
+    ).then((res: any) => {
+        callback(res.data)
+    },  (error: any) => {
+        console.warn(error)
+    })
+}
+export { getMerchInfo, getSizeTable, getMainInfo, getCollections, getFirms, getHistoryInfo, getDiscontInfo, getCollection,getCategoriesAndTypes, getMainPage }

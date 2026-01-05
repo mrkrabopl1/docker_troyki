@@ -13,6 +13,10 @@ sql:
         rename:
           Column1: Firms
         overrides:
+          - db_type: "snickers_enum"
+            go_type:
+              type: "Text"
+            nullable: true
           - db_type: "text[]"
             go_type:  
               import: "github.com/mrkrabopl1/go_db.db"

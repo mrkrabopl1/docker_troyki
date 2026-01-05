@@ -1,4 +1,4 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
+import React, { ReactElement, useEffect, useRef, useState, memo } from 'react'
 import MerchBlock from "./MerchBlock"
 import s from "./style.module.css"
 import { useNavigate } from 'react-router-dom';
@@ -6,7 +6,7 @@ import { toPrice } from 'src/global';
 import { ReactComponent as Bin } from "../../../public/bin.svg";
 
 
-interface merchInterface { name: string, img: string, id: string, firm: string, price: string, quantity: number, size: number }
+interface merchInterface { name: string, img: string, id: string, firm: string, price: number, quantity: number, size: number }
 
 const MerchFormBlock: React.FC<{ data: merchInterface, onChange: () => void }> = (props) => {
     let { data, onChange } = { ...props }
@@ -20,18 +20,20 @@ const MerchFormBlock: React.FC<{ data: merchInterface, onChange: () => void }> =
                         {data.quantity}
                     </span>
                 </div>
-                <div style={{width:"100%"}} className='vrtCntr'>
-                    <p style={{display:"flex", justifyContent:"space-between"}}>
+                <div style={{ width: "100%" }} className='vrtCntr'>
+                    <p style={{ display: "flex", justifyContent: "space-between" }}>
                         <span>
                             {data.name}
                         </span>
-                        <span>
+                        <span className={s.littlePrice}>
                             {toPrice(data.price)}
                         </span>
                     </p>
-                    <p>
-                        US:{data.size}
-                    </p>
+                    {data.size ?
+                        <p>
+                            US:{data.size}
+                        </p> : null
+                    }
                 </div>
             </div>
 
@@ -40,4 +42,4 @@ const MerchFormBlock: React.FC<{ data: merchInterface, onChange: () => void }> =
 }
 
 
-export default MerchFormBlock
+export default memo(MerchFormBlock)

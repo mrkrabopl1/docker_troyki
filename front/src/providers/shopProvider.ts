@@ -2,11 +2,11 @@ import axios from "axios";
 
 
 
-const getCartData = function ( callback: (val: any) => void) {
+const getCartData = function ( hash, callback: (val: any) => void) {
     axios({
         withCredentials: true,
         method: 'get',
-        url: `${API_URL}/getCartData`,
+        url: `${API_URL}/getCartData?hash=${hash}`,
         headers: {}
     }
     ).then((res:any)=>{

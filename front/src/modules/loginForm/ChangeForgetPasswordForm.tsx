@@ -69,9 +69,9 @@ const ChangeForgetPasswordForm: React.FC<sendFormModuleInterface> = (props) => {
     return (
 
         <div onClick={(e) => { e.stopPropagation() }} className={s.wrapper}>
-            <PasswordInputWithValidation check={false} valid={validationOld.current} invalidText={invalidOldPassText.current} onChange={(data) => { newPass.current = data }} className={s.loginInput} placeholder="Old password" />
+            <PasswordInputWithValidation showToggle={false} valid={validationOld.current} invalidText={invalidOldPassText.current} onChange={(data) => { newPass.current = data }} className={s.loginInput} placeholder="Old password" />
             <PasswordInput check={true} onChange={(data) => { passCheck.current = data }} className={s.loginInput} placeholder="Repeat password" />
-            <Button text='Сменить пароль' onChange={()=>{
+            <Button text='Сменить пароль' onClick={()=>{
                 updateValidObj()
                 if(validation.current){
                     onChange(newPass.current)

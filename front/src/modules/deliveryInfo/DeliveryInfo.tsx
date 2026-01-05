@@ -10,7 +10,7 @@ import global from "src/global.css"
 import { getCdekDeliveryData } from 'src/providers/cdek'
 const DeliveryInfo: React.FC<any> = (props) => {
     useEffect(()=>{
-        getCdekDeliveryData({},()=>{})
+        getCdekDeliveryData("test",()=>{})
     })
     return(
         <div style={{display:"flex"}}>

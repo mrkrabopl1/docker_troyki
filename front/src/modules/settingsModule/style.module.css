@@ -6,6 +6,26 @@
     border: none;
 }
 
-.wrapper{
-    width: 100%;
+.wrapper {
+    padding: 20px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 
+        /* Основная глубокая тень для эффекта вдавленности */
+        inset 3px 3px 8px rgba(0, 0, 0, 0.1),
+        inset -3px -3px 8px rgba(255, 255, 255, 0.8),
+        
+        /* Внешние тени для подъема краев */
+        0 1px 2px rgba(255, 255, 255, 0.9),
+        0 -1px 1px rgba(0, 0, 0, 0.05),
+        
+        /* Более глубокие внешние тени для объема */
+        0 4px 20px rgba(0, 0, 0, 0.08),
+        0 1px 4px rgba(0, 0, 0, 0.05);
+    
+    /* Легкая текстура для бумажного эффекта */
+    background-image: 
+        radial-gradient(circle at 10% 10%, rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+        radial-gradient(circle at 90% 90%, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+    background-size: 20px 20px;
 }

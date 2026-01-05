@@ -1,0 +1,75 @@
+.thumb {
+    border-radius: 10px;
+    position: absolute;
+    height: 20px; /* Увеличил высоту */
+    width: 12px; /* Добавил ширину */
+    
+    /* Оставляем оригинальный стиль ползунка */
+    background: linear-gradient(145deg, #e8e8e89f, #ffffff);
+    box-shadow: 
+        /* Усиливаем тень для лучшей видимости */
+        0 2px 8px rgba(0, 0, 0, 0.25),
+        4px 4px 8px rgba(0, 0, 0, 0.15),
+        -4px -4px 8px rgba(255, 255, 255, 1),
+        inset 2px 2px 4px rgba(255, 255, 255, 0.8),
+        inset -2px -2px 4px rgba(0, 0, 0, 0.1);
+    
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    
+    /* Добавляем глубину через псевдоэлемент */
+    position: relative;
+    
+    &:before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: calc(100% - 6px);
+        height: calc(100% - 6px);
+        background: linear-gradient(145deg, #ffffff, #f0f0f0);
+        border-radius: 6px;
+        box-shadow: 
+            inset 1px 1px 2px rgba(255, 255, 255, 0.9),
+            inset -1px -1px 2px rgba(0, 0, 0, 0.1);
+        z-index: 1;
+    }
+    
+    &:hover {
+        background: linear-gradient(145deg, #ececec, #ffffff);
+        box-shadow: 
+            0 3px 12px rgba(0, 0, 0, 0.3),
+            5px 5px 10px rgba(0, 0, 0, 0.18),
+            -5px -5px 10px rgba(255, 255, 255, 1),
+            inset 2px 2px 4px rgba(255, 255, 255, 0.9),
+            inset -2px -2px 4px rgba(0, 0, 0, 0.08);
+        transform: scale(1.05);
+    }
+    
+    &:active {
+        background: linear-gradient(145deg, #d8d8d8, #f0f0f0);
+        box-shadow: 
+            inset 4px 4px 8px rgba(0, 0, 0, 0.2),
+            inset -4px -4px 8px rgba(255, 255, 255, 0.6);
+        transform: scale(0.95);
+    }
+}
+
+.wrapper {
+    z-index: 10;
+    background-color: transparent;
+    display: flex;
+    height:20px;
+    padding-top: "10px"; 
+    position: "relative"; 
+    margin: "auto";
+    // Стиль продавленного белого листа
+    background: linear-gradient(145deg, #ffffff, #f0f0f0);
+    border-radius: 12px;
+    box-shadow: 
+        inset 3px 3px 6px rgba(0, 0, 0, 0.1),
+        inset -3px -3px 6px rgba(255, 255, 255, 0.8),
+        2px 2px 8px rgba(0, 0, 0, 0.05)
+    ;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}

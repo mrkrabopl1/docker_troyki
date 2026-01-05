@@ -1,45 +1,43 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-
+import React, { ReactElement, useEffect, useMemo, useState } from 'react'
 import Combobox from '../combobox/Combobox'
 import Column from '../table/simpleTable/Column'
 
-
-type columnType = {
-    table:string[],
-    title:string,
-    subtitle?:string
+type ColumnType = {
+    table: string[]
+    title: string
+    subtitle?: string
 }
 
-type tableType = {
-    table: {
-        [key: string]: columnType
-    }
+type TableType = {
+    [key: string]: ColumnType
 }
 
+const SyncComboboxColumn: React.FC<{ table: TableType }> = ({ table }) => {
+    // Memoize headers and indexes to prevent unnecessary recalculations
+    const [headers, indexes] = useMemo(() => {
+        const tableValues = Object.values(table)
+        return [
+            tableValues.map(val => val.title),
+            Object.keys(table)
+        ]
+    }, [table])
 
-
-const SyncComboboxColumn: React.FC<tableType> = ({table}) => {
-    // let headers = Object.keys(table);
-    let headers = Object.values(table).map(val=>val.title);
-    let indexs = Object.keys(table)
-
-    let [chosenHeader,setChosenHeader] = useState<string|number>(indexs[0]);
-    let [tableInnfo,setTableInfo] = useState<string[]|[]>([]);
-
-    useEffect(()=>{
-        setTableInfo(table[chosenHeader].table)
-    },[chosenHeader])
-   
+    const [chosenHeader, setChosenHeader] = useState<string>(indexes[0])
     
+    // Get current table data directly from props instead of separate state
+    const currentTableData = table[chosenHeader]?.table || []
+
     return (
         <div style={{ width: "100%" }}>
-            <Column table={tableInnfo}>
-                <Combobox enumProp={true} data={headers} onChangeIndex={setChosenHeader}></Combobox>
+            <Column table={currentTableData}>
+                <Combobox 
+                    enumProp 
+                    data={headers} 
+                    onChangeIndex={setChosenHeader} 
+                />
             </Column>
-         
         </div>
     )
 }
 
-
-export default SyncComboboxColumn
+export default React.memo(SyncComboboxColumn)

@@ -1,49 +1,39 @@
-import React, { ReactElement, useRef,useEffect, useState } from 'react'
-import DropWrapper from "../dropWrapper/DropWrapper"
-import s from "./style.module.css"
-import {useAppDispatch } from 'src/store/hooks/redux'
-import secondDropSlice from "src/store/reducers/secondDropSlice"
-import { useAppSelector } from 'src/store/hooks/redux'
-import DinamicElement  from "src/components/dynamicElement/DynamicElement"
+import React, { useCallback } from 'react';
+import DinamicElement from "src/components/dynamicElement/DynamicElement";
+import s from "./style.module.css";
 
-
-interface elementDynamic {
-        name:string,
-        componentInfo:{componentName:string,propsData:any}
+interface ElementDynamic {
+    name: string;
+    componentInfo: {
+        componentName: string;
+        propsData: any;
+    };
 }
 
-type dynamicFormType = {
-        form:elementDynamic[],
-        onChange?:(arg:any)=>void
-}
+type DynamicFormType = {
+    form: ElementDynamic[];
+    onChange?: (arg: { name: string; data: any }) => void;
+};
 
-
-
-const DynamicForm: React.FC<dynamicFormType> = (props) => {
-    let {form,onChange} = {...props}
-    let dispatch = useAppDispatch()
-    const onChangeData=(name:string,data:any)=>{
-        let obj = {
-            name:name,
-            data:data
-        }
-        if(onChange){
-            onChange(obj)
-        }
-    }
+const DynamicForm: React.FC<DynamicFormType> = ({ form, onChange }) => {
+    // Мемоизированный обработчик изменений
+    const handleChange = useCallback((name: string, data: any) => {
+        onChange?.({ name, data });
+    }, [onChange]);
 
     return (
-        <div  >
-            {form.map((val)=>{
-                return(<div>
-                    <p>
-                        {val.name}
-                    </p>
-                    {<DinamicElement onChange={onChangeData.bind(null,val.name)} {...val.componentInfo}/>}
-                </div>)
-            })}
+        <div className={s.formContainer}>
+            {form.map((item) => (
+                <div key={item.name} className={s.formItem}>
+                    <p className={s.itemTitle}>{item.name}</p>
+                    <DinamicElement 
+                        onChange={(data) => handleChange(item.name, data)} 
+                        {...item.componentInfo}
+                    />
+                </div>
+            ))}
         </div>
-    )
-}
+    );
+};
 
-export default DynamicForm
+export default React.memo(DynamicForm);

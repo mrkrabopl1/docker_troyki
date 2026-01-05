@@ -1,4 +1,4 @@
-import React, { ReactElement, useRef,useEffect, useState } from 'react'
+import React, { ReactElement, useRef,useEffect, useState,memo } from 'react'
 import { useAppSelector } from 'src/store/hooks/redux'
 import s from "./style.module.css"
 type propsRowType = {
@@ -22,4 +22,4 @@ const DropWrapper: React.FC<propsRowType> = (props) => {
     )
 }
 
-export default DropWrapper
+export default memo(DropWrapper)

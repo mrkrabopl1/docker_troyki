@@ -27,6 +27,16 @@
   right:10px;
  }
 
+  .storeLabel{
+  width:10px;
+  height:10px;
+  border-radius: 20px;
+  background-color: green;
+  position:absolute;
+  top:40px;
+  right:40px;
+ }
+
  .priceUnderline{
     position: absolute;
     bottom: 4px;

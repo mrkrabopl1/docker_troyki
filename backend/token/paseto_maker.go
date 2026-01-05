@@ -49,6 +49,8 @@ func (maker *PasetoMaker) VerifyToken(token string) (*Payload, error) {
 		return nil, ErrInvalidToken
 	}
 
+	fmt.Println(payload.ExpiredAt, "payload")
+
 	err = payload.Valid()
 	if err != nil {
 		return nil, err
@@ -57,7 +59,7 @@ func (maker *PasetoMaker) VerifyToken(token string) (*Payload, error) {
 	return payload, nil
 }
 
-func (maker *PasetoMaker) CreateJWTCoockie(userid int32, identifier string, duration time.Duration) (http.Cookie, error) {
+func (maker *PasetoMaker) CreatePasetoCoockie(userid int32, identifier string, duration time.Duration) (http.Cookie, error) {
 	token, _, err := maker.CreateToken(userid, duration)
 	var myCookie http.Cookie
 	if err != nil {
@@ -65,15 +67,15 @@ func (maker *PasetoMaker) CreateJWTCoockie(userid int32, identifier string, dura
 		return myCookie, err
 	}
 	myCookie = http.Cookie{
-		Name:  identifier,
-		Value: token,
-		//Expires:  expirationTime,
+		Name:     identifier,
+		Value:    token,
+		Expires:  time.Now().Add(2 * time.Hour),
 		Path:     "/",
 		MaxAge:   3600,
 		HttpOnly: false,
 		Secure:   false,
 		// SameSite: http.SameSiteNoneMode,
-		// Domain:   "localhost:3000",
+		Domain: "localhost:3000",
 	}
 	return myCookie, nil
 }

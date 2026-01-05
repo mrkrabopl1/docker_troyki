@@ -1,33 +1,66 @@
-import React ,{useRef, useState} from "react"
-import { useAppSelector,useAppDispatch } from 'src/store/hooks/redux'
-import {userSlice } from 'src/store/reducers/userSlice'
-import s from "./style.module.css"
-import loop from "../../../public/zoom.svg"
-import ImagePresantationBlock from "./ImagePresentationBlock"
-import ExpandedImagePresentation from "./ExpandedImagePresentation"
+import React, { useRef, useState, useCallback, memo, useEffect } from "react";
+import s from "./style.module.css";
+import ImagePresentationBlock from "./ImagePresentationBlock";
+import ExpandedImagePresentation from "./ExpandedImagePresentation";
+import { isDeepEqual } from 'src/global';
 
-type iconType = {
-    images:string[]
-}
-const ImagePresantation:React.FC<iconType>=(data)=>{
+type ImagePresentationProps = {
+    images: string[];
+    onClick?: (ind:number) => void;
+};
 
-    const presentationRef = useRef<HTMLDivElement>(null)
-    const {images}={...data}
-    let [expand, setExpand] = useState<Boolean>(false)
-    let firstImage = images[0]
-    return(
-            <div ref={presentationRef} className={s.imgCompponentWrap}>
-                {expand? <ExpandedImagePresentation onClose={()=>setExpand(false)} images={images}/>:null}
-                <ImagePresantationBlock onClick={()=>{setExpand(true)}} image={firstImage}/>
-                <div className={s.bottomFlexBlock}>
-                    {images.map((val, index)=>{
-                        return   <div key={index}  style={{height:"100%"}}>
-                            <ImagePresantationBlock onClick={()=>{setExpand(true)}} image={val}/>
-                        </div>
-                    })}
-                </div>
+const ImagePresentation: React.FC<ImagePresentationProps> = ({ images ,onClick}) => {
+    const presentationRef = useRef<HTMLDivElement>(null);
+    const [mainImage, setMainImage] = useState<string>(images[0]);
+    const [isExpanded, setIsExpanded] = useState<boolean>(false);
+
+    // Reset main image when images prop changes
+    useEffect(() => {
+        setMainImage(images[0]);
+    }, [images]);
+
+    const handleThumbnailLeave = useCallback(() => {
+        setMainImage(images[0]);
+    }, [images]);
+
+    const handleExpand = useCallback((ind) => {
+        onClick(ind)
+        setIsExpanded(true);
+    }, []);
+
+
+    const handleThumbnailHover = useCallback((image: string) => {
+        setMainImage(image);
+    }, []);
+
+    return (
+        <div ref={presentationRef} className={s.imgComponentWrap}>
+
+            <div className={s.topBlock}>
+                <ImagePresentationBlock
+                    onClick={()=>{handleExpand(0)}}
+                    image={mainImage}
+                />
             </div>
-    )
-}
 
-export default ImagePresantation
+            <div className={s.bottomFlexBlock}>
+                {images.slice(1).map((image, index) => (
+                    <div key={`${image}-${index}`} style={{ height: "100%" }}>
+                        <ImagePresentationBlock
+                            onOut={handleThumbnailLeave}
+                            onClick={()=>{handleExpand(index+1)}}
+                            onHover={handleThumbnailHover}
+                            image={image}
+                        />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const propsAreEqual = (prevProps: ImagePresentationProps, nextProps: ImagePresentationProps) => {
+    return isDeepEqual(prevProps.images, nextProps.images);
+};
+
+export default memo(ImagePresentation, propsAreEqual);

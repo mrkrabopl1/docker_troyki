@@ -1,49 +1,46 @@
-import React, { ReactElement, useRef, useState } from 'react'
-import s from "./style.module.css"
-import ColumnHeader from './ColumnHeader'
+import React, { useCallback, memo } from 'react';
+import s from "./style.module.css";
+import ColumnHeader from './ColumnHeader';
+import DinamicElement from "src/components/dynamicElement/DynamicElement";
 
-import DinamicElement  from "src/components/dynamicElement/DynamicElement"
-
-
-interface elementDynamic {
-        name:string,
-        componentInfo:{componentName:string,propsData:any}
+interface ElementDynamic {
+    name: string;
+    componentInfo: {
+        componentName: string;
+        propsData: any;
+    };
+    key?: string; // Добавлено для лучшего управления ключами
 }
 
-type columnType = {
-        form:elementDynamic[],
-        onChange?:(arg:any)=>void
-}
+type ColumnProps = {
+    form: ElementDynamic[];
+    onChange?: (arg: {name: string, data: any}) => void;
+    children?: React.ReactNode;
+};
 
+const DynamicColumnComponent: React.FC<ColumnProps> = ({ 
+    form, 
+    children, 
+    onChange 
+}) => {
+    const handleChange = useCallback((name: string, data: any) => {
+        onChange?.({ name, data });
+    }, [onChange]);
 
-
-
-const DynamicColumn: React.FC<columnType> = (props) => {
-
-    
-    let { form, children,onChange} = { ...props }
-    const onChangeData=(name:string,data:any)=>{
-        let obj = {
-            name:name,
-            data:data
-        }
-        if(onChange){
-            onChange(obj)
-        }
-    }
     return (
-        <div className={s.priceBlock} >
-
+        <div className={s.priceBlock}>
             <ColumnHeader>
                 {children}
             </ColumnHeader>
-            {form.map((val, id) => {
-                return  <DinamicElement onChange={onChangeData.bind(null,val.name)} {...val.componentInfo}/>
-            })}
-
+            {form.map((val) => (
+                <DinamicElement
+                    key={val.name} // Используем name как ключ
+                    onChange={(data) => handleChange(val.name, data)}
+                    {...val.componentInfo}
+                />
+            ))}
         </div>
+    );
+};
 
-    )
-}
-
-export default DynamicColumn
+export default memo(DynamicColumnComponent);

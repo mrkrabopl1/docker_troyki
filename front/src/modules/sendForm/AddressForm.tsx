@@ -1,152 +1,162 @@
-import React, { useEffect, ReactElement, useState, useRef, memo, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
+import InputWithLabelWithValidation from "src/components/input/InputWithLabelWithValidation";
+import InputWithLabel from "src/components/input/InputWithLabel";
+import 'src/global.css';
 
-import Input from "src/components/input/Input"
-import InputWithLabel from "src/components/input/InputWithLabel"
-import InputWithLabelWithValidation from "src/components/input/InputWithLabelWithValidation"
-import PhoneInputWithLabel from "src/components/input/PhoneInput"
-import Combobox from "src/components/combobox/Combobox"
-import Checkbox from "src/components/checkbox/Checkbox"
-import s from './style.module.css'
-import Button from 'src/components/Button';
-import  "src/global.css"
-import { extend } from 'src/global'
-
-interface addressFormModuleInterface {
-    memo?:boolean
-    valid:boolean,
-    onChange: (data: any) => void,
-    className:{
-        input?:string
-    },
-    formValue?:{
-        town:string,
-        region:string,
-        index:string,
-        street:string,
-        house?:string,
-        flat?:string,
-    }
+interface AddressFormValues {
+    town: string;
+    region: string;
+    index: string;
+    street: string;
+    house?: string;
+    flat?: string;
 }
 
+interface AddressFormModuleProps {
+    memo?: boolean;
+    valid: boolean;
+    onChange: (data: AddressFormValues | null) => void;
+    className?: {
+        input?: string;
+    };
+    formValue?: Partial<AddressFormValues>;
+}
 
-const AddressForm: React.FC<addressFormModuleInterface> = (props) => {
-    let {onChange,valid, className,formValue} = {...props}
-    let validationObject = useRef<any>({})
-    let validFlag = useRef<boolean>(false)
-    let validationForm = useRef<any>({
+const AddressFormComponent: React.FC<AddressFormModuleProps> = ({
+    onChange,
+    valid,
+    className = {},
+    formValue = {}
+}) => {
+    // Refs for form data and validation
+    const formData = useRef<AddressFormValues>({
         town: "",
-        region:"",
-        index:"",
-        street:""
-    })
+        region: "",
+        index: "",
+        street: "",
+        house: "",
+        flat: ""
+    });
+    
+    const validationErrors = useRef<Record<string, boolean>>({});
+    const isValid = useRef<boolean>(false);
+    const isFirstRender = useRef(true);
 
-    let unmandatoryData = useRef<any>({
-        house:"",
-        flat:""
-    })
-
-    if(formValue){
-        extend(validationForm.current, formValue)
-        extend(unmandatoryData.current, formValue)
-    }
-
-    const setUnmandatoryDataData = (data: string, name: string) => {
-        unmandatoryData.current[name] = data
-        if( Object.keys(validationObject.current).length === 0){
-            let copyObj:Object = Object.assign({},validationForm.current)
-            Object.assign(copyObj,validationForm.current)
-            onChange(Object.assign(copyObj,unmandatoryData.current))
-            validFlag.current = true
+    // Initialize form with default values
+    useEffect(() => {
+        if (formValue) {
+            formData.current = {
+                ...formData.current,
+                ...formValue
+            };
         }
-    }
+    }, [formValue]);
 
-    const firstUpdate = useRef(true);
-    let [refresh, setRefresh] = useState<boolean>(false)
-    const setFormData = (data: string, name: string) => {
-        validationForm.current[name] = data
-        updateValidObj();
-        if( Object.keys(validationObject.current).length === 0){
-            let copyObj:Object = Object.assign({},validationForm.current)
-            Object.assign(copyObj,validationForm.current)
-            onChange(Object.assign(copyObj,unmandatoryData.current))
-            validFlag.current = true
-        }else{
-            if(validFlag.current){
-                onChange(null)
-                validFlag.current = false
+    // Update validation when 'valid' prop changes
+    useEffect(() => {
+        if (!isFirstRender.current) {
+            updateValidation();
+        }
+        isFirstRender.current = false;
+    }, [valid]);
+
+    const updateValidation = useCallback(() => {
+        const newErrors: Record<string, boolean> = {};
+        let hasErrors = false;
+
+        // Required fields
+        const requiredFields: (keyof AddressFormValues)[] = ['town', 'region', 'index', 'street'];
+        
+        requiredFields.forEach(field => {
+            if (!formData.current[field]) {
+                newErrors[field] = true;
+                hasErrors = true;
+            } else if (validationErrors.current[field]) {
+                delete validationErrors.current[field];
             }
+        });
+
+        validationErrors.current = newErrors;
+        return !hasErrors;
+    }, []);
+
+    const handleFieldChange = useCallback((field: keyof AddressFormValues, value: string) => {
+        formData.current[field] = value;
+        
+        const isFormValid = updateValidation();
+        
+        if (isFormValid) {
+            onChange(formData.current);
+            isValid.current = true;
+        } else if (isValid.current) {
+            onChange(null);
+            isValid.current = false;
         }
-    }
-    useEffect(()=>{
-        if (!firstUpdate.current) {
-            updateValidObj()
-            setRefresh(prev=>!prev)
+    }, [onChange, updateValidation]);
+
+    const handleOptionalFieldChange = useCallback((field: 'house' | 'flat', value: string) => {
+        formData.current[field] = value;
+        
+        if (Object.keys(validationErrors.current).length === 0) {
+            onChange({ ...formData.current });
+            isValid.current = true;
         }
-        firstUpdate.current = false
-    },[valid])
-    const updateValidObj = () => {
-        let entries = Object.entries(validationForm.current)
-        for (let i = 0; i < entries.length; i++) {
-            if (entries[i][1] == "") {
-                validationObject.current[entries[i][0]] = true
-            } else {
-                if (validationObject.current[entries[i][0]]) {
-                    delete validationObject.current[entries[i][0]]
-                }
-            }
-        }
-    }
+    }, [onChange]);
+
     return (
-
         <div>
             <div className="flex">
                 <InputWithLabelWithValidation
-                    val={validationForm.current.town}
-                    valid={!validationObject.current.town}
-                    invalidText={"Введите город."}
-                    className={className?.input}
-                    onChange={(data) => { setFormData(data, "town") }}
-                    placeholder={"Город"} />
+                    val={formData.current.town}
+                    valid={!validationErrors.current.town}
+                    invalidText="Введите город."
+                    className={className.input}
+                    onChange={(data) => handleFieldChange('town', data)}
+                    placeholder="Город"
+                />
                 <InputWithLabelWithValidation
-                    val={validationForm.current.region}
-                    valid={!validationObject.current.region}
-                    invalidText={"Введите регион"}
-                    className={className?.input}
-                    onChange={(data) => { setFormData(data, "region") }}
-                    placeholder={"Регион"} />
+                    val={formData.current.region}
+                    valid={!validationErrors.current.region}
+                    invalidText="Введите регион"
+                    className={className.input}
+                    onChange={(data) => handleFieldChange('region', data)}
+                    placeholder="Регион"
+                />
                 <InputWithLabelWithValidation
-                    val={validationForm.current.index}
-                    valid={!validationObject.current.index}
-                    invalidText={"Введите почтовый индекс."}
-                    className={className?.input}
-                    onChange={(data) => { setFormData(data, "index") }}
-                    placeholder={"Почтовый индекс"} />
+                    val={formData.current.index}
+                    valid={!validationErrors.current.index}
+                    invalidText="Введите почтовый индекс."
+                    className={className.input}
+                    onChange={(data) => handleFieldChange('index', data)}
+                    placeholder="Почтовый индекс"
+                />
             </div>
-            <div className='flex'>
+            <div className="flex">
                 <InputWithLabelWithValidation
-                    val={validationForm.current.street}
-                    valid={!validationObject.current.street}
-                    invalidText={"Введите улицу."}
-                    className={className?.input}
-                    onChange={(data) => { setFormData(data, "street") }}
-                    placeholder={"Улица"} />
+                    val={formData.current.street}
+                    valid={!validationErrors.current.street}
+                    invalidText="Введите улицу."
+                    className={className.input}
+                    onChange={(data) => handleFieldChange('street', data)}
+                    placeholder="Улица"
+                />
                 <InputWithLabel
-                    val={unmandatoryData.current.house}
-                    className={className?.input}
-                    onChange={(data) => { setUnmandatoryDataData(data, "house") }}
-                    placeholder={"Дом"} />
+                    val={formData.current.house || ''}
+                    className={className.input}
+                    onChange={(data) => handleOptionalFieldChange('house', data)}
+                    placeholder="Дом"
+                />
                 <InputWithLabel
-                    val={unmandatoryData.current.flat}
-                    className={className?.input}
-                    onChange={(data) => { setUnmandatoryDataData(data, "flat") }}
-                    placeholder={"Квартира"} />
+                    val={formData.current.flat || ''}
+                    className={className.input}
+                    onChange={(data) => handleOptionalFieldChange('flat', data)}
+                    placeholder="Квартира"
+                />
             </div>
         </div>
+    );
+};
 
-    )
-}
-
-function checkMemo(oldData: any, newData: any) {
-    return (oldData.valid === newData.valid && oldData.memo === newData.memo)
-}
-export default memo(AddressForm, checkMemo)
+export default memo(AddressFormComponent, (prevProps, nextProps) => {
+    return prevProps.valid === nextProps.valid && prevProps.memo === nextProps.memo;
+});

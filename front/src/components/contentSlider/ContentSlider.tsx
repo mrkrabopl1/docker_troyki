@@ -1,107 +1,140 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import Button from '../Button'
-import SliderDefaultController from './slidersSwitchers/SliderDefaultController'
-import LinkController from './slidersSwitchers/LinkController'
-import PageController from './slidersSwitchers/PageController'
+import React, { 
+  useCallback, 
+  useEffect, 
+  useRef, 
+  useState, 
+  useMemo,
+  ReactElement, 
+  CSSProperties 
+} from 'react';
 
+type SliderProps = {
+  content: ReactElement[];
+  className?: string;
+  currentStep?: number;
+  onChange?: (steps: number) => void;
+  transitionDuration?: number;
+};
 
-type ContentSliderType = {
-    content: ReactElement[],
-    className?: string
-}
+const ContentSlider: React.FC<SliderProps> = ({ 
+  content, 
+  className,
+  currentStep = 1,
+  onChange,
+  transitionDuration = 300
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({
+    stepSize: 0,
+    totalSteps: 1,
+    containerWidth: 0,
+    trackWidth: 0
+  });
+  const [internalPosition, setInternalPosition] = useState(0);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const animationFrameId = useRef<number | null>(null);
 
-const ContentSlider: React.FC<ContentSliderType> = (data) => {
-    let { content, className } = { ...data }
+  // Расчет размеров и параметров слайдера
+  const calculateDimensions = useCallback(() => {
+    if (!trackRef.current || !containerRef.current) return;
 
-    let mainContainer = useRef<HTMLDivElement | null>(null)
-    let slider = useRef<HTMLDivElement | null>(null)
-    let componentWidthProportion = useRef<number>(1)
-    let unseenWidth = useRef<number>(0)
-    let step = useRef<number>(0)
-    let reqFrame = useRef<number>(0)
-    let animating = useRef<boolean>(false)
-    let [stepCount,setStepCount] = useState<number>(0)
-    let currentStep = useRef<number>(1)
-    let [sliderPosition,setSliderPosition] = useState<number>(0)
-    let diffFromPreviousAnimation = useRef<number>(0)
+    const containerWidth = containerRef.current.clientWidth;
+    const trackWidth = trackRef.current.scrollWidth;
     
-
-    useEffect(()=>{
-        window.addEventListener("resize", calculateStep);
-        calculateStep();
-        return () => {
-          window.removeEventListener("resize", calculateStep);
-        };
-    },[content])
-
-    function calculateStep(){
-        if(slider.current && mainContainer.current){
-            let wrapperWidth =  mainContainer.current.clientWidth
-            let sliderWidth =  slider.current.scrollWidth
-            unseenWidth.current = sliderWidth - wrapperWidth
-            let elemWidth = Math.floor(sliderWidth/content.length)
-            let fullContentInSlider = Math.floor(wrapperWidth/elemWidth)
-            let unseenElements= content.length - fullContentInSlider
-            if(unseenElements + 1 < currentStep.current){
-                currentStep.current = unseenElements + 1
-            }
-            step.current = (sliderWidth-wrapperWidth)/unseenElements
-            setSliderPosition(-(currentStep.current-1)*step.current)
-            setStepCount(unseenElements+1)
-        }
-        return 0
+    if (
+      dimensions.containerWidth === containerWidth && 
+      dimensions.trackWidth === trackWidth
+    ) {
+      return;
     }
 
+    const itemWidth = trackWidth / content.length;
+    const visibleItems = Math.floor(containerWidth / itemWidth);
+    const hiddenItems = Math.max(0, content.length - visibleItems);
+    const newTotalSteps = Math.max(1, hiddenItems + 1);
+    const newStepSize = hiddenItems > 0 
+      ? (trackWidth - containerWidth) / hiddenItems 
+      : 0;
+    
+    setDimensions({
+      stepSize: newStepSize,
+      totalSteps: newTotalSteps,
+      containerWidth,
+      trackWidth
+    });
 
-    function sliderAnimate(duration: number, stepDiff:number) {
-        let start = performance.now();
+    onChange?.(newTotalSteps);
+  }, [content.length, dimensions, onChange]);
 
-        reqFrame.current = requestAnimationFrame(function animate(time) {
-            let timePass = (time - start) / 1000
-        
-            let progress = timePass / duration
-            setSliderPosition((step.current*stepDiff + diffFromPreviousAnimation.current)*progress + sliderPosition)
-            if (progress < 1) {
-                reqFrame.current = requestAnimationFrame(animate);
-            } 
-            else{
-                animating.current = false 
-                return
-            }
-        });
+  // Оптимизированная версия с requestAnimationFrame
+  const debouncedCalculateDimensions = useCallback(() => {
+    if (animationFrameId.current) {
+      cancelAnimationFrame(animationFrameId.current);
+    }
+    
+    animationFrameId.current = requestAnimationFrame(() => {
+      calculateDimensions();
+    });
+  }, [calculateDimensions]);
+
+  // Обновление позиции при изменении currentStep
+  useEffect(() => {
+    const newPosition = -(currentStep - 1) * dimensions.stepSize;
+    setInternalPosition(newPosition);
+  }, [currentStep, dimensions.stepSize]);
+
+  // Инициализация ResizeObserver
+  useEffect(() => {
+    debouncedCalculateDimensions();
+    
+    if (!resizeObserverRef.current) {
+      resizeObserverRef.current = new ResizeObserver(debouncedCalculateDimensions);
+    }
+    
+    const container = containerRef.current;
+    if (container) {
+      resizeObserverRef.current.observe(container);
     }
 
-    function moveSlider(page:number){
-        diffFromPreviousAnimation.current = 0;
+    return () => {
+      if (resizeObserverRef.current && container) {
+        resizeObserverRef.current.unobserve(container);
+      }
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
+    };
+  }, [debouncedCalculateDimensions]);
 
-        let stepDiff = currentStep.current - page
-        if(!animating.current){
-            if((stepDiff>0 && currentStep.current>1) || (stepDiff<0 && currentStep.current<stepCount)){
-                animating.current = true
-                currentStep.current = currentStep.current - stepDiff
-                sliderAnimate(2, stepDiff)
-            }
-        }else{
-            let expectedPosition = (currentStep.current-1)*step.current
-            if(slider.current){
-                diffFromPreviousAnimation.current = -expectedPosition -sliderPosition
-            }
-            currentStep.current = currentStep.current - stepDiff
-            cancelAnimationFrame(reqFrame.current)
-            sliderAnimate(2, stepDiff)
-        }
-    }
+  // Стиль трека
+  const trackStyle = useMemo((): CSSProperties => ({
+    display: 'flex',
+    transform: `translateX(${internalPosition}px)`,
+    transition: `transform ${transitionDuration}ms ease-out`,
+    willChange: 'transform',
+    justifyContent:"space-between"
+  }), [internalPosition, transitionDuration]);
 
+  // Стиль контейнера
+  const containerStyle: CSSProperties = useMemo(() => ({
+    overflow: 'hidden',
+    width: '100%',
+    position: 'relative',
+    height: '100%'
+  }), []);
 
-    return (
-        <div ref={mainContainer} style={{overflow:"hidden", width: "100%" }}>
-            <div className= {className} ref={slider} style={{left:sliderPosition+"px",display:"flex", position:"relative" }}>
-               {content}
-            </div>
-            <PageController currentPosition={currentStep.current} positions={stepCount} callback={moveSlider}/>
-        </div>
-    )
-}
+  return (
+    <div ref={containerRef} style={containerStyle}>
+      <div
+        ref={trackRef}
+        className={className}
+        style={trackStyle}
+      >
+        {content}
+      </div>
+    </div>
+  );
+};
 
-
-export default ContentSlider
+export default ContentSlider;

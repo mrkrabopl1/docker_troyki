@@ -1,31 +1,31 @@
-import React, { useRef, useState } from 'react'
+import React, { useCallback,memo } from 'react';
 
-
-interface IList {
-    rows:string[] ;
-    onChange:(data:String)=>any;
-    className?:string
+interface ListProps {
+    rows: string[];
+    onChange: (data: string) => void;
+    className?: string;
 }
 
-const proxyClick=function(e:React.MouseEvent,clickMethod:(e:React.MouseEvent)=>any){
-    e.stopPropagation();
-    clickMethod(e)
-}
-
-
-const List:  React.FC<IList> = ({ rows,onChange,className }) => {
+const List: React.FC<ListProps> = ({ rows, onChange, className = '' }) => {
+    const handleRowClick = useCallback((row: string) => (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onChange(row);
+    }, [onChange]);
 
     return (
-        <div>
-            {
-                rows.map(row=>{
-                    return <div className={className} onClick={onChange(row)}>
-                        {row}
-                    </div>
-                })
-            }
+        <div role="list">
+            {rows.map((row, index) => (
+                <div 
+                    key={`${row}-${index}`}
+                    className={className} 
+                    onClick={handleRowClick(row)}
+                    role="listitem"
+                >
+                    {row}
+                </div>
+            ))}
         </div>
-    )
-}
+    );
+};
 
-export default List
+export default memo(List);

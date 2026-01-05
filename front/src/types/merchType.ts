@@ -1,3 +1,3 @@
-type merchType = {size:string,price:number,availability:boolean,discount?:number}
+type merchType = {[key:string]:{price:number,availability:boolean,discount?:number,in_stock:boolean}}
 
 export default merchType

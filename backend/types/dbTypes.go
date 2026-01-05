@@ -6,29 +6,35 @@ import (
 	"github.com/lib/pq"
 )
 
-type SnickersFilterStruct struct {
-	Firms []string  `json:"firms"`
-	Sizes []string  `json:"sizes"`
-	Price []float32 `json:"price"`
+type ProductsFilterStruct struct {
+	Firms       []string  `json:"firms"`
+	Sizes       []string  `json:"sizes"`
+	Price       []float32 `json:"price"`
+	Types       []int32   `json:"types"`
+	Bodytypes   []string  `json:"bodytypes"`
+	InStore     bool      `json:"store"`
+	HasDiscount bool      `json:"discount"`
+	WithPrice   bool      `json:"withPrice"`
 }
 type MainPage struct {
 	Text    string `db:"maintext"`
 	SubText string `db:"subtext"`
 	Image   string `db:"imagepath"`
 }
-type SnickersInfo struct {
+type ProductsInfo struct {
 	Name       string  `db:"name"`
 	Image_path string  `db:"image_path"`
 	Info       string  `db:"info"`
 	Discount   *string `db:"value"`
 }
-type SnickersSearch struct {
+type ProductsSearch struct {
 	Name       string `db:"name"`
 	Image_path string `db:"image_path"`
 	Id         int16  `db:"id"`
 	Firm       string `db:"firm"`
 	Price      int    `db:"minprice"`
 	Discount   *int   `db:"maxdiscprice"`
+	TotalCount int64  `json:"total_count"`
 }
 type FirmsResult struct {
 	Firm        string         `db:"firm"`
@@ -48,15 +54,14 @@ type SnickersLine struct {
 	Discount   *string        `db:"value"`
 }
 type SnickersPageAndFilters struct {
-	SnickersPageInfo []SnickersSearch
+	ProductsPageInfo []ProductsSearch
 	PageSize         int
 	Filter           Filter
 }
-type SnickersPage struct {
-	SnickersPageInfo []SnickersSearch
+type ProductsPage struct {
+	ProductsPageInfo []ProductsSearch
 	PageSize         int
 }
-
 type SizeFilter struct {
 	C1  int `json:"3.5" db:"name_data2"`
 	C2  int `json:"4" db:"name_data3"`
@@ -155,7 +160,8 @@ type OrderData struct {
 	OrderId      int
 }
 type ProductsInsert struct {
-	Size      string `db:"size"`
-	Quantity  int    `db:"quantity"`
-	Productid int    `db:"productid"`
+	Size        string `db:"size"`
+	Quantity    int    `db:"quantity"`
+	Productid   int    `db:"productid"`
+	ProductType int    `db:"producttype"`
 }

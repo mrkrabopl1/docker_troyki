@@ -15,7 +15,7 @@ type SnickersResponse struct {
 	Image []string `json:"imgs"`
 }
 
-type SnickersResponseDD struct {
+type ProductsResponseDD struct {
 	Name     string      `json:"name"`
 	Id       int32       `json:"id"`
 	Image    []string    `json:"imgs"`
@@ -23,13 +23,13 @@ type SnickersResponseDD struct {
 	Price    int         `json:"price"`
 }
 
-type SnickersInfoResponse struct {
+type ProductsInfoResponse struct {
 	Name     string      `json:"name"`
 	Image    []string    `json:"imgs"`
 	Info     string      `json:"info"`
 	Discount interface{} `json:"discount"`
 }
-type SnickersSearchResponse struct {
+type ProductsSearchResponse struct {
 	Name  string `json:"name"`
 	Image string `json:"img"`
 	Firm  string `json:"firm"`
@@ -37,15 +37,26 @@ type SnickersSearchResponse struct {
 	Id    int    `json:"id"`
 }
 
-type SnickersSearchResponse1 struct {
-	Name     string      `json:"name"`
-	Image    []string    `json:"imgs"`
-	Firm     string      `json:"firm"`
-	Price    int         `json:"price"`
-	Id       int         `json:"id"`
-	Discount interface{} `json:"discount"`
+type ProductsSearchResponse1 struct {
+	Name       string      `json:"name"`
+	Image      []string    `json:"imgs"`
+	Firm       string      `json:"firm"`
+	Price      int         `json:"price"`
+	Id         int         `json:"id"`
+	Discount   interface{} `json:"discount"`
+	TotalCount int64       `json:"total_count"`
+	Article    string      `json:"article"`
 }
-
+type MerchSearchResponse struct {
+	Name       string      `json:"name"`
+	Image      []string    `json:"imgs"`
+	Firm       string      `json:"firm"`
+	Price      int         `json:"price"`
+	Id         int         `json:"id"`
+	Type       int32       `json:"productType"`
+	Discount   interface{} `json:"discount"`
+	TotalCount int64       `json:"total_count"`
+}
 type FiltersSearchResponse struct {
 	FirmsCount map[string]int `json:"firmsCount"`
 	Price      [2]int         `json:"price"`
@@ -57,7 +68,7 @@ type MainPageResp struct {
 	SubText  string `json:"subText"`
 	Image    string `json:"img"`
 }
-type SnickersResponseD struct {
+type ProductsResponseD struct {
 	Name     string      `json:"name"`
 	Id       int32       `json:"id"`
 	Image    []string    `json:"imgs"`
@@ -66,12 +77,12 @@ type SnickersResponseD struct {
 type CartResponse struct {
 	Name     string `json:"name"`
 	Image    string `json:"img"`
-	Id       int    `json:"id"`
+	Id       int32  `json:"id"`
 	Size     string `json:"size"`
-	Quantity int    `json:"quantity"`
-	Price    int    `json:"price"`
+	Quantity int32  `json:"quantity"`
+	Price    int32  `json:"price"`
 	Firm     string `json:"firm"`
-	PrId     int    `json:"prid"`
+	PrId     int32  `json:"prid"`
 }
 
 type FullCartRespone struct {
@@ -84,17 +95,17 @@ type PostDataOrdreredSnickersByString struct {
 	Name      string               `json:"name"`
 	Page      int                  `json:"page"`
 	Size      int                  `json:"size"`
-	Filters   SnickersFilterStruct `json:"filters"`
+	Filters   ProductsFilterStruct `json:"filters"`
 	OrderType int                  `json:"orderType"`
 }
-type RespSearchSnickersByString struct {
-	Snickers []SnickersResponseDD `json:"snickers"`
-	Pages    int                  `json:"pages"`
+type RespSearchProductsByString struct {
+	Snickers   []ProductsResponseDD `json:"snickers"`
+	TotalCount float64              `json:"totalCount"`
 }
-type RespSearchSnickersAndFiltersByString struct {
-	Snickers []SnickersResponseDD  `json:"snickers"`
-	Pages    int                   `json:"pages"`
-	Filters  FiltersSearchResponse `json:"filters"`
+type RespSearchProductsAndFiltersByString struct {
+	Snickers   []ProductsResponseDD  `json:"snickers"`
+	TotalCount float64               `json:"totalCount"`
+	Filters    FiltersSearchResponse `json:"filters"`
 }
 type UnregisterCustomerResponse struct {
 	Name       string          `json:"name"`
@@ -105,12 +116,13 @@ type UnregisterCustomerResponse struct {
 }
 
 type AddressTypeResp struct {
-	Town   string `json:"town"`
-	Index  string `json:"index"`
-	Region string `json:"region"`
-	Street string `json:"street"`
-	House  string `json:"house,omitempty"`
-	Flat   string `json:"flat,omitempty"`
+	Town        string   `json:"town"`
+	Index       string   `json:"index"`
+	Region      string   `json:"region"`
+	Street      string   `json:"street"`
+	House       string   `json:"house,omitempty"`
+	Flat        string   `json:"flat,omitempty"`
+	Coordinates []string `json:"coordinates"`
 }
 
 type OrderDataResp struct {
@@ -118,4 +130,5 @@ type OrderDataResp struct {
 	State        string                     `json:"state"`
 	CartResponse FullCartRespone            `json:"cartResponse"`
 	OrderId      int                        `json:"orderId"`
+	Address      AddressTypeResp            `json:"address"`
 }

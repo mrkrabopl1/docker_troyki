@@ -1,56 +1,51 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import PricesBlock from './PricesBlock'
-import s from "./style.module.css"
-import {useAppSelector} from 'src/store/hooks/redux'
-import merchType from 'src/types/merchType'
+import React, { useState, useMemo, memo, useCallback } from 'react';
+import PricesBlock from './PricesBlock';
+import s from "./style.module.css";
+import { useAppSelector } from 'src/store/hooks/redux';
+import merchType from 'src/types/merchType';
 
-
-type MerchType = merchType[]
-type PriceHolderType = {
-    elems: MerchType|null,
-    onChange:(args:any)=>void,
-    activeInd?:number
+type MerchType = merchType;
+interface PriceHolderProps {
+    elems: MerchType | null;
+    onChange: (index: string) => void;
+    activeInd?: number;
 }
 
-const PriceHolder: React.FC<PriceHolderType> = (props) => {
-    
-    let { elems,onChange,activeInd } = { ...props }
+const PriceHolderComponent: React.FC<PriceHolderProps> = ({ 
+    elems, 
+    onChange, 
+    activeInd = 0 
+}) => {
+    const [activeState, setActiveState] = useState<number>(activeInd);
+    const priceState = useAppSelector(state => state.priceReducer);
 
-    let [activeState,setActiveState] = useState<number>(activeInd?activeInd:0)
-    let priceState = useAppSelector(state => state.priceReducer)
+    const handleActiveChange = useCallback((size: string,ind:number) => {
+        onChange(size);
+        setActiveState(ind);
+    }, [onChange]);
 
-    const activeChange= (ind:number)=>{
-        onChange(ind)
-        setActiveState(ind)
-    }
-
-    function setPriceBlocks() {
-        if(elems){
-            let arr = elems.map((val, ind) => {
-                return <PricesBlock key= {val.size}
-                    onChange={()=>activeChange(ind)}
-                    active={activeState === ind}
-                    size={val.size}
-                    price={val.price - val.discount}
-                    discount={val.discount}
-                    id={ind}
-                    />
-            })
-    
-            return arr
-        }
-        return []
-    }
-
+    const priceBlocks = useMemo(() => {
+        if (!elems) return [];
+        
+        return Object.entries(elems).map(([size,val], ind) => (
+            <PricesBlock 
+                key={`${size}-${ind}`} // Более уникальный ключ
+                onChange={() => handleActiveChange(size,ind)}
+                active={activeState === ind}
+                size={size}
+                price={val.price - (val.discount||0)}
+                discount={val.discount}
+                id={ind}
+                in_stock={val.in_stock}
+            />
+        ));
+    }, [elems, activeState, handleActiveChange]);
 
     return (
         <div className={s.priceHolder}>
-            {setPriceBlocks()}
+            {priceBlocks}
         </div>
-    )
+    );
+};
 
-}
-
-
-
-export default PriceHolder
+export default memo(PriceHolderComponent);

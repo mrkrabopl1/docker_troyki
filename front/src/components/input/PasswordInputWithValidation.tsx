@@ -1,79 +1,130 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import { show } from 'src/store/reducers/menuSlice'
-import s from "./style.module.css"
+import React, { useRef, useState, useEffect, useCallback ,useMemo} from 'react';
+import s from "./style.module.css";
 
+type PasswordInputProps = {
+    valid?: boolean;
+    onChange: (value: string) => void;
+    onFocus?: (value: string) => void;
+    onBlur?: (value: string) => void;
+    validRule?: (value: string) => string | null;
+    className?: string;
+    placeholder?: string;
+    value?: string;
+    invalidText: string;
+    showToggle?: boolean;
+};
 
-type propsRowType = {
-    valid: boolean,
-    onChange: (...args: any) => void | null
-    onFocus?: (...args: any) => void
-    onBlur?: (...args: any) => void
-    validRule?: (valid: string) => string
-    className?: string,
-    placeholder?: string,
-    val?: string,
-    invalidText: string,
-    check:boolean
-}
+const PasswordInputWithValidation: React.FC<PasswordInputProps> = ({
+    valid = true,
+    onChange,
+    onFocus,
+    onBlur,
+    validRule,
+    className = '',
+    placeholder = '',
+    value = '',
+    invalidText,
+    showToggle = false
+}) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [inputValue, setInputValue] = useState(value);
+    const [isValid, setIsValid] = useState(valid);
+    const [isVisible, setIsVisible] = useState(false);
+    const errorMessageRef = useRef(invalidText);
+       const hasChange = useRef<boolean>(false);
 
+    // Синхронизация с внешними значениями
+    useEffect(() => {
+        setInputValue(value);
+    }, [value]);
 
-const PasswordInputWithValidation: React.FC<propsRowType> = (props) => {
-    const inputRef = useRef(null)
-    let [typeOfInput, setTypeOfInput] = useState<string>("password")
-    let { onChange, onFocus, onBlur, className, placeholder, val, valid,invalidText,validRule, check } = { ...props }
-    const [valState, setVal] = useState<string>(val ? val : "")
-    const typeImage = useRef<string>("url('/visOff.svg')")
-    const showPass = useRef<boolean>(false)
-    const invalidTextRef = useRef<string>("")
-    let [validState, setValid] = useState<boolean>(true)
-    useEffect(()=>{
-        invalidTextRef.current = invalidText
-        setValid(valid)
-    },[valid])
-
-    const showPassHandle=(show:boolean)=>{
-        showPass.current = show
-        if(!showPass.current){
-            typeImage.current = "url('/visOff.svg')"
-            setTypeOfInput("password")
-        }else{
-            typeImage.current = "url('/visOn.svg')"
-            setTypeOfInput("text")
+    useEffect(() => {
+         if (!hasChange.current && !valid) {
+            hasChange.current = true;
+            return
         }
-    }
+        setIsValid(valid);
+        errorMessageRef.current = invalidText;
+    }, [valid, invalidText]);
+
+    // Обработчики с useCallback
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+          hasChange.current = true;
+        const newValue = e.target.value;
+        setInputValue(newValue);
+        setIsValid(true);
+        onChange(newValue);
+    }, [onChange]);
+
+    const handleFocus = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+        onFocus?.(e.target.value);
+    }, [onFocus]);
+
+    const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+        if (validRule) {
+            const error = validRule(inputValue);
+            if (error) {
+                errorMessageRef.current = error;
+                setIsValid(false);
+            }
+        }
+        onBlur?.(e.target.value);
+    }, [validRule, onBlur, inputValue]);
+
+    const toggleVisibility = useCallback((visible: boolean) => {
+        setIsVisible(visible);
+    }, []);
+
+    // Иконка видимости
+    const visibilityIcon = useMemo(() => (
+        showToggle && (
+            <div 
+                className={s.visibilityToggle}
+                onMouseDown={() => toggleVisibility(true)}
+                onMouseUp={() => toggleVisibility(false)}
+                onMouseLeave={() => toggleVisibility(false)}
+                style={{
+                    backgroundImage: `url('/${isVisible ? 'visOn' : 'visOff'}.svg')`,
+                    width: "24px",
+                    height: "24px",
+                    backgroundSize: "contain"
+                }}
+                aria-label={isVisible ? "Hide password" : "Show password"}
+                role="button"
+            />
+        )
+    ), [showToggle, isVisible, toggleVisibility]);
+
+    // Классы для контейнера
+    const containerClasses = [
+        s.inputPass,
+        className,
+        !isValid && s.invalid
+    ].filter(Boolean).join(' ');
+
     return (
         <div className={s.inputContainer}>
-        <div  style={{ width:"100%",display:"flex", backgroundColor:"white"}}  className={validState ? s.inputPass : s.inputPass + " " + s.invalid}>
-            <input 
-                value={valState}
-                placeholder={placeholder ? placeholder : ""}
-                style={{height:"24px", width: "100%", backgroundColor:"",
-                outline:" none", border:"none"  }}
-                ref={inputRef}
-                type={typeOfInput}
-                onChange={(e) => {
-                    setValid(true)
-                    onChange(e.target.value)
-                    setVal(e.target.value)
-                }}
-                onFocus={(e) => { if (onFocus) { onFocus(e.target.value) } }}
-                onBlur={(e) => {
-                      if(validRule)  {
-                        let invalidMessage = validRule(valState)
-                        if(invalidMessage){
-                            invalidTextRef.current = invalidMessage
-                            setValid(false)
-                        }
-                      }
-                     if (onBlur) { onBlur(e.target.value) } }
-                    } 
-            />
-           {check?<div onMouseOut={()=>showPassHandle(false)} onMouseUp={()=>showPassHandle(false)} onMouseDown={()=>showPassHandle(true)} style={{backgroundImage:typeImage.current, width:"24px", height:"24px", margin:"auto" , backgroundSize:"contain"} }></div>:null} 
+            <div className={containerClasses} style={{ width: "100%", display: "flex", backgroundColor: "white" }}>
+                <input 
+                    ref={inputRef}
+                    value={inputValue}
+                    placeholder={placeholder}
+                    className={s.passwordInput}
+                    type={isVisible ? "text" : "password"}
+                    onChange={handleChange}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                    aria-invalid={!isValid}
+                />
+                {visibilityIcon}
+            </div>
+            {!isValid && (
+                <div className={s.errorMessage} style={{ color: "red" }}>
+                    {errorMessageRef.current}
+                </div>
+            )}
         </div>
-           {!validState ? <label style={{ color: "red" }}>{invalidTextRef.current}</label> : null}
+    );
+};
 
-        </div>
-    )
-}
-
-export default PasswordInputWithValidation
+export default React.memo(PasswordInputWithValidation);

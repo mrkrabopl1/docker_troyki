@@ -1,79 +1,111 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import s from "./style.module.css";
 
-import s from "./style.module.css"
+type MailInputProps = {
+    valid?: boolean;
+    invalidText?: string;
+    onChange: (value: string | null) => void;
+    onFocus?: (value: string) => void;
+    onBlur?: (value: string) => void;
+    className?: string;
+    invalidClassName?: string;
+    placeholder?: string;
+    value?: string;
+};
 
-type propsRowType = {
-    valid: boolean,
-    invalidText: string,
-    onChange: (...args: any) => void | null
-    onFocus?: (...args: any) => void
-    onBlur?: (...args: any) => void
-    className?: string,
-    invalidClassName?: string,
-    placeholder?: string,
-    val?: string
-}
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const validRuleForMail = (data: string) => {
-    var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(data)
-}
+const validateEmail = (email: string): boolean => EMAIL_REGEX.test(email);
 
-const MailInputWithValidation: React.FC<propsRowType> = (props) => {
-    const inputRef = useRef(null)
-    let { onChange, onFocus, onBlur, className, placeholder, val, valid, invalidText, invalidClassName } = { ...props }
-    const invalidTextRef = useRef<string>("")
-    useEffect(()=>{
-        invalidTextRef.current = invalidText
-        setValid(valid)
-    },[valid])
-    useEffect(()=>{
-       setVal(val)
-    },[val])
-    const startValidationOnBlur = useRef<boolean>(false)
-    let [validState, setValid] = useState<boolean>(true)
-    const [valState, setVal] = useState<string>(val ? val : "")
+const MailInputWithValidation: React.FC<MailInputProps> = ({
+    valid = true,
+    invalidText = 'Введите корректный email',
+    onChange,
+    onFocus,
+    onBlur,
+    className = '',
+    invalidClassName = '',
+    placeholder = '',
+    value = ''
+}) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [inputValue, setInputValue] = useState(value);
+    const [isValid, setIsValid] = useState(valid);
+    const shouldValidate = useRef(false);
+    const hasChange = useRef<boolean>(false);
+
+    // Синхронизация с внешними значениями
+    useEffect(() => {
+        setInputValue(value);
+    }, [value]);
+
+    useEffect(() => {
+        if (!hasChange.current && !valid) {
+            hasChange.current = true;
+            return
+        }
+        setIsValid(valid);
+    }, [valid]);
+
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const newValue = e.target.value;
+        setInputValue(newValue);
+        setIsValid(true);
+        hasChange.current = true;
+        shouldValidate.current = true;
+        onChange(validateEmail(newValue) ? newValue : null);
+    }, [onChange]);
+
+    const handleFocus = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+        onFocus?.(e.target.value);
+    }, [onFocus]);
+
+    const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+        if (shouldValidate.current) {
+            const isValidEmail = validateEmail(e.target.value);
+            setIsValid(isValidEmail);
+            onBlur?.(e.target.value);
+        }
+    }, [onBlur]);
+
+    const focusInput = useCallback(() => {
+        inputRef.current?.focus();
+    }, []);
+
+    const inputClasses = [
+        s.inputWithLabel,
+        className,
+        !isValid && (invalidClassName || s.invalid)
+    ].filter(Boolean).join(' ');
+
     return (
         <div className={s.inputContainer}>
             <input
-                value={valState}
-                style={{ boxSizing: 'border-box', width: "100%" }}
-                className={validState ? s.inputWithLabel : s.inputWithLabel + " " + s.invalid}
                 ref={inputRef}
-                placeholder=''
-                type='email'
-                onChange={(e) => {
-                    setValid(true)
-                    if (onChange) {
-                        startValidationOnBlur.current = true
-                        if(validRuleForMail(e.target.value)){
-                            onChange(e.target.value)
-                        }else{
-                            onChange(null)
-                        }
-                        setVal(e.target.value)
-                    }
-                }}
-                onFocus={(e) => { if (onFocus) { onFocus(e.target.value) } }}
-                onBlur={(e) => { 
-                    if(startValidationOnBlur.current){
-                        let valid = validRuleForMail(valState)
-                        if(!valid){
-                            invalidTextRef.current = "Введите корректный mail"
-                            setValid(false)
-                        }
-                        if (onBlur) { 
-                        onBlur(e.target.value)
-                    }
-                 } }}
+                value={inputValue}
+                className={isValid ? s.inputWithLabel : s.inputWithLabel + " " + s.invalid}
+                style={{ boxSizing: 'border-box', width: "100%" }}
+                type="email"
+                placeholder=""
+                onChange={handleChange}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
                 required
+                aria-invalid={!isValid}
             />
+            {placeholder && (
+
             <label onClick={
                 () => inputRef.current && inputRef.current.focus()
             } className={s.label}>{placeholder}</label>
-            {!validState ? <label style={{ color: "red" }}>{invalidTextRef.current}</label> : null}
+            )}
+            {!isValid && (
+                <div className={s.errorMessage} style={{ color: "red" }}>
+                    {invalidText}
+                </div>
+            )}
         </div>
-    )
-}
+    );
+};
 
-export default MailInputWithValidation
+export default React.memo(MailInputWithValidation);

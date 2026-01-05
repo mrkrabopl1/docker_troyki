@@ -1,55 +1,50 @@
-import React, { useEffect, ReactElement, useState, useRef, memo, useCallback } from 'react'
-import DynamicElement from "src/components/dynamicElement/DynamicElement"
-import s from './style.module.css'
-import DoubleInfoDrop from 'src/components/doubleInfoDrop/DoubleInfoDrop'
-type propsRowType = {
-    propsData: any,
-    componentName: string,
+import React, { memo, useCallback } from 'react';
+import s from './style.module.css';
+import DoubleInfoDrop from 'src/components/doubleInfoDrop/DoubleInfoDrop';
+
+interface FilterItem {
+    name: string;
+    component: React.ReactElement;
 }
 
-interface settingModuleInterface {
-    filters: [{
-        name: string,
-        component: ReactElement
-    }],
-    memo?: boolean,
-    onChange?: (arg: any) => void
+interface SettingsModuleProps {
+    filters: FilterItem[];
+    memo?: boolean;
+    onChange?: (arg: { name: string; data: any }) => void;
     classNames?: {
-        secondPage?: string
-        mainForm?: string
-    }
+        secondPage?: string;
+        mainForm?: string;
+    };
 }
 
-type dataType = { price: number[], sizes: number[] }
-const SettingsModule: React.FC<settingModuleInterface> = (props) => {
-    let { filters, onChange, classNames } = { ...props }
+const SettingsModule: React.FC<SettingsModuleProps> = memo(({ 
+    filters, 
+    onChange, 
+    classNames 
+}) => {
+    const handleChange = useCallback((name: string, data: any) => {
+        onChange?.({ name, data });
+    }, [onChange]);
 
+    const renderFilter = useCallback((filter: FilterItem) => {
+        // Clone the element and add onChange prop
+        const enhancedComponent = React.cloneElement(filter.component, {
+            ...filter.component.props,
+            onChange: (data: any) => handleChange(filter.name, data)
+        });
 
-
-    const onChangeMain = (name:string,data: any) => {
-       
-        let obj = {
-            name: name,
-            data: data
-        }
-        onChange && onChange(obj)
-    }
+        return (
+            <DoubleInfoDrop key={filter.name} info={filter.name}>
+                {enhancedComponent}
+            </DoubleInfoDrop>
+        );
+    }, [handleChange]);
 
     return (
-
         <div className={s.wrapper}>
-
-                {filters.map((el)=>{
-                     return <DoubleInfoDrop info = {el.name}>{el.component}</DoubleInfoDrop>
-                    // return <DoubleInfoDrop info = {el.name}><DynamicElement onChange={onChangeMain.bind(null, el.name)} {...el.componentInfo} /></DoubleInfoDrop>
-                })}
+            {filters.map(renderFilter)}
         </div>
+    );
+}, (prevProps, nextProps) => prevProps.memo === nextProps.memo);
 
-    )
-}
-
-
-function checkMemo(oldData: any, newData: any) {
-    return (oldData.memo === newData.memo)
-}
-export default memo(SettingsModule, checkMemo)
+export default SettingsModule;

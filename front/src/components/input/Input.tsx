@@ -1,38 +1,57 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
+import React, { useRef, useState, useCallback, ChangeEvent, FocusEvent,useEffect } from 'react';
 
-type propsRowType = {
-    onChange: (...args: any) => void | null
-    onFocus?: (...args: any) => void
-    onBlur?: (...args: any) => void
-    className?: string,
-    placeholder?: string,
-    val?: string
-}
+type InputProps = {
+    onChange: (value: string) => void;
+    onFocus?: (value: string) => void;
+    onBlur?: (value: string) => void;
+    className?: string;
+    placeholder?: string;
+    value?: string;
+};
 
+const Input: React.FC<InputProps> = ({
+    onChange,
+    onFocus,
+    onBlur,
+    className = '',
+    placeholder = '',
+    value = ''
+}) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [internalValue, setInternalValue] = useState(value);
 
+    // Обновление внутреннего состояния при изменении внешнего value
+    useEffect(() => {
+        setInternalValue(value);
+    }, [value]);
 
-const Input: React.FC<propsRowType> = (props) => {
-    const inputRef = useRef(null)
+    const handleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+        const newValue = e.target.value;
+        setInternalValue(newValue);
+        onChange(newValue);
+    }, [onChange]);
 
-    let { onChange, onFocus, onBlur, className, placeholder, val } = { ...props }
-    const [valState,setVal] = useState<string>(val ? val : "")
+    const handleFocus = useCallback((e: FocusEvent<HTMLInputElement>) => {
+        onFocus?.(e.target.value);
+    }, [onFocus]);
+
+    const handleBlur = useCallback((e: FocusEvent<HTMLInputElement>) => {
+        onBlur?.(e.target.value);
+    }, [onBlur]);
+
     return (
         <input
-            value={valState}
-            placeholder={placeholder ? placeholder : ""}
+            ref={inputRef}
+            value={internalValue}
+            placeholder={placeholder}
             style={{ boxSizing: 'border-box', width: "100%" }}
-            className={className} ref={inputRef}
-            type='text'
-            onChange={(e) => {
-                if (onChange) {
-                    onChange(e.target.value)
-                    setVal( e.target.value)
-                }
-            }}
-            onFocus={(e) => { if (onFocus) { onFocus(e.target.value) } }}
-            onBlur={(e) => { if (onBlur) { onBlur(e.target.value) } }}
+            className={className}
+            type="text"
+            onChange={handleChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
         />
-    )
-}
+    );
+};
 
-export default Input
+export default React.memo(Input);

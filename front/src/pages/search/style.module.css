@@ -1,0 +1,190 @@
+.main{
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+.search{
+     border-radius: 15px;
+       height:35px;
+       width:30%;
+       border: 2px black solid;
+}
+.settings_holder{
+    right: -300px;
+    position: absolute;
+    top: 0;
+    background-color: #fff;
+    z-index: 3;
+    transition:right 0.3s ease-out;
+    width: 300px;
+}
+.filters_holder{
+    left: -300px;
+    position: absolute;
+    top: 0;
+    background-color: #fff;
+    z-index: 3;
+    transition:left 0.3s ease-out;
+    width: 300px;
+}
+
+
+.secondPage{
+    background-color: #fff;
+    padding-right: 10px;
+}
+
+
+.mainInfo{
+        height: calc(100%-200px);
+}
+.settingsBtn {
+    position: absolute;
+    background-color: #fff;
+    border-radius: 8px;
+    top: 0;
+    width: 36px;
+    height: 36px;
+    display: block;
+    left: -36px;
+    background-size: 18px 18px;
+    z-index: 1000;
+     background:no-repeat center url("../../../public/filter.svg");
+    cursor: pointer;
+    border: 1px solid #e0e0e0;
+    transition: 
+        background-color 0.6s ease-in-out,
+        border-color 0.6s ease-in-out,
+        transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+        box-shadow 0.6s ease-in-out;
+    box-shadow: 
+        0 3px 10px rgba(0, 0, 0, 0.12),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+    transform: translateZ(0);
+}
+
+.settings_filters_holder{
+    position:absolute;
+    top: 30px;
+    width: 100%;
+}
+
+.settingsBtn svg {
+    width: 18px !important;
+    height: 18px !important;
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+.settingsBtn:hover {
+    background-color: #000;
+    border-color: #000;
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 
+        0 8px 25px rgba(0, 0, 0, 0.2),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    transition: 
+        background-color 0.6s ease-in-out,
+        border-color 0.6s ease-in-out,
+        transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+        box-shadow 0.6s ease-in-out;
+}
+
+.settingsBtn:active {
+    background-color: #333; /* Темнее при нажатии */
+    border-color: #333;
+    transform: translateY(0) scale(0.98);
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.15),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+    transition: all 0.1s ease;
+}
+
+/* Для плавного изменения цвета SVG иконки */
+.settingsBtn svg {
+    transition: 
+        fill 0.4s ease-in-out,
+        stroke 0.4s ease-in-out;
+}
+
+
+
+.filterBtn {
+    position: absolute;
+    background-color:#fff;
+    border-radius: 3px;
+    top:0;
+    width: 32px;
+    height: 32px;
+    right:-32px;
+    background:no-repeat center url("../../../public/sort.svg");
+    background-size: contain;
+    box-shadow:    0px 0px 10px rgba(5, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.filterBtn {
+    position: absolute;
+    background-color:#fff;
+    border-radius: 3px;
+    top:0;
+    width: 32px;
+    height: 32px;
+    right:-32px;
+    background:no-repeat center url("../../../public/sort.svg");
+    background-size: contain;
+    box-shadow:    0px 0px 10px rgba(5, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.filterBtn:active, 
+.filterBtn:focus{
+    border: 0;
+  padding: 0;
+}
+.head{
+    padding: 15px;
+    text-align: center;
+    font-size: 20px;
+}
+.emptyRow{
+    padding: 15px;
+    text-align: center;
+}
+
+.searchInput{
+    padding:10px;
+    border: solid 1px black;
+    width: 35%;
+  }
+  
+  @media (min-width: 600px) {
+    .complexVertical{
+      display: none;
+    }
+    .searchInput{
+    
+      width: 55%;
+    }
+    .drop_list{
+    
+      width: 30%;
+      top:100%;
+      border: solid 1px black;
+      z-index: 100;
+     
+    }
+    
+  }
+
+
+  .gridSwitcher{
+    position: "absolute";
+    top: "100%"; 
+    width: "50px";
+    background-color: transparent;
+    height: "50px" 
+  }

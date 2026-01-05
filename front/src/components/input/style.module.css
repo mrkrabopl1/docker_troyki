@@ -5,6 +5,14 @@
     padding: 7px 0;
     background: transparent;
     transition: border-color 0.2s;
+    font-size: 18px;
+}
+
+.inputHolder{
+    width:100%;
+    position:relative;
+    padding:15px;
+    margin-top:5px;
 }
 
 .label {

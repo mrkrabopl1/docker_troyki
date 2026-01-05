@@ -13,6 +13,7 @@ import (
 func (store *SQLStore) SetSnickersHistory(ctx context.Context, idSnickers int32, idCustomer int32) error {
 	history, err := store.Queries.SelectHistoryFromUniqueCustomer(ctx, idCustomer)
 	if err != nil {
+		fmt.Println("fdkmlsfknsdkfms")
 		return err
 	}
 	history = append(history, idSnickers)
@@ -33,7 +34,7 @@ func int32SliceToInterface(ids []int32) []interface{} {
 	}
 	return args
 }
-func (store *SQLStore) GetSnickersHistoryComplex(ctx context.Context, idCustomer int32) ([]types.SnickersSearchResponse1, error) {
+func (store *SQLStore) GetSnickersHistoryComplex(ctx context.Context, idCustomer int32) ([]types.ProductsSearchResponse1, error) {
 	history, err := store.Queries.SelectHistoryFromUniqueCustomer(ctx, idCustomer)
 	if err != nil {
 		return nil, err
@@ -46,18 +47,21 @@ func (store *SQLStore) GetSnickersHistoryComplex(ctx context.Context, idCustomer
 			list = append(list, entry)
 		}
 	}
-	snickers, err1 := store.Queries.GetSnickersByIds(ctx, int32SliceToInterface(list))
+	fmt.Println("list", list)
+
+	snickers, err1 := store.Queries.GetProductsByIds(ctx, list)
+	fmt.Println("test1")
 	if err1 != nil {
-		return []types.SnickersSearchResponse1{}, err1
+		return []types.ProductsSearchResponse1{}, err1
 	}
 
-	return NewSnickersSearchResponse5(snickers), nil
+	return NewProductsSearchResponse5(snickers), nil
 }
 
-func NewSnickersSearchResponse5(snickersSearch []GetSnickersByIdsRow) []types.SnickersSearchResponse1 {
+func NewProductsSearchResponse5(ProductsSearch []GetProductsByIdsRow) []types.ProductsSearchResponse1 {
 
-	list := []types.SnickersSearchResponse1{}
-	for _, info := range snickersSearch {
+	list := []types.ProductsSearchResponse1{}
+	for _, info := range ProductsSearch {
 		var imgArr []string
 		for i := 1; i < 3; i++ {
 			str := "images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
@@ -69,13 +73,14 @@ func NewSnickersSearchResponse5(snickersSearch []GetSnickersByIdsRow) []types.Sn
 		} else {
 			discount = nil
 		}
-		list = append(list, types.SnickersSearchResponse1{
+		list = append(list, types.ProductsSearchResponse1{
 			Image:    imgArr,
-			Price:    100, //int(info.Minprice),
-			Id:       int(info.ID),
+			Price:    int(info.Minprice),
+			Id:       int(info.GlobalID),
 			Name:     info.Name,
 			Firm:     info.Firm,
 			Discount: discount,
+			Article:  info.Article,
 		})
 
 	}

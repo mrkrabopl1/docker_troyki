@@ -36,19 +36,19 @@ func (m *MockTaskProcessor) EXPECT() *MockTaskProcessorMockRecorder {
 	return m.recorder
 }
 
-// GetSnickersInfo mocks base method.
-func (m *MockTaskProcessor) GetSnickersInfo(arg0 context.Context, arg1 string) (db.SnickersInfoResponse, error) {
+// GetProductsInfo mocks base method.
+func (m *MockTaskProcessor) GetProductsInfo(arg0 context.Context, arg1 string) (db.ProductsInfoResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSnickersInfo", arg0, arg1)
-	ret0, _ := ret[0].(db.SnickersInfoResponse)
+	ret := m.ctrl.Call(m, "GetProductsInfo", arg0, arg1)
+	ret0, _ := ret[0].(db.ProductsInfoResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetSnickersInfo indicates an expected call of GetSnickersInfo.
-func (mr *MockTaskProcessorMockRecorder) GetSnickersInfo(arg0, arg1 interface{}) *gomock.Call {
+// GetProductsInfo indicates an expected call of GetProductsInfo.
+func (mr *MockTaskProcessorMockRecorder) GetProductsInfo(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSnickersInfo", reflect.TypeOf((*MockTaskProcessor)(nil).GetSnickersInfo), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProductsInfo", reflect.TypeOf((*MockTaskProcessor)(nil).GetProductsInfo), arg0, arg1)
 }
 
 // ProcessTaskSendOrderEmail mocks base method.
@@ -79,18 +79,18 @@ func (mr *MockTaskProcessorMockRecorder) ProcessTaskSendVerifyEmail(arg0, arg1 i
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProcessTaskSendVerifyEmail", reflect.TypeOf((*MockTaskProcessor)(nil).ProcessTaskSendVerifyEmail), arg0, arg1)
 }
 
-// SetSnickersInfo mocks base method.
-func (m *MockTaskProcessor) SetSnickersInfo(arg0 context.Context, arg1 string, arg2 db.SnickersInfoResponse) error {
+// SetProductsInfo mocks base method.
+func (m *MockTaskProcessor) SetProductsInfo(arg0 context.Context, arg1 string, arg2 db.ProductsInfoResponse) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetSnickersInfo", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "SetProductsInfo", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// SetSnickersInfo indicates an expected call of SetSnickersInfo.
-func (mr *MockTaskProcessorMockRecorder) SetSnickersInfo(arg0, arg1, arg2 interface{}) *gomock.Call {
+// SetProductsInfo indicates an expected call of SetProductsInfo.
+func (mr *MockTaskProcessorMockRecorder) SetProductsInfo(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSnickersInfo", reflect.TypeOf((*MockTaskProcessor)(nil).SetSnickersInfo), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetProductsInfo", reflect.TypeOf((*MockTaskProcessor)(nil).SetProductsInfo), arg0, arg1, arg2)
 }
 
 // Shutdown mocks base method.

@@ -1,0 +1,99 @@
+import React, { useState, useRef, useCallback, useMemo, ReactElement } from 'react';
+import s from "./style.module.css";
+import { useAppDispatch } from 'src/store/hooks/redux';
+import { complexDropSlice } from 'src/store/reducers/complexDropSlice';
+import ContentSliderWithSwitcherForShift from '../contentSlider/ContentSliderWithSwitcherForShift';
+type DataInterface = {[key:string]:{
+    main:ReactElement,
+    subs:string[],
+}
+}
+
+type ChangeType = { main?: string; sub?: string };
+
+interface PropsType {
+    data: DataInterface;
+    onChange: (data: ChangeType) => void;
+}
+
+const ComplexDropWithNodes: React.FC<PropsType> = ({ data, onChange }) => {
+    const dispatch = useAppDispatch();
+    const { setName, clear } = complexDropSlice.actions;
+    
+    const inputRefs = useRef<HTMLDivElement[]>([]);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const leftPos = useRef<number>(0);
+    
+    const [showDrop, setShowDrop] = useState(false);
+    const [chosen, setChosen] = useState<string | null>(null);
+
+    // Мемоизированная функция создания контента для основного меню
+    const createMainContent = useCallback(() => {
+        return Object.entries(data).map((val, index) => (
+            <div
+                key={index}
+                onClick={() => onChange({ main: val[0] })}
+                ref={el => {
+                    if (el) inputRefs.current[index] = el;
+                }}
+                className={s.mainElem}
+                onMouseLeave={() => {
+                    setChosen(val[0]);
+                    timeoutRef.current = setTimeout(() => setShowDrop(false), 100);
+                }}
+                onMouseEnter={() => {
+                    if (timeoutRef.current) {
+                        clearTimeout(timeoutRef.current);
+                    }
+                    if (inputRefs.current[index]) {
+                        leftPos.current = inputRefs.current[index].offsetLeft;
+                    }
+                    setChosen(val[0]);
+                    setShowDrop(true);
+                }}
+            >
+                {val[1].main}
+            </div>
+        ));
+    }, [data, onChange]);
+
+    // Мемоизированная функция создания выпадающего контента
+    const createDropContent = useMemo(() => {
+        if (!chosen || !data[chosen] || data[chosen].subs.length <= 1) return null;
+        
+        return data[chosen].subs.map(val => (
+            <div 
+                key={val} 
+                onClick={() => onChange({ sub: val,main:chosen })}
+                className={s.dropItem}
+            >
+                {val.toUpperCase()}
+            </div>
+        ));
+    }, [chosen, data, onChange]);
+
+    // Проверка, нужно ли показывать выпадающее меню
+    const shouldShowDrop = chosen && data[chosen] && data[chosen].subs.length > 1 && showDrop;
+
+    return (
+        <div className={s.complexDrop}>
+            <ContentSliderWithSwitcherForShift className={{holder: s.sliderHolder}} content={createMainContent()} />
+            {shouldShowDrop && (
+                <div
+                    onMouseEnter={() => {
+                        if (timeoutRef.current) {
+                            clearTimeout(timeoutRef.current);
+                        }
+                    }}
+                    onMouseLeave={() => setShowDrop(false)}
+                    style={{ left: `${leftPos.current}px` }}
+                    className={s.dropField}
+                >
+                    {createDropContent}
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default React.memo(ComplexDropWithNodes);

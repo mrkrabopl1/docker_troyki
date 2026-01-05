@@ -40,15 +40,9 @@ INSERT INTO unregistercustomer (
         name,
         secondname,
         mail,
-        phone,
-        town,
-        street,
-        region,
-        index,
-        house,
-        flat
+        phone
     )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+VALUES ($1, $2, $3, $4)
 RETURNING id;
 -- name: GetPassword :one
 SELECT pass
@@ -66,13 +60,7 @@ WHERE mail = $1;
 SELECT name,
     secondname,
     mail,
-    phone,
-    town,
-    street,
-    region,
-    index,
-    house,
-    flat
+    phone
 FROM unregistercustomer
 WHERE id = $1;
 -- name: CheckCustomerExistence :one

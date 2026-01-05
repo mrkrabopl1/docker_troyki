@@ -1,98 +1,114 @@
-import React, {Suspense, useEffect, ReactElement, useState, useRef, memo ,lazy} from 'react'
-
-
-import { useNavigate } from 'react-router-dom';
-import { useParams } from 'react-router-dom';
-import {getUserData} from 'src/providers/userProvider'
-import BuyMerchField from 'src/modules/buyMerchField/BuyMerchField';
-import Input from 'src/components/input/Input';
-import PhoneInputWithValidation from 'src/components/input/PhoneInputWithValidation';
-import Button from 'src/components/Button';
-import UserForm from 'src/modules/sendForm/UserForm';
-import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux'
-import { unlogin } from 'src/providers/userProvider';
+import React, { Suspense, useEffect, useState, useCallback, lazy, memo } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { getUserData, unlogin } from 'src/providers/userProvider'
+import UserForm from 'src/modules/sendForm/UserForm'
+import { useAppDispatch } from 'src/store/hooks/redux'
 import { verified } from 'src/store/reducers/menuSlice'
+import s from "./s.module.css"
+
 const AddressForm = lazy(() => import('src/modules/sendForm/AddressForm'))
 
-import s from "./s.module.css"
-type urlParamsType = {
-    login: string;
-};
-
-type userValType = {
-    name:string,
-    secondName:string,
-    mail:string,
-    address:string,
-    phone:string
+type UrlParamsType = {
+  login: string
 }
 
+type UserValType = {
+  name: string
+  secondName: string
+  mail: string
+  address: string
+  phone: string
+}
 
-const User: React.FC<any> = () => { 
-    let { login } = useParams<urlParamsType>();
-    let dispatch = useAppDispatch()
-    const navigate = useNavigate()
+const UserTabs = memo(({ 
+  activeTab, 
+  onTabChange, 
+  onLogout 
+}: {
+  activeTab: number
+  onTabChange: (tab: number) => void
+  onLogout: () => void
+}) => (
+  <div className={s.tabs}>
+    <div onClick={() => onTabChange(0)}>
+      Инфо
+    </div>
+    <div onClick={() => onTabChange(1)}>
+      Адрес
+    </div>
+    <div onClick={() => onTabChange(1)}>
+      История покупок
+    </div>
+    <div onClick={onLogout}>
+      Выход
+    </div>
+  </div>
+))
 
-    let [tab,setTab] = useState<number>(0)
+const User: React.FC = () => {
+  const { login } = useParams<UrlParamsType>()
+  const dispatch = useAppDispatch()
+  const navigate = useNavigate()
 
-    let [snickers, setSnickers] = useState<any>([])
-    let [redact, setRedact] = useState<boolean>(false)
-    let [userVal, setUserVal] = useState<userValType>({
-        name:"",
-        secondName:"",
-        mail:"",
-        address:"",
-        phone:""
+  const [tab, setTab] = useState(0)
+  const [userVal, setUserVal] = useState<UserValType>({
+    name: "",
+    secondName: "",
+    mail: "",
+    address: "",
+    phone: ""
+  })
+
+  // Загрузка данных пользователя с сохранением callback подхода
+  useEffect(() => {
+    getUserData((data) => {
+      if (data) {
+        setUserVal(prev => ({ ...prev, ...data }))
+      } else {
+        navigate("/main")
+      }
+    })
+  }, [navigate])
+
+  const handleTabChange = useCallback((tabIndex: number) => {
+    setTab(tabIndex)
+  }, [])
+
+  const handleLogout = useCallback(() => {
+    unlogin(() => {
+      navigate("/")
+      dispatch(verified(false))
+    })
+  }, [dispatch, navigate])
+
+  const renderTabContent = useCallback(() => {
+    switch (tab) {
+      case 0:
+        return <UserForm onChange={() => {}} />
+      case 1:
+        return (
+          <Suspense fallback={<div>Загрузка...</div>}>
+            <AddressForm valid={true} onChange={() => {}} />
+          </Suspense>
+        )
+      default:
+        return null
     }
-    )
-    useEffect(() => {
-        getUserData((data)=>{
-            if(data){
-                setUserVal(Object.assign(userVal,data))
-            }else{
-                navigate("/main")
-            }
-        })
-    }, [])
-    return (
-        <div className={s.main}>
+  }, [tab])
 
-            <div className={s.tabs}>
-                <div onClick={()=>{setTab(0)}}>
-                    Инфо
-                </div>
-                <div onClick={()=>{setTab(1)}}>
-                    Аддрес
-                </div>
-                <div onClick={()=>{setTab(1)}}>
-                    История покупок
-                </div>
-                <div onClick={()=>{
-                    unlogin(()=>{
-                        navigate("/")
-                        dispatch(verified(false))
-                    })
-                }}>
-                    Выход
-                </div>
-
-            </div>
-            <div className={s.pages}>
-                { tab === 0 && <UserForm onChange={()=>{}}/>}
-                { tab === 1 &&
-                    <Suspense fallback={<div></div>}>
-                    <AddressForm valid= {true} className={{}} onChange = {()=>{}}/>
-                  </Suspense>
-                }
-            </div>
-        </div>
-    )
+  return (
+    <div className={s.main}>
+      <UserTabs 
+        activeTab={tab} 
+        onTabChange={handleTabChange} 
+        onLogout={handleLogout} 
+      />
+      
+      <div className={s.pages}>
+        {renderTabContent()}
+      </div>
+    </div>
+  )
 }
 
-
-function arePropsEqual(oldProps: any, newProps: any) {
-
-    return (oldProps.memo == newProps.memo)
-}
-
-export default memo(User, arePropsEqual)
+export default memo(User)

@@ -1,33 +1,50 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import check from '../../../public/check.svg'
-import s from "./style.module.css"
+import React, { useState, useEffect, useCallback, memo } from 'react';
+import check from '../../../public/check.svg';
+import s from "./style.module.css";
 
-type propsRowType = {
-    onChange:(...args:any)=>void|null
-    className?:string,
-    enable:boolean,
-    activeData:boolean
+interface CheckboxProps {
+    onChange?: (isActive: boolean) => void;
+    className?: string;
+    enable: boolean;
+    activeData: boolean;
 }
 
+const Checkbox: React.FC<CheckboxProps> = ({
+    onChange = () => {},
+    className = s.checkbox,
+    enable,
+    activeData
+}) => {
+    const [active, setActive] = useState(activeData);
 
+    useEffect(() => {
+        setActive(activeData);
+    }, [activeData]);
 
-const Checkbox: React.FC<propsRowType> = (props) => {
-    let {onChange,className,enable,activeData} = {...props}
-    let [active,setAcive] = useState(activeData)
-    useEffect(()=>{
-        setAcive(activeData)
-    },[activeData])
+    const handleClick = useCallback(() => {
+        if (enable) {
+            const newValue = !active;
+            setActive(newValue);
+            onChange(newValue);
+        }
+    }, [active, enable, onChange]);
+
+    const getStyles = useCallback(() => ({
+        backgroundImage: active && enable ? `url(${check})` : undefined,
+        borderColor: enable ? undefined : 'grey'
+    }), [active, enable]);
+
     return (
-        <div onClick={()=>{
-            if(enable){
-                setAcive(!active)
-                onChange(!active)
-            } }}
-             className={className?className:s.checkbox} 
-             style={{backgroundImage: active&&enable?`url(${check})`:"",borderColor:enable?"":"grey"}}>
+        <div 
+            onClick={handleClick}
+            className={className}
+            style={getStyles()}
+            role="checkbox"
+            aria-checked={active}
+            aria-disabled={!enable}
+            tabIndex={enable ? 0 : undefined}
+        />
+    );
+};
 
-        </div>
-    )
-}
-
-export default Checkbox
+export default memo(Checkbox);

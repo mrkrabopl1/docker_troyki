@@ -43,7 +43,7 @@ const ForgetPass: React.FC<loginFormModuleInterface> = (props) => {
                 <div>Введите свой логин и нажмите "Изменить пароль." Ссылка для изменения пароля будет выслана Вам по почте. </div>
                 {err ? <div>{err}</div> : null}
                 <MailInputWithValidation valid={!validationObject.current.mail} invalidText={"Некректный mail"} onChange={(data) => { setMail(data) }} placeholder={"Электронный адрес"} />
-                <Button className={s.loginButton} onChange={() => {
+                <Button className={s.loginButton} onClick={() => {
                     updatePass(mail, (data) => {
                         switch (data.data) {
                             case 0:
