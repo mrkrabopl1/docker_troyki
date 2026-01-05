@@ -116,7 +116,7 @@ const ComplexDropVertical: React.FC<propsType> = (props) => {
                 <Scroller className={s.scrollStyle}>
                     <div onClick={()=>{
                         setShowDrop(false)
-                    }} className={"flex " + s.backPointer}> <ArrowLeft fill="gray"/>{chosen.current}</div>
+                    }} className={"flex " + s.backPointer}> {chosen.current}</div>
                     <div >
                         {createDropContent()}
                     </div>
