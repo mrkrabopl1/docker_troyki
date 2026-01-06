@@ -1,7 +1,7 @@
 package types
 
 type DeleteCartData struct {
-	PreorderId int32 `json:"preorderid"`
+	PreorderId int32 `json:"preorderId"`
 }
 type PreorderType struct {
 	Id          int32  `json:"id"`

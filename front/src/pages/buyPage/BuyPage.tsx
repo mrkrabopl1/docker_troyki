@@ -1,13 +1,15 @@
-import React, { useEffect, useState, memo } from 'react';
+import React, { useEffect, useState, memo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux';
-import { getCartData } from 'src/providers/shopProvider';
+import { getCartData, deleteCartData } from 'src/providers/shopProvider';
 import { getCookie } from 'src/global';
+import { cartCountAction } from 'src/store/reducers/menuSlice';
 import { toPrice } from 'src/global';
 import { createPreorder, updatePreorder } from 'src/providers/orderProvider';
 import MerchTable from 'src/modules/merchField/MerchTable';
 import Button from 'src/components/Button';
 import s from "./style.module.css";
+import MerchBuyField from 'src/modules/merchField/MerchBuyField';
 
 interface CartItem {
     id: number;
@@ -18,6 +20,12 @@ interface CartItem {
     sizes: {
         [key: string]: number;
     };
+}
+
+interface UpdateData {
+    id: number;
+    size: string;
+    dif: number;
 }
 
 const BuyPage: React.FC = memo(() => {
@@ -44,8 +52,47 @@ const BuyPage: React.FC = memo(() => {
     }, [cart, hasItems]);
 
     const handleCheckout = () => {
-       navigate("/form/" + cart)
+        navigate("/form/" + cart)
     };
+
+    const deleteProductHandler = useCallback((ind, productId, quantity) => {
+        deleteCartData(productId, () => {
+            dispatch(cartCountAction(cartCount - quantity));
+            const newTableData = [...tableData];
+            newTableData.splice(ind, 1);
+            setTableData(newTableData);
+        });
+    }, [cartCount, dispatch, tableData]);
+    // Используем useCallback чтобы функция не пересоздавалась и имела актуальные зависимости
+    const updateCount = useCallback((data: UpdateData) => {
+        const cart = getCookie("cart");
+        updatePreorder({
+            id: data.id,
+            size: data.size,
+            hashUrl: cart
+        }, () => {
+            // Получаем актуальное значение cartCount из store
+            const currentCartCount = cartCount;
+            dispatch(cartCountAction(currentCartCount + data.dif));
+
+            // Также обновляем локальное состояние таблицы
+            setTableData(prevData => {
+                const newData = prevData.map(item =>
+                    item.id === data.id
+                        ? { ...item, quantity: Math.max(0, item.quantity + data.dif) }
+                        : item
+                ).filter(item => item.quantity > 0);
+
+                // Пересчитываем общую сумму
+                const newTotal = newData.reduce(
+                    (sum, item) => sum + (item.price * item.quantity), 0
+                );
+                setTotalPrice(newTotal);
+
+                return newData;
+            });
+        });
+    }, [cartCount, dispatch]); // Добавляем зависимости
 
     if (!hasItems) {
         return (
@@ -54,7 +101,7 @@ const BuyPage: React.FC = memo(() => {
                 <Button
                     className={`${s.btn} btnStyle`}
                     text='Продолжить покупки'
-                    onClick={handleCheckout}
+                    onClick={() => navigate('/')} // Исправлено: ведем на главную, а не на форму
                 />
             </div>
         );
@@ -62,22 +109,47 @@ const BuyPage: React.FC = memo(() => {
 
     return (
         <div className={s.main}>
-            <h2>Корзина</h2>
-            <MerchTable tableData={tableData} />
+            <div className={s.headerSection}>
+                <h2 className={s.pageTitle}>Корзина</h2>
+                <div className={s.itemsCount}>{cartCount} товар{cartCount !== 1 ? 'а' : ''}</div>
+            </div>
+
+            <div className={s.tableContainer}>
+                <MerchBuyField onDelete={deleteProductHandler} onChange={updateCount} tableData={tableData} />
+            </div>
 
             <div className={s.summarySection}>
-                <div className={s.fullPrice}>
-                    Промежуточный итог: {toPrice(totalPrice)}
+                <div className={s.summaryCard}>
+                    <div className={s.priceBreakdown}>
+                        <div className={s.priceRow}>
+                            <span>Промежуточный итог:</span>
+                            <span className={s.priceValue}>{toPrice(totalPrice)}</span>
+                        </div>
+                        <div className={s.priceRow}>
+                            <span>Доставка:</span>
+                            <span className={s.deliveryNote}>рассчитывается при оформлении</span>
+                        </div>
+                        <div className={s.divider}></div>
+                        <div className={s.totalRow}>
+                            <span>Общая стоимость:</span>
+                            <span className={s.totalPrice}>{toPrice(totalPrice)}</span>
+                        </div>
+                    </div>
+
+                    <div className={s.taxNote}>
+                        💫 Все налоги и таможенные сборы включены в стоимость
+                    </div>
+
+                    <Button
+                        className={s.checkoutBtn}
+                        text='Перейти к оформлению'
+                        onClick={handleCheckout}
+                    />
+
+                    <div className={s.continueShopping} onClick={() => navigate('/')}>
+                        ← Продолжить покупки
+                    </div>
                 </div>
-                <p>
-                    Все налоги и таможенные сборы включены.<br />
-                    Стоимость доставки рассчитывается на этапе оформления заказа.
-                </p>
-                <Button
-                    className={`${s.btn} btnStyle`}
-                    text='Оформить заказ'
-                    onClick={handleCheckout}
-                />
             </div>
         </div>
     );

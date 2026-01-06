@@ -4,9 +4,10 @@ import ScrollerThumb from './ScrollThubm';
 type ScrollType = {
     className?: string;
     children: React.ReactNode;
+    onlyVertical?: boolean;
 };
 
-const Scroller: React.FC<ScrollType> = ({ className = '', children }) => {
+const Scroller: React.FC<ScrollType> = ({ className = '', children,onlyVertical }) => {
     const [contTop, setContTop] = useState(0);
     const [contLeft, setContLeft] = useState(0);
     const [hasHorizontalScroll, setHasHorizontalScroll] = useState(false);
@@ -126,6 +127,7 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children }) => {
         position: "absolute",
         top: `${contTop}px`,
         left: `${contLeft}px`,
+        width:onlyVertical?"100%":"auto",
     };
 
     return (

@@ -35,21 +35,21 @@
 }
 
 .complexDropVertical {
-    position: absolute;
-   top: 100%;
-    border: 1px solid #e0e0e0;
-    background-color: #ffffff;
-  
-    /* padding:20px; */
-    width:200px;
-    z-index: 201;
-    border-radius: 12px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: absolute;
+  top: 100%;
+  border: 1px solid #e0e0e0;
+  background-color: #ffffff;
+
+  /* padding:20px; */
+  width: 200px;
+  z-index: 201;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media (min-width: 600px) {
- 
+
 
   .drop_list {
     width: 55%;
@@ -57,6 +57,46 @@
     border: solid 1px black;
   }
 
+}
+
+
+.cartModalWrap {
+  position: absolute;
+  right: 0;
+  width: 50%;
+  margin-left: auto;
+  height: 100%
+}
+
+@media (max-width: 1200px) {
+  .cartModalWrap {
+    width: 60%
+  }
+}
+
+@media (max-width: 1000px) {
+  .cartModalWrap {
+    width: 70%
+  }
+}
+
+@media (max-width: 900px) {
+  .cartModalWrap {
+    width: 80%
+  }
+}
+
+@media (max-width: 800px) {
+  .cartModalWrap {
+    width: 90%
+  }
+}
+
+
+@media (max-width: 600px) {
+  .cartModalWrap {
+    width: 100%
+  }
 }
 
 
@@ -196,8 +236,9 @@
   display: flex;
   justify-content: space-between;
 }
+
 @media (max-width:600px) {
- .categoriesContainer{
+  .categoriesContainer {
     display: none;
   }
 }

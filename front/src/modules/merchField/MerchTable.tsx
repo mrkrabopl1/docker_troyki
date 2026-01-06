@@ -1,22 +1,25 @@
 import React, { memo, useMemo, useCallback, useEffect, useRef } from 'react';
-import s from "./style.module.css";
+import s from "./tableStyle.module.css";
 import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux';
 import MerchBuyBlock from './MerchBuyBlock';
 import { deleteCartData } from 'src/providers/shopProvider';
 import { cartCountAction } from 'src/store/reducers/menuSlice';
 import Button from 'src/components/Button';
 import { toPrice } from 'src/global';
-
+import SVGIcon from 'src/components/svgIcon/SvgIcon';
+import NumInputVertical from 'src/components/input/NumInputVertical';
 type TableType = {
     tableData: any[];
+    onChange?: (newTableData: {}) => void;
+    onDelete?: (ind: number, preorder_id:number,quantity:number) => void;
     className?: string;
 };
 
-const MerchTable: React.FC<TableType> = memo(({ tableData, className }) => {
+const MerchTable: React.FC<TableType> = memo(({ tableData, onChange, className,onDelete }) => {
     const dispatch = useAppDispatch();
     const { cartCount } = useAppSelector(state => state.menuReducer);
     const cartCountRef = useRef<number>(cartCount);
-    
+
     // Update ref when cartCount changes
     useEffect(() => {
         cartCountRef.current = cartCount;
@@ -24,14 +27,17 @@ const MerchTable: React.FC<TableType> = memo(({ tableData, className }) => {
 
     // Memoized headers
     const headers = useMemo(() => [
-        <th key="merch" style={{ textAlign: "left" }}>
-            <div><span>Продукт</span></div>
+        <th key="merch" className={s.tableHeader}>
+            <span>Продукт</span>
         </th>,
-        <th key="quantity" style={{ textAlign: "center" }}>
-            <div><span>Количество</span></div>
+        <th key="quantity" className={s.tableHeader}>
+            <span>Количество</span>
         </th>,
-        <th key="price" style={{ textAlign: "right" }}>
-            <div><span>Цена</span></div>
+        <th key="price" className={s.tableHeader}>
+            <span>Цена</span>
+        </th>,
+        <th key="actions" className={s.tableHeader}>
+            <span>Действия</span>
         </th>
     ], []);
 
@@ -47,48 +53,52 @@ const MerchTable: React.FC<TableType> = memo(({ tableData, className }) => {
     // Memoized table rows
     const tableRows = useMemo(() => {
         return tableData.map((el, ind) => (
-            <tr key={`${el.id}-${ind}`}>
-                <td style={{ width: "60%" }}>
-                    <MerchBuyBlock 
-                        onChange={() => {}} 
-                        data={{ 
-                            id: el.id, 
-                            firm: el.firm, 
-                            price: el.size, 
-                            name: el.name, 
-                            imgs: el.img 
-                        }} 
+            <tr key={`${el.id}-${ind}`} className={s.tableRow}>
+                <td className={s.productCell}>
+                    <MerchBuyBlock
+                        onChange={() => { }}
+                        data={{
+                            id: el.id,
+                            firm: el.firm,
+                            price: el.size,
+                            name: el.name,
+                            imgs: el.img
+                        }}
                     />
                 </td>
-                <td style={{ textAlign: "center" }}>{el.quantity}</td>
-                <td style={{ textAlign: "right" }}>{toPrice(el.price * el.quantity)}</td>
-                <td style={{ textAlign: "center" }}>
-                    <Button 
-                        onClick={() => handleUpdateList(ind, el.prid, el.quantity)} 
-                        className={s.deleteBtn} 
-                    />
+                <td className={s.quantityCell}>
+                    <NumInputVertical value={el.quantity} onChange={(newQuantity) => {
+                        onChange({
+                            id: el.id,
+                            size: el.size,
+                            dif: newQuantity - el.quantity,
+                        })
+                    }} />
+                </td>
+                <td className={s.priceCell}>
+                    <span className={s.priceValue}>{toPrice(el.price * el.quantity)}</span>
+                </td>
+                <td className={s.actionsCell}>
+                    <div onClick={() => onDelete(ind, el.preorder_id, el.quantity)}
+                        className={s.deleteBtn}>
+                        <SVGIcon spritePath="bin" />
+                    </div>
                 </td>
             </tr>
         ));
     }, [tableData, handleUpdateList]);
 
     return (
-        <table 
-            className={className} 
-            style={{
-                borderCollapse: 'collapse',
-                borderSpacing: '0px',
-                width: "100%",
-                textAlign: "left"
-            }}
-        >
-            <thead>
-                <tr>{headers}</tr>
-            </thead>
-            <tbody>
-                {tableRows}
-            </tbody>
-        </table>
+        <div className={s.tableContainer}>
+            <table className={`${s.merchTable} ${className}`}>
+                <thead>
+                    <tr className={s.tableHeaderRow}>{headers}</tr>
+                </thead>
+                <tbody>
+                    {tableRows}
+                </tbody>
+            </table>
+        </div>
     );
 });
 

@@ -1,126 +1,167 @@
-$size: 200px;
-$sizeDef: 90px;
-$thickness: 2px;
-$angle: 40deg;
-$angleHover: 30deg;
-$angleActive: 25deg;
-
-@mixin arrowTransform($angle, $x: 0, $y: 0) {
-    i:first-child {
-        transform: translate($x, $y ) rotate($angle );
-    }
-
-    i:last-child {
-        transform: translate($x, -$y ) rotate(-$angle );
-    }
-}
-
-.default {
+.arrowMain{
+    position: absolute;
+    right: 0;
+    padding-right: 5px; 
+    transition:transform 0.5s;
     cursor: pointer;
-    border-radius: 50%;
     width: 25px;
-    height: 25px;
-    background-color: bisque;
+    height: 10px;
 }
 
-button {
-    -webkit-appearance: none;
-    background: transparent;
-    border: none;
-    outline: 0;
-}
-
-.paginate {
+.arrowLeft {
     position: absolute;
-    -webkit-appearance: none;
-    background: transparent;
-    border: none;
-    outline: 0;
-    cursor: pointer;
-    transform: translate3d(0, 0, 0); // fixes flicker in webkit
-    top: 0;
-    bottom: 0;
-    margin: auto;
-}
-
-.buttonStyle {
-
-    width: 30px;
-    height: 30px;
-    margin: 0 5px;
-    border-radius: 3px;
-    border: solid 2px rgb(35, 28, 28);
-    box-shadow: inset 0 0 2px #040300;
-    box-sizing: border-box;
-}
-
-
-.spanStyle {
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    position: absolute;
-    margin: auto
-}
-
-
-
-
-
-.left {
-   i {
-        transform-origin: 0% 50%
-    }
-
-}
-
-.left:hover {
-    @include arrowTransform($angleHover, 0, 0px);
-}
-
-.letft:active {
-    @include arrowTransform($angleHover, 0px, 0px);
-}
-
-.right {
-    i {
-        transform-origin: 100% 50%
-    }
-}
-
-
-@include arrowTransform($angle, 0, 0px);
-
-.right:hover {
-    @include arrowTransform($angleHover, 0, 0px);
-}
-
-.right:active {
-    @include arrowTransform($angleActive, 0px, 0px);
-}
-
-
-
-
-@include arrowTransform($angle, 0, 0px);
-
-.def {
-    background-color: black;
-    position: absolute;
-    top: 40%;
+    background-color: transparent;
+    top: 8px;
     left: 0;
-    height: $thickness;
-    border-radius: $thickness / 2;
-    transition: all 0.15s ease;
+    width: 12px;
+    height: 3px;
+    display: block;
+    transform: rotate(35deg);
+    float: right;
+    border-radius: 2px;
+}
+.arrowLeft:after {
+    content: "";
+    background-color: #020507;
+    width: 12px;
+    height: 3px;
+    display: block;
+    float: right;
+    border-radius: 3px 5px 5px 3px;
+    transition: all 0.5s cubic-bezier(0.25, 1.7, 0.35, 0.8);
+    z-index: -1;
+}
+ 
+.arrowRight {
+    position: absolute;
+    background-color: transparent;
+    top: 8px;
+    left: 8px;
+    width: 12px;
+    height: 3px;
+    display: block;
+    transform: rotate(-35deg);
+    float: right;
+    border-radius: 2px;
+}
+.arrowRight:after {
+    content: "";
+    background-color: #020507;
+    width: 12px;
+    height: 3px;
+    display: block;
+    float: right;
+    border-radius: 10px 6px 6px 10px;
+    transition: all 0.5s cubic-bezier(0.25, 1.7, 0.35, 0.8);
+    z-index: -1;
+}
+
+.arrowMain:hover .arrowRight:after {
+    transform-origin: center center;
+    transform: rotate(10deg);
+}
+
+.arrowMain:hover .arrowLeft:after {
+    transform-origin: center center;
+    transform: rotate(-10deg);
+}
+
+
+.arrowMain:active .arrowRight:after {
+    transform-origin: center center;
+    transform: rotate(-10deg);
+}
+
+.arrowMain:active .arrowLeft:after {
+    transform-origin: center center;
+   transform: rotate(10deg);
+}
+
+// //////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////
+/// ///////////////////////////////////////////////////////////////////////////////////////////
+/// 
+/// CloseButton styles
+/// 
+/// 
+.closeButton {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  
+  
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 
+      inset 0 1px 2px rgba(255, 255, 255, 0.6),
+      inset 0 -1px 2px rgba(0, 0, 0, 0.03),
+      0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+}
+
+.crossMain {
+  position: relative;
+  width: 40%;
+  height: 40%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.crossLine1,
+.crossLine2 {
+  position: absolute;
+  background-color: transparent;
+  display: block;
+  border-radius: 1px;
+  transition: all 0.3s cubic-bezier(0.25, 1.7, 0.35, 0.8);
+}
+
+.crossLine1:after,
+.crossLine2:after {
+  content: "";
+  background-color: #020507;
+  display: block;
+  border-radius: 2px;
+  transition: all 0.3s cubic-bezier(0.25, 1.7, 0.35, 0.8);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.crossLine1 {
+  transform: rotate(45deg);
+}
+
+.crossLine2 {
+  transform: rotate(-45deg);
+}
+
+/* Hover effects - крестик "расходится" */
+.closeButton:hover .crossLine1 {
+  transform: rotate(40deg);
+}
+
+.closeButton:hover .crossLine2 {
+  transform: rotate(-40deg);
 }
 
 
 
+/* Active effects - крестик "сжимается" */
+.closeButton:active .crossLine1 {
+  transform: rotate(45deg);
+}
 
-//   [data-state=disabled] {
-//     @include arrowTransform( 0deg, -5px, 0 );
+.closeButton:active .crossLine2 {
+  transform: rotate(-45deg);
+}
 
-//     .left:hover {
-//       @include arrowTransform( 0deg, -5px, 0 );
-//     }
-//   }

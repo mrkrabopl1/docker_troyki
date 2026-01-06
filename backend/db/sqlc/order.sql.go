@@ -276,6 +276,7 @@ func (q *Queries) GetPreorderAddressById(ctx context.Context, orderid int32) (Ge
 
 const getPreorderDataById = `-- name: GetPreorderDataById :many
 SELECT 
+    id  as preorder_id,
     ProductId AS id,
     size,
     quantity,
@@ -287,12 +288,13 @@ WHERE orderid = $1
 `
 
 type GetPreorderDataByIdRow struct {
-	ID        int32       `json:"id"`
-	Size      pgtype.Text `json:"size"`
-	Quantity  int32       `json:"quantity"`
-	Price     int32       `json:"price"`
-	ImagePath string      `json:"image_path"`
-	Name      string      `json:"name"`
+	PreorderID int32       `json:"preorder_id"`
+	ID         int32       `json:"id"`
+	Size       pgtype.Text `json:"size"`
+	Quantity   int32       `json:"quantity"`
+	Price      int32       `json:"price"`
+	ImagePath  string      `json:"image_path"`
+	Name       string      `json:"name"`
 }
 
 func (q *Queries) GetPreorderDataById(ctx context.Context, orderid int32) ([]GetPreorderDataByIdRow, error) {
@@ -305,6 +307,7 @@ func (q *Queries) GetPreorderDataById(ctx context.Context, orderid int32) ([]Get
 	for rows.Next() {
 		var i GetPreorderDataByIdRow
 		if err := rows.Scan(
+			&i.PreorderID,
 			&i.ID,
 			&i.Size,
 			&i.Quantity,

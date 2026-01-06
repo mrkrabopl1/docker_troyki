@@ -1,41 +1,183 @@
-.combobox{
+.combobox {
     position: relative;
-    display: block;
     width: 100%;
-    margin: 0 auto;
-    font-family: 'Open Sans', 'Helvetica Neue', 'Segoe UI', 'Calibri', 'Arial', sans-serif;
-    font-size: 18px;
-    color: #60666d;
-    box-shadow: inset 0 0 2px #040300;
-}
-.list{
-    position: relative;
-    display: block;
-    width: 100%;
-    margin: 10px auto;
-    font-family: 'Open Sans', 'Helvetica Neue', 'Segoe UI', 'Calibri', 'Arial', sans-serif;
-    font-size: 18px;
-    color: #60666d;
-    box-shadow: inset 0 0 2px #040300;
-    background-color: #fff;
+    min-width: 150px;
 }
 
-.mainBlock{
-    /* transform: translateY(-50%);
-    position: relative;
-    top: 50%; */
+.mainBlock {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #ffffff;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.8),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.05),
+        0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.arrowMain{
+.mainBlock:hover {
+    border-color: #d0d0d0;
+    box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.9),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.08),
+        0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.combobox.active .mainBlock {
+    border-color: #000000;
+    box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.9),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.1),
+        0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.currentValue {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1a1a1a;
+}
+
+.arrow {
+    color: #666666;
+    transition: transform 0.3s ease;
+}
+
+.combobox.active .arrow {
+    transform: rotate(180deg);
+    color: #000000;
+}
+
+/* Dropdown */
+.dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    margin-top: 4px;
+    box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.12),
+        0 4px 12px rgba(0, 0, 0, 0.08);
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+    animation: dropdownAppear 0.2s ease;
+}
+
+@keyframes dropdownAppear {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Dropdown Items */
+.comboboxItem {
+    padding: 12px 16px;
+    font-size: 14px;
+    color: #1a1a1a;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.comboboxItem:last-child {
+    border-bottom: none;
+}
+
+.comboboxItem:hover {
+    background: #f8f8f8;
+    color: #000000;
+}
+
+.comboboxItem.selected {
+    background: #f0f0f0;
+    color: #000000;
+    font-weight: 500;
+}
+
+/* Темная тема */
+@media (prefers-color-scheme: dark) {
+    .mainBlock {
+        background: #2a2a2a;
+        border-color: #333333;
+        box-shadow:
+            inset 0 1px 2px rgba(255, 255, 255, 0.05),
+            inset 0 -1px 2px rgba(0, 0, 0, 0.2),
+            0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .mainBlock:hover {
+        border-color: #444444;
+        box-shadow:
+            inset 0 1px 2px rgba(255, 255, 255, 0.08),
+            inset 0 -1px 2px rgba(0, 0, 0, 0.3),
+            0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .combobox.active .mainBlock {
+        border-color: #ffffff;
+    }
+
+    .currentValue {
+        color: #e0e0e0;
+    }
+
+    .arrow {
+        color: #a0a0a0;
+    }
+
+    .combobox.active .arrow {
+        color: #ffffff;
+    }
+
+    .dropdown {
+        background: #2a2a2a;
+        border-color: #333333;
+        box-shadow:
+            0 8px 24px rgba(0, 0, 0, 0.3),
+            0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .comboboxItem {
+        color: #e0e0e0;
+        border-bottom-color: #333333;
+    }
+
+    .comboboxItem:hover {
+        background: #333333;
+        color: #ffffff;
+    }
+
+    .comboboxItem.selected {
+        background: #3a3a3a;
+        color: #ffffff;
+    }
+}
+
+
+.arrowMain {
     position: absolute;
     right: 0;
-    padding-right: 5px; 
-    transition:transform 0.5s;
+    padding-right: 5px;
+    transition: transform 0.5s;
     cursor: pointer;
     width: 25px;
     height: 10px;
-    top:0;
-    transform: translateY(50%);
+    margin: auto;
+    transform: translateY(-50%);
 }
 
 .arrowLeft {
@@ -50,6 +192,7 @@
     float: right;
     border-radius: 2px;
 }
+
 .arrowLeft:after {
     content: "";
     background-color: #020507;
@@ -61,7 +204,7 @@
     transition: all 0.5s cubic-bezier(0.25, 1.7, 0.35, 0.8);
     z-index: -1;
 }
- 
+
 .arrowRight {
     position: absolute;
     background-color: transparent;
@@ -74,6 +217,7 @@
     float: right;
     border-radius: 2px;
 }
+
 .arrowRight:after {
     content: "";
     background-color: #020507;
@@ -85,10 +229,12 @@
     transition: all 0.5s cubic-bezier(0.25, 1.7, 0.35, 0.8);
     z-index: -1;
 }
+
 .arrowLeftOpen:after {
     transform-origin: center center;
     transform: rotate(-70deg);
 }
+
 .arrowRightOpen:after {
     transform-origin: center center;
     transform: rotate(70deg);

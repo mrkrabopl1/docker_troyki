@@ -391,7 +391,8 @@ const SearchPage: React.FC = () => {
         pageSize.current,
         "0",
         categoryRef.current,
-        typeRef.current
+        typeRef.current,
+        filtersInfo.current
       )
     }
   }, [getProductsAndFiltersByString, getProductsAndFiltersByCategoryAndType])

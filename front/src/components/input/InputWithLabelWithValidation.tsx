@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback,useMemo } from 'react';
 import s from "./style.module.css";
 
 type InputValidationProps = {
@@ -32,7 +32,7 @@ const InputWithLabelWithValidation: React.FC<InputValidationProps> = ({
     const startValidationOnBlur = useRef(false);
     const [value, setValue] = useState(val);
     const [isValid, setIsValid] = useState(valid);
-     const hasChange = useRef<boolean>(false);
+    const hasChange = useRef<boolean>(false);
 
     // Синхронизация с внешними значениями
     useEffect(() => {
@@ -40,10 +40,6 @@ const InputWithLabelWithValidation: React.FC<InputValidationProps> = ({
     }, [val]);
 
     useEffect(() => {
-          if (!hasChange.current && !valid) {
-            hasChange.current = true;
-            return
-        }
         setIsValid(valid);
     }, [valid]);
 
@@ -52,7 +48,7 @@ const InputWithLabelWithValidation: React.FC<InputValidationProps> = ({
         const newValue = e.target.value;
         startValidationOnBlur.current = true;
         setValue(newValue);
-        
+
         const isValidValue = validRule(newValue);
         setIsValid(true);
         onChange(isValidValue ? newValue : null);
@@ -74,12 +70,13 @@ const InputWithLabelWithValidation: React.FC<InputValidationProps> = ({
     const focusInput = useCallback(() => {
         inputRef.current?.focus();
     }, []);
-
-    const inputClasses = [
-        s.inputWithLabel,
-        className,
-        !isValid && (invalidClassName || s.invalid)
-    ].filter(Boolean).join(' ');
+    const inputClasses = useMemo(() =>
+        [
+            s.inputWithLabel,
+            className,
+            !isValid && (invalidClassName || s.invalid)
+        ].filter(Boolean).join(' '),
+        [className, invalidClassName, isValid]);
 
     return (
         <div className={s.inputContainer}>

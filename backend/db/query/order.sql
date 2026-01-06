@@ -1,5 +1,6 @@
 -- name: GetPreorderDataById :many
 SELECT 
+    id  as preorder_id,
     ProductId AS id,
     size,
     quantity,

@@ -421,7 +421,7 @@ type Product struct {
 	Qid         string      `json:"qid"`
 	Name        string      `json:"name"`
 	Firm        string      `json:"firm"`
-	Line        string      `json:"line"`
+	Line        pgtype.Text `json:"line"`
 	ImagePath   string      `json:"image_path"`
 	Minprice    int32       `json:"minprice"`
 	Maxprice    int32       `json:"maxprice"`

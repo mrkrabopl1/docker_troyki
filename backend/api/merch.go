@@ -59,7 +59,7 @@ func (s *Server) handleGetCollectionCount(ctx *gin.Context) {
 	name := ctx.Query("name")
 	count, err := s.store.GetMerchCountOfCollectionsOrFirms(ctx, db.GetMerchCountOfCollectionsOrFirmsParams{
 		Firm: name,
-		Line: name,
+		Line: pgtype.Text{String: name, Valid: name != ""},
 	})
 	if err != nil {
 		//log.WithCaller().Err(err)
@@ -296,7 +296,7 @@ func (s *Server) handleGetSoloCollection(ctx *gin.Context) {
 	response, _ := s.store.GetMerchCollectionComplex(ctx,
 		db.GetMerchCollectionParams{
 			Firm:   postData.Name,
-			Line:   postData.Name,
+			Line:   pgtype.Text{String: postData.Name, Valid: postData.Name != ""},
 			Limit:  int32(postData.Size),
 			Offset: int32(offset),
 		})

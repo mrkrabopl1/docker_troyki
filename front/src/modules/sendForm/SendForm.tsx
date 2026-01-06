@@ -36,6 +36,7 @@ interface SendFormProps {
     onValid?: (isValid: boolean) => void;
     valid: boolean;
     formValue?: Partial<FormData>;
+    checkValid?: boolean;
     memo: boolean;
 }
 
@@ -45,6 +46,7 @@ const SendForm: React.FC<SendFormProps> = memo(({
     onValid,
     valid,
     formValue,
+    checkValid,
     memo
 }) => {
     const [formData, setFormData] = useState<FormData>({
@@ -55,6 +57,7 @@ const SendForm: React.FC<SendFormProps> = memo(({
         ...formValue
     });
 
+   
     const [unvalidFormData, setUnvalidFormData] = useState({
         secondName: formValue?.secondName || ""
     });
@@ -107,10 +110,11 @@ const SendForm: React.FC<SendFormProps> = memo(({
             <div>Контактная информация</div>
             <MailInputWithValidation 
                 value={formData.mail} 
-                valid={!validationErrors.mail} 
-                invalidText="Пустое поле ввода" 
+                valid={!checkValid || !validationErrors.mail} 
+                invalidText="Введите корректный mail" 
                 onChange={(data) => handleChange('mail', data)} 
                 placeholder="Электронный адрес" 
+            
             />
             
             <div className='flex pdn'>
@@ -123,7 +127,7 @@ const SendForm: React.FC<SendFormProps> = memo(({
             <div className='flex'>
                 <InputWithLabelWithValidation 
                     val={formData.name} 
-                    valid={!validationErrors.name} 
+                    valid={!checkValid || !validationErrors.name} 
                     invalidText="Введите имя." 
                     className={className?.input} 
                     onChange={(data) => handleChange('name', data)} 
@@ -137,18 +141,20 @@ const SendForm: React.FC<SendFormProps> = memo(({
             </div>
             
             <AddressInput  
-                valid={!validationErrors.address} 
+                valid={!checkValid || !validationErrors.address} 
                 onChange={(data) => handleChange('address', data)}
+               
             />
             
             <PhoneInputWithValidation 
                 val={formData.phone} 
                 invalidIncorrect="Неверный формат" 
                 invalidEmpty="Введите телефон" 
-                valid={!validationErrors.phone} 
+                valid={!checkValid || !validationErrors.phone} 
                 className={className?.input} 
                 onChange={(data) => handleChange('phone', data)} 
                 placeholder="Телефон" 
+               
             />
             
             {verified && (

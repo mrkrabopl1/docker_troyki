@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback ,useMemo} from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import s from "./style.module.css";
 
 type PasswordInputProps = {
@@ -12,6 +12,7 @@ type PasswordInputProps = {
     value?: string;
     invalidText: string;
     showToggle?: boolean;
+    checkValid?: boolean;
 };
 
 const PasswordInputWithValidation: React.FC<PasswordInputProps> = ({
@@ -24,14 +25,15 @@ const PasswordInputWithValidation: React.FC<PasswordInputProps> = ({
     placeholder = '',
     value = '',
     invalidText,
-    showToggle = false
+    showToggle = false,
+    checkValid
 }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const [inputValue, setInputValue] = useState(value);
     const [isValid, setIsValid] = useState(valid);
     const [isVisible, setIsVisible] = useState(false);
     const errorMessageRef = useRef(invalidText);
-       const hasChange = useRef<boolean>(false);
+    const hasChange = useRef<boolean>(false);
 
     // Синхронизация с внешними значениями
     useEffect(() => {
@@ -39,17 +41,16 @@ const PasswordInputWithValidation: React.FC<PasswordInputProps> = ({
     }, [value]);
 
     useEffect(() => {
-         if (!hasChange.current && !valid) {
-            hasChange.current = true;
-            return
+        if (checkValid) {
+            setIsValid(valid);
+            errorMessageRef.current = invalidText;
         }
-        setIsValid(valid);
-        errorMessageRef.current = invalidText;
-    }, [valid, invalidText]);
+
+    }, [valid, invalidText,checkValid]);
 
     // Обработчики с useCallback
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-          hasChange.current = true;
+        hasChange.current = true;
         const newValue = e.target.value;
         setInputValue(newValue);
         setIsValid(true);
@@ -78,7 +79,7 @@ const PasswordInputWithValidation: React.FC<PasswordInputProps> = ({
     // Иконка видимости
     const visibilityIcon = useMemo(() => (
         showToggle && (
-            <div 
+            <div
                 className={s.visibilityToggle}
                 onMouseDown={() => toggleVisibility(true)}
                 onMouseUp={() => toggleVisibility(false)}
@@ -105,7 +106,7 @@ const PasswordInputWithValidation: React.FC<PasswordInputProps> = ({
     return (
         <div className={s.inputContainer}>
             <div className={containerClasses} style={{ width: "100%", display: "flex", backgroundColor: "white" }}>
-                <input 
+                <input
                     ref={inputRef}
                     value={inputValue}
                     placeholder={placeholder}

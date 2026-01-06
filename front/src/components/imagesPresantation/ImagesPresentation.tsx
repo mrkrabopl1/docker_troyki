@@ -1,66 +1,79 @@
-import React, { useRef, useState, useCallback, memo, useEffect } from "react";
+import React, { useRef, useState, useCallback, memo, useEffect, useMemo } from "react";
 import s from "./style.module.css";
 import ImagePresentationBlock from "./ImagePresentationBlock";
 import ExpandedImagePresentation from "./ExpandedImagePresentation";
 import { isDeepEqual } from 'src/global';
 
 type ImagePresentationProps = {
-    images: string[];
-    onClick?: (ind:number) => void;
+    image_count: number;
+    image_path: string,
+    onClick?: (ind: number) => void;
 };
 
-const ImagePresentation: React.FC<ImagePresentationProps> = ({ images ,onClick}) => {
+const ImagePresentation: React.FC<ImagePresentationProps> = ({ 
+    image_count, 
+    image_path, 
+    onClick
+}) => {
     const presentationRef = useRef<HTMLDivElement>(null);
-    const [mainImage, setMainImage] = useState<string>(images[0]);
-    const [isExpanded, setIsExpanded] = useState<boolean>(false);
+    const [mainImage, setMainImage] = useState<string>("");
 
-    // Reset main image when images prop changes
+    const cratePath = useCallback((i: number) => {
+        return "images/" + image_path + "/img" + i + ".png";
+    }, [image_path]);
+
     useEffect(() => {
-        setMainImage(images[0]);
-    }, [images]);
+        setMainImage(cratePath(1));
+    }, [image_path, cratePath]);
 
     const handleThumbnailLeave = useCallback(() => {
-        setMainImage(images[0]);
-    }, [images]);
+        setMainImage(cratePath(1));
+    }, [cratePath]);
 
-    const handleExpand = useCallback((ind) => {
-        onClick(ind)
-        setIsExpanded(true);
-    }, []);
-
+    const handleExpand = useCallback((ind: number) => {
+        onClick?.(ind);
+    }, [onClick]);
 
     const handleThumbnailHover = useCallback((image: string) => {
         setMainImage(image);
     }, []);
 
+    const content = useMemo(() => {
+        let count = 1;
+        const data = [];
+        while (count <= image_count) {
+            data.push(
+                <div key={`${count}`} className={(mainImage === cratePath(count)) ? `${s.thumbnailWrapper} ${s.hover}` : s.thumbnailWrapper}>
+                    <ImagePresentationBlock
+                        onClick={() => handleExpand(count)}
+                        onHover={handleThumbnailHover}
+                        image={cratePath(count)}
+                    />
+                </div>
+            );
+            count++;
+        }
+        return data;
+    }, [image_count, cratePath, handleExpand, handleThumbnailHover,mainImage]);
+
     return (
         <div ref={presentationRef} className={s.imgComponentWrap}>
-
             <div className={s.topBlock}>
                 <ImagePresentationBlock
-                    onClick={()=>{handleExpand(0)}}
+                    onClick={() => handleExpand(0)}
                     image={mainImage}
                 />
             </div>
 
             <div className={s.bottomFlexBlock}>
-                {images.slice(1).map((image, index) => (
-                    <div key={`${image}-${index}`} style={{ height: "100%" }}>
-                        <ImagePresentationBlock
-                            onOut={handleThumbnailLeave}
-                            onClick={()=>{handleExpand(index+1)}}
-                            onHover={handleThumbnailHover}
-                            image={image}
-                        />
-                    </div>
-                ))}
+                {content}
             </div>
         </div>
     );
 };
 
 const propsAreEqual = (prevProps: ImagePresentationProps, nextProps: ImagePresentationProps) => {
-    return isDeepEqual(prevProps.images, nextProps.images);
+    return prevProps.image_path === nextProps.image_path;
 };
 
 export default memo(ImagePresentation, propsAreEqual);

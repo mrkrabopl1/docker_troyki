@@ -77,3 +77,127 @@
 .arrowUp {
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
+
+
+/* NumStepInput */
+
+.numStepInput {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #ffffff;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.8),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.05),
+        0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    max-width: fit-content;
+}
+
+.numStepInput:hover {
+    border-color: #d0d0d0;
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.9),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.08),
+        0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Кнопки + и - */
+.stepBtn {
+    width: 28px;
+    height: 28px;
+    background: #f8f8f8;
+    border: 1px solid #e8e8e8;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+        font-size: 25px;
+    font-weight: 600;
+    color: #1a1a1a;
+    padding: 0;
+}
+
+.stepBtn:hover:not(:disabled) {
+    background: #f0f0f0;
+    border-color: #d0d0d0;
+    transform: scale(1.05);
+    color: #000000;
+}
+
+.stepBtn:active:not(:disabled) {
+    background: #e8e8e8;
+    transform: scale(0.95);
+}
+
+.stepBtn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+    color: #8d8d8d;
+}
+
+.valueDisplay {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a1a;
+    min-width: 30px;
+    text-align: center;
+    padding: 2px 4px;
+}
+
+/* Disabled State */
+.numStepInput.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.numStepInput.disabled .valueDisplay {
+    color: #8d8d8d;
+}
+
+/* Темная тема */
+@media (prefers-color-scheme: dark) {
+    .numStepInput {
+        background: #1a1a1a;
+        border-color: #333333;
+        box-shadow: 
+            inset 0 1px 2px rgba(255, 255, 255, 0.05),
+            inset 0 -1px 2px rgba(0, 0, 0, 0.2),
+            0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .numStepInput:hover {
+        border-color: #444444;
+        box-shadow: 
+            inset 0 1px 2px rgba(255, 255, 255, 0.08),
+            inset 0 -1px 2px rgba(0, 0, 0, 0.3),
+            0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .stepBtn {
+        background: #2a2a2a;
+            font-size: 25px;
+        border-color: #333333;
+        color: #e0e0e0;
+    }
+    
+    .stepBtn:hover:not(:disabled) {
+        background: #333333;
+        border-color: #444444;
+        color: #ffffff;
+    }
+    
+    .stepBtn:active:not(:disabled) {
+        background: #3a3a3a;
+    }
+    
+    .valueDisplay {
+        color: #e0e0e0;
+    }
+}

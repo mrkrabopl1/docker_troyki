@@ -32,3 +32,127 @@
   .topBlock{
    height: 70%;
  }
+
+
+
+.imgComponentWrap {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+  
+    border-radius: 12px;
+    padding: 10px;
+    
+    transition: all 0.3s ease;
+    width: 100%;
+    margin: 0 auto;
+    min-height: auto; /* Важно: автоматическая высота */
+    height: auto; /* Высота подстраивается под контент */
+}
+
+.imgComponentWrap:hover {
+    border-color: #e0e0e0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.hover{
+    border-color: #d0d0d0;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.topBlock {
+    width: 100%;
+    height: 360px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f8f8f8;
+    border: 1px solid #f0f0f0;
+    margin-bottom: 16px;
+    flex-shrink: 0; /* Фиксированная высота основного изображения */
+}
+
+.bottomFlexBlock {
+    display: flex;
+    flex-wrap: wrap; /* Разрешаем перенос на новые строки */
+    align-items: center;
+    gap: 12px;
+    min-height: 80px; /* Минимальная высота для одной строки */
+    height: auto; /* Автоматическая высота */
+}
+
+.thumbnailWrapper {
+    width: 120px;
+    height: 120px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #f0f0f0;
+    background: #f8f8f8;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+@media (max-width:1290px) {
+    .thumbnailWrapper {
+        width: 100px;
+        height: 100px;
+    }
+}
+@media (max-width:1088px) {
+    .thumbnailWrapper {
+        width: 90px;
+        height: 90px;
+    }
+}
+@media (max-width:1020px) {
+    .thumbnailWrapper {
+        width: 80px;
+        height: 80px;
+    }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .imgComponentWrap {
+        padding: 16px;
+        max-width: 100%;
+    }
+    
+    .topBlock {
+        height: 300px;
+        margin-bottom: 12px;
+    }
+    
+  
+    
+    .bottomFlexBlock {
+        gap: 8px;
+        min-height: 60px;
+    }
+}
+
+@media (max-width: 480px) {
+    .imgComponentWrap {
+        padding: 12px;
+    }
+    
+    .topBlock {
+        height: 250px;
+    }
+    
+    .thumbnailWrapper {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .bottomFlexBlock {
+        gap: 6px;
+        min-height: 50px;
+    }
+}
+
+/* Для очень большого количества изображений */
+.bottomFlexBlock.manyItems {
+    justify-content: center; /* Центрируем если много элементов */
+}

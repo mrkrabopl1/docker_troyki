@@ -154,7 +154,7 @@ func TestGetProductsInfoByIdComplex(t *testing.T) {
 func TestGetSoloCollection(t *testing.T) {
 	snickers, err := testStore.GetMerchCollection(context.Background(), GetMerchCollectionParams{
 		Firm:   "nike",
-		Line:   "",
+		Line:   pgtype.Text{String: ""},
 		Limit:  40,
 		Offset: 36,
 	})
@@ -166,7 +166,7 @@ func TestGetSoloCollection(t *testing.T) {
 func TestGetSoloCollectionWithCount(t *testing.T) {
 	snickers, err := testStore.GetSoloCollectionWithCount(context.Background(), GetSoloCollectionWithCountParams{
 		Firm:   "nike",
-		Line:   "air_jordan_1",
+		Line:   pgtype.Text{String: "air_jordan_1"},
 		Limit:  20,
 		Offset: 10,
 	})
@@ -178,7 +178,7 @@ func TestGetSoloCollectionWithCount(t *testing.T) {
 func TestGetMerchCollectionWithCount(t *testing.T) {
 	snickers, err := testStore.GetMerchCollectionWithCount(context.Background(), GetMerchCollectionWithCountParams{
 		Firm:   "solomerch",
-		Line:   "labubu monster",
+		Line:   pgtype.Text{String: "air_jordan_1"},
 		Limit:  20,
 		Offset: 10,
 	})
@@ -190,7 +190,7 @@ func TestGetMerchCollectionWithCount(t *testing.T) {
 func TestGetCollectionCount(t *testing.T) {
 	snickers, err := testStore.GetCountOfCollectionsOrFirms(context.Background(), GetCountOfCollectionsOrFirmsParams{
 		Firm: "nike",
-		Line: "air_jordan_1",
+		Line: pgtype.Text{String: "air_jordan_1"},
 	})
 	fmt.Println(snickers, err)
 	require.NoError(t, err)
@@ -200,7 +200,7 @@ func TestGetCollectionCount(t *testing.T) {
 func TestGetMerchCollectionCount(t *testing.T) {
 	snickers, err := testStore.GetMerchCountOfCollectionsOrFirms(context.Background(), GetMerchCountOfCollectionsOrFirmsParams{
 		Firm: "solomerch",
-		Line: "",
+		Line: pgtype.Text{String: ""},
 	})
 	fmt.Println(snickers, err)
 	require.NoError(t, err)

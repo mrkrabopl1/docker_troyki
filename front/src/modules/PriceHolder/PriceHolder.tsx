@@ -19,7 +19,7 @@ const PriceHolderComponent: React.FC<PriceHolderProps> = ({
     const [activeState, setActiveState] = useState<number>(activeInd);
     const priceState = useAppSelector(state => state.priceReducer);
 
-    const handleActiveChange = useCallback((size: string,ind:number) => {
+    const handleActiveChange = useCallback((size: string, ind: number) => {
         onChange(size);
         setActiveState(ind);
     }, [onChange]);
@@ -27,13 +27,13 @@ const PriceHolderComponent: React.FC<PriceHolderProps> = ({
     const priceBlocks = useMemo(() => {
         if (!elems) return [];
         
-        return Object.entries(elems).map(([size,val], ind) => (
+        return Object.entries(elems).map(([size, val], ind) => (
             <PricesBlock 
-                key={`${size}-${ind}`} // Более уникальный ключ
-                onChange={() => handleActiveChange(size,ind)}
+                key={`${size}-${ind}`}
+                onChange={() => handleActiveChange(size, ind)}
                 active={activeState === ind}
                 size={size}
-                price={val.price - (val.discount||0)}
+                price={val.price}
                 discount={val.discount}
                 id={ind}
                 in_stock={val.in_stock}

@@ -81,12 +81,13 @@ const ContentSlider: React.FC<SliderProps> = ({
   // Обновление позиции при изменении currentStep
   useEffect(() => {
     const newPosition = -(currentStep - 1) * dimensions.stepSize;
+    console.debug('Setting position to:', newPosition,currentStep);
     setInternalPosition(newPosition);
   }, [currentStep, dimensions.stepSize]);
 
   // Инициализация ResizeObserver
   useEffect(() => {
-    debouncedCalculateDimensions();
+   // debouncedCalculateDimensions();
     
     if (!resizeObserverRef.current) {
       resizeObserverRef.current = new ResizeObserver(debouncedCalculateDimensions);
@@ -113,7 +114,8 @@ const ContentSlider: React.FC<SliderProps> = ({
     transform: `translateX(${internalPosition}px)`,
     transition: `transform ${transitionDuration}ms ease-out`,
     willChange: 'transform',
-    justifyContent:"space-between"
+    justifyContent:"space-between",
+     height: '100%'
   }), [internalPosition, transitionDuration]);
 
   // Стиль контейнера

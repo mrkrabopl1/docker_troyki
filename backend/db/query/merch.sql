@@ -296,6 +296,7 @@ WHERE name ILIKE '%' || CAST($1 AS text) || '%'
 GROUP BY $1;
 -- name: GetProductsInfoById :one
 SELECT sizes,
+    products.id AS id,
     image_path,
     name,
     discount.value AS value,
@@ -359,7 +360,7 @@ SELECT COALESCE(discount.minprice, products.minprice) AS minprice,
 FROM products
     LEFT JOIN discount ON products.id = productid
 WHERE firm = $1
-    OR line = $2
+    AND line = $2
 LIMIT $3 OFFSET $4;
 
 -- name: GetFullProductsInfoByIds :many

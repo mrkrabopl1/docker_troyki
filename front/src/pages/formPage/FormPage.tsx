@@ -54,6 +54,7 @@ const FormPage: React.FC = () => {
     const fullPrice = useRef(0);
     const [inProgress, setInProgress] = useState(true);
     const [refresh, setRefresh] = useState(false);
+    const checkValid = useRef(false);
     const formData = useRef<any>({
         name: "",
         mail: "",
@@ -113,6 +114,7 @@ const FormPage: React.FC = () => {
             case 0:
                 if (!delivery.current) {
                     return <SendForm
+                    checkValid={checkValid.current}
                         memo={memoSendForm.current}
                         valid={true}
                         formValue={formData.current}
@@ -263,7 +265,7 @@ const FormPage: React.FC = () => {
                         />
                     ) : null}
                     <Button
-                        className={"btnStyle " + s.mainButton}
+                        className={"btnStyle dark " + s.mainButton}
                         text={BUY_ROUTE[delivery.current][formId.current]}
                         onClick={() => {
                             if (formId.current === BUY_ROUTE[delivery.current].length - 1) {
@@ -277,6 +279,7 @@ const FormPage: React.FC = () => {
                                     memoSendForm.current = !memoSendForm.current;
                                 }
                             }
+                            checkValid.current = true;
                             setRefresh(prev => !prev);
                         }}
                     />

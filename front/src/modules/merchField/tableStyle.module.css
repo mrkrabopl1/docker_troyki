@@ -1,0 +1,208 @@
+.tableContainer {
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #f0f0f0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.8),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.04),
+        0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.merchTable {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    text-align: left;
+    background: #ffffff;
+}
+
+/* Header Styles */
+.tableHeaderRow {
+    background: #f8f8f8;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.tableHeader {
+    padding: 20px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2a2a2a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: none;
+    position: relative;
+}
+
+/* Легкие вертикальные разделители для заголовков */
+.tableHeader:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 20px;
+    background: linear-gradient(to bottom, 
+        transparent 0%, 
+        #e0e0e0 20%, 
+        #e0e0e0 80%, 
+        transparent 100%);
+}
+
+.tableHeader:first-child {
+    padding-left: 24px;
+}
+
+.tableHeader:last-child {
+    padding-right: 24px;
+    text-align: center;
+}
+
+/* Row Styles */
+.tableRow {
+    border-bottom: 1px solid #f5f5f5;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+/* Легкие вертикальные разделители для строк */
+.tableRow td:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 60px;
+    background: linear-gradient(to bottom, 
+        transparent 0%, 
+        #f0f0f0 20%, 
+        #d1cdcd 80%, 
+        transparent 100%);
+    opacity: 0.7;
+}
+
+.tableRow:hover {
+    background: #fafafa;
+}
+
+.tableRow:hover td::after {
+    background: linear-gradient(to bottom, 
+        transparent 0%, 
+        #e8e8e8 20%, 
+        #e8e8e8 80%, 
+        transparent 100%);
+}
+
+.tableRow:last-child {
+    border-bottom: none;
+}
+
+/* Alternating row colors for better readability */
+.tableRow:nth-child(even) {
+    background: #fcfcfc;
+}
+
+.tableRow:nth-child(even):hover {
+    background: #f8f8f8;
+}
+
+/* Cell Styles */
+.productCell {
+    padding: 20px 16px;
+    width: 60%;
+    border: none;
+    position: relative;
+}
+
+.productCell:first-child {
+    padding-left: 24px;
+}
+
+.quantityCell {
+    padding: 20px 16px;
+    text-align: center;
+    border: none;
+    position: relative;
+}
+
+.priceCell {
+    padding: 20px 16px;
+    text-align: right;
+    border: none;
+    position: relative;
+}
+
+.actionsCell {
+    padding: 20px 16px;
+    text-align: center;
+    border: none;
+    position: relative;
+}
+
+.actionsCell:last-child {
+    padding-right: 24px;
+}
+
+/* Quantity Badge */
+.quantityBadge {
+    display: inline-block;
+    padding: 8px 12px;
+    background: #f0f0f0;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2a2a2a;
+    min-width: 40px;
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.8),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Price Value */
+.priceValue {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a1a;
+    letter-spacing: 0.3px;
+}
+
+/* Delete Button */
+.deleteBtn {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    transition: all 0.3s ease;
+    font-size: 16px;
+    color: #8d8d8d;
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.9),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.05),
+        0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.deleteBtn:hover {
+    background: #f8f8f8;
+    border-color: #d0d0d0;
+    color: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.95),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.08),
+        0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.deleteBtn:active {
+    transform: translateY(0);
+    box-shadow: 
+        inset 0 2px 4px rgba(0, 0, 0, 0.1),
+        inset 0 -1px 2px rgba(255, 255, 255, 0.8),
+        0 1px 2px rgba(0, 0, 0, 0.04);
+}

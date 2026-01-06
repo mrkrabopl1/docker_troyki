@@ -40,10 +40,7 @@ const MailInputWithValidation: React.FC<MailInputProps> = ({
     }, [value]);
 
     useEffect(() => {
-        if (!hasChange.current && !valid) {
-            hasChange.current = true;
-            return
-        }
+       
         setIsValid(valid);
     }, [valid]);
 
