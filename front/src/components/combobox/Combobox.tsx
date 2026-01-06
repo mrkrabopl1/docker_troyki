@@ -1,7 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, memo } from 'react';
 import s from "./style.module.css";
-import { ReactComponent as Cart } from "../../../public/cart.svg";
-
 interface ComboboxProps {
     enumProp?: boolean;
     data: string[];
@@ -54,23 +52,26 @@ const Combobox: React.FC<ComboboxProps> = memo(({
     const renderItems = useCallback(() => {
         if (!active) return null;
 
-        return data.map((value, index) => (
-            <div 
-                key={`${value}-${index}`}
-                ref={el => itemRefs.current[index] = el}
-                className={s.comboboxItem}
-                onClick={() => handleItemClick(value, index)}
-            >
-                {value}
+        return (
+            <div className={s.dropdown}>
+                {data.map((value, index) => (
+                    <div 
+                        key={`${value}-${index}`}
+                        ref={el => itemRefs.current[index] = el}
+                        className={`${s.comboboxItem} ${currentValue === value ? s.selected : ''}`}
+                        onClick={() => handleItemClick(value, index)}
+                    >
+                        {value}
+                    </div>
+                ))}
             </div>
-        ));
-    }, [active, data, handleItemClick]);
+        );
+    }, [active, data, currentValue, handleItemClick]);
 
     return (
         <div 
             ref={comboRef}
-            className={className || s.combobox} 
-            style={{ position: "relative", width: "100%" }}
+            className={`${s.combobox} ${className || ''} ${active ? s.active : ''}`}
         >
             <div 
                 className={s.mainBlock} 
@@ -78,18 +79,14 @@ const Combobox: React.FC<ComboboxProps> = memo(({
                 aria-expanded={active}
                 role="combobox"
             >
-                <span>{currentValue}</span>
-                <div className={s.arrowMain}>
+                <span className={s.currentValue}>{currentValue}</span>
+                  <div className={s.arrowMain}>
                     <span className={`${s.arrowLeft} ${active ? s.arrowLeftOpen : ''}`}></span>
                     <span className={`${s.arrowRight} ${active ? s.arrowRightOpen : ''}`}></span>
                 </div>
             </div>
             
-            {active && (
-                <div className={s.list} style={{ position: "absolute", width: "100%" }}>
-                    {renderItems()}
-                </div>
-            )}
+            {renderItems()}
         </div>
     );
 });

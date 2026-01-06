@@ -1,14 +1,34 @@
-import React from 'react';
+import React, { memo } from 'react';
 import s from './s.module.css';
 
-const SVGIcon = ({
-  spritePath = '/icons/sprite.svg', // путь по умолчанию
+interface SVGIconProps {
+  size?: number;
+  className?: string;
+  color?: string;
+  spritePath?: string;
+}
+
+const SVGIcon: React.FC<SVGIconProps> = memo(({
+  size = 24,
+  className = '',
+  color = 'currentColor',
+  spritePath = '/icons/sprite.svg'
 }) => {
+  const iconStyle = {
+    width: "100%",
+    height: "100%",
+    maskImage: `url(/${spritePath}.svg)`,
+    WebkitMaskImage: `url(/${spritePath}.svg)`,
+    backgroundColor: color,
+    display: 'inline-block'
+  };
+
   return (
-    <svg width="100%" height="100%" className={s.icon} >
-      <use  width="100%" height="100%" href={`/${spritePath}.svg`} />
-    </svg>
+    <div 
+      style={iconStyle}
+      className={`${s.icon} ${className}`}
+    />
   );
-};
+});
 
 export default SVGIcon;

@@ -10,7 +10,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
-	db "github.com/mrkrabopl1/go_db/db/sqlc"
 	"github.com/mrkrabopl1/go_db/token"
 )
 
@@ -103,17 +102,9 @@ func CachedMiddleware(s *Server) gin.HandlerFunc {
 		}
 		fmt.Println("idStr", idStr)
 		ProductsInfo, err := s.taskProcessor.GetProductsInfo(ctx, idStr)
-		fmt.Println(ProductsInfo.Image, "redisTest")
+
 		if err == nil {
-			fmt.Println("reddis", ProductsInfo.Info, ProductsInfo.Image, "redisTest")
-			ctx.JSON(http.StatusOK, db.ProductsInfoResponse{
-				Info:        ProductsInfo.Info,
-				Image:       ProductsInfo.Image,
-				Name:        ProductsInfo.Name,
-				Discount:    ProductsInfo.Discount,
-				ProductType: ProductsInfo.ProductType,
-				Article:     ProductsInfo.Article,
-			})
+			ctx.JSON(http.StatusOK, ProductsInfo)
 			if errC != nil {
 				fmt.Println(errC, "ssssssssssssssssssssss")
 				ctx.Abort()

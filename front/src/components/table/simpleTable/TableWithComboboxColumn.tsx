@@ -1,5 +1,6 @@
 import React, { useMemo, useState, memo } from 'react';
 import Combobox from 'src/components/combobox/Combobox';
+import s from "./style.module.css";
 
 type ColumnType = {
     title: string;
@@ -13,19 +14,12 @@ type TableProps = {
     className?: string;
 };
 
-const tableStyle: React.CSSProperties = {
-    borderCollapse: 'collapse',
-    borderSpacing: '0px',
-    width: "100%"
-};
-
-const TableWithComboboxColumn: React.FC<TableProps> = ({
+const TableWithComboboxColumn: React.FC<TableProps> = memo(({
     table,
     comboTable,
     className
 }) => {
     const [selectedIndex, setSelectedIndex] = useState<string>("0");
-    const columnWidth = `${100 / (table.length + 1)}%`;
 
     const comboBoxHeaders = useMemo(() =>
         comboTable ? comboTable.map(val => val.title) : [],
@@ -35,60 +29,80 @@ const TableWithComboboxColumn: React.FC<TableProps> = ({
     const renderHeaders = useMemo(() => (
         <>
             {table.map((val, id) => (
-                <th key={`header-${val.title}-${id}`} style={{ width: columnWidth }}>
-                    <div>
-                        <span>{val.title}</span>
+                <th key={`header-${val.title}-${id}`} className={s.tableHeader}>
+                    <div className={s.headerContent}>
+                        <span className={s.headerTitle}>{val.title}</span>
+                        {val.subtitle && (
+                            <span className={s.headerSubtitle}>{val.subtitle}</span>
+                        )}
                     </div>
                 </th>
             ))}
-            {comboTable ?<th key="combo-header" style={{ width: columnWidth }}>
-                <div>
-                    <Combobox
-                        enumProp={true}
-                        data={comboBoxHeaders}
-                        onChangeIndex={setSelectedIndex}
-                    />
-                </div>
-            </th>:null}
+            {comboTable && (
+                <th key="combo-header" className={s.comboHeader}>
+                    <div className={s.comboHeaderContent}>
+                        <Combobox
+                            enumProp={true}
+                            data={comboBoxHeaders}
+                            onChangeIndex={setSelectedIndex}
+                            className={s.combobox}
+                        />
+                    </div>
+                </th>
+            )}
         </>
-    ), [table, comboBoxHeaders, columnWidth]);
+    ), [table, comboBoxHeaders, comboTable]);
 
     const renderRows = useMemo(() => {
-        if (table.length === 0 || table[0].table.length === 0) return null;
+        if (table.length === 0 || table[0].table.length === 0) {
+            return (
+                <tr>
+                    <td colSpan={table.length + (comboTable ? 1 : 0)} className={s.emptyCell}>
+                        <div className={s.emptyState}>
+                            Нет данных для отображения
+                        </div>
+                    </td>
+                </tr>
+            );
+        }
 
         return table[0].table.map((_, rowIndex) => (
-            <tr key={`row-${rowIndex}`}>
+            <tr key={`row-${rowIndex}`} className={s.tableRow}>
                 {table.map((col, colIndex) => (
-                    <td key={`cell-${rowIndex}-${colIndex}`}>
-                        {col.table[rowIndex]}
+                    <td key={`cell-${rowIndex}-${colIndex}`} className={s.tableCell}>
+                        <div className={s.cellContent}>
+                            {col.table[rowIndex]}
+                        </div>
                     </td>
                 ))}
-                {
-                    comboTable ?
-                        <td key={`combo-cell-${rowIndex}`}>
+                {comboTable && (
+                    <td key={`combo-cell-${rowIndex}`} className={s.comboCell}>
+                        <div className={s.cellContent}>
                             {comboTable[selectedIndex]?.table[rowIndex]}
-                        </td> : null
-                }
+                        </div>
+                    </td>
+                )}
             </tr>
         ));
     }, [table, comboTable, selectedIndex]);
 
     return (
-        <table
-            onClick={(e) => e.stopPropagation()}
-            className={className}
-            style={tableStyle}
-        >
-            <thead>
-                <tr>
-                    {renderHeaders}
-                </tr>
-            </thead>
-            <tbody>
-                {renderRows}
-            </tbody>
-        </table>
+        <div className={s.tableContainer}>
+            <table
+                onClick={(e) => e.stopPropagation()}
+                className={`${s.table} ${className || ''}`}
+            >
+                <thead>
+                    <tr className={s.headerRow}>
+                        {renderHeaders}
+                    </tr>
+                </thead>
+                <tbody>
+                    {renderRows}
+                </tbody>
+            </table>
+        </div>
     );
-};
+});
 
 export default TableWithComboboxColumn;

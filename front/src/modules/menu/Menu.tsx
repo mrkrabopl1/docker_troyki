@@ -14,6 +14,11 @@ import logo from "/public/troyki_logo.svg";
 import global from 'src/global.css';
 import ComplexDropVertical from 'src/components/complexDrop/ComplexDropVertical';
 import AlphabetNavigation from 'src/components/alphabetNavigation/AlphabetNavigation';
+import MerchBuyField from '../merchField/MerchBuyField';
+import BuyPage from 'src/pages/buyPage/BuyPage';
+import SVGIcon from 'src/components/svgIcon/SvgIcon';
+import { set } from 'ol/transform';
+import Scroller from 'src/components/scroller/Scroller';
 interface MenuProps {
     onChange: (data: boolean) => void;
     firms: string[];
@@ -28,6 +33,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
     const menuWrap = useRef<HTMLDivElement>(null);
     const [active, setActive] = useState(false);
     const [activeAlphabet, setActiveAlphabet] = useState(false);
+    const [activeCart, setActiveCart] = useState(false);
     const [loginActive, setLoginActive] = useState(false);
     const { setSearchData } = searchSlice.actions;
     const [showBurgerMenu, setShowBurgerMenu] = useState(false);
@@ -142,7 +148,9 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
 
             <div className={s.rightMenuStyle}>
                 <Loupe onClick={handleLoupeClick} className={global.link} height={"36px"} width={"36px"} />
-                <BuyButton />
+                <BuyButton onClick = {()=>{
+                    setActiveCart(true)
+                }}/>
             </div>
 
             <Modal onChange={setActive} active={active}>
@@ -164,6 +172,11 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                             navigate(`/collections/${name}`);
                         }}
                     />
+                </div>
+            </Modal>
+            <Modal onChange={setActiveCart} active={activeCart}>
+                <div  onClick={(e) => e.stopPropagation()} className={s.cartModalWrap}>
+                    <Scroller onlyVertical={true}><BuyPage /></Scroller>
                 </div>
             </Modal>
         </div>

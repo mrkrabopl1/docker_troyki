@@ -4,7 +4,7 @@ CREATE TYPE public.product_source_enum AS ENUM ('snickers', 'solomerch', 'clothe
 CREATE TYPE public.clothes_enum AS ENUM ('t-shirt', 'hoodie', 'sweatshirt', 'jacket', 'pants', 'shorts','other');
 CREATE TYPE public.merch_enum AS ENUM ('hat', 'toys', 'bag','other');
 CREATE TYPE public.snickers_enum AS ENUM ('slepowers','other');
-CREATE TYPE public.body_enum AS ENUM ('child', 'woman', 'man');
+CREATE TYPE public.body_enum AS ENUM ('child', 'woman', 'man','unisex');
 
 
 CREATE TABLE colors (
@@ -15,7 +15,7 @@ CREATE TABLE colors (
 );
 
 
-        INSERT INTO colors (enum_key, name, hex_code) 
+INSERT INTO colors (enum_key, name, hex_code) 
         VALUES ('red', 'Красный', '#FF0000'),
 ('green', 'Зеленый', '#00FF00'),
 ('blue', 'Синий', '#0000FF'),
@@ -35,7 +35,6 @@ CREATE TABLE colors (
 ('multicolor', 'Разноцветный', '#FFFFFF'),
 ('transparent', 'Прозрачный', '#FFFFFF00')
         ON CONFLICT (enum_key) DO NOTHING;
-    
 
 CREATE TABLE product_categories (
     id SERIAL PRIMARY KEY,
@@ -58,51 +57,55 @@ CREATE INDEX idx_product_types_enum_key ON product_types(enum_key);
 
 
 INSERT INTO product_categories (name, enum_key, image_path) VALUES
-('Одежда', 'clothes', 'clothes.svg'),
-('Мерч', 'merch', 'merch.svg'),
 ('Кроссовки', 'sneakers', 'sneakers.svg'),
-('toys', 'toys', 'toys.svg') ON CONFLICT (enum_key) DO NOTHING;
+('Мерч', 'merch', 'merch.svg'),
+('Одежда', 'clothes', 'clothes.svg'),
+('Игрушки', 'toys', 'toys.svg') ON CONFLICT (enum_key) DO NOTHING;
 
 INSERT INTO product_types (category_id, type_name, enum_key) VALUES
-((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'Другое', 'other'),
-((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'gloves', 'gloves'),
-((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'basketball', 'basketball'),
-((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Другое', 'other'),
 ((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Скейтбординг', 'skateboarding'),
-((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'running', 'running'),
-((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'running', 'running'),
-((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'training', 'training'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Другое', 'other'),
 ((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'Другое', 'other'),
-((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'heels', 'heels'),
-((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'cleats', 'cleats'),
-((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'scarves', 'scarves'),
-((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'boots', 'boots'),
-((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'lifestyle', 'lifestyle'),
-((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'rings', 'rings'),
-((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'earrings', 'earrings'),
-((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'basketball', 'basketball'),
-((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'hats', 'hats'),
-((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'training', 'training'),
-((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'outdoors', 'outdoors'),
-((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'boots', 'boots'),
-((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'eyewear', 'eyewear'),
-((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'belts', 'belts'),
-((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'necklaces', 'necklaces'),
-((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Тапочки', 'slippers'),
-((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'sandals', 'sandals'),
-((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'bracelets', 'bracelets'),
-((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'shoulder', 'shoulder'),
-((SELECT id FROM product_categories WHERE enum_key = 'toys'), 'boots', 'boots'),
-((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'flats', 'flats'),
-((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'travel', 'travel'),
-((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'sandals', 'sandals') ON CONFLICT (category_id, enum_key) DO NOTHING;
+((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'Другое', 'other'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Бутсы', 'cleats'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Ботинки', 'boots'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Открытый воздух', 'outdoors'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'Ботинки', 'boots'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Сандалии', 'sandals'),
+((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'Путешествия', 'travel'),
+((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'Тренировка', 'training'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Тренировка', 'training'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Бег', 'running'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'Открытый воздух', 'outdoors'),
+((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'Открытый воздух', 'outdoors'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Плоская подошва', 'flats'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Каблуки', 'heels'),
+((SELECT id FROM product_categories WHERE enum_key = 'toys'), 'Другое', 'other'),
+((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'Ботинки', 'boots'),
+((SELECT id FROM product_categories WHERE enum_key = 'toys'), 'Бутсы', 'cleats'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'Тренировка', 'training'),
+((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'Бег', 'running'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'Рюкзак', 'backpack'),
+((SELECT id FROM product_categories WHERE enum_key = 'toys'), 'Бег', 'running'),
+((SELECT id FROM product_categories WHERE enum_key = 'toys'), 'Рюкзак', 'backpack'),
+((SELECT id FROM product_categories WHERE enum_key = 'toys'), 'Путешествия', 'travel'),
+((SELECT id FROM product_categories WHERE enum_key = 'toys'), 'Скейтбординг', 'skateboarding'),
+((SELECT id FROM product_categories WHERE enum_key = 'sneakers'), 'Путешествия', 'travel'),
+((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'Скейтбординг', 'skateboarding'),
+((SELECT id FROM product_categories WHERE enum_key = 'toys'), 'Тренировка', 'training'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'dance-shoes', 'dance-shoes'),
+((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'Бутсы', 'cleats'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'Бег', 'running'),
+((SELECT id FROM product_categories WHERE enum_key = 'merch'), 'Сандалии', 'sandals'),
+((SELECT id FROM product_categories WHERE enum_key = 'clothes'), 'Каблуки', 'heels'),
+((SELECT id FROM product_categories WHERE enum_key = 'toys'), 'Ботинки', 'boots') ON CONFLICT (category_id, enum_key) DO NOTHING;
 
 CREATE TABLE public.products (
     id serial PRIMARY KEY NOT NULL,
     qId text  NOT NULL,
     name text NOT NULL,
     firm text NOT NULL,
-    line text NOT NULL,
+    line text,
     image_path text NOT NULL,
     minprice integer NOT NULL,
     maxprice integer NOT NULL,

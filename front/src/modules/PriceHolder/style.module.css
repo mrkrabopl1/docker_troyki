@@ -1,61 +1,227 @@
-.priceBlock{
-    border:solid 1px grey;
-    text-align:center;
-    padding: 10px;
+.priceHolder {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 20px 0;
+}
+
+/* Paper Embossed/Debossed Effect */
+.priceBlock {
     position: relative;
-    width: 25%;
-    flex-shrink: 0;
-    box-sizing: border-box;
+    padding: 5px 4px;
+    border: 1px solid #e8e8e8;
+    border-radius: 12px;
+    background: #ffffff;
     cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    min-width: 100px;
+    text-align: center;
+    
+    /* Paper texture effect */
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.8),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.05),
+        0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.priceHolder{
-   display: flex;
-   flex-wrap: wrap;
+.priceBlock:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.9),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.08),
+        0 4px 12px rgba(0, 0, 0, 0.1);
 }
-.priceWrapper{
-    width: 20%;
- }
 
- .discountLabel{
-  width:10px;
-  height:10px;
-  border-radius: 20px;
-  background-color: red;
-  position:absolute;
-  top:10px;
-  right:10px;
- }
+/* Active state - Debossed effect */
+.priceBlock.active {
+    background: #f8f8f8;
+    transform: translateY(1px);
+    box-shadow: 
+        inset 0 2px 4px rgba(0, 0, 0, 0.08),
+        inset 0 -1px 2px rgba(255, 255, 255, 0.5),
+        0 1px 2px rgba(0, 0, 0, 0.05);
+    border-color: #d8d8d8;
+}
 
-  .storeLabel{
-  width:10px;
-  height:10px;
-  border-radius: 20px;
-  background-color: green;
-  position:absolute;
-  top:40px;
-  right:40px;
- }
+/* Text underline effects for active state */
+.priceBlock.active .sizeHolder {
+    color: #000000;
+}
 
- .priceUnderline{
+.priceBlock.active .sizeHolder::after {
+    content: '';
     position: absolute;
-    bottom: 4px;
-    width: 80%;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70%;
     height: 2px;
-    background-color: silver;
-    margin: auto;
-    left: 0;
-    right: 0;
- }
+    background: linear-gradient(90deg, transparent, #000000, transparent);
+   
+}
 
- .avelibleHolder{
-   display:flex;
-   justify-content: center;
- }
- .done{
-   width:17px;
-   margin-left:3px
- }
- .sizeHolder{
-   font-weight: bold;
- }
+.priceBlock.active .priceInfo::before {
+    content: '';
+    position: absolute;
+    bottom: 3px;
+      left: 50%;
+    transform: translateX(-50%);
+  
+    width: 70%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #000000, transparent);
+    opacity: 0.8;
+}
+
+.priceBlock.active .originalPrice {
+    color: #666666;
+    font-weight: 500;
+    text-decoration: line-through;
+}
+
+/* Out of stock state */
+.priceBlock.outOfStock {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #fafafa;
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.6),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.03),
+        0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.priceBlock.outOfStock:hover {
+    transform: none;
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.6),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.03),
+        0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+/* Size */
+.sizeHolder {
+    font-size: 16px;
+    color: #2a2a2a;
+    margin-bottom: 5px;
+    letter-spacing: 0.5px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+/* Price Info */
+.priceInfo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+
+.originalPrice {
+    font-size: 12px;
+    color: #8d8d8d;
+    text-decoration: line-through;
+    font-weight: 500;
+}
+
+.finalPrice {
+    font-size: 18px;
+    color: #1a1a1a;
+    letter-spacing: 0.5px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+/* Discount Label */
+.discountLabel {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: #ffffff;
+    font-size: 11px;
+    padding: 6px 8px;
+    border-radius: 14px;
+    box-shadow: 
+        0 2px 8px rgba(220, 38, 38, 0.3),
+        0 1px 2px rgba(0, 0, 0, 0.2);
+    letter-spacing: 0.3px;
+}
+
+/* Stock Label */
+.stockLabel {
+    font-size: 10px;
+    color: #8d8d8d;
+    margin-top: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Active Indicator */
+.activeIndicator {
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 3px;
+    background: #000000;
+    border-radius: 2px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Темная тема */
+@media (prefers-color-scheme: dark) {
+    .priceBlock.active .sizeHolder {
+        color: #ffffff;
+    }
+    
+    .priceBlock.active .sizeHolder::after {
+        background: linear-gradient(90deg, transparent, #ffffff, transparent);
+    }
+    
+    .priceBlock.active .finalPrice {
+        color: #ffffff;
+    }
+    
+    .priceBlock.active .finalPrice::before {
+        background: #ffffff;
+    }
+    
+    .priceBlock.active .originalPrice {
+        color: #a8a8a8;
+    }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .priceHolder {
+        gap: 12px;
+        padding: 16px 0;
+    }
+    
+    .priceBlock {
+        padding: 16px 12px;
+        min-width: 85px;
+        border-radius: 10px;
+    }
+    
+    .sizeHolder {
+        font-size: 15px;
+        margin-bottom: 8px;
+    }
+    
+    .finalPrice {
+        font-size: 16px;
+    }
+    
+    .discountLabel {
+        font-size: 10px;
+        padding: 5px 7px;
+        border-radius: 12px;
+    }
+    
+    .priceBlock.active .sizeHolder::after {
+        width: 50%;
+        bottom: -1px;
+    }
+}

@@ -28,16 +28,18 @@ type RespProductsByStringStruct struct {
 	TotalCount int                 `json:"totalCount"`
 }
 type ProductsInfoResponse struct {
-	Name         string                 `json:"name"`
-	Image        []string               `json:"imgs"`
-	Info         map[string]interface{} `json:"info"`
-	Discount     map[string]interface{} `json:"discount"`
-	ProductType  string                 `json:"producttype"`
-	Article      string                 `json:"article"`
-	Store        interface{}            `json:"store"`
-	Firm         string                 `json:"firm"`
-	LineProducts []GetSoloCollectionRow `json:"line_products"`
-	ImageCount   int32                  `json:"image_count"`
+	Name         string                          `json:"name"`
+	Info         map[string]interface{}          `json:"info"`
+	Discount     map[string]interface{}          `json:"discount"`
+	ProductType  string                          `json:"producttype"`
+	Article      string                          `json:"article"`
+	Store        interface{}                     `json:"store"`
+	Firm         string                          `json:"firm"`
+	Line         string                          `json:"line"`
+	LineProducts []GetSoloCollectionWithCountRow `json:"line_products"`
+	ImageCount   int32                           `json:"image_count"`
+	ImagePath    string                          `json:"image_path"`
+	Id           int32                           `json:"id"`
 }
 
 type ClothesInfoResponse struct {
@@ -62,8 +64,10 @@ func (store *SQLStore) GetProductsInfoByIdComplex(ctx context.Context, id int32)
 	if err != nil {
 		return ProductsInfoResponse{}, err
 	}
-	lineMerch, err := store.Queries.GetSoloCollection(ctx, GetSoloCollectionParams{
+	fmt.Println(snickers.Line, snickers.Firm, "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+	lineMerch, err := store.Queries.GetSoloCollectionWithCount(ctx, GetSoloCollectionWithCountParams{
 		Line:   snickers.Line,
+		Firm:   snickers.Firm,
 		Limit:  10,
 		Offset: 0,
 	})
@@ -93,11 +97,14 @@ func NewProductsInfoResponse(snInfo GetProductsInfoByIdRow) ProductsInfoResponse
 		Name:        snInfo.Name,
 		ImageCount:  snInfo.ImageCount,
 		Firm:        snInfo.Firm,
+		Line:        snInfo.Line.String,
 		Info:        jsonData,
 		Discount:    discount,
 		ProductType: "snickers",
 		Article:     snInfo.Article,
 		Store:       snInfo.StoreInfo,
+		ImagePath:   snInfo.ImagePath,
+		Id:          snInfo.ID,
 	}
 }
 

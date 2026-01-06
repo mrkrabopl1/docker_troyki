@@ -276,7 +276,8 @@ func (s *Server) handleGetOrderDataByMail(ctx *gin.Context) {
 
 func (s *Server) handleDeleteCartData(ctx *gin.Context) {
 	var data types.DeleteCartData
-	if err := ctx.BindJSON(data); err != nil {
+	if err := ctx.BindJSON(&data); err != nil {
+		fmt.Println(err, "error in delete cart data", data)
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}

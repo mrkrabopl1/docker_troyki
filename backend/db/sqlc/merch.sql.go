@@ -239,8 +239,8 @@ WHERE firm = $1
 `
 
 type GetCountOfCollectionsOrFirmsParams struct {
-	Firm string `json:"firm"`
-	Line string `json:"line"`
+	Firm string      `json:"firm"`
+	Line pgtype.Text `json:"line"`
 }
 
 func (q *Queries) GetCountOfCollectionsOrFirms(ctx context.Context, arg GetCountOfCollectionsOrFirmsParams) (int64, error) {
@@ -544,10 +544,10 @@ LIMIT $3 OFFSET $4
 `
 
 type GetMerchCollectionParams struct {
-	Firm   string `json:"firm"`
-	Line   string `json:"line"`
-	Limit  int32  `json:"limit"`
-	Offset int32  `json:"offset"`
+	Firm   string      `json:"firm"`
+	Line   pgtype.Text `json:"line"`
+	Limit  int32       `json:"limit"`
+	Offset int32       `json:"offset"`
 }
 
 type GetMerchCollectionRow struct {
@@ -615,10 +615,10 @@ LIMIT $3 OFFSET $4
 `
 
 type GetMerchCollectionWithCountParams struct {
-	Firm   string `json:"firm"`
-	Line   string `json:"line"`
-	Limit  int32  `json:"limit"`
-	Offset int32  `json:"offset"`
+	Firm   string      `json:"firm"`
+	Line   pgtype.Text `json:"line"`
+	Limit  int32       `json:"limit"`
+	Offset int32       `json:"offset"`
 }
 
 type GetMerchCollectionWithCountRow struct {
@@ -673,8 +673,8 @@ WHERE firm = $1 OR line = $2
 `
 
 type GetMerchCountOfCollectionsOrFirmsParams struct {
-	Firm string `json:"firm"`
-	Line string `json:"line"`
+	Firm string      `json:"firm"`
+	Line pgtype.Text `json:"line"`
 }
 
 func (q *Queries) GetMerchCountOfCollectionsOrFirms(ctx context.Context, arg GetMerchCountOfCollectionsOrFirmsParams) (int64, error) {
@@ -1135,13 +1135,13 @@ GROUP BY line
 `
 
 type GetProductsByLineNameRow struct {
-	Line      string      `json:"line"`
+	Line      pgtype.Text `json:"line"`
 	ID        interface{} `json:"id"`
 	ImagePath interface{} `json:"image_path"`
 	NameData  interface{} `json:"name_data"`
 }
 
-func (q *Queries) GetProductsByLineName(ctx context.Context, line string) ([]GetProductsByLineNameRow, error) {
+func (q *Queries) GetProductsByLineName(ctx context.Context, line pgtype.Text) ([]GetProductsByLineNameRow, error) {
 	rows, err := q.db.Query(ctx, getProductsByLineName, line)
 	if err != nil {
 		return nil, err
@@ -1298,6 +1298,7 @@ func (q *Queries) GetProductsByNameCategoryAndType(ctx context.Context, arg GetP
 
 const getProductsInfoById = `-- name: GetProductsInfoById :one
 SELECT sizes,
+    products.id AS id,
     image_path,
     name,
     discount.value AS value,
@@ -1321,13 +1322,14 @@ GROUP BY products.id, discount.value
 
 type GetProductsInfoByIdRow struct {
 	Sizes       []byte      `json:"sizes"`
+	ID          int32       `json:"id"`
 	ImagePath   string      `json:"image_path"`
 	Name        string      `json:"name"`
 	Value       []byte      `json:"value"`
 	StoreInfo   interface{} `json:"store_info"`
 	Article     string      `json:"article"`
 	Description pgtype.Text `json:"description"`
-	Line        string      `json:"line"`
+	Line        pgtype.Text `json:"line"`
 	Type        int32       `json:"type"`
 	Date        pgtype.Text `json:"date"`
 	Firm        string      `json:"firm"`
@@ -1339,6 +1341,7 @@ func (q *Queries) GetProductsInfoById(ctx context.Context, id int32) (GetProduct
 	var i GetProductsInfoByIdRow
 	err := row.Scan(
 		&i.Sizes,
+		&i.ID,
 		&i.ImagePath,
 		&i.Name,
 		&i.Value,
@@ -1468,10 +1471,10 @@ LIMIT $3 OFFSET $4
 `
 
 type GetSoloCollectionParams struct {
-	Firm   string `json:"firm"`
-	Line   string `json:"line"`
-	Limit  int32  `json:"limit"`
-	Offset int32  `json:"offset"`
+	Firm   string      `json:"firm"`
+	Line   pgtype.Text `json:"line"`
+	Limit  int32       `json:"limit"`
+	Offset int32       `json:"offset"`
 }
 
 type GetSoloCollectionRow struct {
@@ -1526,15 +1529,15 @@ SELECT COALESCE(discount.minprice, products.minprice) AS minprice,
 FROM products
     LEFT JOIN discount ON products.id = productid
 WHERE firm = $1
-    OR line = $2
+    AND line = $2
 LIMIT $3 OFFSET $4
 `
 
 type GetSoloCollectionWithCountParams struct {
-	Firm   string `json:"firm"`
-	Line   string `json:"line"`
-	Limit  int32  `json:"limit"`
-	Offset int32  `json:"offset"`
+	Firm   string      `json:"firm"`
+	Line   pgtype.Text `json:"line"`
+	Limit  int32       `json:"limit"`
+	Offset int32       `json:"offset"`
 }
 
 type GetSoloCollectionWithCountRow struct {

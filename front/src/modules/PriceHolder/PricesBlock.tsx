@@ -1,20 +1,57 @@
 import React, { memo } from 'react'
 import s from "./style.module.css"
-import doneSvg from "../../../public/done.svg"
 import { toPrice } from 'src/global'
-type merchType = {onChange:()=>void,active:boolean,size:string,price:number,availability?:boolean,discount?:number,id:number,in_stock:boolean}
+
+type merchType = {
+    onChange: () => void,
+    active: boolean,
+    size: string,
+    price: number,
+    discount?: number,
+    id: number,
+    in_stock: boolean
+}
 
 const PricesBlock: React.FC<merchType> = (props) => {
-    let {price,size,active,availability,id,onChange,discount,in_stock} = {...props}
+    const { price, size, active, id, onChange, discount, in_stock } = props
+    
+    const finalPrice = discount ? price - discount : price;
+    const hasDiscount = discount && discount > 0;
+
     return (
-        <div onClick={onChange} className={s.priceBlock} >
+        <div 
+            onClick={in_stock ? onChange : undefined} 
+            className={`${s.priceBlock} ${active ? s.active : ''} ${!in_stock ? s.outOfStock : ''}`}
+        >
             <div className={s.sizeHolder}>{size}</div>
-            <div className={s.avelibleHolder}><div>{toPrice(price)}</div>{availability?<img className={s.done} src={doneSvg} alt="" />:null}</div> 
-            {active?<div className={s.priceUnderline}></div>:null}
-            {discount?<div className={s.discountLabel}></div>:null}
-              {in_stock?<div className={s.storeLabel}></div>:null}
-        </div>
             
+            <div className={s.priceInfo}>
+                {hasDiscount && (
+                    <div className={s.originalPrice}>
+                        {toPrice(price)}
+                    </div>
+                )}
+                <div className={s.finalPrice}>
+                    {toPrice(finalPrice)}
+                </div>
+            </div>
+
+            {hasDiscount && (
+                <div className={s.discountLabel}>
+                    -{toPrice(discount)}
+                </div>
+            )}
+
+            {!in_stock && (
+                <div className={s.stockLabel}>
+                    Нет в наличии
+                </div>
+            )}
+
+            {/* {active && (
+                <div className={s.activeIndicator}></div>
+            )} */}
+        </div>
     )
 }
 

@@ -1,11 +1,13 @@
 .inputWithLabel {
     border: 0;
-    border-bottom: 2px solid gray;
+    border-bottom: 2px solid #e0e0e0;
     outline: 0;
     padding: 7px 0;
     background: transparent;
-    transition: border-color 0.2s;
-    font-size: 18px;
+    transition: all 0.3s ease;
+    font-size: 16px;
+    width: 100%;
+    color: #1a1a1a;
 }
 
 .inputHolder{
@@ -19,34 +21,37 @@
     position: absolute;
     top: 0px;
     display: block;
-    transition: 0.2s;
-    font-size: 1.2rem;
-    color: black;
+    transition: 0.3s ease;
+    font-size: 14px;
+    font-weight: 600;
+    color: #8d8d8d;
+    pointer-events: none;
 }
 
 .inputWithLabel:placeholder-shown~.label {
     position: absolute;
     top: 20px;
     display: block;
-    transition: 0.2s;
-    font-size: 1rem;
-    color: gray;
-    cursor: text;
+    transition: 0.3s ease;
+    font-size: 16px;
+    color: #a0a0a0;
+    font-weight: 400;
 }
 
 .inputWithLabel:focus {
-    border-image: linear-gradient(to right, black, red);
-    border-image-slice: 1;
+    border-bottom-color: #000000;
+    background: transparent;
 }
 
 .invalid {
-    border-bottom: solid 2px red;
+    border-bottom-color: #dc2626;
 }
 
 .inputWithLabel:focus~.label {
     top: 0px;
-    font-size: 1.2rem;
-    color: black
+    font-size: 14px;
+    font-weight: 600;
+    color: #000000;
 }
 
 .inputContainer {
@@ -59,7 +64,83 @@
 .inputPass {
     border: 0;
     outline: 0;
-    border-bottom: 2px solid gray;
+    border-bottom: 2px solid #e0e0e0;
     padding: 7px 0;
-    transition: border-color 0.2s;
+    transition: border-color 0.3s ease;
+    width: 100%;
+    background: transparent;
+    font-size: 16px;
+    color: #1a1a1a;
+}
+
+.inputPass:focus {
+    border-bottom-color: #000000;
+}
+
+/* NumInputVertical - убрана внешняя граница, добавлена к инпуту */
+.numInputVertical {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 60px;
+    height: 120px;
+    background: #ffffff;
+    border: none; /* Убрана внешняя граница */
+    border-radius: 12px;
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.8),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.05),
+        0 2px 6px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.numInputVertical:hover {
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.9),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.08),
+        0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.numInputVertical:focus-within {
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.9),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.1),
+        0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Number Input - добавлена граница */
+.numberInput {
+    width: 100%;
+    height: 60px;
+    border: 1px solid #e8e8e8; /* Добавлена граница */
+    border-radius: 8px; /* Скругление для границы */
+    background: transparent;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a1a;
+    outline: none;
+    padding: 0;
+    flex: 1;
+    margin: 8px 0;
+    transition: all 0.3s ease;
+}
+
+.numberInput:focus {
+    background: #fafafa;
+    border-color: #000000; /* Граница при фокусе */
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Disabled State */
+.numInputVertical.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.numInputVertical.disabled .numberInput {
+    cursor: not-allowed;
+    border-color: #f0f0f0;
+    background: #f8f8f8;
 }

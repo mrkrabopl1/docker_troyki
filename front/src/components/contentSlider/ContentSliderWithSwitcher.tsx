@@ -52,7 +52,8 @@ const ContentSliderWithSwitcher: React.FC<ContentSliderProps> = ({
 
   // Мемоизированный стиль контейнера
   const containerStyle:CSSProperties = useMemo(() => ({
-    position: "relative"
+    position: "relative",
+    height:"100%"
   }), []);
 
   return (

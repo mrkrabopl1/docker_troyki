@@ -2,7 +2,7 @@ import React, { ReactElement, useEffect, useRef, useState,useCallback } from 're
 import Button from '../../Button'
 import styled from 'styled-components';
 import s from "./linkControllerNewPreset.module.scss"
-import ArrowButton from 'src/components/button/arrowButton';
+import ArrowButton from 'src/components/button/ArrowButton';
 
 const TomatoButton = styled(Button)`
   border-color: tomato;
@@ -67,6 +67,7 @@ const SliderDefaultController: React.FC<ContentSliderType> = (data) => {
 
   // Функция для правой кнопки (использует ref'ы)
   const rightFunc = useCallback((e) => {
+    console.debug('Right func called',stepSize, activeRef.current, positionsRef.current);
     e.preventDefault();
     e.stopPropagation();
     if (activeRef.current < positionsRef.current) {

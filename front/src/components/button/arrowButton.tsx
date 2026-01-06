@@ -1,140 +1,94 @@
-import React, { memo, useCallback, useEffect, useRef } from 'react';
-import s from "./style.module.scss"
+import React, { memo, useCallback, useRef ,useState} from 'react';
+import s from "./style.module.scss";
 
-interface IButtonProps {
-  text?: string;
+interface ArrowButtonProps {
+  direction: 'up' | 'down' | 'left' | 'right';
   onClick: (e: React.MouseEvent) => void;
-  className?: string;
-  style?: React.CSSProperties;
   disabled?: boolean;
+  className?: string;
+  buttonSize?: number;
   onHold?: boolean;
-  preset?: 'small' | 'medium' | 'big';
-  direction: 'left' | 'right' | 'up' | 'down';
 }
 
-const presetEnum = {
-  small: 16,
-  medium: 32,
-  big: 200
-}
-
-const ArrowButton: React.FC<IButtonProps> = ({
-  text,
+const ArrowButton: React.FC<ArrowButtonProps> = ({
+  direction,
   onClick,
-  onHold,
-  className,
-  style,
   disabled = false,
-  preset = 'small',
-  direction = 'right'
+  className = '',
+  buttonSize = 30,
+  onHold = false
 }) => {
-
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const isHoldingRef = useRef<boolean>(false);
-  
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    onClick(e);
-  }, [onClick]);
-
-  const buttonStyle: React.CSSProperties = {
-    cursor: 'pointer',
-    display: 'inline-block',
-    ...style
-  };
-
-  const clearHoldInterval = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+  const holdTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const holdIntervalRef = useRef<NodeJS.Timeout | null>(null);
+   const [active, setActive] = useState(false);
+  const handleMouseDown = useCallback((e) => {
+    if (onHold && !disabled) {
+      holdTimeoutRef.current = setTimeout(() => {
+        holdIntervalRef.current = setInterval(() => {
+          onClick(e);
+        }, 100);
+      }, 300);
     }
-    isHoldingRef.current = false;
+  }, [onHold, disabled, onClick]);
+
+  const handleMouseUp = useCallback(() => {
+    if (holdTimeoutRef.current) {
+      clearTimeout(holdTimeoutRef.current);
+      holdTimeoutRef.current = null;
+    }
+    if (holdIntervalRef.current) {
+      clearInterval(holdIntervalRef.current);
+      holdIntervalRef.current = null;
+    }
   }, []);
 
-  const startHold = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (!onHold) return;
+  const handleMouseLeave = useCallback(() => {
+    handleMouseUp();
+  }, [handleMouseUp]);
 
-    // Останавливаем всплытие для всех типов событий
-    if ('stopPropagation' in e) {
-      e.stopPropagation();
-      e.preventDefault();
+  const handleTouchStart = useCallback((e) => {
+    handleMouseDown(e);
+  }, [handleMouseDown]);
+
+  const handleTouchEnd = useCallback(() => {
+    handleMouseUp();
+  }, [handleMouseUp]);
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!disabled && !onHold) {
+      onClick(e);
     }
+  }, [disabled, onHold, onClick]);
 
-    isHoldingRef.current = true;
-    
-    // Создаем синтетическое событие для onClick
-    const syntheticEvent = e as React.MouseEvent;
-    onClick(syntheticEvent);
+  const rotation = {
+    up: 180,
+    right: 90,
+    down: 0,
+    left: 270
+  }[direction];
 
-    intervalRef.current = setInterval(() => {
-      if (isHoldingRef.current) {
-        onClick(syntheticEvent);
-      }
-    }, 200);
-  }, [onHold, onClick]);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-       e.stopPropagation();
-      e.preventDefault();
-    if (onHold) {
-      startHold(e);
-    }
-  }, [onHold, startHold]);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (onHold) {
-      startHold(e);
-    }
-  }, [onHold, startHold]);
-
-  const handleMouseUp = useCallback((e: React.MouseEvent) => {
-       e.stopPropagation();
-      e.preventDefault();
-    if (onHold) {
-      clearHoldInterval();
-    }
-  }, [onHold, clearHoldInterval]);
-
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (onHold) {
-      e.stopPropagation();
-      // Для TouchEvent preventDefault может быть проблематичным
-      // e.preventDefault();
-      clearHoldInterval();
-    }
-  }, [onHold, clearHoldInterval]);
-
-  const handleMouseLeave = useCallback((e: React.MouseEvent) => {
-    if (onHold) {
-      e.stopPropagation();
-      clearHoldInterval();
-    }
-  }, [onHold, clearHoldInterval]);
-
-  // Очищаем интервал при размонтировании компонента
-  useEffect(() => {
-    return () => clearHoldInterval();
-  }, [clearHoldInterval]);
-
-  const buttonSize = presetEnum[preset];
-  
   return (
     <button
-      style={{ width: `${buttonSize}px`, height: `${buttonSize}px` }}
+      style={{ 
+        width: `${buttonSize}px`, 
+        height: `${buttonSize}px`,
+        transform: `rotate(${rotation}deg)`
+      }}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onClick={onHold ? (e) => { e.stopPropagation(); } : handleClick}
-      className={`${s.paginate} ${s[`${direction}`]} ${className}`}
+      className={`${s.paginate} ${className}`}
       disabled={disabled}
     >
-      <i style={{ width: `${buttonSize}px` }} className={s.def}></i>
-      <i style={{ width: `${buttonSize}px` }} className={s.def}></i>
+      <div className={s.arrowMain}>
+        <i  className={s.arrowLeft}></i>
+        <i  className={s.arrowRight}></i>
+      </div>
     </button>
   );
 };
-
 export default memo(ArrowButton);

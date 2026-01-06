@@ -56,3 +56,92 @@
 	outline: none;
 	border-radius: 5px;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.formButton {
+    width: 100%;
+    font-size: 20px;
+    margin: 8px 0px;
+    padding: 16px 24px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+    
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #e0e0e0;
+    
+    /* Deep embossed effect for white button */
+    box-shadow: 
+        inset 0 2px 4px rgba(255, 255, 255, 0.9),
+        inset 0 -4px 8px rgba(0, 0, 0, 0.08),
+        0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.formButton:hover:not(:disabled) {
+    background: #f8f8f8;
+    border-color: #d0d0d0;
+    transform: translateY(-2px);
+    box-shadow: 
+        inset 0 2px 4px rgba(255, 255, 255, 0.95),
+        inset 0 -4px 8px rgba(0, 0, 0, 0.12),
+        0 6px 12px rgba(0, 0, 0, 0.08);
+}
+
+.formButton:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 
+        inset 0 3px 6px rgba(0, 0, 0, 0.1),
+        inset 0 -2px 4px rgba(255, 255, 255, 0.8),
+        0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Disabled state for both buttons */
+.formButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.6),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.05),
+        0 2px 4px rgba(0, 0, 0, 0.03);
+}
+
+.formButton:disabled:hover {
+    transform: none;
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.6),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.05),
+        0 2px 4px rgba(0, 0, 0, 0.03);
+}

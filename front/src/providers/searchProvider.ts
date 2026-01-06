@@ -140,7 +140,7 @@ const getProductsAndFiltersByString = function (searchName:string,callback:(val:
     })
 }
 
-const getProductsAndFiltersByCategoryAndType = function (searchName:string,callback:(val:any)=>void, page:number,size:number,  orderType:string, category:number,type:number){
+const getProductsAndFiltersByCategoryAndType = function (searchName:string,callback:(val:any)=>void, page:number,size:number,  orderType:string, category:number,type:number, filters:any){
 
     axios({
         method: 'post',
@@ -154,7 +154,8 @@ const getProductsAndFiltersByCategoryAndType = function (searchName:string,callb
             size:size,
             orderType:orderType,
             category:category,
-            type:type
+            type:type,
+            filters:filters
         })
     }
     ).then((res:any)=>{

@@ -54,7 +54,7 @@ type Querier interface {
 	GetProductsByFilters(ctx context.Context, arg GetProductsByFiltersParams) ([]GetProductsByFiltersRow, error)
 	GetProductsByFiltersNewTest(ctx context.Context, arg GetProductsByFiltersNewTestParams) ([]GetProductsByFiltersNewTestRow, error)
 	GetProductsByIds(ctx context.Context, dollar_1 []int32) ([]GetProductsByIdsRow, error)
-	GetProductsByLineName(ctx context.Context, line string) ([]GetProductsByLineNameRow, error)
+	GetProductsByLineName(ctx context.Context, line pgtype.Text) ([]GetProductsByLineNameRow, error)
 	GetProductsByName(ctx context.Context, arg GetProductsByNameParams) ([]GetProductsByNameRow, error)
 	GetProductsByNameCategoryAndType(ctx context.Context, arg GetProductsByNameCategoryAndTypeParams) ([]GetProductsByNameCategoryAndTypeRow, error)
 	GetProductsInfoById(ctx context.Context, id int32) (GetProductsInfoByIdRow, error)

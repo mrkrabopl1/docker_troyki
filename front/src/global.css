@@ -99,76 +99,101 @@ body{
   }
 }
 
-
-:global(.btnStyle){
-  color: white;
-  background-color: black;
-  /* color: darken(red, 10%); */
-  position: relative;
-  border: none;
-  overflow: hidden;
-  box-shadow: none;
-  position: relative;
-  border: none;
-  font-size: 18px;
-  transition: color 0.5s, transform 0.2s, background-color 0.2s;
-  outline: none;
-  border-radius: 3px;
-  padding: 13px 13px;
-  border: 3px solid transparent;
-  border-radius:5px ;
+:global(.btnStyle.dark) {
+    background: #2a2a2a;
+    color: #ffffff;
+    border: 1px solid #444444;
+    
+    box-shadow: 
+        inset 0 2px 4px rgba(255, 255, 255, 0.05),
+        inset 0 -4px 8px rgba(0, 0, 0, 0.3),
+        0 4px 6px rgba(0, 0, 0, 0.15);
 }
-  
- 
-:global(.btnStyle:hover){
-    color:white;
-  }
-   
-:global(.btnStyle::before){
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    /* border: 3px solid darken(red, 10%); */
-    transition: opacity 0.3s, border 0.3s;
-  }
 
-  :global(.btnStyle:active){
-    transform: translateY(3px)
-  }
+:global(.btnStyle.dark):hover:not(:disabled) {
+    background: #333333;
+    border-color: #555555;
+    transform: translateY(-2px);
+    box-shadow: 
+        inset 0 2px 4px rgba(255, 255, 255, 0.08),
+        inset 0 -4px 8px rgba(0, 0, 0, 0.4),
+        0 6px 12px rgba(0, 0, 0, 0.2);
+}
 
+:global(.btnStyle.dark):active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 
+        inset 0 3px 6px rgba(0, 0, 0, 0.4),
+        inset 0 -2px 4px rgba(255, 255, 255, 0.1),
+        0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
-  :global(.btnStyle:hover::before){
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
+:global(.btnStyle.dark):disabled {
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.05),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.2),
+        0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+:global(.btnStyle) {
     width: 100%;
-    height: 100%;
-    /* border: 3px solid darken(red, 10%); */
-    transition: opacity 0.3s, border 0.3s;
-  }
-  :global(.btnStyle::after){
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 200px;
-    background-color: black;
-    border-color: transparent;
-    /* border-radius: 50%; */
-    transform: translate(0px, -70px) scale(0.1);
-    opacity: 0;
-    z-index: -1;
-    transition: transform 0.3s, opacity 0.3s, background-color 0.3s
-  }
-  
-   
-  :global(.btnStyle:hover::after){
-    opacity: 1;
-    transform-origin: 100px 100px;
-    transform: scale(1) translate(0px, -70px)
-  }
+    font-size: 20px;
+    margin: 8px 0px;
+    padding: 16px 24px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+    
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #e0e0e0;
+    
+    /* Deep embossed effect for white button */
+    box-shadow: 
+        inset 0 2px 4px rgba(255, 255, 255, 0.9),
+        inset 0 -4px 8px rgba(0, 0, 0, 0.08),
+        0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+:global(.btnStyle):hover:not(:disabled) {
+    background: #f8f8f8;
+    border-color: #d0d0d0;
+    transform: translateY(-2px);
+    box-shadow: 
+        inset 0 2px 4px rgba(255, 255, 255, 0.95),
+        inset 0 -4px 8px rgba(0, 0, 0, 0.12),
+        0 6px 12px rgba(0, 0, 0, 0.08);
+}
+
+:global(.btnStyle):active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 
+        inset 0 3px 6px rgba(0, 0, 0, 0.1),
+        inset 0 -2px 4px rgba(255, 255, 255, 0.8),
+        0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Disabled state for both buttons */
+:global(.btnStyle):disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.6),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.05),
+        0 2px 4px rgba(0, 0, 0, 0.03);
+}
+
+:global(.btnStyle):disabled:hover {
+    transform: none;
+    box-shadow: 
+        inset 0 1px 2px rgba(255, 255, 255, 0.6),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.05),
+        0 2px 4px rgba(0, 0, 0, 0.03);
+}

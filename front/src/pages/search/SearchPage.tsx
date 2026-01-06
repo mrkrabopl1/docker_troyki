@@ -23,7 +23,7 @@ interface FiltersInfoRequest {
   firms: string[],
   types: number[],
   store?: boolean,
-  withPrice:boolean,
+  withPrice: boolean,
   discount?: boolean
 }
 
@@ -59,7 +59,7 @@ const SearchPage: React.FC = () => {
     types: [],
     store: false,
     discount: false,
-    withPrice:true
+    withPrice: true
   })
   const [hoverSettings, setHoverSettings] = useState(false);
   const emptyData = useRef(false)
@@ -121,7 +121,7 @@ const SearchPage: React.FC = () => {
     searchWord.current = name
     searchData()
   }, [updatMerch])
-    const navigate = useNavigate();
+  const navigate = useNavigate();
   const searchCallback = useCallback((searchData: string) => {
     searchWord.current = searchData
     let params = {};
@@ -157,7 +157,7 @@ const SearchPage: React.FC = () => {
     types?: number[]
     store?: boolean,
     discount?: boolean
-    withPrice:boolean
+    withPrice: boolean
   }) => {
     const priceProps = {
       min: resData.price[0],
@@ -226,7 +226,7 @@ const SearchPage: React.FC = () => {
       soloDataProps: true ? [
         { name: "Есть на складе", activeData: false, enable: true },
         { name: "Со скидкой", activeData: false, enable: true },
-         { name: "В наличии", activeData: false, enable: true }
+        { name: "В наличии", activeData: false, enable: true }
       ] : []
     }
   }, [])
@@ -275,9 +275,9 @@ const SearchPage: React.FC = () => {
         filter.data.forEach((data: boolean, index: number) => {
           if (!index) {
             filtersInfo.current.discount = data
-          } else if (index === 1){
+          } else if (index === 1) {
             filtersInfo.current.store = data
-          }else{
+          } else {
             filtersInfo.current.withPrice = data
           }
         })
@@ -303,23 +303,23 @@ const SearchPage: React.FC = () => {
       price: [],
       firms: [],
       types: [],
-      withPrice:true
+      withPrice: true
     }
     searchData()
   }, [updatMerch])
 
-useEffect(() => {
+  useEffect(() => {
     if (!pageWrap.current) return;
 
     const handleResize = () => {
-        const width = pageWrap.current.clientWidth;
-        if (width < 800) {
-            setGrid(true);
-            setShowGrid(false);
-        } else {
-            setGrid(false);
-            setShowGrid(true);
-        }
+      const width = pageWrap.current.clientWidth;
+      if (width < 800) {
+        setGrid(true);
+        setShowGrid(false);
+      } else {
+        setGrid(false);
+        setShowGrid(true);
+      }
     };
 
     // Только слушатель resize + первоначальная проверка
@@ -327,14 +327,14 @@ useEffect(() => {
     handleResize();
 
     return () => {
-        window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', handleResize);
     };
-}, []);
+  }, []);
   useEffect(() => {
     if (Object.entries(typesVal).length === 0) {
       return;
     }
-    if(pageWrap.current && pageWrap.current.clientWidth<600){
+    if (pageWrap.current && pageWrap.current.clientWidth < 600) {
       setGrid(true)
       setShowGrid(false)
     }
@@ -365,6 +365,12 @@ useEffect(() => {
       }
     }
 
+    let firm = searchParams.get('firm') || "";
+
+    if (firm) {
+      filtersInfo.current.firms.push(firm)
+    }
+
 
     const name = searchParams.get('name') || "";
     filtersInfo.current.discount = Boolean(searchParams.get('discount') || "");
@@ -393,7 +399,8 @@ useEffect(() => {
         pageSize.current,
         "0",
         categoryRef.current,
-        typeRef.current
+        typeRef.current,
+        filtersInfo.current
       )
     }
   }, [getProductsAndFiltersByString, getProductsAndFiltersByCategoryAndType])
@@ -412,12 +419,12 @@ useEffect(() => {
     <div ref={pageWrap}>
       <div style={{ position: "relative", overflow: "hidden" }}>
         <div className={s.head}>Результаты поиска.</div>
-        <div style={{display:'flex',justifyContent:"center", width:"100%", marginBottom:"20px" }}>
+        <div style={{ display: 'flex', justifyContent: "center", width: "100%", marginBottom: "20px" }}>
           <SearchWithList
             val={searchWord.current}
             className={styleData}
             searchCallback={searchNameCallback}
-            selectList={(data)=>{navigate('/product/' + data);}}
+            selectList={(data) => { navigate('/product/' + data); }}
           />
         </div>
 
@@ -488,9 +495,9 @@ useEffect(() => {
               data={merchFieldData}
             />
 
-            {showGrid ?<div onClick={() => setGrid(!grid)} className={s.gridSwitcher}>
+            {showGrid ? <div onClick={() => setGrid(!grid)} className={s.gridSwitcher}>
               {grid ? <FoureGrid /> : <SixGrid />}
-            </div>:null}
+            </div> : null}
 
 
           </div>

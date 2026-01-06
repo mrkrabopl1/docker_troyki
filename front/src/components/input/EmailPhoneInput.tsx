@@ -105,8 +105,9 @@ const EmailPhoneInput: React.FC<Props> = ({
         value={inputValue}
         type={currentType}
         className={inputClasses}
+            aria-label={placeholder}
         style={{ boxSizing: 'border-box', width: "100%" }}
-        placeholder={placeholder}
+     placeholder=''
         onChange={handleChange}
         onFocus={(e) => onFocus?.(e.target.value)}
         onBlur={handleBlur}

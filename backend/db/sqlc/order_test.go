@@ -161,7 +161,7 @@ func TestInsertOrder(t *testing.T) {
 	require.NotEmpty(t, preorder)
 }
 func TestDeleteFromPreorderItems(t *testing.T) {
-	err := testStore.DeleteCartData(context.Background(), 30)
+	err := testStore.DeleteCartData(context.Background(), 14)
 	require.NoError(t, err)
 }
 

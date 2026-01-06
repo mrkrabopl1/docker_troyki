@@ -21,7 +21,7 @@ type PropsRowType = {
     };
     placeholder?: string;
     val?: string;
-    valid: boolean;
+    valid: boolean
 };
 
 const AddressInput: React.FC<PropsRowType> = memo(({
@@ -43,7 +43,7 @@ const AddressInput: React.FC<PropsRowType> = memo(({
 
     const updateValidObj = useCallback(() => {
         const isValid = Boolean(
-            addressObjRef.current.coordinates?.[0] && 
+            addressObjRef.current.coordinates?.[0] &&
             addressObjRef.current.coordinates?.[1]
         );
         setValid(isValid);
@@ -58,6 +58,11 @@ const AddressInput: React.FC<PropsRowType> = memo(({
             timeoutId.current && clearTimeout(timeoutId.current);
         };
     }, []);
+
+    useEffect(() => {
+          setValid(valid)
+    }, [valid]);
+
 
     const handleAddressSelect = useCallback((val: any) => {
         const { city, street, geo_lon, geo_lat, house } = val.data;
@@ -75,7 +80,7 @@ const AddressInput: React.FC<PropsRowType> = memo(({
 
     const createSuggestionElements = useCallback((suggestions: any[]) => {
         return suggestions.map((suggestion, index) => (
-            <div 
+            <div
                 key={`${suggestion.value}-${index}`}
                 onClick={() => handleAddressSelect(suggestion)}
                 className={s.addressRow}
@@ -117,8 +122,8 @@ const AddressInput: React.FC<PropsRowType> = memo(({
                 onBlur={onBlur}
                 onChange={handleInputChange}
             />
-            <DropDownList 
-                className={`${s.dropList} ${className?.dropList || ''}`} 
+            <DropDownList
+                className={`${s.dropList} ${className?.dropList || ''}`}
                 active={activeList}
             >
                 {dropDownListData}
