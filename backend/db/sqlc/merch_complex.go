@@ -103,7 +103,7 @@ func NewProductsInfoResponse(snInfo GetProductsInfoByIdRow) ProductsInfoResponse
 		ProductType: "snickers",
 		Article:     snInfo.Article,
 		Store:       snInfo.StoreInfo,
-		ImagePath:   snInfo.ImagePath,
+		ImagePath:   "/images/" + snInfo.ImagePath + "/img",
 		Id:          snInfo.ID,
 	}
 }
@@ -449,7 +449,7 @@ func groupProducts(rows []GetMainPageInfoRow) map[int32]CategoryData {
 			Id:    row.ID,
 			Name:  row.Name,
 			Price: row.Minprice,
-			Image: row.ImagePath,
+			Image: "/images/" + row.ImagePath + "/img1.png",
 		})
 		categories[row.Category] = cat
 	}
@@ -480,7 +480,7 @@ func filtredDataResponse(data []GetProductsByFiltersRow) []ProductsResponseD {
 	for _, line := range data {
 		var imgArr []string
 		for i := 1; i < 3; i++ {
-			str := "images/" + fmt.Sprintf(line.ImagePath+"/img%d.png", i)
+			str := "/images/" + fmt.Sprintf(line.ImagePath+"/img%d.png", i)
 			imgArr = append(imgArr, str)
 		}
 
@@ -519,7 +519,7 @@ func NewProductsByStringResponse(snLines []types.ProductsSearch) []ProductsRespo
 	for _, line := range snLines {
 		var imgArr []string
 		for i := 1; i < 3; i++ {
-			str := "images/" + fmt.Sprintf(line.Image_path+"/img%d.png", i)
+			str := "/images/" + fmt.Sprintf(line.Image_path+"/img%d.png", i)
 			imgArr = append(imgArr, str)
 		}
 
@@ -566,7 +566,7 @@ func NewProductsSearchResponse(ProductsSearch []GetProductsByNameRow) []types.Pr
 
 	list := []types.ProductsSearchResponse{}
 	for _, info := range ProductsSearch {
-		img_path := "images/" + info.ImagePath + "/img1.png"
+		img_path := "/images/" + info.ImagePath + "/img1.png"
 		list = append(list, types.ProductsSearchResponse{
 			Image: img_path,
 			Price: int(info.Minprice),
@@ -582,7 +582,7 @@ func NewMerchSearchResponse(ProductsSearch []GetProductsByNameRow) []types.Produ
 
 	list := []types.ProductsSearchResponse{}
 	for _, info := range ProductsSearch {
-		img_path := "images/" + info.ImagePath + "/img1.png"
+		img_path := "/images/" + info.ImagePath + "/img1.png"
 		list = append(list, types.ProductsSearchResponse{
 			Image: img_path,
 			Price: int(info.Minprice),
@@ -618,7 +618,7 @@ func NewMerchCollectionResponse(ProductsSearch []GetMerchCollectionRow) []types.
 	for _, info := range ProductsSearch {
 		var imgArr []string
 		for i := 1; i < 3; i++ {
-			str := "images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
+			str := "/images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
 			imgArr = append(imgArr, str)
 		}
 		var discount interface{}
@@ -649,7 +649,7 @@ func NewProductsSearchResponse1(ProductsSearch []GetSoloCollectionRow) []types.P
 	for _, info := range ProductsSearch {
 		var imgArr []string
 		for i := 1; i < 3; i++ {
-			str := "images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
+			str := "/images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
 			imgArr = append(imgArr, str)
 		}
 		var discount interface{}
@@ -694,7 +694,7 @@ func NewMerchDiscountResponse(ProductsSearch []GetMerchWithDiscountRow) []types.
 	for _, info := range ProductsSearch {
 		var imgArr []string
 		for i := 1; i < 3; i++ {
-			str := "images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
+			str := "/images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
 			imgArr = append(imgArr, str)
 		}
 		var discount interface{}

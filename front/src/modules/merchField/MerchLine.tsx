@@ -12,7 +12,7 @@ const MerchLine: React.FC<MerchInterface> = ({ name, img, id, firm, price, onCha
     }, [id, onChange]);
     return (
         <div onMouseDown={(e) => { e.preventDefault() }} onClick={handleChange} className={s.merchLine}>
-            <img className={s.img} style={{ flexShrink: 0, width: "160px" }} src={"/" + img} alt="" />
+            <img className={s.img} style={{ flexShrink: 0, width: "160px" }} src={img} alt="" />
             <div className= {s.textHolder} >
                 <p className={s.firmName} style={{textAlign: "left", fontWeight: "bold", marginBottom: "5px", marginTop: "5px"}}>
                     {firm.toUpperCase()}

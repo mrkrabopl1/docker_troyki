@@ -113,8 +113,9 @@ func (q *Queries) CreatePreorder(ctx context.Context, id int32, size string, pri
 }
 
 type Delivery struct {
-	DeliveryPrice int          `json:"deliveryPrice"`
-	Type          DeliveryEnum `json:"type"`
+	DeliveryPrice   int          `json:"deliveryPrice"`
+	Type            DeliveryEnum `json:"type"`
+	DeliveryComment string       `json:"deliveryComment"`
 }
 type CreateOrderType struct {
 	PreorderHash string             `json:"preorderHash"`
@@ -139,6 +140,29 @@ func (store *SQLStore) CreateOrder(ctx context.Context, orderData *CreateOrderTy
 		},
 		Mail:  orderData.PersonalData.Mail,
 		Phone: orderData.PersonalData.Phone,
+		Town:  orderData.Address.Town,
+		Street: pgtype.Text{
+			String: orderData.Address.Street,
+			Valid:  true,
+		},
+		Region: pgtype.Text{
+			String: orderData.Address.Region,
+			Valid:  true,
+		},
+		Index: orderData.Address.Index,
+		House: pgtype.Text{
+			String: orderData.Address.House,
+		},
+		Flat: pgtype.Text{
+			String: orderData.Address.Flat,
+		},
+		Settlement: pgtype.Text{
+			String: orderData.Address.Settlement,
+		},
+		Deliverycomment: pgtype.Text{
+			String: orderData.Delivery.DeliveryComment,
+			Valid:  true,
+		},
 	})
 	fmt.Println(pgtype.Int4{
 		Int32: userId,
@@ -154,6 +178,10 @@ func (store *SQLStore) CreateOrder(ctx context.Context, orderData *CreateOrderTy
 		Status:        StatusEnumPending,
 		Deliveryprice: int32(orderData.Delivery.DeliveryPrice),
 		Deliverytype:  orderData.Delivery.Type,
+		Deliverycomment: pgtype.Text{
+			String: orderData.Delivery.DeliveryComment,
+			Valid:  true,
+		},
 		Unregistercustomerid: pgtype.Int4{
 			Int32: userId,
 			Valid: true,
@@ -245,7 +273,7 @@ func (store *SQLStore) CreateOrder(ctx context.Context, orderData *CreateOrderTy
 }
 
 type GetOrderData struct {
-	UserInfo     GetUnregisterCustomerRow
+	UserInfo     Unregistercustomer
 	State        string
 	SnickersCart []GetOrderDataByIdRow
 	OrderId      int
@@ -336,11 +364,11 @@ func (store *SQLStore) GetCartDataFromPreorderByHash(ctx context.Context, hash s
 }
 
 type OrderDataResp struct {
-	UserInfo     GetUnregisterCustomerRow `json:"userInfo"`
-	State        StatusEnum               `json:"state"`
-	CartResponse []GetOrderDataByIdRow    `json:"cartResponse"`
-	OrderId      int32                    `json:"orderId"`
-	Address      types.Address            `json:"address"`
+	UserInfo     Unregistercustomer    `json:"userInfo"`
+	State        StatusEnum            `json:"state"`
+	CartResponse []GetOrderDataByIdRow `json:"cartResponse"`
+	OrderId      int32                 `json:"orderId"`
+	Address      types.Address         `json:"address"`
 }
 
 func (store *SQLStore) GetOrderDataByMail(ctx context.Context, mail string, id int32) (OrderDataResp, string, error) {
@@ -381,7 +409,7 @@ func NewProductsSearchResponse3(ProductsSearch []GetProductsWithDiscountRow) []t
 	for _, info := range ProductsSearch {
 		var imgArr []string
 		for i := 1; i < 3; i++ {
-			str := "images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
+			str := "/images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
 			imgArr = append(imgArr, str)
 		}
 		var discount interface{}

@@ -11,7 +11,13 @@ import {categories } from 'src/store/reducers/menuSlice';
 import MerchSliderField from 'src/modules/merchField/MerchSliderField';
 import { getMainPage } from 'src/providers/merchProvider';
 import ContentSliderWithLinks from 'src/components/contentSlider/ContentSliderWithLinks';
+import { getMainBanners } from 'src/providers/shopProvider';
+import VideoWallpaper from 'src/components/styledWalpapers/videoWalpaper/VideoWalpaper';
+import InfiniteRecursionViewport from 'src/components/styledWalpapers/doubleBacground/InfiniteRecursionViewport';
+import BlobBackground from 'src/components/styledWalpapers/blobBackground/BlobBackground';
+import ImageSlider from 'src/modules/imageSlider/ImageSlider';
 
+import FirmsScroller from 'src/modules/firmsScroller/FirmsScroller';
 interface BannerData {
   btnText: string;
   image: string;
@@ -30,6 +36,7 @@ const Main: React.FC = memo(() => {
   const { chousenName } = useAppSelector(state => state.complexDropReducer);
   const { categories } = useAppSelector(state => state.menuReducer);
   const [pageInfoData, setPageInfoData] = useState<any>({});
+   const [pageBanners, setPageBanners] = useState<any>([]);
   const [bannerData, setBannerData] = useState<BannerData>({ 
     btnText: "", 
     image: "", 
@@ -51,7 +58,12 @@ const Main: React.FC = memo(() => {
   }, [navigate]);
 
   useEffect(() => {
-    getMainPage(setPageInfoData);useMemo
+    getMainPage(setPageInfoData);
+  }, []);
+
+
+  useEffect(() => {
+    getMainBanners(setPageBanners);
   }, []);
 
 
@@ -72,7 +84,7 @@ const Main: React.FC = memo(() => {
   }, [pageInfoData, categories]);
 
   const createBanners = useCallback(() => {
-    return BANNER_TEXT.btnText.map((btnText, i) => (
+    return pageBanners.map((btnVal, i) => (
       <MerchBanner
         key={i}
         className={{
@@ -80,13 +92,13 @@ const Main: React.FC = memo(() => {
           button: s.buttonBanner,
           contentHolder: s.contentHolder
         }}
-        btnText={btnText}
+        btnText={btnVal.button_text}
         onChange={handleBannerClick}
-        title=""
-        img={`/images/main/${i}.png`}
+        title={btnVal.title}
+        img={btnVal.image_url}
       />
     ));
-  }, [handleBannerClick]);
+  }, [handleBannerClick,pageBanners]);
 
   // useEffect(() => {
   //   getHistoryInfo(setMerchHistoryFieldData);
@@ -94,6 +106,11 @@ const Main: React.FC = memo(() => {
 
   return (
     <div style={{ position: "relative" }}>
+      {/* <ImageSlider images={["1.jpg","2.jpg","1.jpg","1.jpg","2.jpg","1.jpg"]}/>
+      <BlobBackground/>
+      <FirmsScroller/>
+      <InfiniteRecursionViewport/> */}
+      <VideoWallpaper  src={"1.mp4"} />
       <ContentSliderWithLinks
         
         content={createBanners()} 

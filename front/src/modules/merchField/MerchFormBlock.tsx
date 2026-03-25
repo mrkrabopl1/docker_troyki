@@ -3,43 +3,62 @@ import MerchBlock from "./MerchBlock"
 import s from "./style.module.css"
 import { useNavigate } from 'react-router-dom';
 import { toPrice } from 'src/global';
-import { ReactComponent as Bin } from "../../../public/bin.svg";
 
-
-interface merchInterface { name: string, img: string, id: string, firm: string, price: number, quantity: number, size: number }
+interface merchInterface { 
+    name: string, 
+    image_path: string, 
+    id: string, 
+    firm: string, 
+    price: number, 
+    quantity: number, 
+    size: number 
+}
 
 const MerchFormBlock: React.FC<{ data: merchInterface, onChange: () => void }> = (props) => {
-    let { data, onChange } = { ...props }
+    const { data, onChange } = props;
     const navigate = useNavigate();
+
+    const handleClick = () => {
+        navigate('/product/' + data.id);
+    };
+
     return (
-        <div style={{ display: "flex" }}>
-            <div style={{ width: "100%" }} onClick={() => navigate('/product/' + data.id)} className={s.merchLine + " flex"}>
-                <img className={s.buyImg} style={{ height: "", width: "15%", flexShrink: 0 }} src={"/" + data.img} alt="" />
-                <div className={s.merchCount}>
-                    <span className='vrtCntr'>
-                        {data.quantity}
-                    </span>
+        <div className={s.merchFormContainer}>
+            <div 
+                onClick={handleClick} 
+                className={`${s.merchLine} ${s.merchFormLine}`}
+            >
+                <div className={s.imageWrapper}>
+                    <img 
+                        className={s.buyImg} 
+                        src={data.image_path} 
+                        alt={data.name}
+                        loading="lazy"
+                    />
+                    {data.quantity > 0 && (
+                        <div className={s.merchCount}>
+                            <span>{data.quantity}</span>
+                        </div>
+                    )}
                 </div>
-                <div style={{ width: "100%" }} className='vrtCntr'>
-                    <p style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span>
-                            {data.name}
-                        </span>
-                        <span className={s.littlePrice}>
+                
+                <div className={s.contentWrapper}>
+                    <div className={s.productDetails}>
+                        <h3 className={s.productName}>{data.name}</h3>
+                        {data.size ? (
+                            <p className={s.productSize}>US: {data.size}</p>
+                        ) : null}
+                    </div>
+                    
+                    <div className={s.priceWrapper}>
+                        <span className={s.productPrice}>
                             {toPrice(data.price)}
                         </span>
-                    </p>
-                    {data.size ?
-                        <p>
-                            US:{data.size}
-                        </p> : null
-                    }
+                    </div>
                 </div>
             </div>
-
         </div>
     )
 }
 
-
-export default memo(MerchFormBlock)
+export default memo(MerchFormBlock);

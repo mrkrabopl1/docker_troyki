@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useAppDispatch } from 'src/store/hooks/redux';
 import { getFirms } from 'src/providers/merchProvider';
-import { collections, categories } from '../../store/reducers/menuSlice';
+import { collections, categories,setFirms } from '../../store/reducers/menuSlice';
 import ComplexDropMenu from './ComplexDropMenu';
 import { isDeepEqual } from 'src/global';
 
@@ -30,6 +30,7 @@ const ComplexDropMenuWithRequestComponent: React.FC<ComplexDropMenuWithRequestPr
 
     setMerchFieldData(fieldData);
     dispatch(collections(collectionsData));
+    dispatch(setFirms(Object.keys(fieldData)))
     // dispatch(categories(categories));
   }, [dispatch]);
 

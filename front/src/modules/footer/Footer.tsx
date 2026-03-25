@@ -1,70 +1,140 @@
-import React, { useMemo, memo,useCallback } from 'react';
+import React, { useMemo, memo, useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
 import ColumnWithChilds from 'src/components/table/simpleTable/ColumnWithChilds';
-import s from "./style.module.css";
+import NewsletterModule from '../newsLetter/NewsLetterModule';
+
+import { ReactComponent as Telegram } from '/images/telegram.svg';
+import { ReactComponent as Instagram } from '/images/Instagram.svg';
+import { ReactComponent as Vk } from '/images/Vk.svg';
+import { ReactComponent as Youtube } from '/images/Youtube.svg';
+import { ReactComponent as LocationPin } from '/images/LocationPin.svg';
+import { ReactComponent as Phone } from '/images/Phone.svg';
+import { ReactComponent as Clock } from '/images/Clock.svg';
+
+import s from './style.module.css';
 
 const Footer: React.FC = () => {
-    const renderNavLink = useCallback((to: string, text: string) => (
-        <NavLink 
-            className={({ isActive, isPending }) => 
-                isPending ? s.link_active : isActive ? s.link_active : s.link
-            } 
-            to={to}
-        >
-            {text}
-        </NavLink>
-    ), []);
+  const renderNavLink = useCallback(
+    (to: string, text: string) => (
+      <NavLink
+        key={to}
+        className={({ isActive }) => (isActive ? s.linkActive : s.link)}
+        to={to}
+      >
+        {text}
+      </NavLink>
+    ),
+    []
+  );
 
-    const aboutUsArr = useMemo(() => [
-        renderNavLink("/way_to_pay", "Способы оплаты"),
-        renderNavLink("/delivery", "Доставка и самовывоз"),
-        renderNavLink("/faq", "Частые вопросы")
-    ], [renderNavLink]);
+  const helpLinks = useMemo(
+    () => [
+      renderNavLink('/way_to_pay', 'Способы оплаты'),
+      renderNavLink('/delivery', 'Доставка'),
+      renderNavLink('/faq', 'FAQ'),
+    ],
+    [renderNavLink]
+  );
 
-    const policyArr = useMemo(() => [
-        renderNavLink("/refund-policy", "Обмен и возврат"),
-        renderNavLink("/privacy-policy", "Политика конфиденциальности"),
-        renderNavLink("/faq", "Условия предоставления услуг")
-    ], [renderNavLink]);
+  const policyLinks = useMemo(
+    () => [
+      renderNavLink('/refund-policy', 'Возврат'),
+      renderNavLink('/privacy-policy', 'Конфиденциальность'),
+      renderNavLink('/terms', 'Условия'),
+    ],
+    [renderNavLink]
+  );
 
-    const clientHelpArr = useMemo(() => [
-        <div key="contacts">
-            <div>mail</div>
-            <div>phone</div>
-        </div>,
-        <div key="work-hours">
-            Звонки принимаются ежедневно с 10:00 до 22:00 по МСК.
+  const aboutLinks = useMemo(
+    () => [
+      renderNavLink('/about', 'О нас'),
+      renderNavLink('/blog', 'Блог'),
+      renderNavLink('/contacts', 'Контакты'),
+    ],
+    [renderNavLink]
+  );
+
+  const contactItems = useMemo(
+    () => [
+      { Icon: LocationPin, text: 'Москва, ул. Тверская 15' },
+      { Icon: Phone, text: '+7 (999) 123-45-67' },
+      { Icon: Clock, text: '10:00 — 22:00' },
+    ],
+    []
+  );
+
+  const socials = useMemo(
+    () => [
+      { Icon: Telegram, name: 'Telegram', url: 'https://t.me/yourchannel' },
+      { Icon: Instagram, name: 'Instagram', url: 'https://instagram.com/yourprofile' },
+      { Icon: Vk, name: 'VK', url: 'https://vk.com/yourgroup' },
+      { Icon: Youtube, name: 'YouTube', url: 'https://youtube.com/yourchannel' },
+    ],
+    []
+  );
+
+  return (
+    <footer className={s.footer}>
+      <div className={s.container}>
+        <div className={s.grid}>
+          <ColumnWithChilds
+            header="Помощь"
+            headerClassName={s.columnHeader}
+            className={s.column}
+            rows={helpLinks}
+          />
+
+          <ColumnWithChilds
+            header="Информация"
+            headerClassName={s.columnHeader}
+            className={s.column}
+            rows={policyLinks}
+          />
+
+          <ColumnWithChilds
+            header="О нас"
+            headerClassName={s.columnHeader}
+            className={s.column}
+            rows={aboutLinks}
+          />
+
+          <div className={s.rightColumn}>
+            <div className={s.contacts}>
+              {contactItems.map(({ Icon, text }, i) => (
+                <div key={i} className={s.contactItem}>
+                  <Icon className={s.contactIcon} />
+                  <span className={s.contactText}>{text}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className={s.socials}>
+              {socials.map(({ Icon, name, url }, i) => (
+                <a
+                  key={i}
+                  href={url}
+                  className={s.socialLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={name}
+                >
+                  <Icon className={s.socialIcon} />
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
-    ], []);
 
-    const footerStyle = useMemo(() => ({
-        display: "flex",
-        width: "100%", 
-        justifyContent: "space-between"
-    }), []);
-
-    return (
-        <div className={`${s.footer} fontSize`} style={footerStyle}>
-            <ColumnWithChilds 
-                headerClassName="fontSizeH" 
-                className={s.footerColumn}  
-                header="Помощь" 
-                rows={aboutUsArr} 
-            />
-            <ColumnWithChilds 
-                headerClassName="fontSizeH" 
-                className={s.footerColumn} 
-                header="Политики и условия" 
-                rows={policyArr} 
-            />
-            <ColumnWithChilds 
-                headerClassName="fontSizeH" 
-                className={s.footerColumn} 
-                header="Служба клиентской поддержки" 
-                rows={clientHelpArr} 
-            />
+        <div className={s.newsletterWrapper}>
+          <NewsletterModule />
         </div>
-    );
+
+        <div className={s.copyright}>
+          © {new Date().getFullYear()} Troyki. Все права защищены.
+        </div>
+      </div>
+    </footer>
+  );
 };
 
 export default memo(Footer);

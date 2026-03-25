@@ -76,7 +76,7 @@ const ZoneSliderValueSetter: React.FC<ZoneSliderSetterProps> = ({
     }, []);
 
     return (
-        <div>
+        <div style={{padding:"5px"}}>
             <ZoneSliderSimple 
                 onChange={handleSliderChange} 
                 min={(values[0] - min) / (max - min)} 

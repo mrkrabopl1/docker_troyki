@@ -1,34 +1,83 @@
-import React, { useRef, useState, useCallback, ChangeEvent, FocusEvent, useEffect } from 'react';
-import s from "../style.module.css";
-const PRICE_MATCH_TEXT = "Если вы нашли данную модель где-либо в наличии по более низкой цене — пришлите нам ссылку на данную модель в другом магазине. Мы будем рады предложить вам скидку, компенсирующую разницу в стоимости, и лучшую цену относительно конкурентов. Обратите внимание, что акция распространяется только на российские платформы.";
-const DELIVERY_TEXT = "Бесплатная доставка при заказе от 5000 ₽. Доставка осуществляется в течение 1-3 рабочих дней с момента оформления заказа. Возможна экспресс-доставка за дополнительную плату.";
-const PAY_TEXT = "Оплата"
+import React from 'react';
+import s from "./style.module.css";
 import DoubleInfoDrop from 'src/components/doubleInfoDrop/DoubleInfoDrop';
+import { Link } from 'react-router-dom'; // если используете React Router
 
+const PRICE_MATCH_TEXT = "Если вы нашли эту модель в другом магазине дешевле — пришлите ссылку. Сделаем скидку до цены конкурента.";
+const DELIVERY_TEXT = "Бесплатная доставка от 5000 ₽. Срок доставки 1-3 рабочих дня. Возможна экспресс-доставка.";
 
-const AbstractInfo: React.FC = ({
-
-}) => {
-
-
+const AbstractInfo: React.FC = () => {
     return (
-        <div>
+        <div className={s.abstractInfo}>
+            {/* Гарантия лучшей цены */}
             <DoubleInfoDrop
                 className={{ main: s.doubleInfoDropFirst, second: s.doubleInfoDropSecond }}
                 info="ГАРАНТИЯ ЛУЧШЕЙ ЦЕНЫ"
             >
-                <div>{PRICE_MATCH_TEXT}</div>
+                <div className={s.dropContent}>
+                    <p className={s.dropText}>
+                        {PRICE_MATCH_TEXT}
+                    </p>
+                    <p className={s.dropNote}>
+                        * Акция действует на российские интернет-магазины
+                    </p>
+                </div>
             </DoubleInfoDrop>
+
+            {/* Доставка */}
             <DoubleInfoDrop
                 className={{ main: s.doubleInfoDropFirst, second: s.doubleInfoDropSecond }}
                 info="ДОСТАВКА"
             >
-                <div>{DELIVERY_TEXT}</div>
+                <div className={s.dropContent}>
+                    <div className={s.dropSection}>
+                        <h4 className={s.dropTitle}>Москва</h4>
+                        <ul className={s.dropList}>
+                            <li>Курьером (13:00-20:00) — 350 ₽ в пределах МКАД</li>
+                            <li>День в день — при заказе до 16:00</li>
+                        </ul>
+                    </div>
+
+                    <div className={s.dropSection}>
+                        <h4 className={s.dropTitle}>По России</h4>
+                        <ul className={s.dropList}>
+                            <li>Почта России — от 4 до 14 дней</li>
+                            <li>СДЭК и Боксберри — 3–7 рабочих дней</li>
+                        </ul>
+                    </div>
+
+                    <div className={s.dropSection}>
+                        <h4 className={s.dropTitle}>Международная</h4>
+                        <ul className={s.dropList}>
+                            <li>Почта России, только по 100% предоплате</li>
+                        </ul>
+                    </div>
+
+                    <div className={s.dropFooter}>
+                        <Link to="/delivery" className={s.dropLink}>Подробные условия доставки →</Link>
+                    </div>
+                </div>
+            </DoubleInfoDrop>
+
+            {/* Оплата */}
+            <DoubleInfoDrop
+                className={{ main: s.doubleInfoDropFirst, second: s.doubleInfoDropSecond }}
+                info="ОПЛАТА"
+            >
+                <div className={s.dropContent}>
+                    <ul className={s.dropList}>
+                        <li>Наличными курьеру или в магазине</li>
+                        <li>Банковской картой онлайн (Visa, Mastercard, МИР)</li>
+                        <li className={s.dropListItemAccent}>Товары со скидкой — только полная предоплата</li>
+                    </ul>
+                    
+                    <div className={s.dropFooter}>
+                        <Link to="/payment" className={s.dropLink}>Все способы оплаты →</Link>
+                    </div>
+                </div>
             </DoubleInfoDrop>
         </div>
-
     );
 };
 
 export default React.memo(AbstractInfo);
-

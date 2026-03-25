@@ -108,11 +108,12 @@ type RespSearchProductsAndFiltersByString struct {
 	Filters    FiltersSearchResponse `json:"filters"`
 }
 type UnregisterCustomerResponse struct {
-	Name       string          `json:"name"`
-	Phone      string          `json:"phone"`
-	Mail       string          `json:"mail"`
-	SecondName string          `json:"secondName,omitempty"`
-	Address    AddressTypeResp `json:"address"`
+	Name            string          `json:"name"`
+	Phone           string          `json:"phone"`
+	Mail            string          `json:"mail"`
+	SecondName      string          `json:"secondName,omitempty"`
+	Address         AddressTypeResp `json:"address"`
+	DeliveryComment string          `json:"deliveryComment,omitempty"`
 }
 
 type AddressTypeResp struct {
@@ -123,6 +124,7 @@ type AddressTypeResp struct {
 	House       string   `json:"house,omitempty"`
 	Flat        string   `json:"flat,omitempty"`
 	Coordinates []string `json:"coordinates"`
+	Settlement  string   `json:"settlement,omitempty"`
 }
 
 type OrderDataResp struct {

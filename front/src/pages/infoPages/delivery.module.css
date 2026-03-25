@@ -1,0 +1,263 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&display=swap');
+
+.infoPage {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 20px 80px;
+  font-family: 'Inter', sans-serif;
+  color: #1a1a1a;
+  background: #fafafa;
+  min-height: 100vh;
+}
+
+/* Эффект появления при скролле */
+.fxReveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.fxRevealVisible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Заголовки */
+.mainHeader {
+  font-family: 'Playfair Display', serif;
+  font-size: 56px;
+  font-weight: 400;
+  letter-spacing: -0.5px;
+  text-align: center;
+  margin-bottom: 60px;
+  color: #000000;
+  position: relative;
+  padding-bottom: 25px;
+}
+
+.mainHeader::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 2px;
+  background: #000000;
+}
+
+.middleHeader {
+  font-family: 'Playfair Display', serif;
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -0.3px;
+  margin: 50px 0 25px;
+  color: #000000;
+  position: relative;
+  padding-left: 20px;
+}
+
+.middleHeader::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 28px;
+  background: #000000;
+}
+
+.center {
+  text-align: center;
+  padding-left: 0;
+}
+
+.center::before {
+  display: none;
+}
+
+/* Текстовые блоки */
+.textBlock {
+  background: #ffffff;
+  padding: 35px 40px;
+  border: 1px solid #eaeaea;
+  line-height: 1.8;
+  font-size: 16px;
+  color: #333333;
+  margin-bottom: 30px;
+  transition: all 0.3s ease;
+}
+
+.textBlock:hover {
+  border-color: #999999;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+}
+
+/* Выделенные блоки */
+.highlight {
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  padding: 25px;
+  margin: 30px 0;
+  color: #1a1a1a;
+}
+
+.highlight strong {
+  color: #000000;
+  font-size: 18px;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 15px;
+  letter-spacing: 0.5px;
+}
+
+.highlight p {
+  color: #4a4a4a;
+  line-height: 1.7;
+}
+
+/* Телефон */
+.phone {
+  display: inline-block;
+  color: #000000;
+  font-weight: 500;
+  text-decoration: none;
+  border-bottom: 1px solid #000000;
+  padding-bottom: 2px;
+  margin: 5px 0 5px 10px;
+  transition: opacity 0.2s ease;
+}
+
+.phone:hover {
+  opacity: 0.6;
+}
+
+/* Нумерованный список */
+.numberedList {
+  list-style: none;
+  counter-reset: item;
+  margin: 20px 0;
+}
+
+.numberedList li {
+  counter-increment: item;
+  margin-bottom: 15px;
+  padding-left: 30px;
+  position: relative;
+  color: #4a4a4a;
+  line-height: 1.6;
+}
+
+.numberedList li::before {
+  content: counter(item);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  border: 1px solid #000000;
+  color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* Адреса магазинов - off-white стиль */
+.shopAddress {
+  background: #fcfcfc;
+  border: 1px solid #e8e8e8;
+  padding: 25px;
+  margin: 25px 0;
+  transition: all 0.3s ease;
+}
+
+.shopAddress:hover {
+  background: #ffffff;
+  border-color: #000000;
+}
+
+.shopAddress strong {
+  color: #000000;
+  font-size: 18px;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 15px;
+  letter-spacing: 0.3px;
+}
+
+.shopAddress p {
+  margin: 8px 0;
+  color: #5a5a5a;
+  line-height: 1.6;
+  padding-left: 0;
+}
+
+/* Разделители */
+.divider {
+  height: 1px;
+  background: #e5e5e5;
+  margin: 70px 0;
+}
+
+/* Дополнительные акценты */
+.accentLine {
+  width: 40px;
+  height: 1px;
+  background: #000000;
+  margin: 20px 0;
+}
+
+.lightText {
+  color: #888888;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .infoPage {
+    padding: 20px 15px;
+  }
+  
+  .mainHeader {
+    font-size: 40px;
+    margin-bottom: 40px;
+  }
+  
+  .middleHeader {
+    font-size: 26px;
+    margin: 30px 0 20px;
+  }
+  
+  .textBlock {
+    padding: 25px;
+  }
+  
+  .shopAddress {
+    padding: 20px;
+  }
+  
+  .divider {
+    margin: 50px 0;
+  }
+}
+
+/* Для очень маленьких экранов */
+@media (max-width: 480px) {
+  .mainHeader {
+    font-size: 32px;
+  }
+  
+  .middleHeader {
+    font-size: 22px;
+  }
+  
+  .textBlock {
+    padding: 20px;
+    font-size: 15px;
+  }
+}

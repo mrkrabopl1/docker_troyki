@@ -2,7 +2,6 @@ import React, { ReactElement, useEffect, useRef, useState,memo } from 'react'
 import MerchBlock from "./MerchBlock"
 import s from "./style.module.css"
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as Bin } from "../../../public/bin.svg";
 import { NavLink } from 'react-router-dom';
 
 
@@ -13,7 +12,7 @@ const MerchBuyBlock: React.FC<{ data: merchInterface, onChange: () => void }> = 
     const navigate = useNavigate();
     return (
         <div style={{ width: "100%" }} onClick={() => navigate('/product/' + data.id)} className={s.merchBuyLine + " flex"}>
-            <img className={s.buyImg} style={{ height: "", width: "30%", flexShrink: 0 }} src={"/" + data.imgs} alt="" />
+            <img className={s.buyImg} style={{ height: "", width: "30%", flexShrink: 0 }} src={data.imgs} alt="" />
             <div className='vrtCntr'>
                 <p>
                     {data.firm}

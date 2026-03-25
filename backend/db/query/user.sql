@@ -37,12 +37,20 @@ FROM customers
 WHERE mail = $1;
 -- name: SetUnregisterCustomer :one
 INSERT INTO unregistercustomer (
-        name,
-        secondname,
-        mail,
-        phone
-    )
-VALUES ($1, $2, $3, $4)
+    name,
+    secondname,
+    mail,
+    phone,
+    town,
+    index,
+    street,
+    region,
+    house,
+    flat,
+    settlement,
+    coordinates,
+    deliverycomment
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,$11, $12,$13)
 RETURNING id;
 -- name: GetPassword :one
 SELECT pass
@@ -57,10 +65,7 @@ SELECT id
 FROM customers
 WHERE mail = $1;
 -- name: GetUnregisterCustomer :one
-SELECT name,
-    secondname,
-    mail,
-    phone
+SELECT *
 FROM unregistercustomer
 WHERE id = $1;
 -- name: CheckCustomerExistence :one
@@ -82,3 +87,68 @@ WHERE id = $2;
 INSERT INTO uniquecustomers (creationTime, history)
 VALUES ($1, '{}')
 RETURNING id;
+
+
+
+
+
+-- query/newsletter.sql
+
+-- name: CreateNewsletterSubscriber :one
+INSERT INTO newsletter_subscribers (
+    email,
+    verification_token,
+    token_expires_at,
+    ip_address,
+    user_agent,
+    status
+) VALUES (
+    $1, $2, $3, $4, $5, 'pending'
+) RETURNING *;
+
+-- name: GetNewsletterSubscriberByEmail :one
+SELECT * FROM newsletter_subscribers
+WHERE email = $1;
+
+-- name: GetNewsletterSubscriberByToken :one
+SELECT * FROM newsletter_subscribers
+WHERE verification_token = $1
+AND status = 'pending'
+AND token_expires_at > NOW();
+
+-- name: VerifyNewsletterSubscriber :exec
+UPDATE newsletter_subscribers
+SET status = 'verified',
+    verified_at = NOW()
+WHERE verification_token = $1
+AND status = 'pending'
+AND token_expires_at > NOW();
+
+-- name: UnsubscribeNewsletter :exec
+UPDATE newsletter_subscribers
+SET status = 'unsubscribed'
+WHERE email = $1;
+
+-- name: DeleteNewsletterSubscriber :exec
+DELETE FROM newsletter_subscribers
+WHERE email = $1;
+
+-- name: GetVerifiedNewsletterSubscribers :many
+SELECT email FROM newsletter_subscribers
+WHERE status = 'verified'
+ORDER BY subscribed_at DESC;
+
+-- name: GetNewsletterVerifiedCount :one
+SELECT COUNT(*) FROM newsletter_subscribers
+WHERE status = 'verified';
+
+-- name: GetNewsletterPendingCount :one
+SELECT COUNT(*) FROM newsletter_subscribers
+WHERE status = 'pending';
+
+-- name: GetNewsletterUnsubscribedCount :one
+SELECT COUNT(*) FROM newsletter_subscribers
+WHERE status = 'unsubscribed';
+
+-- name: GetNewsletterTotalCount :one
+SELECT COUNT(*) FROM newsletter_subscribers;

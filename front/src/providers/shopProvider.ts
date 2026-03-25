@@ -1,6 +1,18 @@
 import axios from "axios";
 
-
+const getMainBanners = function ( callback: (val: any) => void) {
+    axios({
+        withCredentials: true,
+        method: 'get',
+        url: `${API_URL}/getMainBanners`,
+        headers: {}
+    }
+    ).then((res:any)=>{
+        callback(res.data)
+    },(error)=>{
+        console.warn(error)
+    })
+}
 
 const getCartData = function ( hash, callback: (val: any) => void) {
     axios({
@@ -69,4 +81,4 @@ const deleteCartData = function (preorderId, callback: (val: any) => void) {
 
 
 
-export { getCartData, deleteCartData ,getOrderCartData, getCartCount}
+export { getCartData, deleteCartData ,getOrderCartData, getCartCount,getMainBanners}

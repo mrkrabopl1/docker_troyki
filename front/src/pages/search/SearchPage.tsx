@@ -8,12 +8,12 @@ import s from "./style.module.css"
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
 import { getProductsAndFiltersByCategoryAndType, getProductsAndFiltersByString, getProductsByString, getProductsByCategoriesAndFilters } from "src/providers/searchProvider"
 import { categories, show, sticky, types } from 'src/store/reducers/menuSlice'
-import { ReactComponent as FoureGrid } from 'src/../public/foureGrid.svg'
-import { ReactComponent as SixGrid } from 'src/../public/sixGrid.svg'
+import { ReactComponent as FoureGrid } from '/images/foureGrid.svg'
+import { ReactComponent as SixGrid } from '/images/sixGrid.svg'
 import { useLocation } from 'react-router-dom'
 import RadioGroup from 'src/components/radio/RadioGroup'
 import { useSearchParams } from 'react-router-dom';
-import { ReactComponent as Filter } from 'src/../public/filter.svg'
+import { ReactComponent as Filter } from '/images/filter.svg'
 import { set } from 'ol/transform';
 
 
@@ -98,6 +98,13 @@ const SearchPage: React.FC = () => {
     } else {
       emptyData.current = false
       pages.current = Math.ceil(respData.totalCount / pageSize.current);
+      filtersInfo.current = {
+        sizes: [],
+        price: [],
+        firms: [],
+        types: [],
+        withPrice: true
+      }
       const data = convertFilterseData(respData.filters)
       setFilters(data)
       settingsModuleMemo.current = !settingsModuleMemo.current
@@ -358,7 +365,7 @@ const SearchPage: React.FC = () => {
     const type = searchParams.get('type');
     if (type) {
       for (let key in typesVal) {
-        if (typesVal[key].type_key === type) {
+        if (typesVal[key].type_key === type && typesVal[key].category_key === category) {
           typeId = Number(key)
           break;
         }

@@ -64,7 +64,7 @@ func NewProductsSearchResponse5(ProductsSearch []GetProductsByIdsRow) []types.Pr
 	for _, info := range ProductsSearch {
 		var imgArr []string
 		for i := 1; i < 3; i++ {
-			str := "images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
+			str := "/images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
 			imgArr = append(imgArr, str)
 		}
 		var discount interface{}

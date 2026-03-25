@@ -1,6 +1,5 @@
 import React, { useState, memo, useCallback } from 'react';
 import s from "./style.module.css";
-import loop from "../../../public/zoom.svg";
 
 type IconProps = {
     image: string;

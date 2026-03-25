@@ -14,7 +14,6 @@ import (
 )
 
 func (s *Server) handleGetFirms(ctx *gin.Context) {
-	fmt.Println("fkms;dlmf;dslmf;sdmf;lsmd;kmkdgb;lmf;gkfm;lgms;dkmf;")
 	firms, err := s.store.GetMerchFirms(ctx)
 	if err != nil {
 		//log.WithCaller().Err(err)
@@ -195,7 +194,7 @@ func (s *Server) handleSearchProductByCategoriesAndFilters(ctx *gin.Context) {
 	}
 
 	//fmt.Println(postData.Filters.Price, "postData postData postData postData postData postData postData postData ")
-	fmt.Println(postData.Filters.InStore, postData.Filters.HasDiscount, "postData postData postData postData postData postData postData postData ")
+	fmt.Println(postData.Filters.Types, "postData postData postData postData postData postData postData postData ")
 
 	resp, err := s.store.GetProductsByFiltersComplex(ctx, "", postData.Page, postData.Size, postData.Filters, postData.SortType)
 	if err != nil {
@@ -208,6 +207,7 @@ func (s *Server) handleSearchProductByCategoriesAndFilters(ctx *gin.Context) {
 func (s *Server) handleGetMainPageInfo(ctx *gin.Context) {
 	fmt.Println("mainpageinwcdczcfo mainpageinfo mainpageinfo mainpageinfo mainpageinfo ")
 	resp, err := s.store.GetMainPageInfoComplex(ctx, 15)
+
 	fmt.Println(resp, "mainpageinfo mainpageinfo mainpageinfo mainpageinfo mainpageinfo ")
 	if err != nil {
 		fmt.Println(err)

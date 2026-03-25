@@ -1,11 +1,11 @@
 import React, { 
-  useCallback, 
   useEffect, 
   useRef, 
   useState, 
   useMemo,
   ReactElement, 
-  CSSProperties 
+  CSSProperties,
+  memo
 } from 'react';
 
 type SliderProps = {
@@ -31,94 +31,101 @@ const ContentSlider: React.FC<SliderProps> = ({
     containerWidth: 0,
     trackWidth: 0
   });
+  
   const [internalPosition, setInternalPosition] = useState(0);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
-  const animationFrameId = useRef<number | null>(null);
+  
+  // Храним content в ref для ResizeObserver
+  const contentRef = useRef(content);
+  
+  // Синхронизируем ref при изменении content
+  useEffect(() => {
+    contentRef.current = content;
+    console.log('Content ref updated:', content.length);
+  }, [content]);
 
-  // Расчет размеров и параметров слайдера
-  const calculateDimensions = useCallback(() => {
+  // Функция для ResizeObserver (использует ref)
+  const handleResize = () => {
     if (!trackRef.current || !containerRef.current) return;
 
     const containerWidth = containerRef.current.clientWidth;
     const trackWidth = trackRef.current.scrollWidth;
+    const currentContent = contentRef.current; // ← Берем из ref!
+
+    console.log('handleResize called, content length:', currentContent.length);
     
-    if (
-      dimensions.containerWidth === containerWidth && 
-      dimensions.trackWidth === trackWidth
-    ) {
+    if (currentContent.length === 0) {
+      console.log('Skipping: no content');
       return;
     }
 
-    const itemWidth = trackWidth / content.length;
+    const itemWidth = trackWidth / currentContent.length;
     const visibleItems = Math.floor(containerWidth / itemWidth);
-    const hiddenItems = Math.max(0, content.length - visibleItems);
+    const hiddenItems = Math.max(0, currentContent.length - visibleItems);
     const newTotalSteps = Math.max(1, hiddenItems + 1);
     const newStepSize = hiddenItems > 0 
       ? (trackWidth - containerWidth) / hiddenItems 
       : 0;
     
-    setDimensions({
-      stepSize: newStepSize,
-      totalSteps: newTotalSteps,
-      containerWidth,
-      trackWidth
+    setDimensions(prev => {
+      if (prev.containerWidth === containerWidth && prev.trackWidth === trackWidth) {
+        return prev;
+      }
+      return {
+        stepSize: newStepSize,
+        totalSteps: newTotalSteps,
+        containerWidth,
+        trackWidth
+      };
     });
 
     onChange?.(newTotalSteps);
-  }, [content.length, dimensions, onChange]);
+  };
 
-  // Оптимизированная версия с requestAnimationFrame
-  const debouncedCalculateDimensions = useCallback(() => {
-    if (animationFrameId.current) {
-      cancelAnimationFrame(animationFrameId.current);
-    }
-    
-    animationFrameId.current = requestAnimationFrame(() => {
-      calculateDimensions();
-    });
-  }, [calculateDimensions]);
-
-  // Обновление позиции при изменении currentStep
+  // Обновление позиции
   useEffect(() => {
     const newPosition = -(currentStep - 1) * dimensions.stepSize;
-    console.debug('Setting position to:', newPosition,currentStep);
     setInternalPosition(newPosition);
   }, [currentStep, dimensions.stepSize]);
 
-  // Инициализация ResizeObserver
+  // ResizeObserver - БЕЗ зависимостей!
   useEffect(() => {
-   // debouncedCalculateDimensions();
+    console.log('Setting up ResizeObserver');
     
-    if (!resizeObserverRef.current) {
-      resizeObserverRef.current = new ResizeObserver(debouncedCalculateDimensions);
-    }
+    resizeObserverRef.current = new ResizeObserver(handleResize);
     
     const container = containerRef.current;
     if (container) {
       resizeObserverRef.current.observe(container);
     }
 
+    // Первоначальный расчет
+    const timeoutId = setTimeout(handleResize, 100);
+
     return () => {
       if (resizeObserverRef.current && container) {
         resizeObserverRef.current.unobserve(container);
       }
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current);
-      }
+      clearTimeout(timeoutId);
     };
-  }, [debouncedCalculateDimensions]);
+  }, []); // Пустой массив - только при монтировании
 
-  // Стиль трека
+  // Перерасчет при изменении content (кроме первого раза)
+  useEffect(() => {
+    console.log('Content changed, triggering recalculation');
+    const timeoutId = setTimeout(handleResize, 100);
+    return () => clearTimeout(timeoutId);
+  }, [content]);
+
   const trackStyle = useMemo((): CSSProperties => ({
     display: 'flex',
     transform: `translateX(${internalPosition}px)`,
     transition: `transform ${transitionDuration}ms ease-out`,
     willChange: 'transform',
-    justifyContent:"space-between",
-     height: '100%'
+    justifyContent: "space-between",
+    height: '100%'
   }), [internalPosition, transitionDuration]);
 
-  // Стиль контейнера
   const containerStyle: CSSProperties = useMemo(() => ({
     overflow: 'hidden',
     width: '100%',
@@ -139,4 +146,4 @@ const ContentSlider: React.FC<SliderProps> = ({
   );
 };
 
-export default ContentSlider;
+export default memo(ContentSlider);

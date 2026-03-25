@@ -1,0 +1,65 @@
+.container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  cursor: none;
+  background-color: #000;
+  /* Важно: не блокируем pointer-events для дочерних элементов */
+  pointer-events: auto;
+}
+
+.backgroundImage {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  pointer-events: none; /* Изображения не должны перехватывать события */
+}
+
+.activeLayer {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  will-change: clip-path;
+  pointer-events: none; /* Слой с clip-path не перехватывает события */
+}
+
+.layerImage {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.viewportBorder {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  pointer-events: none; /* Важно: рамка не должна перехватывать клики */
+  z-index: 10;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+.viewportBorder.active {
+  border-color: rgba(255, 255, 255, 1);
+  border-width: 3px;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: white;
+  background: #000;
+  font-size: 16px;
+}

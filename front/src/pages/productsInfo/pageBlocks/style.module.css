@@ -1,0 +1,172 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap");
+
+.abstractInfo {
+  max-width: 100%;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Контент выпадающего блока */
+.dropContent {
+  padding: 12px 16px 8px 24px;  /* Уменьшил вертикальные отступы */
+  font-size: 14px;
+  color: #2c2c2c;
+  background: #ffffff;
+}
+
+/* Секция внутри выпадающего блока */
+.dropSection {
+  margin-bottom: 12px;  /* Было 24px */
+}
+
+.dropSection:last-child {
+  margin-bottom: 0;
+}
+
+/* Заголовок секции */
+.dropTitle {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #000000;
+  margin-bottom: 6px;  /* Было 12px */
+  position: relative;
+  padding-left: 12px;
+}
+
+.dropTitle::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 3px;
+  background: #000000;
+  border-radius: 50%;
+}
+
+/* Список */
+.dropList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dropList li {
+  position: relative;
+  padding: 4px 0 4px 20px;  /* Было 8px */
+  line-height: 1.4;  /* Было 1.5 */
+  color: #4a4a4a;
+  border-bottom: 1px solid #f5f5f5;
+  font-size: 13px;  /* Добавил чуть меньше */
+}
+
+.dropList li:last-child {
+  border-bottom: none;
+}
+
+.dropList li::before {
+  content: '—';
+  position: absolute;
+  left: 0;
+  color: #999999;
+}
+
+/* Акцентный элемент списка */
+.dropListItemAccent {
+  color: #000000 !important;
+  font-weight: 500;
+  background: #fafafa;
+  margin-top: 6px;  /* Было 8px */
+  padding: 8px 20px !important;  /* Было 12px */
+  border-bottom: none !important;
+  font-size: 13px;
+}
+
+.dropListItemAccent::before {
+  content: '•' !important;
+  color: #000000 !important;
+  font-weight: bold;
+}
+
+/* Текст */
+.dropText {
+  font-size: 14px;
+  line-height: 1.5;  /* Было 1.6 */
+  color: #4a4a4a;
+  margin-bottom: 10px;  /* Было 16px */
+  padding-right: 8px;
+}
+
+/* Примечание */
+.dropNote {
+  font-size: 12px;
+  color: #888888;
+  margin-top: 8px;  /* Было 16px */
+  padding-top: 6px;  /* Было 12px */
+  border-top: 1px dashed #e0e0e0;
+  font-style: italic;
+}
+
+/* Футер выпадающего блока для ссылки */
+.dropFooter {
+  margin-top: 12px;  /* Отступ сверху */
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+  text-align: right;
+}
+
+/* Ссылка */
+.dropLink {
+  display: inline-block;
+  color: #000000;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-decoration: none;
+  padding: 4px 0;
+  transition: opacity 0.2s ease;
+  border-bottom: 1px solid transparent;
+}
+
+.dropLink:hover {
+  opacity: 0.6;
+  border-bottom-color: #000000;
+}
+
+/* Стили для DoubleInfoDrop */
+.doubleInfoDropFirst {
+  border-bottom: 1px solid #f0f0f0;
+  transition: all 0.3s ease;
+}
+
+.doubleInfoDropSecond {
+  background: #fcfcfc;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .dropContent {
+    padding: 10px 12px 6px 20px;
+  }
+  
+  .dropTitle {
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+  
+  .dropList li {
+    padding: 3px 0 3px 16px;
+    font-size: 12px;
+  }
+  
+  .dropFooter {
+    margin-top: 8px;
+    padding-top: 6px;
+  }
+  
+  .dropLink {
+    font-size: 11px;
+  }
+}

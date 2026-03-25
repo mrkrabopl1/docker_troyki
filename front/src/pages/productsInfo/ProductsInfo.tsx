@@ -17,7 +17,7 @@ import TableWithComboboxColumn from 'src/components/table/simpleTable/TableWithC
 import ContentSlider from 'src/components/contentSlider/ContentSliderWithSwitcher';
 import MerchComplexSliderField from 'src/modules/merchField/MerchComplexSliderField';
 import s from "./style.module.css";
-import { ReactComponent as CopySvg } from "/public/copy.svg";
+import { ReactComponent as CopySvg } from "/public/images/copy.svg";
 import SVGIcon from 'src/components/svgIcon/SvgIcon';
 import AbstractInfo from './pageBlocks/AbstractInfo';
 import merchType from 'src/types/merchType';
@@ -164,7 +164,7 @@ const ProductsInfo: React.FC = () => {
         let content = [];
         while (count <= merchInfo.image_count) {
             content.push(<div style={{ width: "100%", flexShrink: 0, height: "100%" }}>
-                <ImagePresantationBlock image={"images/" + merchInfo.image_path + "/img" + count + ".png"} />
+                <ImagePresantationBlock image={merchInfo.image_path + count + ".png"} />
             </div>)
             count++
         }
@@ -186,7 +186,7 @@ const ProductsInfo: React.FC = () => {
                             key={index}
                             className={s.lineImage}
                             alt={merchInfo.line}
-                            src={"images/" + el.image_path + "/img1.png"}
+                            src={el.image_path + "/1.png"}
                         />
                     )
                 }
@@ -212,7 +212,7 @@ const ProductsInfo: React.FC = () => {
                 }} image_count={merchInfo.image_count} image_path={merchInfo.image_path} />;
         }
         return <ImagePresantationBlock image={merchInfo.image_count[0]} />;
-    }, [merchInfo.image_count, widthProps]);
+    }, [merchInfo.image_path, widthProps]);
 
     useEffect(() => {
         if (snickers) {
@@ -232,7 +232,7 @@ const ProductsInfo: React.FC = () => {
                     {widthProps ? null: <div onClick={() => {
                         navigate(`/search?firm=${merchInfo.firm}`);
                     }} className={s.firmInfoHolder}>
-                        <img className={s.firmImage} src={merchInfo.firm} alt="" />
+                        <img className={s.firmImage} src={"/images/brandLogos/"+merchInfo.firm+"/image.png"} alt="" />
                         <span className={s.firmName}>{merchInfo.firm}</span>
                     </div>}
                 </div>
@@ -275,7 +275,7 @@ const ProductsInfo: React.FC = () => {
                                     <CopySvg className={s.articleBtn} />
                                 </div>
                                 <div onClick={() => setActiveModal(true)} className={s.sizeLabel}>
-                                    <SVGIcon spritePath='shoe_size' />
+                                    <SVGIcon spritePath='images/shoe_size' />
                                 </div>
                                 {widthProps ? <div onClick={() => {
                                     navigate(`/search?firm=${merchInfo.firm}`);

@@ -19,7 +19,7 @@ const ImagePresentation: React.FC<ImagePresentationProps> = ({
     const [mainImage, setMainImage] = useState<string>("");
 
     const cratePath = useCallback((i: number) => {
-        return "images/" + image_path + "/img" + i + ".png";
+        return image_path +  i + ".png";
     }, [image_path]);
 
     useEffect(() => {

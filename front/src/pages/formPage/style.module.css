@@ -81,3 +81,294 @@
  .mainHolder{
     margin: 10px;
  }
+
+
+ /* ==================== DeliveryPage Styles ==================== */
+
+.deliveryPageContainer {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    animation: fadeIn 0.4s ease;
+}
+
+.deliveryHeader {
+    margin-bottom: 32px;
+    text-align: center;
+}
+
+.sectionTitle {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.5px;
+}
+
+.sectionSubtitle {
+    font-size: 16px;
+    color: #6c757d;
+    margin: 0;
+}
+
+.deliveryContentGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+@media (max-width: 968px) {
+    .deliveryContentGrid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+
+.mapSection {
+    height: 100%;
+}
+
+.infoSection {
+    height: 100%;
+}
+
+.deliveryOptionsSection {
+    margin-top: 8px;
+}
+
+
+.deliveryOptions {
+    padding: 8px;
+}
+
+.sectionCard {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.sectionCard:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.cardIcon {
+    font-size: 24px;
+}
+
+.cardTitle {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+/* ==================== ContactInfo Styles ==================== */
+
+.contactInfoGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: 100%;
+}
+
+.infoCard {
+    background: #ffffff;
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 200px;
+}
+
+.infoCardHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.infoCardContent {
+    flex: 1;
+    padding: 20px;
+}
+
+.infoCardFooter {
+    padding: 16px 20px;
+    border-top: 1px solid #f0f0f0;
+    background-color: #fafafa;
+}
+
+.editButton {
+    width: 100%;
+    padding: 10px 16px;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.editButton:hover {
+    background: #f8f9fa;
+    border-color: #2c3e50;
+    transform: translateY(-1px);
+}
+.deliveryInfoNotice {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    margin-top: 20px;
+    background-color: #FFF9E6;
+    border-left: 4px solid #FFB800;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #664d03;
+}
+
+.deliveryInfoNotice svg {
+    flex-shrink: 0;
+    color: #FFB800;
+}
+
+.noticeContent {
+    flex: 1;
+}
+
+.noticeContent strong {
+    font-weight: 600;
+    color: #856404;
+}
+
+.deliveryClarificationBlock {
+    display: flex;
+    gap: 16px;
+    padding: 20px;
+    margin: 20px 0;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    border: 1px solid #dee2e6;
+}
+
+.clarificationIcon {
+    font-size: 32px;
+    flex-shrink: 0;
+}
+
+.clarificationText {
+    flex: 1;
+}
+
+.clarificationText h4 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.clarificationText p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #6c757d;
+}
+
+/* Дополнительные стили для секции доставки */
+.deliverySection {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==================== Responsive Adjustments ==================== */
+
+@media (max-width: 768px) {
+    .deliveryPageContainer {
+        padding: 16px;
+    }
+    
+    .sectionTitle {
+        font-size: 24px;
+    }
+    
+    .cardHeader {
+        padding: 16px 20px;
+    }
+    
+    .cardTitle {
+        font-size: 16px;
+    }
+    
+    .infoCardContent {
+        padding: 16px;
+    }
+    
+    .mapWrapper {
+        min-height: 250px;
+    }
+    
+    .mapHolder {
+        min-height: 250px;
+    }
+}
+
+@media (max-width: 480px) {
+    .sectionTitle {
+        font-size: 20px;
+    }
+    
+    .sectionSubtitle {
+        font-size: 14px;
+    }
+    
+    .cardIcon {
+        font-size: 20px;
+    }
+    
+    .infoCardFooter {
+        padding: 12px 16px;
+    }
+    
+    .editButton {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+}

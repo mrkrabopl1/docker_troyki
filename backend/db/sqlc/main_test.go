@@ -2,12 +2,14 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mrkrabopl1/go_db/util"
+	"github.com/stretchr/testify/require"
 )
 
 var testStore Store
@@ -25,4 +27,10 @@ func TestMain(m *testing.M) {
 
 	testStore = NewStore(connPool)
 	os.Exit(m.Run())
+}
+
+func TestGetMainPageBanners(t *testing.T) {
+	banners, err := testStore.GetMainPageBanners(context.Background())
+	require.NoError(t, err)
+	fmt.Println(banners[0].ImageUrl)
 }

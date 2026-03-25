@@ -10,13 +10,14 @@ import Feature from 'ol/Feature';
 import Style from 'ol/style/Style';
 import Circle from 'ol/style/Circle';
 import Fill from 'ol/style/Fill';
+import Stroke from 'ol/style/Stroke';
 import 'ol/ol.css';
 import { fromLonLat } from 'ol/proj';
 import s from "./style.module.css";
 
-const DEFAULT_CENTER = [0, 0];
-const DEFAULT_ZOOM = 18;
-const MAX_ZOOM = 30;
+const DEFAULT_CENTER = [37.6173, 55.7558]; // Москва
+const DEFAULT_ZOOM = 12;
+const MAX_ZOOM = 18;
 
 type MapComponentProps = {
     location?: [number, number];
@@ -29,49 +30,48 @@ const MapComponent: React.FC<MapComponentProps> = ({ location }) => {
     const vectorSourceRef = useRef<VectorSource | null>(null);
     const pointFeatureRef = useRef<Feature | null>(null);
 
-    // Создаем стиль точки один раз
     const pointStyle = useMemo(() => new Style({
         image: new Circle({
-            radius: 6,
+            radius: 8,
             fill: new Fill({
-                color: 'rgba(255, 0, 0, 0.5)',
+                color: 'rgba(255, 82, 82, 0.9)',
             }),
+            stroke: new Stroke({
+                color: '#ffffff',
+                width: 2
+            })
         }),
     }), []);
 
-    // Инициализация карты
     useEffect(() => {
         if (!mapRef.current) return;
 
-        // Создаем источник и слой для векторных данных
         vectorSourceRef.current = new VectorSource();
         vectorLayerRef.current = new VectorLayer({
             source: vectorSourceRef.current,
         });
 
-        // Создаем точку
         pointFeatureRef.current = new Feature();
         pointFeatureRef.current.setStyle(pointStyle);
         
-        // Устанавливаем геометрию точки
         const initialGeometry = new Point(fromLonLat(location || DEFAULT_CENTER));
         pointFeatureRef.current.setGeometry(initialGeometry);
-        pointFeatureRef.current.set("type", "point");
-        
-        // Добавляем точку в источник
         vectorSourceRef.current.addFeature(pointFeatureRef.current);
 
-        // Создаем карту
         mapInstance.current = new Map({
             target: mapRef.current,
             layers: [
-                new TileLayer({ source: new OSM() }),
+                new TileLayer({ 
+                    source: new OSM(),
+                    opacity: 0.8
+                }),
                 vectorLayerRef.current,
             ],
             view: new View({
                 center: fromLonLat(location || DEFAULT_CENTER),
                 zoom: DEFAULT_ZOOM,
                 maxZoom: MAX_ZOOM,
+                minZoom: 3,
             }),
             controls: []
         });
@@ -84,16 +84,20 @@ const MapComponent: React.FC<MapComponentProps> = ({ location }) => {
         };
     }, [pointStyle]);
 
-    // Обновление позиции при изменении location
     useEffect(() => {
         if (!location || !pointFeatureRef.current || !mapInstance.current) return;
 
         const newGeometry = new Point(fromLonLat(location));
         pointFeatureRef.current.setGeometry(newGeometry);
         mapInstance.current.getView().setCenter(fromLonLat(location));
+        mapInstance.current.getView().setZoom(DEFAULT_ZOOM);
     }, [location]);
 
-    return <div ref={mapRef} className={s.mapHolder} />;
+    return (
+        <div className={s.mapWrapper}>
+            <div ref={mapRef} className={s.mapHolder} />
+        </div>
+    );
 };
 
 export default React.memo(MapComponent);

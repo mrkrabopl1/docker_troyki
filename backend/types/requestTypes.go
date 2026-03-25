@@ -35,6 +35,7 @@ type Address struct {
 	House       string   `json:"house,omitempty"`
 	Flat        string   `json:"flat,omitempty"`
 	Coordinates []string `json:"coordinates"`
+	Settlement  string   `json:"settlement,omitempty"`
 }
 
 type Discounts struct {

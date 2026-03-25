@@ -43,6 +43,9 @@ import OrderInfo from './components/orderInfo/orderInfo';
 import { getCartCount } from './providers/shopProvider';
 import { useContentHeight } from 'src/store/hooks/redux';
 import { getCategoriesAndTypes } from './providers/merchProvider';
+import CookiePolicy from './pages/infoPages/CookiePolicy'
+import CookieInfo from './components/cookieInfo/CookieInfo';
+import About from './pages/infoPages/About'
 setTimeout(() => {
   console.debug(API_URL, "f;lsdmf;ls,d;lf")
 }, 10)
@@ -54,7 +57,10 @@ const App: React.FC = memo(function App() {
   const animationFrameRef = useRef<number>();
 
   const { typesVal } = useAppSelector(state => state.menuReducer);
-
+  const handleCookieAccept = useCallback(() => {
+    console.log('Cookie accepted');
+    // Здесь можно добавить логику для загрузки аналитики и т.д.
+  }, []);
   // Optimized resize handler with debouncing
   const handleResize = useCallback(() => {
     if (resizeTimeoutRef.current) {
@@ -83,7 +89,7 @@ const App: React.FC = memo(function App() {
         if (categories[d.category_key]) {
           categories[d.category_key].types[d.type_key] = d.type_id
         } else {
-          typesVal[d.type_id] = {name:d.type_name,categoryName:d.category_name,category_key:d.category_key,type_key:d.type_key}
+          typesVal[d.type_id] = { name: d.type_name, categoryName: d.category_name, category_key: d.category_key, type_key: d.type_key }
           categoriesVal[d.category_key] = {
             id: d.category_id,
             image_path: d.image_path,
@@ -93,7 +99,7 @@ const App: React.FC = memo(function App() {
       })
       dispatch(types(typesVal))
       dispatch(categories(categoriesVal))
-      localStorage.setItem('cachedData', JSON.stringify({categories:categoriesVal,types:typesVal}));
+      localStorage.setItem('cachedData', JSON.stringify({ categories: categoriesVal, types: typesVal }));
     })
   }, [])
 
@@ -200,11 +206,16 @@ const App: React.FC = memo(function App() {
   return (
     <Router>
       <ScrollToTop />
+      <CookieInfo
+        showAfter={3000} // покажется через 3 секунды
+        onAccept={handleCookieAccept}
+        policyLink="/cookie-policy"
+      />
       <Routes>
         <Route path="/" element={
-          <div 
-            style={{ display: "flex", flexDirection: "column",  }} 
-            ref={contRef} 
+          <div
+            style={{ display: "flex", flexDirection: "column", }}
+            ref={contRef}
             onWheel={handleWheel}
             onScroll={(e) => {
               console.debug(e)
@@ -240,6 +251,8 @@ const App: React.FC = memo(function App() {
           <Route path="/confirm/:verHash" element={<Confirm />} />
           <Route path="/changePass" element={<ChangeForgetPass />} />
           <Route path="/refund-policy" element={<Refund />} />
+          <Route path="/cookie-policy" element={<CookiePolicy />} />
+          <Route path="/about" element={<About />} />
         </Route>
       </Routes>
     </Router>

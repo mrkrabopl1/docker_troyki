@@ -1,0 +1,178 @@
+.newsletterModule {
+    width: 100%;
+    border-radius: 4px;           /* почти прямые углы — как в старых газетах */
+    padding: 10px 14px;
+    box-sizing: border-box;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    color: #111111;
+}
+
+.newsletterContent {
+    max-width: 760px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.newsletterIcon {
+    display: none;                /* убираем иконку — газеты редко используют крупные эмодзи/иконки */
+}
+
+.newsletterText {
+    margin-bottom: 20px;
+}
+
+.newsletterTitle {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.15;
+    margin: 0 0 8px 0;
+    color: #000000;
+    letter-spacing: -0.4px;
+}
+
+.newsletterDescription {
+    font-size: 15px;
+    line-height: 1.45;
+    color: #444444;
+    margin: 0;
+}
+
+.newsletterForm {
+    margin-bottom: 16px;
+}
+
+.inputWrapper {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.newsletterInput {
+    flex: 1;
+    padding: 11px 16px;
+    font-size: 15px;
+    font-family: -apple-system, BlinkMacOSystemFont, "Segoe UI", Roboto, sans-serif;
+    border: 1px solid #888;
+    border-radius: 3px;
+    background: #fff;
+    color: #111;
+    transition: border-color 0.2s ease;
+}
+
+.newsletterInput:focus {
+    border-color: #333;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
+}
+
+.newsletterInput.inputError {
+    border-color: #8b0000;
+}
+
+.newsletterInput:disabled,
+.newsletterInput.inputLoading {
+    background: #f8f8f8;
+    color: #777;
+    cursor: not-allowed;
+}
+
+.newsletterButton {
+    padding: 11px 26px;
+    background: #1a1a1a;
+    color: #ffffff;
+    border: none;
+    border-radius: 3px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+}
+
+.newsletterButton:hover:not(:disabled) {
+    background: #000000;
+    transform: none;           /* убираем lift-эффект — слишком современно */
+}
+
+.newsletterButton:active:not(:disabled) {
+    background: #333;
+}
+
+.newsletterButton:disabled {
+    background: #888;
+    cursor: not-allowed;
+}
+
+.newsletterButton.buttonLoading {
+    opacity: 0.75;
+}
+
+.spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.errorMessage,
+.successMessage {
+    font-size: 13px;
+    margin: 6px 0 0 0;
+    text-align: left;
+    line-height: 1.4;
+}
+
+.errorMessage {
+    color: #8b0000;
+}
+
+.successMessage {
+    color: #006400;
+}
+
+.newsletterNote {
+    font-size: 12px;
+    color: #666;
+    margin: 12px 0 0;
+    line-height: 1.5;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .newsletterModule {
+        padding: 20px 16px;
+    }
+    .newsletterTitle {
+        font-size: 22px;
+    }
+    .newsletterDescription {
+        font-size: 14px;
+    }
+    .inputWrapper {
+        flex-direction: column;
+        max-width: 100%;
+    }
+    .newsletterButton {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .newsletterTitle {
+        font-size: 20px;
+    }
+    .newsletterModule {
+        padding: 18px 14px;
+    }
+}

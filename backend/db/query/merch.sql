@@ -147,6 +147,20 @@ FROM    products
     LEFT JOIN discount ON products.id = productid
 WHERE firm = $1;
 
+-- name: GetProductByArticle :one
+SELECT 
+    id,
+    qid,
+    name,
+    firm,
+    line,
+    image_path,
+    sizes
+
+FROM products
+WHERE article = $1
+LIMIT 1;
+
 -- name: GetProductsByLineName :many
 SELECT line,
     array_agg(id) AS id,

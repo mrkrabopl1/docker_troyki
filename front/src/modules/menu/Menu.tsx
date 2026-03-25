@@ -7,10 +7,10 @@ import BuyButton from "./BuyButton";
 import Burger from 'src/components/burger/Burger';
 import SearchWithList from '../searchWithList/SearchWithList';
 import Modal from 'src/components/modal/Modal';
-import { ReactComponent as Loupe } from "/public/loupe.svg";
+import { ReactComponent as Loupe } from "/images/loupe.svg";
 import s from "./style.module.css";
 import ss from "../../pages/search/style.module.css";
-import logo from "/public/troyki_logo.svg";
+import logo from "/images/troyki_logo.svg";
 import global from 'src/global.css';
 import ComplexDropVertical from 'src/components/complexDrop/ComplexDropVertical';
 import AlphabetNavigation from 'src/components/alphabetNavigation/AlphabetNavigation';
@@ -99,7 +99,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                 <div className={s.imageWrapStyle}>
                     <img className={s.imgStyle} src={logo} alt="troyki" />
                 </div>
-                <div className={s.textLogo}>TROYKI</div>
+                <div className={s.textLogo}>TROYKI_BENCH</div>
             </div>
             <div className={`${s.linkHolder}`}>
                 <div className={s.link} onClick={() => {
@@ -112,7 +112,9 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                 }} className={s.link}>
                     Скидки
                 </div>
-                <div className={s.link}>
+                <div onClick={() => {
+                    navigate('/about');
+                }}  className={s.link}>
                     О нас
                 </div>
                 <div className={s.link}>
@@ -176,7 +178,9 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
             </Modal>
             <Modal onChange={setActiveCart} active={activeCart}>
                 <div  onClick={(e) => e.stopPropagation()} className={s.cartModalWrap}>
-                    <Scroller onlyVertical={true}><BuyPage /></Scroller>
+                    <Scroller onlyVertical={true}><BuyPage onActivate={()=>{
+                        setActiveCart(false)
+                    }}/></Scroller>
                 </div>
             </Modal>
         </div>

@@ -144,6 +144,14 @@ func TestCreateDiscounts(t *testing.T) {
 	err := testStore.CreateDiscounts(context.Background(), discountData)
 	require.NoError(t, err)
 }
+func TestGetProductByArticle(t *testing.T) {
+	// 1. Сначала создаем тестовый продукт
+	testArticle := "IOTS019-3465"
+
+	product, err := testStore.GetProductByArticle(context.Background(), testArticle)
+	require.NoError(t, err)
+	require.NotEmpty(t, product)
+}
 
 func TestGetProductsInfoByIdComplex(t *testing.T) {
 	snickers, err := testStore.GetProductsInfoByIdComplex(context.Background(), 1)

@@ -1,5 +1,4 @@
 import React, { ReactElement, useRef, useState } from 'react'
-import check from '../../../public/check.svg'
 import s from "./style.module.css"
 import Lamp from '../lamp/Lamp'
 

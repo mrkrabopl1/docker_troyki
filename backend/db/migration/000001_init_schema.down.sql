@@ -26,3 +26,4 @@ DROP TYPE IF EXISTS public.merch_enum;
 DROP TYPE IF EXISTS public.body_enum;
 DROP TYPE IF EXISTS public.snickers_enum;
 DROP TYPE IF EXISTS public.product_source_enum;
+DROP TABLE IF EXISTS public.homepage_blocks

@@ -4,14 +4,6 @@
     border-radius: 4px;
     padding: 10px;
 }
-
-@font-face {
-    font-family: 'Quicksand';
-    src: url('../../../fonts/Quicksand-Regular.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
-    font-display: swap;
-}
 .article{
     height:40px;
     display: flex;
@@ -194,6 +186,7 @@ th{
 
 .buyMerch:hover {
     background: #1a1a1a;
+    color:#000000;
     transform: translateY(-2px);
     box-shadow: 
         inset 0 2px 4px rgba(255, 255, 255, 0.15),
@@ -367,12 +360,14 @@ th{
 .doubleInfoDropSecond{
     background-color: #fff;
     border-radius: 5px;
+    font-size: 22px;
+    font-weight: bold;
 }
 
 
 
 .merchName{
-    font-family: "Quicksand";
+    font-family: "SegoePro";
     font-size:40px
 }
 @media (max-width:1540px) {

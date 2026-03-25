@@ -52,7 +52,7 @@ const DoubleInfoDrop: React.FC<PropsRowType> = ({
                 role="button"
                 aria-expanded={active}
             >
-                <p style={{ paddingRight: "15px" }} className={textClass}>
+                <p style={{ paddingRight: "15px" }} className={className.second}>
                     {info}
                 </p>
                 <div className={s.arrowMain}>

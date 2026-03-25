@@ -6,9 +6,12 @@ import InputWithLabelWithValidation from 'src/components/input/InputWithLabelWit
 
 type AddressObject = {
     town?: string;
+    index?: string
     street?: string;
     coordinates?: [number, number];
     house?: string;
+    value?: string
+    settlement?:string
 };
 
 type PropsRowType = {
@@ -50,7 +53,12 @@ const AddressInput: React.FC<PropsRowType> = memo(({
     }, []);
 
     useEffect(() => {
-        setVal(val);
+        getAddressDeliveryData(val, (data) => {
+            suggestionsRef.current = data.suggestions;
+            if (!data.suggestions.length) return
+            setDropDownList(createSuggestionElements(data.suggestions));
+            handleAddressSelect(data.suggestions[0])
+        });
     }, [val]);
 
     useEffect(() => {
@@ -60,23 +68,42 @@ const AddressInput: React.FC<PropsRowType> = memo(({
     }, []);
 
     useEffect(() => {
-          setValid(valid)
+        setValid(valid)
     }, [valid]);
 
 
     const handleAddressSelect = useCallback((val: any) => {
-        const { city, street, geo_lon, geo_lat, house } = val.data;
+        const { city, street, geo_lon, geo_lat, house, value,settlement,postal_code } = val.data;
         addressObjRef.current = {
             town: city,
             street,
             coordinates: [geo_lon, geo_lat],
-            house
+            house,
+            value:val.value,
+            settlement,
+            index:postal_code
         };
         setActive(false);
         onChange(addressObjRef.current);
         setVal(val.value);
         updateValidObj();
     }, [onChange, updateValidObj]);
+
+   const handleAddress = useCallback((val: any) => {
+        const { city, street, geo_lon, geo_lat, house, value,settlement,postal_code } = val.data;
+        addressObjRef.current = {
+            town: city,
+            street,
+            coordinates: [geo_lon, geo_lat],
+            house,
+            value,
+            settlement,
+            index:postal_code
+        };
+        onChange(addressObjRef.current);
+        updateValidObj();
+    }, [onChange, updateValidObj]);
+
 
     const createSuggestionElements = useCallback((suggestions: any[]) => {
         return suggestions.map((suggestion, index) => (
@@ -94,24 +121,25 @@ const AddressInput: React.FC<PropsRowType> = memo(({
         setVal(inputVal);
         timeoutId.current && clearTimeout(timeoutId.current);
 
-        if (!inputVal.trim()) {
+        if (inputVal && !inputVal.trim()) {
             setActive(false);
-            onChange(inputVal);
+            onChange({});
             return;
         }
 
         timeoutId.current = setTimeout(() => {
             getAddressDeliveryData(inputVal, (data) => {
                 suggestionsRef.current = data.suggestions;
+                if (!data.suggestions.length) return
                 setDropDownList(createSuggestionElements(data.suggestions));
                 setActive(true);
-                onChange(inputVal);
+                handleAddress(data.suggestions[0])
             });
         }, 500);
     }, [onChange, createSuggestionElements]);
 
     return (
-        <div className={s.addressInputContainer}>
+        <div className={s.inputHolder}>
             <InputWithLabelWithValidation
                 invalidText='Введите более точный адрес.'
                 valid={validFlag}

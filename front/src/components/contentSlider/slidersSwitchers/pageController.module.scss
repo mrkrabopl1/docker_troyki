@@ -1,0 +1,274 @@
+$size: 200px;
+$sizeDef: 90px;
+$thickness: 2px;
+$angle: 40deg;
+$angleHover: 30deg;
+$angleActive: 25deg;
+
+@mixin arrowTransform($angle, $x: 0, $y: 0) {
+  i:first-child {
+    transform: translate($x, $y) rotate($angle);
+  }
+
+  i:last-child {
+    transform: translate($x, -$y) rotate(-$angle);
+  }
+}
+
+
+.pg {
+    display: block;
+    position: absolute;
+    width: 12px;
+    height: $thickness;
+    background-color: #555;
+    border-radius: calc($thickness / 2);
+    transition: all 0.15s ease;
+    top: 50%;
+}
+
+.buttonStyle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    /* Стиль кнопки - выпуклая */
+    background: linear-gradient(145deg, #ffffff, #f0f0f0);
+    box-shadow: 
+        3px 3px 6px rgba(0, 0, 0, 0.1),
+        -3px -3px 6px rgba(255, 255, 255, 0.8)
+    ;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.buttonStyle:hover {
+    transform: translateY(-1px);
+    box-shadow: 
+        4px 4px 8px rgba(0, 0, 0, 0.12),
+        -4px -4px 8px rgba(255, 255, 255, 0.9)
+    ;
+}
+
+/* Стиль активной кнопки (продавленная) */
+.buttonStyle:active,
+.buttonStyle.active {
+    transform: translateY(1px);
+    /* Стиль вдавленной кнопки */
+    background: linear-gradient(145deg, #f0f0f0, #ffffff);
+    box-shadow: 
+        inset 3px 3px 6px rgba(0, 0, 0, 0.1),
+        inset -3px -3px 6px rgba(255, 255, 255, 0.8)
+    ;
+}
+
+/* Дополнительный стиль для активной страницы с зелёным акцентом */
+.buttonStyle.active {
+    border: 2px solid rgba(46, 125, 50, 0.3);
+}
+
+.spanStyle {
+    font-size: 14px;
+    font-weight: 500;
+    color: #555;
+    transition: color 0.2s ease;
+}
+
+.spanStyle.active {
+    color: #2e7d32; /* Зелёный цвет для активной страницы */
+    font-weight: 600;
+    text-shadow: 0 0 1px rgba(46, 125, 50, 0.3);
+}
+
+.ellipsis {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    color: #888;
+    font-size: 14px;
+    font-weight: 500;
+    user-select: none;
+}
+
+.paginationContainer {
+    justify-content: center;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.paginationArrow {
+    width: 40px;
+    height: 40px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.paginationPages {
+    cursor: pointer;
+    margin: auto 0;
+    justify-content: center;
+    display: flex;
+    gap: 8px;
+}
+
+.paginate {
+    position: absolute;
+    -webkit-appearance: none;
+    background: linear-gradient(145deg, #ffffff, #f0f0f0);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    outline: 0;
+    cursor: pointer;
+    transform: translate3d(0, 0, 0); // fixes flicker in webkit
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 
+        3px 3px 6px rgba(0, 0, 0, 0.1),
+        -3px -3px 6px rgba(255, 255, 255, 0.8);
+    transition: all 0.2s ease;
+    
+    &:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 
+            4px 4px 8px rgba(0, 0, 0, 0.12),
+            -4px -4px 8px rgba(255, 255, 255, 0.9);
+        
+        .pg {
+            background-color: #2e7d32;
+        }
+    }
+    
+    &:active:not(:disabled) {
+        transform: translateY(1px);
+        background: linear-gradient(145deg, #f0f0f0, #ffffff);
+        box-shadow: 
+            inset 3px 3px 6px rgba(0, 0, 0, 0.1),
+            inset -3px -3px 6px rgba(255, 255, 255, 0.8);
+    }
+    
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.4;
+        
+        .pg {
+            background-color: #ccc;
+        }
+    }
+}
+
+.leftArrowHolder {
+    left: 5px;
+    z-index: 200;
+}
+
+.rightArrowHolder {
+    right: 5px;
+    z-index: 200;
+}
+
+.spanStyle {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    position: absolute;
+    margin: auto;
+}
+
+// Левая стрелка
+.right1 {
+    left: 0;
+
+    i {
+        transform-origin: 0% 50%;
+    }
+    
+    @include arrowTransform($angle, 0, 0px);
+    
+    &:hover:not(:disabled) {
+        @include arrowTransform($angleHover, 0, 0px);
+    }
+    
+    &:active:not(:disabled) {
+        @include arrowTransform($angleActive, 0px, 0px);
+    }
+}
+
+// Правая стрелка
+.right {
+    right: 0;
+
+    i {
+        transform-origin: 100% 50%;
+    }
+    
+    @include arrowTransform($angle, 0, 0px);
+    
+    &:hover:not(:disabled) {
+        @include arrowTransform($angleHover, 0, 0px);
+    }
+    
+    &:active:not(:disabled) {
+        @include arrowTransform($angleActive, 0px, 0px);
+    }
+}
+
+.def {
+    background-color: black;
+    position: absolute;
+    top: 40%;
+    left: 0;
+    height: $thickness;
+    border-radius: calc($thickness / 2);
+    transition: all 0.15s ease;
+}
+
+.controllerHolder {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+// Дополнительные стили для корректного отображения стрелок
+.paginate .pg {
+    &:first-child {
+        left: 14px;
+    }
+    
+    &:last-child {
+        left: 14px;
+    }
+}
+
+.right .pg {
+    &:first-child {
+        left: auto;
+        right: 14px;
+    }
+    
+    &:last-child {
+        left: auto;
+        right: 14px;
+    }
+}

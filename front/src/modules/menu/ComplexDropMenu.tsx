@@ -24,7 +24,7 @@ const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
     complexDropData,
 }) => {
     const navigate = useNavigate();
-    const { show, sticky, typesVal, categories } = useAppSelector(state => state.menuReducer);
+    const { show, sticky, typesVal, categories,firms } = useAppSelector(state => state.menuReducer);
     const [showMenu, setShowMenu] = useState(false);
 
 
@@ -40,10 +40,11 @@ const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
         if (!data.sub) {
             navigate(`/search?category=${data.main}&type=""`);
         } else {
-            navigate(`/search?type=${data.sub}&category=${data.main}`);
+            let type_key = Object.values(typesVal).filter(cat => cat.category_key === data.main && data.sub === cat.name).map(cat => cat.type_key)[0]
+            navigate(`/search?type=${type_key}&category=${data.main}`);
         }
 
-    }, [navigate]);
+    }, [navigate, typesVal]);
 
 
 
@@ -69,7 +70,7 @@ const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
                         navigate(`/search?category=${key}&type=""`);
                     }}
                     className={s.categoryLine} key={key}>
-                    <img src={"/" + value.image_path} alt={key} />
+                    <img src={"/images/"+value.image_path} alt={key} />
                     <span className={s.categoryText}>{value.category_name}</span>
                 </div>),
                 subs: Object.values(typesVal).filter(cat => cat.category_key === key).map(cat => cat.name)

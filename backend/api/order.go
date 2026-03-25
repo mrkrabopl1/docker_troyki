@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
@@ -76,19 +77,24 @@ func (s *Server) handleCreateOrder(ctx *gin.Context) {
 		myCookie, _ := s.tokenMaker.CreateCoockie(hash, hash, 36000)
 		ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
 		if orderData.Save {
-			myCookie, err := s.tokenMaker.CreatePasetoCoockie(unregUserId, "saved", 36000)
+			myCookie, err := s.tokenMaker.CreatePasetoCoockie(unregUserId, "saved", 2*time.Hour)
 			if err != nil {
 				//log.WithCaller().Err(err)
 				ctx.JSON(http.StatusBadRequest, errorResponse(err))
 				return
 			}
+			fmt.Println("set cccccccccccccccccccccccccccccooooooooooooooooockie")
 			ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
 		}
 		data := map[string]interface{}{
 			"hash": hash,
 		}
 		fmt.Println("maybe good")
-		err = s.taskDistributor.DistributeTaskSendOrderEmail(ctx, &worker.PayloadSendOrderEmail{
+		fmt.Println("orderData: %v", orderData)
+		fmt.Println("Sending task with email: %s", orderData.PersonalData.Mail)
+		fmt.Println("Delivery price: %v", orderData.Address.Flat)
+		fmt.Println("DeliveryType", orderData.Delivery.Type)
+		data1 := worker.PayloadSendOrderEmail{
 			Email:        orderData.PersonalData.Mail,
 			Name:         orderData.PersonalData.Name,
 			Phone:        orderData.PersonalData.Phone,
@@ -100,7 +106,9 @@ func (s *Server) handleCreateOrder(ctx *gin.Context) {
 			OrderPrice:   orderData.Delivery.DeliveryPrice,
 			DeliveryType: orderData.Delivery.Type,
 			SecondName:   orderData.PersonalData.SecondName,
-		})
+		}
+		fmt.Println("Deliveryww price: ", data1)
+		err = s.taskDistributor.DistributeTaskSendOrderEmail(ctx, &data1)
 		if err != nil {
 			fmt.Println(err, "error in taskDistributor")
 			ctx.JSON(http.StatusInternalServerError, errorResponse(err))

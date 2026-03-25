@@ -104,7 +104,7 @@ const MerchBlock: React.FC<{ className?: string, width?: string, data: MerchInte
         >
             <div className={s.colorLayout}>
                 <div className={s.imageBlock}>
-                    <img loading={"lazy"} className={s.img} style={firstImgStyle} src={"/" + (data.imgs?data.imgs[0]:data.image_path+0)} alt="airJordan" />
+                    <img loading={"lazy"} className={s.img} style={firstImgStyle} src={(data.imgs?data.imgs[0]:data.image_path)} alt={s.imgName} />
                     {data.discount ? <div className={s.discountMarker}>
                         "Sale"
                     </div> : null}

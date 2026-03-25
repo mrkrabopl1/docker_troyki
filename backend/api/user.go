@@ -7,10 +7,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
 	"github.com/mrkrabopl1/go_db/errorsType"
 	"github.com/mrkrabopl1/go_db/types"
+	"github.com/mrkrabopl1/go_db/util"
+	"github.com/mrkrabopl1/go_db/worker"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -310,18 +314,26 @@ func (s *Server) handleChangeForgetPass(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, 0)
 }
 func (s *Server) handleCheckCustomerData(ctx *gin.Context) {
+	// fmt.Println()
+	fmt.Println("cheeeeeeeeeck")
 	cookie, errC := ctx.Cookie("saved")
+	fmt.Println("cheeeeeeeeeck", cookie)
 	if errC != nil {
 		if errC == http.ErrNoCookie {
 			fmt.Println("0 codsad")
 			ctx.JSON(http.StatusOK, 0)
 			return
 		} else {
+			fmt.Println("lfmdskmflkdsm")
 			panic(errC)
 		}
 	}
-	payload, _ := s.tokenMaker.VerifyToken(cookie)
-	//fmt.Println(issuer, "fdsdflksdfksdp", err3)
+
+	payload, errV := s.tokenMaker.VerifyToken(cookie)
+	if errV != nil {
+		fmt.Println(errV, "s")
+	}
+	fmt.Println("GetUnregisterCustomer", "fdsdflksdfksdp", payload.UserId)
 	costumerData, err := s.store.GetUnregisterCustomer(ctx, payload.UserId)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
@@ -329,12 +341,249 @@ func (s *Server) handleCheckCustomerData(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, UnregisterCustomerDataResponse(costumerData))
 	}
 }
-func UnregisterCustomerDataResponse(customerInfo db.GetUnregisterCustomerRow) types.UnregisterCustomerResponse {
+
+// ============ НОВЫЕ ОБРАБОТЧИКИ ДЛЯ НОВОСТНОЙ РАССЫЛКИ ============
+
+type subscribeNewsletterRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Username string `json:"username,omitempty"`
+}
+
+// handleSubscribeNewsletter - подписка на новостную рассылку
+// handleSubscribeNewsletter — подписка на новостную рассылку
+func (s *Server) handleSubscribeNewsletter(ctx *gin.Context) {
+	var req subscribeNewsletterRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	// Проверяем, не подписан ли уже пользователь
+	existing, err := s.store.GetNewsletterSubscriberByEmail(ctx, req.Email)
+	if err == nil {
+		if existing.Status == "verified" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "email already subscribed"})
+			return
+		}
+		if existing.Status == "pending" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "verification email already sent, please check your inbox"})
+			return
+		}
+	}
+
+	// Генерируем токен
+	verificationToken := util.RandomString(64)
+	expiresAt := time.Now().Add(24 * time.Hour)
+	ipAddress := ctx.ClientIP()
+	userAgent := ctx.GetHeader("User-Agent")
+
+	// Создаём подписчика
+	subscriber, err := s.store.CreateNewsletterSubscriber(ctx, db.CreateNewsletterSubscriberParams{
+		Email:             req.Email,
+		VerificationToken: verificationToken,
+		TokenExpiresAt: pgtype.Timestamp{
+			Time:  expiresAt,
+			Valid: true,
+		},
+		IpAddress: pgtype.Text{
+			String: ipAddress,
+			Valid:  ipAddress != "",
+		},
+		UserAgent: pgtype.Text{
+			String: userAgent,
+			Valid:  userAgent != "",
+		},
+	})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	// Ставим задачу на отправку верификационного письма
+	payload := &worker.PayloadSendNewsletterVerification{
+		Email:    subscriber.Email,
+		Token:    verificationToken,
+		Username: req.Username,
+	}
+
+	err = s.taskDistributor.DistributeTaskSendNewsletterVerification(ctx, payload,
+		asynq.MaxRetry(3),
+		asynq.Timeout(30*time.Second),
+		asynq.Queue(worker.QueueDefault),
+	)
+	if err != nil {
+		log.Error().Err(err).Str("email", subscriber.Email).Msg("failed to enqueue verification email")
+		// Можно вернуть ошибку пользователю или продолжить (решение за тобой)
+		// здесь продолжаем, т.к. подписка уже создана
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "Verification email sent. Please check your inbox.",
+		"email":   subscriber.Email,
+	})
+}
+
+// handleVerifyNewsletter — верификация подписки
+func (s *Server) handleVerifyNewsletter(ctx *gin.Context) {
+	token := ctx.Param("token")
+	if token == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "token is required"})
+		return
+	}
+
+	// Подтверждаем подписку
+	err := s.store.VerifyNewsletterSubscriber(ctx, token)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid or expired token"})
+		return
+	}
+
+	// Получаем подписчика (чтобы знать email)
+	subscriber, err := s.store.GetNewsletterSubscriberByToken(ctx, token)
+	if err != nil {
+		// Если токен валидный, но подписчика не нашли — странно, но возвращаем успех
+		ctx.JSON(http.StatusOK, gin.H{"message": "Email verified successfully"})
+		return
+	}
+
+	// Ставим задачу на отправку приветственного письма
+	payload := &worker.PayloadSendNewsletterWelcome{
+		Email:    subscriber.Email,
+		Username: "", // если есть username в БД — можно добавить поле и вытащить
+	}
+
+	err = s.taskDistributor.DistributeTaskSendNewsletterWelcome(ctx, payload,
+		asynq.MaxRetry(2),
+		asynq.Timeout(20*time.Second),
+		asynq.Queue(worker.QueueDefault),
+	)
+	if err != nil {
+		log.Error().Err(err).Str("email", subscriber.Email).Msg("failed to enqueue welcome email")
+		// Продолжаем — верификация прошла
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "Email verified successfully! Welcome to our newsletter!",
+		"email":   subscriber.Email,
+	})
+}
+
+// handleUnsubscribeNewsletter — отписка (здесь асинхронная отправка не нужна)
+func (s *Server) handleUnsubscribeNewsletter(ctx *gin.Context) {
+	var req struct {
+		Email string `json:"email" binding:"required,email"`
+	}
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	err := s.store.UnsubscribeNewsletter(ctx, req.Email)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "You have been unsubscribed from our newsletter.",
+	})
+}
+
+// handleGetNewsletterStats — статистика (без изменений, асинхронности нет)
+func (s *Server) handleGetNewsletterStats(ctx *gin.Context) {
+	verifiedCount, err := s.store.GetNewsletterVerifiedCount(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	pendingCount, err := s.store.GetNewsletterPendingCount(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	unsubscribedCount, err := s.store.GetNewsletterUnsubscribedCount(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	totalCount, err := s.store.GetNewsletterTotalCount(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	stats := map[string]int64{
+		"verified_count":     verifiedCount,
+		"pending_count":      pendingCount,
+		"unsubscribed_count": unsubscribedCount,
+		"total_count":        totalCount,
+	}
+
+	ctx.JSON(http.StatusOK, stats)
+}
+
+// handleSendNewsletterBroadcast — массовая рассылка (у тебя уже было почти правильно)
+func (s *Server) handleSendNewsletterBroadcast(ctx *gin.Context) {
+	var req struct {
+		Subject string `json:"subject" binding:"required"`
+		Content string `json:"content" binding:"required"`
+	}
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	emails, err := s.store.GetVerifiedNewsletterSubscribers(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	if len(emails) == 0 {
+		ctx.JSON(http.StatusOK, gin.H{"message": "No subscribers to send to"})
+		return
+	}
+
+	payload := &worker.PayloadSendNewsletterBroadcast{
+		Subject: req.Subject,
+		Content: req.Content,
+		Emails:  emails,
+	}
+
+	err = s.taskDistributor.DistributeTaskSendNewsletterBroadcast(ctx, payload,
+		asynq.MaxRetry(1), // для broadcast retry обычно не нужен
+		asynq.Timeout(15*time.Minute),
+		asynq.Queue(worker.QueueDefault),
+	)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message":    "Broadcast task enqueued",
+		"recipients": len(emails),
+	})
+}
+func UnregisterCustomerDataResponse(customerInfo db.Unregistercustomer) types.UnregisterCustomerResponse {
 	data := types.UnregisterCustomerResponse{
 		Name:       customerInfo.Name,
 		SecondName: customerInfo.Secondname.String,
 		Mail:       customerInfo.Mail,
 		Phone:      customerInfo.Phone,
+		Address: types.AddressTypeResp{
+			Town:        customerInfo.Town,
+			Street:      customerInfo.Street.String,
+			Index:       customerInfo.Index,
+			House:       customerInfo.House.String,
+			Coordinates: customerInfo.Coordinates,
+			Flat:        customerInfo.Flat.String,
+			Settlement:  customerInfo.Settlement.String,
+		},
+		DeliveryComment: customerInfo.Deliverycomment.String,
 	}
 
 	return data

@@ -167,7 +167,7 @@ func TestDeleteFromPreorderItems(t *testing.T) {
 
 func TestCreateOrder(t *testing.T) {
 	orderData := CreateOrderType{
-		PreorderHash: "7563840074177507240",
+		PreorderHash: "5322710528725765933",
 		PersonalData: types.PersonalData{
 			Name:       "name",
 			SecondName: "secondName",

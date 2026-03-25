@@ -6,7 +6,7 @@ import s from "./style.module.css";
 
 interface CartItem {
     name: string;
-    img: string;
+    image_path: string;
     id: string;
     firm: string;
     price: number;

@@ -27,8 +27,12 @@ interface UpdateData {
     size: string;
     dif: number;
 }
+interface BuyMerchFieldProps {
+    onActivate?: () => void;
+}
 
-const BuyPage: React.FC = memo(() => {
+const BuyPage: React.FC<BuyMerchFieldProps>  = memo((props) => {
+    const { onActivate } = { ...props };
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const { cartCount, shop } = useAppSelector(state => state.menuReducer);
@@ -52,6 +56,7 @@ const BuyPage: React.FC = memo(() => {
     }, [cart, hasItems]);
 
     const handleCheckout = () => {
+        onActivate?.();
         navigate("/form/" + cart)
     };
 
@@ -146,7 +151,10 @@ const BuyPage: React.FC = memo(() => {
                         onClick={handleCheckout}
                     />
 
-                    <div className={s.continueShopping} onClick={() => navigate('/')}>
+                    <div className={s.continueShopping} onClick={() => {
+                        onActivate?.();
+                        navigate('/');
+                    }}>
                         ← Продолжить покупки
                     </div>
                 </div>

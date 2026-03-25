@@ -125,8 +125,6 @@ CREATE TABLE product_colors (
 );
 
 
-     
-    
 
 CREATE INDEX idx_qId ON public.products(qId);
 
@@ -194,20 +192,23 @@ CREATE TABLE IF NOT EXISTS public.verification (
 );
 
 CREATE TABLE IF NOT EXISTS public.unregistercustomer (
-		id serial PRIMARY KEY NOT NULL ,
-		name TEXT NOT NULL,
-		secondName TEXT,
-		mail TEXT NOT NULL,
-		phone TEXT NOT NULL
+    id serial PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    secondName TEXT,
+    mail TEXT NOT NULL,
+    phone TEXT NOT NULL,
+	town TEXT NOT NULL,
+    index TEXT NOT NULL,
+    sendMail BOOLEAN,
+    street TEXT,
+    settlement TEXT,
+    region TEXT,
+    deliveryComment TEXT,
+    house TEXT,
+    flat TEXT,
+    coordinates TEXT[],
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
-
-CREATE TABLE public.uniquecustomers (
-		id serial PRIMARY KEY NOT NULL,
-		creationTime DATE NOT NULL DEFAULT CURRENT_DATE,
-		history INTEGER[] NOT NULL
-);
-
 
 
 
@@ -219,9 +220,16 @@ CREATE TABLE public.orders (
 			Status status_enum  NOT NULL,
 			Hash TEXT  NOT NULL,
 			DeliveryPrice INT  NOT NULL,
+            DeliveryComment TEXT,
 			DeliveryType public.delivery_enum  NOT NULL,
 			FOREIGN KEY (CustomerID) REFERENCES public.customers(id),
 			FOREIGN KEY (UnregisterCustomerID) REFERENCES public.unregistercustomer(id)
+);
+
+CREATE TABLE public.uniquecustomers (
+		id serial PRIMARY KEY NOT NULL,
+		creationTime DATE NOT NULL DEFAULT CURRENT_DATE,
+		history INTEGER[] NOT NULL
 );
 
 CREATE TABLE public.orderitems (
@@ -259,6 +267,7 @@ CREATE TABLE IF NOT EXISTS public.orderAddress (
 		sendMail BOOLEAN,
 		street TEXT,
 		region TEXT,
+		deliveryComment TEXT,
 		house TEXT,
 		OrderID integer NOT NULL,
 		flat TEXT,
@@ -281,3 +290,20 @@ CREATE TABLE IF NOT EXISTS public.preorderAddress (
     FOREIGN KEY (OrderID) REFERENCES public.preorder(id)
 );
 
+-- Создание таблицы
+CREATE TABLE homepage_blocks (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255),
+    subtitle TEXT,
+    description TEXT,
+    image_url VARCHAR(500),
+    button_text VARCHAR(100),
+    button_url VARCHAR(500)
+);
+
+-- Добавление данных (один раз!)
+INSERT INTO homepage_blocks (title, subtitle, description, image_url, button_text, button_url)
+VALUES
+    ('Новая коллекция осень-зима', 'Тренды нового сезона уже здесь', 'Откройте для себя уникальные модели...', '/images/banners/1.png', 'Смотреть коллекцию', '/catalog/autumn-winter'),
+    ('Бесплатная доставка', 'При заказе от 5000 рублей', 'Заказывайте с уверенностью...', '/images/banners/2.png', 'Узнать условия', '/delivery'),
+    ('Скидка 20% на первую покупку', 'Только для новых клиентов', 'Зарегистрируйтесь на сайте...', '/images/banners/3.png', 'Получить скидку', '/register');

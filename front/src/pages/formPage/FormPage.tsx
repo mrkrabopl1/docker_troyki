@@ -35,7 +35,35 @@ const BACK_ROUTE = [
     ["Вернуться к экрану с информацией", "Вернуться к доставке"],
     ["Вернуться к экрану с информацией"]
 ];
+function formatAddress(address) {
+    const parts = [];
+    
+    // Город
+   
+    if (address.town) {
+        parts.push(`г.${address.town}`);
+    }
+     if (address.settlement) {
+        parts.push(`${address.settlement}`);
+    }
+    // Улица и дом
+    if (address.street && address.house) {
+        parts.push(`ул. ${address.street}`);
+    }
+    if ( address.house) {
+        parts.push(`д. ${address.house}`);
+    }
+   
+    
+    // Квартира
+    if (address.flat) {
+        parts.push(`кв. ${address.flat}`);
+    }
+    
 
+    
+    return parts.join(', ');
+}
 const FormPage: React.FC = () => {
     const navigate = useNavigate();
     const { hash } = useParams<urlParamsType>();
@@ -61,7 +89,8 @@ const FormPage: React.FC = () => {
         secondName: "",
         address: null,
         phone: "",
-        deliveryType: "own"
+        deliveryType: "own",
+        deliveryComment: ""
     });
 
     useEffect(() => {
@@ -71,7 +100,8 @@ const FormPage: React.FC = () => {
             checkCustomerData((customerData) => {
                 if (customerData) {
                     memoSendForm.current = !memoSendForm.current;
-                    formData.current = customerData;
+                    customerData.address.value = formatAddress(customerData.address)
+                    Object.assign(formData.current, customerData);
                     setRefresh(prev => !prev);
                     setInProgress(true);
                 }
@@ -103,6 +133,7 @@ const FormPage: React.FC = () => {
             save: data.save,
             delivery: {
                 deliveryPrice: 0,
+                deliveryComment: "",
                 type: "own"
             },
             preorderHash: hash
@@ -117,7 +148,7 @@ const FormPage: React.FC = () => {
                     checkValid={checkValid.current}
                         memo={memoSendForm.current}
                         valid={true}
-                        formValue={formData.current}
+                        formValue={{...formData.current}}
                         onValid={(valid) => validSendForm.current = valid}
                         onChange={(data: any) => {
                             contactInfo.current.Имя = data.name;
@@ -129,7 +160,7 @@ const FormPage: React.FC = () => {
                             formData.current.address = { ...data.address };
                             formData.current.phone = data.phone;
                             formData.current.mail = data.mail;
-
+                            formData.current.deliveryComment = data.deliveryComment
                             respData.current = {
                                 personalData: {
                                     name: data.name,
@@ -141,6 +172,7 @@ const FormPage: React.FC = () => {
                                 save: data.save,
                                 delivery: {
                                     deliveryPrice: 0,
+                                    deliveryComment: formData.current.deliveryComment,
                                     type: formData.current.deliveryType
                                 },
                                 preorderHash: hash
@@ -193,6 +225,7 @@ const FormPage: React.FC = () => {
                                 save: formData.current.save,
                                 delivery: {
                                     deliveryPrice: 0,
+                                    deliveryComment: formData.current.deliveryComment,
                                     type: formData.current.deliveryType
                                 },
                                 preorderHash: hash
@@ -217,6 +250,7 @@ const FormPage: React.FC = () => {
                             save: formData.current.save,
                             delivery: {
                                 deliveryPrice: 0,
+                                deliveryComment: formData.current.deliveryComment,
                                 type: formData.current.deliveryType
                             },
                             preorderHash: hash
@@ -232,7 +266,7 @@ const FormPage: React.FC = () => {
         switch (formId.current) {
             case 0:
                 return <div>
-                    <h2>Способ доставки</h2>
+                    <h2>Способ получения товара</h2>
                     <DeliveryRadioGroup onChange={(data) => {
                         delivery.current = data;
                         setRefresh(prev => !prev);

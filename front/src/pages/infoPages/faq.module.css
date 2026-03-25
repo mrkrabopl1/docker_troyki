@@ -1,0 +1,294 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&display=swap');
+
+.infoPage {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 20px 80px;
+  font-family: 'Inter', sans-serif;
+  color: #1a1a1a;
+  background: #fafafa;
+  min-height: 100vh;
+}
+
+/* Эффект появления при скролле */
+.fxReveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.fxRevealVisible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Заголовки */
+.mainHeader {
+  font-family: 'Playfair Display', serif;
+  font-size: 56px;
+  font-weight: 400;
+  letter-spacing: -0.5px;
+  text-align: center;
+  margin-bottom: 60px;
+  color: #000000;
+  position: relative;
+  padding-bottom: 25px;
+}
+
+.mainHeader::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 2px;
+  background: #000000;
+}
+
+.middleHeader {
+  font-family: 'Playfair Display', serif;
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -0.3px;
+  margin: 60px 0 30px;
+  color: #000000;
+  position: relative;
+  padding-left: 20px;
+}
+
+.middleHeader::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 28px;
+  background: #000000;
+}
+
+/* FAQ секции */
+.faqSection {
+  margin-bottom: 40px;
+}
+
+/* FAQ элемент */
+.faqItem {
+  margin-bottom: 12px;
+  border: 1px solid #eaeaea;
+  background: #ffffff;
+  transition: all 0.3s ease;
+}
+
+.faqItem:hover {
+  border-color: #cccccc;
+}
+
+.faqItemOpen {
+  border-color: #000000;
+}
+
+/* Вопрос */
+.faqQuestion {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: #1a1a1a;
+  transition: background-color 0.2s ease;
+}
+
+.faqQuestion:hover {
+  background-color: #f8f8f8;
+}
+
+.questionText {
+  flex: 1;
+  padding-right: 20px;
+}
+
+.questionIcon {
+  font-size: 24px;
+  font-weight: 300;
+  color: #000000;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Ответ */
+.faqAnswer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: #fafafa;
+}
+
+.faqAnswerOpen {
+  max-height: 1000px; /* Достаточно большое значение для контента */
+}
+
+.answerContent {
+  padding: 0 25px 25px 25px;
+  color: #4a4a4a;
+  line-height: 1.7;
+  font-size: 15px;
+}
+
+.answerContent p {
+  margin: 10px 0;
+}
+
+/* Ссылки */
+.phoneLink, .emailLink {
+  color: #000000;
+  text-decoration: none;
+  border-bottom: 1px solid #000000;
+  padding-bottom: 1px;
+  transition: opacity 0.2s ease;
+}
+
+.phoneLink:hover, .emailLink:hover {
+  opacity: 0.6;
+}
+
+/* Пошаговая инструкция */
+.stepsList {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.step {
+  display: flex;
+  gap: 15px;
+}
+
+.stepNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  background: #000000;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 50%;
+}
+
+.stepContent {
+  flex: 1;
+}
+
+.stepContent strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #000000;
+  font-size: 16px;
+}
+
+.stepContent p {
+  margin: 0;
+  color: #666666;
+  line-height: 1.6;
+}
+
+/* Заметка */
+.note {
+  display: block;
+  padding: 15px;
+  background: #f5f5f5;
+  border-left: 3px solid #000000;
+  font-size: 14px;
+  color: #555555;
+  margin-top: 10px;
+}
+
+/* Разделитель */
+.divider {
+  height: 1px;
+  background: #e5e5e5;
+  margin: 70px 0;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .infoPage {
+    padding: 20px 15px;
+  }
+  
+  .mainHeader {
+    font-size: 40px;
+    margin-bottom: 40px;
+  }
+  
+  .middleHeader {
+    font-size: 26px;
+    margin: 40px 0 25px;
+  }
+  
+  .faqQuestion {
+    padding: 15px 20px;
+    font-size: 15px;
+  }
+  
+  .answerContent {
+    padding: 0 20px 20px 20px;
+    font-size: 14px;
+  }
+  
+  .step {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .stepNumber {
+    min-width: 25px;
+    height: 25px;
+    font-size: 12px;
+  }
+  
+  .divider {
+    margin: 50px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .mainHeader {
+    font-size: 32px;
+  }
+  
+  .middleHeader {
+    font-size: 22px;
+    padding-left: 15px;
+  }
+  
+  .faqQuestion {
+    padding: 12px 15px;
+    font-size: 14px;
+  }
+  
+  .questionIcon {
+    font-size: 20px;
+    min-width: 20px;
+  }
+  
+  .answerContent {
+    padding: 0 15px 15px 15px;
+  }
+  
+  .note {
+    padding: 12px;
+    font-size: 13px;
+  }
+}

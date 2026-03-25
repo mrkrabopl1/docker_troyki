@@ -39,7 +39,7 @@ const MerchBuyField: React.FC<TableType> = memo(({ tableData, onChange, classNam
                         firm: el.firm,
                         price: el.size,
                         name: el.name,
-                        imgs: el.img
+                        imgs: el.image_path
                     }}
                     quantity={el.quantity}
                     onChange={(newQuantity) => handleQuantityChange({

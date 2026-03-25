@@ -72,6 +72,20 @@ func (s *Server) setupRouter() {
 	snickersRoute.Use(CachedMiddleware(s))
 	snickersRoute.GET("/productsInfo", s.handleGetProductsInfoById)
 
+	rateLimiter := NewRateLimiter(3, 3) // 3 запроса в секунду, burst 3
+
+	newsletterGroup := router.Group("/newsletter")
+	newsletterGroup.Use(RateLimitMiddleware(rateLimiter))
+	{
+		newsletterGroup.POST("/subscribe", s.handleSubscribeNewsletter)
+		newsletterGroup.GET("/verify/:token", s.handleVerifyNewsletter)
+		newsletterGroup.POST("/unsubscribe", s.handleUnsubscribeNewsletter)
+	}
+
+	bannerRoute := router.Group("/")
+	bannerRoute.Use(CachedBannersMiddleware(s))
+	bannerRoute.GET("/getMainBanners", s.handleGetMainBanners)
+
 	router.POST("/searchProducts", s.handleSearchProducts)
 	router.POST("/getProductsAndFiltersByNameCategoryAndType", s.handleSearchSnickersAndFiltersByNameCategoryAndType)
 	router.POST("/getProductsByString", s.handleSearchProductsByString)

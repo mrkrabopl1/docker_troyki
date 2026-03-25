@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import s from "./linkController.module.scss";
+import s from "./pageController.module.scss";
 
 interface PageControllerProps {
     currentPosition: number;
@@ -17,6 +17,7 @@ const PageController: React.FC<PageControllerProps> = ({
     const [active, setActive] = useState(currentPosition);
 
     useEffect(() => {
+        console.log('currentPosition changed:', currentPosition);
         setActive(currentPosition);
     }, [currentPosition]);
 
@@ -53,19 +54,19 @@ const PageController: React.FC<PageControllerProps> = ({
                     </span>
                 );
             }
-
+            const isActive = active === val;
             return (
                 <div 
                     key={`page-${val}`}
-                    className={s.buttonStyle}
+                    className={`${s.buttonStyle} ${isActive ? s.active : ''}`}
                     onClick={() => {
+                        console.log('Page clicked:', val);
                         setActive(val);
                         callback(val);
                     }}
                 >
                     <span 
-                        className={s.spanStyle}
-                        style={{ color: active === val ? "red" : "" }}
+                        className={`${s.spanStyle} ${isActive ? s.active : ''}`}
                     >
                         {val}
                     </span>
@@ -74,25 +75,42 @@ const PageController: React.FC<PageControllerProps> = ({
         });
     }, [active, positions, generatePageNumbers, callback]);
 
-    const handleLeftClick = useCallback(() => {
-        if (active > 1) {
-            callback(active - 1);
+    const handleLeftClick = useCallback((e: React.MouseEvent) => {
+        console.log('Left click, active:', active, 'positions:', positions);
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const newActive = active - 1;
+        if (newActive >= 1) {
+            console.log('Setting new active to:', newActive);
+            setActive(newActive);
+            callback(newActive);
         }
-    }, [active, callback]);
+    }, [active, callback, positions]);
 
-    const handleRightClick = useCallback(() => {
-        if (active < positions) {
-            callback(active + 1);
+    const handleRightClick = useCallback((e: React.MouseEvent) => {
+        console.log('Right click, active:', active, 'positions:', positions);
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const newActive = active + 1;
+        if (newActive <= positions) {
+            console.log('Setting new active to:', newActive);
+            setActive(newActive);
+            callback(newActive);
         }
     }, [active, positions, callback]);
 
+    console.log('Component render, active:', active);
+
     return (
         <div className={s.paginationContainer}>
-            <div className={s.paginationArrow}>
+            <div onClick={handleLeftClick} className={s.paginationArrow}>
                 <button 
-                    onClick={handleLeftClick}
+                    
                     className={`${s.paginate} ${s.right1}`}
                     disabled={active === 1}
+                    aria-label="Previous page"
                 >
                     <i className={s.pg}></i>
                     <i className={s.pg}></i>
@@ -103,11 +121,11 @@ const PageController: React.FC<PageControllerProps> = ({
                 {renderPageButtons}
             </div>
 
-            <div className={s.paginationArrow}>
+            <div  onClick={handleRightClick} className={s.paginationArrow}>
                 <button 
-                    onClick={handleRightClick}
                     className={`${s.paginate} ${s.right}`}
                     disabled={active === positions}
+                    aria-label="Next page"
                 >
                     <i className={s.pg}></i>
                     <i className={s.pg}></i>

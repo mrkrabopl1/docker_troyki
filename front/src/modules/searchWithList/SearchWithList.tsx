@@ -95,7 +95,7 @@ const SearchWithList: React.FC<SearchWithListProps> = memo(({
                     searchCallback={handleSearch}
                     onDataRecieve={createDropList}
                 />
-                {dropDownListData.length ? <DropDownList
+                {(activeList && dropDownListData.length) ? <DropDownList
                     className={className.dropList}
                     active={true}
                 >

@@ -93,7 +93,6 @@ func AuthMiddleware(s *Server) gin.HandlerFunc {
 
 func CachedMiddleware(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		fmt.Println("ldasldsmfklmds;flmsdlfmsd;l,';2222222222222222")
 		cookie, errC := ctx.Cookie("unique")
 		idStr := ctx.Query("id")
 		if idStr == "" {
@@ -106,21 +105,33 @@ func CachedMiddleware(s *Server) gin.HandlerFunc {
 		if err == nil {
 			ctx.JSON(http.StatusOK, ProductsInfo)
 			if errC != nil {
-				fmt.Println(errC, "ssssssssssssssssssssss")
 				ctx.Abort()
 				return
 			}
 			fmt.Println(cookie, "rerb")
 			user, err1 := s.tokenMaker.VerifyToken(cookie)
 			if err1 != nil {
-				fmt.Println(err1, "ssssssssssssssssssssss")
+				fmt.Println(err1)
 			} else {
 				numId, err := strconv.ParseInt(idStr, 10, 32)
 				if err == nil {
-					fmt.Println("fkfsdfsldkfmsd", user.UserId)
 					s.store.SetSnickersHistory(ctx, int32(numId), user.UserId)
 				}
 			}
+			ctx.Abort()
+			return
+		}
+		ctx.Next()
+	}
+}
+
+func CachedBannersMiddleware(s *Server) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		fmt.Println("CachedBannersMiddleware")
+		BanersInfo, err := s.taskProcessor.GetBanners(ctx)
+
+		if err == nil {
+			ctx.JSON(http.StatusOK, BanersInfo)
 			ctx.Abort()
 			return
 		}

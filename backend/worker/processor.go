@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/hibiken/asynq"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
 	"github.com/mrkrabopl1/go_db/mail"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 )
 
@@ -23,8 +23,15 @@ type TaskProcessor interface {
 	Shutdown()
 	ProcessTaskSendVerifyEmail(ctx context.Context, task *asynq.Task) error
 	ProcessTaskSendOrderEmail(ctx context.Context, task *asynq.Task) error
+	// Новые методы для новостной рассылки
+	ProcessTaskSendNewsletterVerification(ctx context.Context, task *asynq.Task) error
+	ProcessTaskSendNewsletterWelcome(ctx context.Context, task *asynq.Task) error
+	ProcessTaskSendNewsletterBroadcast(ctx context.Context, task *asynq.Task) error
+	// Существующие методы
 	SetProductsInfo(ctx context.Context, ID string, merchant db.ProductsInfoResponse) error
 	GetProductsInfo(ctx context.Context, ID string) (db.ProductsInfoResponse, error)
+	SetBanners(ctx context.Context, banners []db.HomepageBlock) error
+	GetBanners(ctx context.Context) ([]db.HomepageBlock, error)
 }
 
 type RedisTaskProcessor struct {
@@ -36,8 +43,8 @@ type RedisTaskProcessor struct {
 
 func NewRedisTaskProcessor(redisOpt asynq.RedisClientOpt, store db.Store, mailer mail.EmailSender) TaskProcessor {
 	logger := NewLogger()
-	redis.SetLogger(logger)
 
+	// Для asynq Server используй DB 0
 	server := asynq.NewServer(
 		redisOpt,
 		asynq.Config{
@@ -53,8 +60,10 @@ func NewRedisTaskProcessor(redisOpt asynq.RedisClientOpt, store db.Store, mailer
 		},
 	)
 
+	// Для кэша используй ДРУГОЙ DB (например, DB 1)
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: redisOpt.Addr,
+		DB:   1, // <-- ОТЛИЧНЫЙ от asynq!
 	})
 
 	return &RedisTaskProcessor{
@@ -64,6 +73,8 @@ func NewRedisTaskProcessor(redisOpt asynq.RedisClientOpt, store db.Store, mailer
 		redisClient: redisClient,
 	}
 }
+
+// ============ СУЩЕСТВУЮЩИЕ МЕТОДЫ ============
 
 func (p *RedisTaskProcessor) SetProductsInfo(ctx context.Context, ID string, merchant db.ProductsInfoResponse) error {
 	// Convert merchant struct to JSON
@@ -101,11 +112,55 @@ func (p *RedisTaskProcessor) GetProductsInfo(ctx context.Context, ID string) (db
 	return snickers, nil
 }
 
+func (p *RedisTaskProcessor) SetBanners(ctx context.Context, banners []db.HomepageBlock) error {
+	// Конвертируем слайс баннеров в JSON
+	data, err := json.Marshal(banners)
+	if err != nil {
+		return fmt.Errorf("failed to marshal banners: %w", err)
+	}
+	key := "mainpage:banners:v1"
+	fmt.Printf("[Redis] Сохранение баннеров в Redis, ключ: %s\n", key)
+
+	// Сохраняем с TTL 1 час
+	return p.redisClient.Set(ctx, key, data, 1*time.Hour).Err()
+}
+
+// GetBanners - получает баннеры из Redis
+func (p *RedisTaskProcessor) GetBanners(ctx context.Context) ([]db.HomepageBlock, error) {
+	// Ключ для баннеров
+	key := "mainpage:banners:v1"
+
+	// Получаем данные из Redis
+	data, err := p.redisClient.Get(ctx, key).Result()
+	if err == redis.Nil {
+		// Ключ не найден
+		return nil, fmt.Errorf("banners not found in cache")
+	} else if err != nil {
+		// Ошибка Redis
+		return nil, fmt.Errorf("redis error: %w", err)
+	}
+
+	// Конвертируем JSON в слайс баннеров
+	var banners []db.HomepageBlock
+	if err := json.Unmarshal([]byte(data), &banners); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal banners: %w", err)
+	}
+
+	fmt.Printf("[Redis] Получено %d баннеров из кэша\n", len(banners))
+	return banners, nil
+}
+
 func (processor *RedisTaskProcessor) Start() error {
 	mux := asynq.NewServeMux()
 
+	// Регистрируем существующие обработчики
 	mux.HandleFunc(TaskSendVerifyEmail, processor.ProcessTaskSendVerifyEmail)
 	mux.HandleFunc(TaskSendOrderEmail, processor.ProcessTaskSendOrderEmail)
+
+	// Регистрируем новые обработчики для новостной рассылки
+	mux.HandleFunc(TaskSendNewsletterVerification, processor.ProcessTaskSendNewsletterVerification)
+	mux.HandleFunc(TaskSendNewsletterWelcome, processor.ProcessTaskSendNewsletterWelcome)
+	mux.HandleFunc(TaskSendNewsletterBroadcast, processor.ProcessTaskSendNewsletterBroadcast)
 
 	return processor.server.Start(mux)
 }

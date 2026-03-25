@@ -8,6 +8,7 @@ import Button from 'src/components/Button';
 import { verified } from 'src/store/reducers/menuSlice';
 import MailInputWithValidation from 'src/components/input/MailInputWithValidation';
 import AddressInput from './AddressInput';
+import InputArea from 'src/components/input/InputAreaWithLabel';
 
 interface Address {
     town: string;
@@ -15,7 +16,9 @@ interface Address {
     index: string;
     street: string;
     house?: string;
+    settlement?: string;
     flat?: string;
+    value?: string;
 }
 
 interface FormData {
@@ -24,6 +27,7 @@ interface FormData {
     mail: string;
     address: Address | null;
     phone: string;
+    deliveryComment?: string;
 }
 
 interface SendFormProps {
@@ -57,7 +61,6 @@ const SendForm: React.FC<SendFormProps> = memo(({
         ...formValue
     });
 
-   
     const [unvalidFormData, setUnvalidFormData] = useState({
         secondName: formValue?.secondName || ""
     });
@@ -65,7 +68,6 @@ const SendForm: React.FC<SendFormProps> = memo(({
     const [saveData, setSaveData] = useState(false);
     const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
 
-    // Initialize form with prop values
     useEffect(() => {
         if (formValue) {
             setFormData(prev => ({ ...prev, ...formValue }));
@@ -73,13 +75,12 @@ const SendForm: React.FC<SendFormProps> = memo(({
         }
     }, [formValue]);
 
-    // Update validation when form data changes
     useEffect(() => {
         const errors: Record<string, boolean> = {};
         let hasErrors = false;
 
         (Object.keys(formData) as Array<keyof FormData>).forEach(key => {
-            if (!formData[key] && !unvalidFormData[key]) {
+            if (!formData[key] && !unvalidFormData[key] === undefined) {
                 errors[key] = true;
                 hasErrors = true;
             }
@@ -103,72 +104,92 @@ const SendForm: React.FC<SendFormProps> = memo(({
 
     const handleSaveDataChange = useCallback((value: boolean) => {
         setSaveData(value);
-    }, []);
+        onChange({ ...formData, save: value });
+    }, [formData]);
 
     return (
-        <div className={s.wrapper}>
-            <div>Контактная информация</div>
-            <MailInputWithValidation 
-                value={formData.mail} 
-                valid={!checkValid || !validationErrors.mail} 
-                invalidText="Введите корректный mail" 
-                onChange={(data) => handleChange('mail', data)} 
-                placeholder="Электронный адрес" 
-            
-            />
-            
-            <div className='flex pdn'>
-                <div style={{ marginTop: "auto", marginBottom: "auto", paddingRight: "5px" }}>
-                    <Checkbox activeData={false} enable={true} onChange={() => {}} />
+        <div className={s.sendFormWrapper}>
+            <div className={s.formSection}>
+                <h3 className={s.sectionTitle}>Контактная информация</h3>
+                
+                <div className={s.formGrid}>
+                    <div className={s.formField}>
+                        <MailInputWithValidation 
+                            value={formData.mail} 
+                            valid={!checkValid || !validationErrors.mail} 
+                            invalidText="Введите корректный email" 
+                            onChange={(data) => handleChange('mail', data)} 
+                            placeholder="Электронная почта" 
+                        />
+                    </div>
+                    
+                    <div className={s.formField}>
+                        <PhoneInputWithValidation 
+                            val={formData.phone} 
+                            invalidIncorrect="Неверный формат телефона" 
+                            invalidEmpty="Введите номер телефона" 
+                            valid={!checkValid || !validationErrors.phone} 
+                            className={className?.input} 
+                            onChange={(data) => handleChange('phone', data)} 
+                            placeholder="Телефон" 
+                        />
+                    </div>
                 </div>
-                <div>Отправляйте мне новости и предложения</div>
-            </div>
-            
-            <div className='flex'>
-                <InputWithLabelWithValidation 
-                    val={formData.name} 
-                    valid={!checkValid || !validationErrors.name} 
-                    invalidText="Введите имя." 
-                    className={className?.input} 
-                    onChange={(data) => handleChange('name', data)} 
-                    placeholder="Имя" 
-                />
-                <InputWithLabel 
-                    val={unvalidFormData.secondName} 
-                    onChange={handleUnvalidChange} 
-                    placeholder="Фамилия" 
-                />
-            </div>
-            
-            <AddressInput  
-                valid={!checkValid || !validationErrors.address} 
-                onChange={(data) => handleChange('address', data)}
-               
-            />
-            
-            <PhoneInputWithValidation 
-                val={formData.phone} 
-                invalidIncorrect="Неверный формат" 
-                invalidEmpty="Введите телефон" 
-                valid={!checkValid || !validationErrors.phone} 
-                className={className?.input} 
-                onChange={(data) => handleChange('phone', data)} 
-                placeholder="Телефон" 
-               
-            />
-            
-            {verified && (
-                <div className='flex pdn'>
-                    <div style={{ marginTop: "auto", marginBottom: "auto", paddingRight: "5px" }}>
+                
+                <div className={s.checkboxRow}>
+                    <Checkbox activeData={false} enable={true} onChange={() => {}} />
+                    <span className={s.checkboxLabel}>Отправляйте мне новости и предложения</span>
+                </div>
+                
+                <div className={s.formGrid}>
+                    <div className={s.formField}>
+                        <InputWithLabelWithValidation 
+                            val={formData.name} 
+                            valid={!checkValid || !validationErrors.name} 
+                            invalidText="Введите имя" 
+                            className={className?.input} 
+                            onChange={(data) => handleChange('name', data)} 
+                            placeholder="Имя" 
+                        />
+                    </div>
+                    <div className={s.formField}>
+                        <InputWithLabel 
+                            val={formData.secondName} 
+                            onChange={handleUnvalidChange} 
+                            placeholder="Фамилия (необязательно)" 
+                        />
+                    </div>
+                </div>
+
+                <div className={s.formField}>
+                    <AddressInput  
+                        val={formData.address?.value || ""}
+                        valid={!checkValid || !validationErrors.address} 
+                        onChange={(data) => handleChange('address', data)}   
+                    />
+                </div>
+                
+                <div className={s.formField}>
+                    <InputArea
+                        val={formData.deliveryComment}
+                        onChange={(data) => handleChange('deliveryComment', data)}
+                        placeholder="Комментарий к доставке (необязательно)"
+                        rows={3}
+                        maxLength={500}
+                    />
+                </div>
+                
+                {verified && (
+                    <div className={s.checkboxRow}>
                         <Checkbox 
                             activeData={false} 
                             enable={true} 
                             onChange={handleSaveDataChange} 
                         />
+                        <span className={s.checkboxLabel}>Сохранить эту информацию на будущее</span>
                     </div>
-                    <span>Сохранить эту информацию на будущее</span>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 }, (prevProps, nextProps) => prevProps.memo === nextProps.memo);
