@@ -1,0 +1,14 @@
+{
+    "PgHost":"localhost",
+    "PgPort":"5432",
+    "PgUser":"postgres",
+    "PgPass":"s8121996",
+    "PgBase":"troyki",
+    "Port":8100,
+    "IdleTimeout":60,
+    "ReadTimeout":1000000000,
+    "WriteTimeout":200000
+
+}
+
+
