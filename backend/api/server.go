@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"syscall"
+    "syscall"
+    "time"         // <-- добавить для MaxAge
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -48,12 +49,14 @@ func NewServer(config util.Config, store db.Store, taskDistributor worker.TaskDi
 func (s *Server) setupRouter() {
 	router := gin.Default()
 	// router.Use(render.SetContentType(render.ContentTypeJSON))
-	corsConfig := cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"}, //.config.AllowedOrigins,
-		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
-		AllowHeaders:     []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		AllowCredentials: true,
-	}
+	
+    corsConfig := cors.Config{
+        AllowOrigins:     s.config.AllowedOrigins,
+        AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+        AllowHeaders:     []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "Origin"},
+        AllowCredentials: true,
+        MaxAge:           12 * time.Hour,
+    }
 	router.Use(cors.New(corsConfig))
 	// Apply CORS middleware
 	// s.router.Use(corsOptions.Handler)

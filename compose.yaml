@@ -7,33 +7,35 @@ services:
     container_name: front-dev3-c
     ports:
       - "80:80"
-      # environment:
-      #  - ID="here we need to enter backend server"
     depends_on:
       - goapp1
     environment:
       - CHOKIDAR_USEPOLLING=true
     networks:
       - front_networks
+
   goapp1:
     container_name: goapp1
     image: goapp1:1.0.0
     build:
       context: ./backend
       dockerfile: go.dockerfile
-    environment:
-      DATABASE_URL: 'postgres://postgres:12345@postgres_db:5432/troyki?sslmode=disable'
-      REDIS_ADDRESS: 'redis:6379'
+    env_file:
+      - .env
     expose:
       - "8100"
     ports:
       - '8100:8100'
     depends_on:
-      - postgres_db
-      - redis
+      postgres_db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - postgres_bridge
       - front_networks
+    restart: unless-stopped
+
   postgres_db:
     container_name: postgres_db
     image: postgres:16.1-alpine3.18
@@ -68,9 +70,9 @@ services:
       - "-c"
       - "pg_stat_statements.track=all"
     environment:
-      POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "12345"
-      POSTGRES_DB: troyki
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
       PGDATA: "/var/lib/postgresql/data/pgdata"
     volumes:
       - ./backup/troyki.sql:/docker-entrypoint-initdb.d/troyki.sql
@@ -78,7 +80,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d troyki" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -91,6 +93,7 @@ services:
           memory: 4G
     networks:
       - postgres_bridge
+
   redis:
     container_name: redis
     image: redis:latest
@@ -98,8 +101,8 @@ services:
       - "6379:6379"
     networks:
       - postgres_bridge
+
   pgadmin:
-    #container_name: pgadmin_container
     image: dpage/pgadmin4:7.2
     environment:
       PGADMIN_DEFAULT_EMAIL: "mr.krabopl12@gmail.com"
@@ -118,35 +121,11 @@ services:
     networks:
       - postgres_bridge
 
-# postgres_exporter:
-#     container_name: exporter_container
-#     image: prometheuscommunity/postgres-exporter:v0.10.1
-#     environment:
-#       DATA_SOURCE_URI: "postgres:5432/troyki?sslmode=disable"
-#       DATA_SOURCE_USER: "postgres"
-#       DATA_SOURCE_PASS: "12345"
-#       PG_EXPORTER_EXTEND_QUERY_PATH: "/etc/postgres_exporter/queries.yaml"
-#     volumes:
-#       - ./queries.yaml:/etc/postgres_exporter/queries.yaml:ro
-#     ports:
-#       - "9187:9187"
-#     restart: unless-stopped
-#     deploy:
-#       resources:
-#         limits:
-#           cpus: '0.2'
-#           memory: 500M
-#     networks:
-#       - postgres
-
 volumes:
   troyki-data:
   pgadmin-data:
-
 
 networks:
   postgres_bridge:
     driver: bridge
   front_networks:
-
-

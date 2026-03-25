@@ -1,0 +1,6 @@
+app.env
+.env
+.git
+*.md
+*.test
+tmp/

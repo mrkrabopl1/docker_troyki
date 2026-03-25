@@ -4,12 +4,12 @@ import ColumnWithChilds from 'src/components/table/simpleTable/ColumnWithChilds'
 import NewsletterModule from '../newsLetter/NewsLetterModule';
 
 import { ReactComponent as Telegram } from '/images/telegram.svg';
-import { ReactComponent as Instagram } from '/images/Instagram.svg';
-import { ReactComponent as Vk } from '/images/Vk.svg';
-import { ReactComponent as Youtube } from '/images/Youtube.svg';
-import { ReactComponent as LocationPin } from '/images/LocationPin.svg';
-import { ReactComponent as Phone } from '/images/Phone.svg';
-import { ReactComponent as Clock } from '/images/Clock.svg';
+import { ReactComponent as Instagram } from '/images/instagram.svg';
+import { ReactComponent as Vk } from '/images/vk.svg';
+import { ReactComponent as Youtube } from '/images/youtube.svg';
+import { ReactComponent as LocationPin } from '/images/locationPin.svg';
+import { ReactComponent as Phone } from '/images/phone.svg';
+import { ReactComponent as Clock } from '/images/clock.svg';
 
 import s from './style.module.css';
 

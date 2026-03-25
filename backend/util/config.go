@@ -30,19 +30,45 @@ type Config struct {
 }
 
 func LoadConfig(path string) (config Config, err error) {
-	viper.AddConfigPath(path)
-	viper.SetConfigName("app")
-	viper.SetConfigType("env")
-
-	viper.AutomaticEnv()
-
-	err = viper.ReadInConfig()
-	if err != nil {
-		return
-	}
-
-	err = viper.Unmarshal(&config)
-	return
+    // 1. Устанавливаем имена файла и пути
+    viper.SetConfigName("app")
+    viper.SetConfigType("env")
+    viper.AddConfigPath(path)
+    
+    // 2. Включаем автоматическое чтение переменных окружения
+    viper.AutomaticEnv()
+    
+    // 3. Пытаемся прочитать файл конфигурации
+    //    Если файл не найден — это нормально, используем только окружение
+    if err := viper.ReadInConfig(); err != nil {
+        if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+            // Файл не найден — игнорируем ошибку
+            fmt.Println("Config file not found, using environment variables")
+        } else {
+            // Другая ошибка (например, синтаксическая) — возвращаем её
+            return config, err
+        }
+    }
+    
+    // 4. Явно привязываем ключи конфига к переменным окружения
+    //    Это гарантирует, что переменные окружения имеют высший приоритет
+    viper.BindEnv("DB_SOURCE")
+    viper.BindEnv("REDIS_ADDRESS")
+    viper.BindEnv("HTTP_SERVER_ADDRESS")
+    viper.BindEnv("GRPC_SERVER_ADDRESS")
+    viper.BindEnv("TOKEN_SYMMETRIC_KEY")
+    viper.BindEnv("ACCESS_TOKEN_DURATION")
+    viper.BindEnv("REFRESH_TOKEN_DURATION")
+    viper.BindEnv("EMAIL_SENDER_NAME")
+    viper.BindEnv("EMAIL_SENDER_ADDRESS")
+    viper.BindEnv("EMAIL_SENDER_PASSWORD")
+    viper.BindEnv("ENVIRONMENT")
+    viper.BindEnv("ALLOWED_ORIGINS")
+    viper.BindEnv("MIGRATION_URL")
+    
+    // 5. Распаковываем в структуру
+    err = viper.Unmarshal(&config)
+    return
 }
 
 func CreateConfig(dbSource string) *pgxpool.Config {
