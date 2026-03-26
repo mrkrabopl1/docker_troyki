@@ -1,5 +1,5 @@
 .buttonStyle{
-    background: url("/images/arrow_forward.svg") center no-repeat ;
+    background: url("/public/arrow_forward.svg") center no-repeat ;
     background-size: cover;
     width:25px;
     height: 15px;

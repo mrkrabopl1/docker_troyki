@@ -8,12 +8,12 @@ import s from "./style.module.css"
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
 import { getProductsAndFiltersByCategoryAndType, getProductsAndFiltersByString, getProductsByString, getProductsByCategoriesAndFilters } from "src/providers/searchProvider"
 import { categories, show, sticky, types } from 'src/store/reducers/menuSlice'
-import { ReactComponent as FoureGrid } from '/images/foureGrid.svg'
-import { ReactComponent as SixGrid } from '/images/sixGrid.svg'
+import { ReactComponent as FoureGrid } from '/public/foureGrid.svg'
+import { ReactComponent as SixGrid } from '/public/sixGrid.svg'
 import { useLocation } from 'react-router-dom'
 import RadioGroup from 'src/components/radio/RadioGroup'
 import { useSearchParams } from 'react-router-dom';
-import { ReactComponent as Filter } from '/images/filter.svg'
+import { ReactComponent as Filter } from '/public/filter.svg'
 import { set } from 'ol/transform';
 
 

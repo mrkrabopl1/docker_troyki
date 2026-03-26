@@ -189,7 +189,7 @@
   background: linear-gradient(to right, transparent, white 20%);
 } */
 .deleteBtn {
-    background: url("/images/bin.svg") center no-repeat;
+    background: url("/public/bin.svg") center no-repeat;
     width: 30px;
     height: 30px;
     object-fit: contain;

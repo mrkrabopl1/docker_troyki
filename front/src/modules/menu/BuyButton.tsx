@@ -1,6 +1,6 @@
 import React, { memo } from 'react'
 import { useAppSelector } from 'src/store/hooks/redux'
-import { ReactComponent as Cart } from "/images/cart.svg";
+import { ReactComponent as Cart } from "/public/cart.svg";
 import s from "./style.module.css"
 
 const BuyButton: React.FC<any> = ({ onClick }) => {

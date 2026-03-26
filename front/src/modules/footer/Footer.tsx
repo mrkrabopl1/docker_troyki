@@ -3,13 +3,13 @@ import { NavLink } from 'react-router-dom';
 import ColumnWithChilds from 'src/components/table/simpleTable/ColumnWithChilds';
 import NewsletterModule from '../newsLetter/NewsLetterModule';
 
-import { ReactComponent as Telegram } from '/images/telegram.svg';
-import { ReactComponent as Instagram } from '/images/instagram.svg';
-import { ReactComponent as Vk } from '/images/vk.svg';
-import { ReactComponent as Youtube } from '/images/youtube.svg';
-import { ReactComponent as LocationPin } from '/images/locationPin.svg';
-import { ReactComponent as Phone } from '/images/phone.svg';
-import { ReactComponent as Clock } from '/images/clock.svg';
+import { ReactComponent as Telegram } from '/public/telegram.svg';
+import { ReactComponent as Instagram } from '/public/instagram.svg';
+import { ReactComponent as Vk } from '/public/vk.svg';
+import { ReactComponent as Youtube } from '/public/youtube.svg';
+import { ReactComponent as LocationPin } from '/public/locationPin.svg';
+import { ReactComponent as Phone } from '/public/phone.svg';
+import { ReactComponent as Clock } from '/public/clock.svg';
 
 import s from './style.module.css';
 

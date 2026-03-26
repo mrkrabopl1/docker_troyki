@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
-import check from '/images/check.svg';
+import check from '/public/check.svg';
 import s from "./style.module.css";
 
 interface CheckboxProps {
