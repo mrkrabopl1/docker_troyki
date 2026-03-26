@@ -13,7 +13,6 @@ import (
 	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 	"github.com/mrkrabopl1/go_db/api"
-	"github.com/mrkrabopl1/go_db/config/config"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
 	"github.com/mrkrabopl1/go_db/mail"
 	"github.com/mrkrabopl1/go_db/util"
@@ -45,11 +44,9 @@ func main() {
 	//ctx := context.Background()
 	//mailer := mail.NewGmailSender("config.EmailSenderName", "config.EmailSenderAddress", "config.EmailSenderPassword")
 	fmt.Println("Hello")
-	cfg := config.LoadConfig()
 	cfg1, _ := util.LoadConfig(".")
 	//cfg1.DBSource = os.Getenv("DATABASE_URL")
 	fmt.Println(cfg1)
-	fmt.Println(cfg)
 	connPool, err := pgxpool.NewWithConfig(context.Background(), util.CreateConfig(cfg1.DBSource))
 	if err != nil {
 		log.Fatal("Error while creating connection to the database!!")

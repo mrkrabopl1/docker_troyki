@@ -2,9 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
-
-	"github.com/ilyakaznacheev/cleanenv"
 )
 
 type Database struct {
@@ -35,9 +32,9 @@ func LoadConfig() *Configuration {
 	// 	log.Fatalln(err)
 	// }
 
-	if err := cleanenv.ReadConfig("config.json", &cfg); err != nil {
-		log.Fatalln(err)
-	}
+	// if err := cleanenv.ReadConfig("config.json", &cfg); err != nil {
+	// 	log.Fatalln(err)
+	// }
 
 	// fileName := "local.cfg"
 	// file, e := os.Open(fileName)
