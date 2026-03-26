@@ -16,7 +16,7 @@ import Scroller from 'src/components/scroller/Scroller';
 import TableWithComboboxColumn from 'src/components/table/simpleTable/TableWithComboboxColumn';
 import ContentSlider from 'src/components/contentSlider/ContentSliderWithSwitcher';
 import MerchComplexSliderField from 'src/modules/merchField/MerchComplexSliderField';
-import s from "./style.module.css";
+import s from "./style.module.css"
 import { ReactComponent as CopySvg } from "/public/images/copy.svg";
 import SVGIcon from 'src/components/svgIcon/SvgIcon';
 import AbstractInfo from './pageBlocks/AbstractInfo';
