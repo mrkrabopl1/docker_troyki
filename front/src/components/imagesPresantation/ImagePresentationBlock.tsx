@@ -53,7 +53,7 @@ const ImagePresentationBlock: React.FC<IconProps> = ({
                     width: "100%", 
                     height: "100%" 
                 }} 
-                src={`/${image}`} 
+                src={`${image}`} 
                 alt="Presented content" 
             />
         </div>
