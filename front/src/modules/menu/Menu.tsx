@@ -149,7 +149,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
 
 
             <div className={s.rightMenuStyle}>
-                <Loupe onClick={handleLoupeClick} className={global.link} height={"36px"} width={"36px"} />
+                <Loupe onClick={handleLoupeClick} className={global.link}  />
                 <BuyButton onClick = {()=>{
                     setActiveCart(true)
                 }}/>

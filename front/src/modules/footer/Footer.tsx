@@ -1,3 +1,4 @@
+// Footer.tsx
 import React, { useMemo, memo, useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
 import ColumnWithChilds from 'src/components/table/simpleTable/ColumnWithChilds';

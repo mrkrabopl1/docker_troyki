@@ -255,6 +255,27 @@
   margin: 0 auto;
 }
 
+@media (max-width:500px) {
+  .imageWrapStyle {
+    /* width: 100px; */
+    height: 90px;
+  }
+}
+@media (max-width:400px) {
+  .imageWrapStyle {
+    /* width: 100px; */
+    height: 80px;
+  }
+}
+
+@media (max-width:300px) {
+  .imageWrapStyle {
+    /* width: 100px; */
+    height: 70px;
+  }
+}
+
+
 .imgStyle {
   width: 100%;
   height: 100%;
@@ -273,6 +294,12 @@
 .textLogo {
   margin: auto;
   font-size: 38px;
+}
+
+@media (max-width:600px) {
+  .textLogo {
+    font-size: 18px;
+  }
 }
 
 /* .menuStyle {
@@ -301,4 +328,52 @@
   margin: auto 20px;
   display: flex;
   position: relative;
+}
+
+@media (max-width:600px) {
+  .menuStyle {
+    padding: 0 12px;
+  }
+
+  .rightMenuStyle {
+    margin: auto 5px;
+  }
+}
+
+
+
+.buyButton {
+    position: relative;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    box-sizing: content-box;
+}
+
+.cartIcon {
+    width: 100%;
+    height: 100%;
+}
+
+.shopCounter {
+    position: absolute;
+    /* остальные стили для счетчика */
+}
+
+.spanShop {
+    /* стили для текста счетчика */
+}
+
+@media (max-width: 500px) {
+    .buyButton {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+@media (max-width: 400px) {
+    .buyButton {
+        width: 28px;
+        height: 28px;
+    }
 }

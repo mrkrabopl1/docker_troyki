@@ -9,14 +9,9 @@ const BuyButton: React.FC<any> = ({ onClick }) => {
     return (
         <div 
             onClick={onClick} 
-            style={{ 
-                height: "36px", 
-                width: "36px", 
-                position: "relative", 
-                cursor: "pointer" 
-            }}
+            className={s.buyButton}
         >
-            <Cart style={{width:"100%",height:"100%"}} />
+            <Cart className={s.cartIcon} />
             <div 
                 className={s.shopCounter} 
                 style={cartCount ? { position: "absolute" } : { display: "none" }}

@@ -1,21 +1,36 @@
+/* style.module.css */
 .footer {
-  background: #f9f9f9;
-  border-top: 1px solid #e5e5e5;
-  font-family: system-ui, -apple-system, sans-serif;
-  color: #333;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  color: #2c3e50;
+  position: relative;
+  overflow: hidden;
+}
+
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
 }
 
 .container {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 60px 24px 40px;
+  padding: 64px 32px 40px;
+  position: relative;
+  z-index: 1;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 48px 64px;
-  margin-bottom: 56px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 48px 32px;
+  margin-bottom: 64px;
 }
 
 .column {
@@ -23,106 +38,155 @@
 }
 
 .columnHeader {
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 700;
-  letter-spacing: 0.4px;
-  color: #111;
+  letter-spacing: 0.5px;
+  color: #1a202c;
   margin-bottom: 20px;
   text-transform: uppercase;
+  position: relative;
+  display: inline-block;
+  padding-bottom: 8px;
+}
+
+.columnHeader::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 30px;
+  height: 2px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 2px;
 }
 
 .link,
 .linkActive {
   display: block;
-  color: #555;
-  font-size: 15px;
-  line-height: 1.7;
+  color: #4a5568;
+  font-size: 0.875rem;
+  line-height: 1.8;
   text-decoration: none;
-  transition: color 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 6px;
+  position: relative;
+  width: fit-content;
 }
 
-.link:hover,
-.linkActive {
-  color: #000;
+.link:hover {
+  color: #667eea;
+  transform: translateX(4px);
 }
 
 .linkActive {
   font-weight: 600;
-  color: #000;
+  color: #667eea;
 }
 
 .rightColumn {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 32px;
 }
 
 .contacts {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .contactItem {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 15px;
-  color: #444;
+  font-size: 0.875rem;
+  color: #4a5568;
+  transition: transform 0.2s ease;
+}
+
+.contactItem:hover {
+  transform: translateX(4px);
 }
 
 .contactIcon {
   width: 20px;
   height: 20px;
-  color: #666;
+  color: #667eea;
   flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.contactItem:hover .contactIcon {
+  transform: scale(1.1);
 }
 
 .contactText {
-  color: #555;
+  color: #4a5568;
+  line-height: 1.4;
 }
 
 .socials {
   display: flex;
   gap: 20px;
+  align-items: center;
 }
 
 .socialLink {
-  color: #666;
-  transition: all 0.2s ease;
+  color: #718096;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 50%;
+  background: rgba(102, 126, 234, 0.1);
+  transition: all 0.3s ease;
 }
 
 .socialLink:hover {
-  color: #000;
-  transform: translateY(-1px);
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.2);
+  transform: translateY(-2px);
 }
 
 .socialIcon {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 
 .newsletterWrapper {
-  max-width: 720px;
+  max-width: 600px;
   margin: 0 auto 48px;
   padding: 0 16px;
 }
 
 .copyright {
   text-align: center;
-  font-size: 13px;
-  color: #888;
+  font-size: 0.75rem;
+  color: #a0aec0;
   padding-top: 32px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  letter-spacing: 0.3px;
 }
 
-/* ────────────── Адаптив ────────────── */
+/* ========== АДАПТИВНОСТЬ ========== */
+
+/* Планшеты (768px - 1024px) */
 @media (max-width: 1024px) {
+  .container {
+    padding: 56px 24px 36px;
+  }
+
   .grid {
-    gap: 40px 48px;
+    gap: 40px 28px;
+  }
+
+  .columnHeader {
+    font-size: 0.9375rem;
   }
 }
 
+/* Планшеты и большие телефоны (768px) */
 @media (max-width: 768px) {
   .container {
     padding: 48px 20px 32px;
@@ -130,25 +194,209 @@
 
   .grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 40px;
+    gap: 40px 32px;
+    margin-bottom: 48px;
   }
 
   .rightColumn {
-    grid-column: 1 / -1;
+    grid-column: span 2;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 32px;
+  }
+
+  .contacts {
+    flex: 1;
+  }
+
+  .socials {
+    flex-shrink: 0;
   }
 
   .newsletterWrapper {
     margin-bottom: 40px;
+    max-width: 100%;
+  }
+
+  .columnHeader::after {
+    width: 25px;
   }
 }
 
-@media (max-width: 480px) {
+/* Мобильные телефоны (480px) */
+@media (max-width: 640px) {
+  .container {
+    padding: 40px 16px 28px;
+  }
+
   .grid {
     grid-template-columns: 1fr;
     gap: 36px;
+    margin-bottom: 40px;
+  }
+
+  .rightColumn {
+    grid-column: 1;
+    flex-direction: column;
+    gap: 28px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .contacts {
+    align-items: center;
+    width: 100%;
+  }
+
+  .contactItem {
+    width: 100%;
+    justify-content: center;
   }
 
   .socials {
     justify-content: center;
+    gap: 24px;
+  }
+
+  .socialLink {
+    padding: 10px;
+  }
+
+  .socialIcon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .columnHeader {
+    display: block;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  .columnHeader::after {
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+  }
+
+  .link,
+  .linkActive {
+    text-align: center;
+    margin: 0 auto 8px;
+  }
+
+  .link:hover {
+    transform: translateY(-2px);
+  }
+
+  .newsletterWrapper {
+    margin-bottom: 32px;
+    padding: 0;
+  }
+
+  .copyright {
+    font-size: 0.7rem;
+    padding-top: 24px;
+  }
+}
+
+/* Очень маленькие телефоны (375px) */
+@media (max-width: 480px) {
+  .container {
+    padding: 32px 16px 24px;
+  }
+
+  .grid {
+    gap: 32px;
+  }
+
+  .rightColumn {
+    gap: 24px;
+  }
+
+  .contactItem {
+    gap: 10px;
+    font-size: 0.8125rem;
+  }
+
+  .contactIcon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .socials {
+    gap: 20px;
+  }
+
+  .socialLink {
+    padding: 8px;
+  }
+
+  .socialIcon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Альбомная ориентация на телефонах */
+@media (max-width: 768px) and (orientation: landscape) {
+  .container {
+    padding: 32px 20px 28px;
+  }
+
+  .grid {
+    gap: 32px;
+  }
+
+  .rightColumn {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .contacts {
+    flex: 1;
+  }
+}
+
+/* Тёмная тема (опционально) */
+@media (prefers-color-scheme: dark) {
+  .footer {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+    border-top-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .columnHeader {
+    color: #e2e8f0;
+  }
+
+  .link,
+  .linkActive,
+  .contactText {
+    color: #cbd5e0;
+  }
+
+  .link:hover,
+  .linkActive {
+    color: #9f7aea;
+  }
+
+  .contactIcon {
+    color: #9f7aea;
+  }
+
+  .socialLink {
+    color: #cbd5e0;
+    background: rgba(159, 122, 234, 0.1);
+  }
+
+  .socialLink:hover {
+    color: #9f7aea;
+    background: rgba(159, 122, 234, 0.2);
+  }
+
+  .copyright {
+    color: #718096;
+    border-top-color: rgba(255, 255, 255, 0.05);
   }
 }

@@ -63,7 +63,7 @@ const ContentSliderWithScroll: React.FC<ContentSliderProps> = ({ content, classN
     return (
         <div onClick={e=>e.stopPropagation()} style={{ padding:"20px", position: "relative" }} data-slider-container>
            <ContentSliderWithoutSteps {...contentSliderProps} />
-           <div onClick={e=>e.stopPropagation()} onMouseDown={e=>e.stopPropagation()} style={{ width: "400px", paddingTop: "10px", position: "relative", margin: "0 auto" }}>
+           <div onClick={e=>e.stopPropagation()} onMouseDown={e=>e.stopPropagation()} style={{ paddingTop: "10px", position: "relative", margin: "0 auto" }}>
               <ScrollerThumb {...scrollThumbProps} />
            </div>
         </div>
