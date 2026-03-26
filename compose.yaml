@@ -7,6 +7,8 @@ services:
     container_name: front-dev3-c
     ports:
       - "80:80"
+    volumes:
+      - ./front/images:/usr/share/nginx/html/images:ro
     depends_on:
       - goapp1
     environment:

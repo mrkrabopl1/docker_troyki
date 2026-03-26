@@ -110,7 +110,7 @@ const Main: React.FC = memo(() => {
       <BlobBackground/>
       <FirmsScroller/>
       <InfiniteRecursionViewport/> */}
-      <VideoWallpaper  src={"1.mp4"} />
+      {/* <VideoWallpaper  src={"1.mp4"} /> */}
       <ContentSliderWithLinks
         
         content={createBanners()} 
