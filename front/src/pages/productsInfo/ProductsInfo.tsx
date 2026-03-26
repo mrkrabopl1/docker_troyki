@@ -17,7 +17,7 @@ import TableWithComboboxColumn from 'src/components/table/simpleTable/TableWithC
 import ContentSlider from 'src/components/contentSlider/ContentSliderWithSwitcher';
 import MerchComplexSliderField from 'src/modules/merchField/MerchComplexSliderField';
 import s from "./style.module.css"
-import { ReactComponent as CopySvg } from "images/copy.svg";
+import { ReactComponent as CopySvg } from "/images/copy.svg";
 import SVGIcon from 'src/components/svgIcon/SvgIcon';
 import AbstractInfo from './pageBlocks/AbstractInfo';
 import merchType from 'src/types/merchType';
