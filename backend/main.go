@@ -15,6 +15,7 @@ import (
 	"github.com/mrkrabopl1/go_db/api"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
 	"github.com/mrkrabopl1/go_db/mail"
+	"github.com/mrkrabopl1/go_db/services"
 	"github.com/mrkrabopl1/go_db/util"
 	"github.com/mrkrabopl1/go_db/worker"
 	"golang.org/x/sync/errgroup"
@@ -52,8 +53,8 @@ func main() {
 		log.Fatal("Error while creating connection to the database!!")
 		return
 	}
-
-	store := db.NewStore(connPool)
+	imagePathBuilder := services.NewImagePathBuilder(cfg1.ImageBasePath, cfg1.UseCDN)
+	store := db.NewStore(connPool, imagePathBuilder)
 
 	redisOpt := asynq.RedisClientOpt{
 		Addr: cfg1.RedisAddress,

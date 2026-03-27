@@ -186,7 +186,7 @@ const ProductsInfo: React.FC = () => {
                             key={index}
                             className={s.lineImage}
                             alt={merchInfo.line}
-                            src={el.image_path + "/1.png"}
+                            src={el.image_path}
                         />
                     )
                 }
@@ -275,7 +275,7 @@ const ProductsInfo: React.FC = () => {
                                     <CopySvg className={s.articleBtn} />
                                 </div>
                                 <div onClick={() => setActiveModal(true)} className={s.sizeLabel}>
-                                    <SVGIcon spritePath='images/shoe_size' />
+                                    <SVGIcon spritePath='public/shoe_size' />
                                 </div>
                                 {widthProps ? <div onClick={() => {
                                     navigate(`/search?firm=${merchInfo.firm}`);

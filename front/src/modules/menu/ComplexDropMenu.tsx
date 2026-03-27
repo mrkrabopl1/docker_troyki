@@ -70,7 +70,7 @@ const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
                         navigate(`/search?category=${key}&type=""`);
                     }}
                     className={s.categoryLine} key={key}>
-                    <img src={"/images/"+value.image_path} alt={key} />
+                    <img src={"/public/"+value.image_path} alt={key} />
                     <span className={s.categoryText}>{value.category_name}</span>
                 </div>),
                 subs: Object.values(typesVal).filter(cat => cat.category_key === key).map(cat => cat.name)

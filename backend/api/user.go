@@ -34,7 +34,7 @@ func (s *Server) handleLogin(ctx *gin.Context) {
 		if err2 != nil {
 			ctx.JSON(http.StatusBadRequest, errorResponse(err1))
 		} else {
-			myCookie, err := s.tokenMaker.CreatePasetoCoockie(customerData.ID, "unique", 3600000)
+			myCookie, err := s.tokenMaker.CreatePasetoCookie(customerData.ID, "unique", 3600000)
 			if err != nil {
 				//log.WithCaller().Err(err)
 				ctx.JSON(http.StatusBadRequest, errorResponse(err1))
@@ -56,7 +56,7 @@ func (s *Server) handleSetUniqueCustomer(ctx *gin.Context) {
 		fmt.Println(err)
 		return
 	} else {
-		myCookie, err := s.tokenMaker.CreatePasetoCoockie(uniqueCustomerId, "unique", 2*time.Hour)
+		myCookie, err := s.tokenMaker.CreatePasetoCookie(uniqueCustomerId, "unique", 2*time.Hour)
 		fmt.Println(myCookie.Expires)
 		if err != nil {
 			//log.WithCaller().Err(err).Msg("")
@@ -183,7 +183,7 @@ func (s *Server) handleVerifyUser(ctx *gin.Context) {
 		//log.WithCaller().Err(err)
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 	} else {
-		myCookie, err1 := s.tokenMaker.CreatePasetoCoockie(id, "token", 3600000)
+		myCookie, err1 := s.tokenMaker.CreatePasetoCookie(id, "token", 3600000)
 		if err1 != nil {
 			//log.WithCaller().Err(err1)
 			ctx.JSON(http.StatusBadRequest, errorResponse(err))
@@ -245,7 +245,7 @@ func (s *Server) handleVerifyForgetPass(ctx *gin.Context) {
 		//log.WithCaller().Err(err).Msg("error")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 	} else {
-		myCookie, err := s.tokenMaker.CreatePasetoCoockie(id, "changePass", 3600)
+		myCookie, err := s.tokenMaker.CreatePasetoCookie(id, "changePass", 3600)
 		if err != nil {
 			//log.WithCaller().Err(err).Msg("error")
 			ctx.JSON(http.StatusBadRequest, errorResponse(err))

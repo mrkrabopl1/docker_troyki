@@ -67,7 +67,7 @@ func createSession(ctx *gin.Context, s *Server) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	myCookie, err := s.tokenMaker.CreatePasetoCoockie(id, "unique", 36000)
+	myCookie, err := s.tokenMaker.CreatePasetoCookie(id, "unique", 36000)
 	ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
 }
 

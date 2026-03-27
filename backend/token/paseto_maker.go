@@ -59,39 +59,44 @@ func (maker *PasetoMaker) VerifyToken(token string) (*Payload, error) {
 	return payload, nil
 }
 
-func (maker *PasetoMaker) CreatePasetoCoockie(userid int32, identifier string, duration time.Duration) (http.Cookie, error) {
+// CreatePasetoCookie creates a cookie with PASETO token
+func (maker *PasetoMaker) CreatePasetoCookie(userid int32, identifier string, duration time.Duration) (http.Cookie, error) {
 	token, _, err := maker.CreateToken(userid, duration)
 	var myCookie http.Cookie
 	if err != nil {
-		//log.WithCaller().Err(err)
 		return myCookie, err
 	}
+
+	expirationTime := time.Now().Add(duration)
+
 	myCookie = http.Cookie{
 		Name:     identifier,
 		Value:    token,
-		Expires:  time.Now().Add(2 * time.Hour),
+		Expires:  expirationTime,
 		Path:     "/",
-		MaxAge:   3600,
-		HttpOnly: false,
-		Secure:   false,
-		// SameSite: http.SameSiteNoneMode,
-		Domain: "localhost:3000",
+		MaxAge:   int(duration.Seconds()),
+		HttpOnly: true,                 // Рекомендуется true для безопасности
+		Secure:   false,                // В production должно быть true (HTTPS)
+		SameSite: http.SameSiteLaxMode, // Важно для кросс-доменных запросов
+		Domain:   "",                   // Пустой domain означает текущий домен
 	}
 	return myCookie, nil
 }
 
-func (maker *PasetoMaker) CreateCoockie(token string, identifier string, duration time.Duration) (http.Cookie, error) {
-	var myCookie http.Cookie
-	myCookie = http.Cookie{
-		Name:  identifier,
-		Value: token,
-		//Expires:  expirationTime,
+// CreateCookie creates a cookie with existing token
+func (maker *PasetoMaker) CreateCookie(token string, identifier string, duration time.Duration) (http.Cookie, error) {
+	expirationTime := time.Now().Add(duration)
+
+	myCookie := http.Cookie{
+		Name:     identifier,
+		Value:    token,
+		Expires:  expirationTime,
 		Path:     "/",
-		MaxAge:   3600,
-		HttpOnly: false,
-		Secure:   false,
-		// SameSite: http.SameSiteNoneMode,
-		// Domain:   "localhost:3000",
+		MaxAge:   int(duration.Seconds()),
+		HttpOnly: true,                 // Рекомендуется true для безопасности
+		Secure:   false,                // В production должно быть true (HTTPS)
+		SameSite: http.SameSiteLaxMode, // Важно для кросс-доменных запросов
+		Domain:   "",                   // Пустой domain означает текущий домен
 	}
 	return myCookie, nil
 }

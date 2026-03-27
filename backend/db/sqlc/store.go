@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mrkrabopl1/go_db/services"
 	"github.com/mrkrabopl1/go_db/types"
 )
 
@@ -45,14 +46,15 @@ type Store interface {
 
 // SQLStore provides all functions to execute SQL queries and transactions
 type SQLStore struct {
-	connPool *pgxpool.Pool
 	*Queries
+	connPool         *pgxpool.Pool
+	imagePathBuilder *services.ImagePathBuilder // добавляем поле
 }
 
-// NewStore creates a new store
-func NewStore(connPool *pgxpool.Pool) Store {
+func NewStore(connPool *pgxpool.Pool, imagePathBuilder *services.ImagePathBuilder) Store {
 	return &SQLStore{
-		connPool: connPool,
-		Queries:  New(connPool),
+		Queries:          New(connPool),
+		connPool:         connPool,
+		imagePathBuilder: imagePathBuilder,
 	}
 }

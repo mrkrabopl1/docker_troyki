@@ -27,6 +27,8 @@ type Config struct {
 	EmailSenderName      string        `mapstructure:"EMAIL_SENDER_NAME"`
 	EmailSenderAddress   string        `mapstructure:"EMAIL_SENDER_ADDRESS"`
 	EmailSenderPassword  string        `mapstructure:"EMAIL_SENDER_PASSWORD"`
+	ImageBasePath        string        `mapstructure:"IMAGE_BASE_PATH"`
+	UseCDN               bool          `mapstructure:"USE_CDN"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
@@ -65,6 +67,12 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.BindEnv("ENVIRONMENT")
 	viper.BindEnv("ALLOWED_ORIGINS")
 	viper.BindEnv("MIGRATION_URL")
+	viper.BindEnv("IMAGE_BASE_PATH")
+	viper.BindEnv("USE_CDN")
+
+	// Устанавливаем значения по умолчанию
+	viper.SetDefault("IMAGE_BASE_PATH", "/images")
+	viper.SetDefault("USE_CDN", false)
 
 	// 5. Распаковываем в структуру
 	err = viper.Unmarshal(&config)

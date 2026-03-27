@@ -16,7 +16,7 @@ interface MerchFieldProps {
     data: MerchInterface[];
     onScrollPosition?: (currentIndex: number, visibleRange: { start: number; end: number }) => void;
     onScrollToBottom?: () => void;
-    onScrollToTop?: () => void; // Добавим колбек для скролла к началу
+    onScrollToTop?: () => void;
     loading?: boolean;
     totalItems?: number;
 }
@@ -34,7 +34,7 @@ const MerchFieldWithScroll = React.forwardRef<MerchFieldRef, MerchFieldProps>(({
     totalItems,
     onScrollPosition,
     onScrollToBottom,
-    onScrollToTop // Новый пропс
+    onScrollToTop
 }, ref) => {
     const [scrollOffset, setScrollOffset] = useState(0);
     const [startLoadedRow, setStartLoadedRow] = useState(0);
@@ -54,7 +54,7 @@ const MerchFieldWithScroll = React.forwardRef<MerchFieldRef, MerchFieldProps>(({
         getCurrentPosition: () => {
             return scrollOffset;
         }
-    }), []);
+    }), [scrollOffset]);
 
     const totalRows = useMemo(() => {
         const total = totalItems || data.length;
@@ -77,9 +77,8 @@ const MerchFieldWithScroll = React.forwardRef<MerchFieldRef, MerchFieldProps>(({
         return { start, end };
     }, [currentRowIndex, totalRows, rowsPerView, bufferRows]);
 
-      useEffect(() => {
+    useEffect(() => {
         if (data.length > 0) {
-            // Если данные изменились, обновляем стартовую строку
             const currentStartRow = Math.floor(scrollOffset / rowHeight);
             setStartLoadedRow(currentStartRow);
         }
@@ -89,8 +88,6 @@ const MerchFieldWithScroll = React.forwardRef<MerchFieldRef, MerchFieldProps>(({
         const loadedRows = Math.ceil(data.length / size);
         const totalAvailableRows = totalItems ? Math.ceil(totalItems / size) : loadedRows;
         
-        // Подгружаем когда текущая позиция минус буфер меньше или равна стартовой строке
-        // Это означает, что мы приближаемся к началу загруженных данных
         if (Math.max(0, newCurrentRowIndex - bufferRows) < startLoadedRow && loadedRows < totalAvailableRows) {
             onScrollToTop?.();
         }
@@ -100,13 +97,12 @@ const MerchFieldWithScroll = React.forwardRef<MerchFieldRef, MerchFieldProps>(({
         const loadedRows = Math.ceil(data.length / size);
         const totalAvailableRows = totalItems ? Math.ceil(totalItems / size) : loadedRows;
         
-        // Подгружаем когда приближаемся к концу загруженных данных
-        if (newCurrentRowIndex >=  loadedRows - rowsPerView - bufferRows && loadedRows < totalAvailableRows) {
+        if (newCurrentRowIndex >= loadedRows - rowsPerView - bufferRows && loadedRows < totalAvailableRows) {
             onScrollToBottom?.();
         }
     }, [data.length, size, totalItems, rowsPerView, bufferRows, onScrollToBottom]);
 
-    const handleScroll = useCallback((deltaY: number) => {
+    const updateScroll = useCallback((deltaY: number) => {
         const container = containerRef.current;
         if (!container) return;
 
@@ -126,13 +122,53 @@ const MerchFieldWithScroll = React.forwardRef<MerchFieldRef, MerchFieldProps>(({
 
         onScrollPosition?.(newCurrentRowIndex, newVisibleRange);
 
-        // Раздельная логика подгрузки
         if (deltaY > 0) {
             checkBottomLoad(newCurrentRowIndex);
         } else if (deltaY < 0) {
             checkTopLoad(newCurrentRowIndex);
         }
     }, [scrollOffset, totalHeight, rowHeight, totalRows, rowsPerView, onScrollPosition, checkBottomLoad, checkTopLoad]);
+
+    // Основная логика: проверяем можно ли скроллить внутренний контент
+    const handleWheel = useCallback((e: WheelEvent) => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const deltaY = e.deltaY;
+        const containerHeight = container.clientHeight;
+        const maxScroll = Math.max(0, totalHeight - containerHeight);
+        const currentScroll = scrollOffset;
+        
+        // Проверяем, можем ли мы скроллить вниз
+        const canScrollDown = deltaY > 0 && currentScroll < maxScroll;
+        // Проверяем, можем ли мы скроллить вверх
+        const canScrollUp = deltaY < 0 && currentScroll > 0;
+        
+        // Если можем скроллить внутренний контент
+        if (canScrollDown || canScrollUp) {
+            // Блокируем внешний скролл
+            e.preventDefault();
+            e.stopPropagation();
+            // Скроллим внутренний контент
+            updateScroll(deltaY);
+        }
+        // Если достигли верха или низа - позволяем скроллить родителя
+        // (ничего не делаем, событие всплывает дальше)
+        
+    }, [scrollOffset, totalHeight, updateScroll]);
+
+    // Вешаем обработчик на контейнер
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+        
+        container.addEventListener('wheel', handleWheel, { passive: false });
+        
+        return () => {
+            container.removeEventListener('wheel', handleWheel);
+        };
+    }, [handleWheel]);
+
     const allRows = useMemo(() => {
         const rows = [];
         
@@ -176,11 +212,6 @@ const MerchFieldWithScroll = React.forwardRef<MerchFieldRef, MerchFieldProps>(({
                 height: "100%",
                 overflow: "hidden",
                 position: "relative"
-            }}
-            onWheel={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleScroll(e.deltaY);
             }}
         >
             <div style={{
