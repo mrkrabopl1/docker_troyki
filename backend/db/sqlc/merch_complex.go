@@ -492,28 +492,74 @@ func (store *SQLStore) CreateDiscounts(ctx context.Context, discountData map[int
 		minPrice := int32(math.MaxInt32)
 		maxDiscPrice := int32(0)
 
-		var sizesMap map[string]interface{}
-		if err := json.Unmarshal(product.Sizes, &sizesMap); err != nil {
-			continue
+		// Проверяем, есть ли данные о размерах
+		if len(product.Sizes) > 0 {
+			// Парсим JSON
+			var sizesMap map[string]map[string]interface{}
+			if err := json.Unmarshal(product.Sizes, &sizesMap); err != nil {
+				// Пробуем другой формат
+				var simpleMap map[string]interface{}
+				if err2 := json.Unmarshal(product.Sizes, &simpleMap); err2 != nil {
+					fmt.Printf("Error unmarshaling sizes for product %d: %v\n", product.ID, err)
+					continue
+				}
+				// Обрабатываем простой формат
+				for sizeKey, sizeValue := range simpleMap {
+					var originalPrice int32
+
+					// Если значение - число
+					if price, ok := sizeValue.(float64); ok {
+						originalPrice = int32(price)
+					} else {
+						continue
+					}
+
+					discountPrice := originalPrice - (originalPrice*discount.Percent)/100
+					value[sizeKey] = discountPrice
+
+					if discountPrice < minPrice {
+						minPrice = discountPrice
+					}
+					if discountPrice > maxDiscPrice {
+						maxDiscPrice = discountPrice
+					}
+				}
+				goto afterSizes
+			}
+
+			// Обрабатываем вложенный формат (с price, in_stock, quantity)
+			for sizeKey, sizeData := range sizesMap {
+				// Извлекаем цену из вложенного объекта
+				var originalPrice int32
+				if price, ok := sizeData["price"]; ok {
+					switch p := price.(type) {
+					case float64:
+						originalPrice = int32(p)
+					case int:
+						originalPrice = int32(p)
+					case int32:
+						originalPrice = p
+					default:
+						continue
+					}
+				} else {
+					continue
+				}
+
+				discountPrice := originalPrice - (originalPrice*discount.Percent)/100
+				value[sizeKey] = discountPrice
+
+				if discountPrice < minPrice {
+					minPrice = discountPrice
+				}
+				if discountPrice > maxDiscPrice {
+					maxDiscPrice = discountPrice
+				}
+			}
 		}
 
-		for sizeKey := range sizesMap {
-			originalPrice, err := getSizePrice(product.Sizes, sizeKey)
-			if err != nil {
-				continue
-			}
-
-			discountPrice := originalPrice - (originalPrice*discount.Percent)/100
-			value[sizeKey] = discountPrice
-
-			if discountPrice < minPrice {
-				minPrice = discountPrice
-			}
-			if discountPrice > maxDiscPrice {
-				maxDiscPrice = discountPrice
-			}
-		}
-
+	afterSizes:
+		// Если нет размеров, но есть минимальная цена
 		if len(value) == 0 && product.Minprice > 0 {
 			discountPrice := product.Minprice - (product.Minprice*discount.Percent)/100
 			value["default"] = discountPrice
@@ -522,6 +568,7 @@ func (store *SQLStore) CreateDiscounts(ctx context.Context, discountData map[int
 		}
 
 		if len(value) == 0 {
+			fmt.Printf("Skipping product %d: no valid size data\n", product.ID)
 			continue
 		}
 

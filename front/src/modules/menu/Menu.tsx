@@ -37,7 +37,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
     const [loginActive, setLoginActive] = useState(false);
     const { setSearchData } = searchSlice.actions;
     const [showBurgerMenu, setShowBurgerMenu] = useState(false);
-
+    const actibeBurger = useRef(false);
     const turnActive = useCallback((active: boolean) => {
         setGlobalScroller(active);
         setActive(active);
@@ -92,7 +92,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
     return (
         <div ref={menuWrap} className={s.menuStyle}>
             <div className={"dependSize vrtCntr"}>
-                <Burger activeProps={false} onChange={setShowBurgerMenu} />
+                <Burger activeProps={actibeBurger.current} onChange={setShowBurgerMenu} />
             </div>
 
             <div onClick={handleLogoClick} className={s.logoWrapStyle}>
@@ -114,7 +114,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                 </div>
                 <div onClick={() => {
                     navigate('/about');
-                }}  className={s.link}>
+                }} className={s.link}>
                     О нас
                 </div>
                 <div className={s.link}>
@@ -127,21 +127,33 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                         onChange={handleComplexDrop}
                         data={burgerLines}
                     />
+
+                    <div className={s.divider}>
+                        <span className={s.dividerIcon}>✦</span>
+                    </div>
                     <div className={s.link} onClick={() => {
+                        actibeBurger.current = false;
                         setShowBurgerMenu(false)
                         setActiveAlphabet(true)
                     }}>
                         Фирмы
                     </div>
                     <div onClick={() => {
+                        actibeBurger.current = false;
                         navigate('/search?discount=true');
                     }} className={s.link}>
                         Скидки
                     </div>
-                    <div className={s.link}>
+                    <div onClick={() => {
+                        actibeBurger.current = false;
+                        navigate('/about');
+                    }} className={s.link}>
                         О нас
                     </div>
-                    <div className={s.link}>
+                    <div onClick={() => {
+                        actibeBurger.current = false;
+                        navigate('/reviews');
+                    }} className={s.link}>
                         Отзывы
                     </div>
                 </div>
@@ -149,10 +161,10 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
 
 
             <div className={s.rightMenuStyle}>
-                <Loupe onClick={handleLoupeClick} className={global.link}  />
-                <BuyButton onClick = {()=>{
+                <Loupe onClick={handleLoupeClick} className={global.link} />
+                <BuyButton onClick={() => {
                     setActiveCart(true)
-                }}/>
+                }} />
             </div>
 
             <Modal onChange={setActive} active={active}>
@@ -177,10 +189,10 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                 </div>
             </Modal>
             <Modal onChange={setActiveCart} active={activeCart}>
-                <div  onClick={(e) => e.stopPropagation()} className={s.cartModalWrap}>
-                    <Scroller onlyVertical={true}><BuyPage onActivate={()=>{
+                <div onClick={(e) => e.stopPropagation()} className={s.cartModalWrap}>
+                    <Scroller onlyVertical={true}><BuyPage onActivate={() => {
                         setActiveCart(false)
-                    }}/></Scroller>
+                    }} /></Scroller>
                 </div>
             </Modal>
         </div>

@@ -157,6 +157,19 @@
   padding: 0 10%;
 }
 
+.divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 4px;
+}
+
+.dividerIcon {
+  color: #cbd5e1;
+  font-size: 14px;
+  animation: subtlePulse 2s ease-in-out infinite;
+}
+
 .link {
   color: #2a2a2a;
   font-size: 20px;
@@ -261,6 +274,7 @@
     height: 90px;
   }
 }
+
 @media (max-width:400px) {
   .imageWrapStyle {
     /* width: 100px; */
@@ -343,37 +357,37 @@
 
 
 .buyButton {
-    position: relative;
-    cursor: pointer;
-    width: 36px;
-    height: 36px;
-    box-sizing: content-box;
+  position: relative;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  box-sizing: content-box;
 }
 
 .cartIcon {
-    width: 100%;
-    height: 100%;
+  width: 100%;
+  height: 100%;
 }
 
 .shopCounter {
-    position: absolute;
-    /* остальные стили для счетчика */
+  position: absolute;
+  /* остальные стили для счетчика */
 }
 
 .spanShop {
-    /* стили для текста счетчика */
+  /* стили для текста счетчика */
 }
 
 @media (max-width: 500px) {
-    .buyButton {
-        width: 32px;
-        height: 32px;
-    }
+  .buyButton {
+    width: 32px;
+    height: 32px;
+  }
 }
 
 @media (max-width: 400px) {
-    .buyButton {
-        width: 28px;
-        height: 28px;
-    }
+  .buyButton {
+    width: 28px;
+    height: 28px;
+  }
 }

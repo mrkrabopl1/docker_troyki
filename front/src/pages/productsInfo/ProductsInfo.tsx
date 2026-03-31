@@ -103,7 +103,7 @@ const ProductsInfo: React.FC = () => {
             setEmptyPage(false);
             currentDiscount.current = discount;
             currentPriceDiscount.current = price;
-            setCurrentPrice(price - discount);
+            setCurrentPrice(discount);
             setMerchInfo(val);
         }
     }, []);
@@ -248,7 +248,7 @@ const ProductsInfo: React.FC = () => {
                                     {toPrice(currentPriceDiscount.current)}
                                 </span>
                                 <span className={s.discountPerce}>
-                                    -{Math.round((currentDiscount.current / currentPriceDiscount.current) * 100)}%
+                                    -{Math.round(((currentPriceDiscount.current-currentDiscount.current) / currentPriceDiscount.current) * 100)}%
                                 </span>
                             </>
                         )}

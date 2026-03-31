@@ -12,15 +12,12 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
     const [contLeft, setContLeft] = useState(0);
     const [hasHorizontalScroll, setHasHorizontalScroll] = useState(false);
     const [hasVerticalScroll, setHasVerticalScroll] = useState(false);
-
-    // Новые состояния для позиции ползунка — они будут обновляться сразу
     const [thumbVertPos, setThumbVertPos] = useState(0);
     const [thumbHorPos, setThumbHorPos] = useState(0);
 
     const scrollerRef = useRef<HTMLDivElement>(null);
     const scrollContRef = useRef<HTMLDivElement>(null);
 
-    // Для touch-событий
     const lastTouchRef = useRef({ x: 0, y: 0 });
     const isTouchingRef = useRef(false);
     const touchDirectionRef = useRef<'horizontal' | 'vertical' | null>(null);
@@ -30,7 +27,17 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         horSize: 0,
     });
 
-    // Пересчёт необходимости скролла и размера ползунка
+    const getMaxScroll = useCallback(() => {
+        const scroller = scrollerRef.current;
+        const scrollCont = scrollContRef.current;
+        if (!scroller || !scrollCont) return { maxScrollTop: 0, maxScrollLeft: 0 };
+        
+        return {
+            maxScrollTop: scroller.clientHeight - scrollCont.clientHeight,
+            maxScrollLeft: scroller.clientWidth - scrollCont.clientWidth,
+        };
+    }, []);
+
     const checkScrollNeeded = useCallback(() => {
         const scroller = scrollerRef.current;
         const scrollCont = scrollContRef.current;
@@ -38,9 +45,7 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
 
         const needsHorizontal = scrollCont.clientWidth > scroller.clientWidth;
         const needsVertical = scrollCont.clientHeight > scroller.clientHeight;
-
-        const maxScrollTop = scroller.clientHeight - scrollCont.clientHeight;
-        const maxScrollLeft = scroller.clientWidth - scrollCont.clientWidth;
+        const { maxScrollTop, maxScrollLeft } = getMaxScroll();
 
         scrollMetrics.current = {
             vertSize: needsVertical ? Math.min(1, scroller.clientHeight / scrollCont.clientHeight) : 0,
@@ -50,23 +55,14 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         setHasHorizontalScroll(needsHorizontal);
         setHasVerticalScroll(needsVertical);
 
-        // Обновляем позицию ползунка при ресайзе
         if (needsVertical && maxScrollTop !== 0) {
-            setThumbVertPos(Math.abs(contTop) / maxScrollTop);
+            setThumbVertPos(Math.abs(contTop) / Math.abs(maxScrollTop));
         }
         if (needsHorizontal && maxScrollLeft !== 0) {
-            setThumbHorPos(Math.abs(contLeft) / maxScrollLeft);
+            setThumbHorPos(Math.abs(contLeft) / Math.abs(maxScrollLeft));
         }
-    }, [contTop, contLeft]);
+    }, [contTop, contLeft, getMaxScroll]);
 
-    useEffect(() => {
-        checkScrollNeeded();
-        const handleResize = () => checkScrollNeeded();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, [checkScrollNeeded, children]);
-
-    // Вертикальный скролл
     const scrollVertical = useCallback((deltaScroll: number, proportional = false) => {
         const scroller = scrollerRef.current;
         const scrollCont = scrollContRef.current;
@@ -83,16 +79,14 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         }
 
         newTop = Math.min(0, Math.max(newTop, maxScroll));
-
+        
         setContTop(newTop);
 
-        // Обновляем позицию ползунка сразу
         if (maxScroll !== 0) {
-            setThumbVertPos(Math.abs(newTop) / maxScroll);
+            setThumbVertPos(Math.abs(newTop) / Math.abs(maxScroll));
         }
     }, [contTop]);
 
-    // Горизонтальный скролл
     const scrollHorizontal = useCallback((deltaScroll: number, proportional = false) => {
         const scroller = scrollerRef.current;
         const scrollCont = scrollContRef.current;
@@ -109,7 +103,7 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         }
 
         newLeft = Math.min(0, Math.max(newLeft, maxScroll));
-
+        
         setContLeft(newLeft);
 
         if (maxScroll !== 0) {
@@ -117,59 +111,118 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         }
     }, [contLeft]);
 
-    // ================== TOUCH EVENTS ==================
-    const handleTouchStart = useCallback((e: React.TouchEvent) => {
-        isTouchingRef.current = true;
-        touchDirectionRef.current = null;
-        lastTouchRef.current = {
-            x: e.touches[0].clientX,
-            y: e.touches[0].clientY,
+    // Блокируем wheel на уровне DOM
+    useEffect(() => {
+        const scroller = scrollerRef.current;
+        if (!scroller) return;
+
+        const preventWheel = (e: WheelEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const delta = e.deltaY > 0 ? -40 : 40;
+            scrollVertical(delta);
         };
-    }, []);
 
-    const handleTouchMove = useCallback((e: React.TouchEvent) => {
-        if (!isTouchingRef.current) return;
+        scroller.addEventListener('wheel', preventWheel, { passive: false });
+        
+        return () => {
+            scroller.removeEventListener('wheel', preventWheel);
+        };
+    }, [scrollVertical]);
 
-        const currentX = e.touches[0].clientX;
-        const currentY = e.touches[0].clientY;
+    // Блокируем touch на уровне DOM
+    useEffect(() => {
+        const scroller = scrollerRef.current;
+        if (!scroller) return;
 
-        const deltaX = currentX - lastTouchRef.current.x;
-        const deltaY = currentY - lastTouchRef.current.y;
+        const handleTouchStart = (e: TouchEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            isTouchingRef.current = true;
+            touchDirectionRef.current = null;
+            lastTouchRef.current = {
+                x: e.touches[0].clientX,
+                y: e.touches[0].clientY,
+            };
+        };
 
-        if (touchDirectionRef.current === null && (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8)) {
-            touchDirectionRef.current = onlyVertical || Math.abs(deltaY) > Math.abs(deltaX)
-                ? 'vertical'
-                : 'horizontal';
-        }
+        const handleTouchMove = (e: TouchEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (!isTouchingRef.current) return;
 
-        if (touchDirectionRef.current === 'vertical') {
-            scrollVertical(deltaY);
-        } else if (touchDirectionRef.current === 'horizontal' && !onlyVertical) {
-            scrollHorizontal(deltaX);
-        }
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const deltaX = currentX - lastTouchRef.current.x;
+            const deltaY = currentY - lastTouchRef.current.y;
 
-        lastTouchRef.current = { x: currentX, y: currentY };
+            if (touchDirectionRef.current === null && (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5)) {
+                touchDirectionRef.current = onlyVertical || Math.abs(deltaY) > Math.abs(deltaX)
+                    ? 'vertical'
+                    : 'horizontal';
+            }
+
+            if (touchDirectionRef.current === 'vertical') {
+                scrollVertical(deltaY);
+            } else if (touchDirectionRef.current === 'horizontal' && !onlyVertical) {
+                scrollHorizontal(deltaX);
+            }
+
+            lastTouchRef.current = { x: currentX, y: currentY };
+        };
+
+        const handleTouchEnd = (e: TouchEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            isTouchingRef.current = false;
+            touchDirectionRef.current = null;
+        };
+
+        scroller.addEventListener('touchstart', handleTouchStart, { passive: false });
+        scroller.addEventListener('touchmove', handleTouchMove, { passive: false });
+        scroller.addEventListener('touchend', handleTouchEnd);
+        scroller.addEventListener('touchcancel', handleTouchEnd);
+        
+        return () => {
+            scroller.removeEventListener('touchstart', handleTouchStart);
+            scroller.removeEventListener('touchmove', handleTouchMove);
+            scroller.removeEventListener('touchend', handleTouchEnd);
+            scroller.removeEventListener('touchcancel', handleTouchEnd);
+        };
     }, [scrollVertical, scrollHorizontal, onlyVertical]);
 
-    const handleTouchEnd = useCallback(() => {
-        isTouchingRef.current = false;
-        touchDirectionRef.current = null;
-    }, []);
+    useEffect(() => {
+        const scrollCont = scrollContRef.current;
+        const scroller = scrollerRef.current;
+        if (!scrollCont || !scroller) return;
 
-    // Wheel
-    const handleWheel = useCallback((e: React.WheelEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const delta = e.deltaY > 0 ? -40 : 40;
-        scrollVertical(delta);
-    }, [scrollVertical]);
+        const resizeObserver = new ResizeObserver(() => {
+            checkScrollNeeded();
+        });
+
+        resizeObserver.observe(scrollCont);
+        resizeObserver.observe(scroller);
+
+        return () => resizeObserver.disconnect();
+    }, [checkScrollNeeded]);
+
+    useEffect(() => {
+        checkScrollNeeded();
+        const handleResize = () => checkScrollNeeded();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [checkScrollNeeded]);
 
     const scrollerStyle: CSSProperties = {
         position: "relative",
         width: "100%",
         height: "100%",
         overflow: "hidden",
-        touchAction: onlyVertical ? "pan-y" : "pan-x pan-y",
+        touchAction: "none",
         WebkitOverflowScrolling: "touch",
     };
 
@@ -179,6 +232,7 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         left: `${contLeft}px`,
         width: onlyVertical ? "100%" : "auto",
         minWidth: onlyVertical ? "100%" : undefined,
+        willChange: "transform",
     };
 
     return (
@@ -186,27 +240,20 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
             ref={scrollerRef}
             className={className}
             style={scrollerStyle}
-            onWheel={handleWheel}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onTouchCancel={handleTouchEnd}
         >
             <div ref={scrollContRef} style={contentStyle}>
                 {children}
             </div>
 
-            {/* Ползунок вертикальный */}
             {hasVerticalScroll && (
                 <ScrollerThumb
                     callback={scrollVertical}
                     isVertical={true}
                     kSize={scrollMetrics.current.vertSize}
-                    kPos={thumbVertPos}           // ← используем новое состояние
+                    kPos={thumbVertPos}
                 />
             )}
 
-            {/* Ползунок горизонтальный */}
             {!onlyVertical && hasHorizontalScroll && (
                 <ScrollerThumb
                     callback={scrollHorizontal}

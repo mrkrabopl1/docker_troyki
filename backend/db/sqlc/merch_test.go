@@ -141,7 +141,25 @@ func TestCreateDiscounts(t *testing.T) {
 		1: {Percent: 20}, // 20% скидка на товар ID 1
 		2: {Percent: 15}, // 15% скидка на товар ID 2
 	}
-	err := testStore.CreateDiscounts(context.Background(), discountData)
+
+	// Добавляем отладку
+	t.Log("Before calling CreateDiscounts")
+	t.Logf("Discount data: %+v", discountData)
+
+	// Проверяем, существует ли testStore
+	if testStore == nil {
+		t.Fatal("testStore is nil")
+	}
+	t.Log("testStore is not nil")
+
+	// Проверяем, есть ли продукты в БД
+	ctx := context.Background()
+
+	// Попробуем получить продукты
+
+	t.Log("Calling CreateDiscounts...")
+	err := testStore.CreateDiscounts(ctx, discountData)
+	t.Logf("CreateDiscounts returned: %v", err)
 	require.NoError(t, err)
 }
 func TestGetProductByArticle(t *testing.T) {

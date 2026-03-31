@@ -3,27 +3,32 @@ package db
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mrkrabopl1/go_db/services"
+	"github.com/mrkrabopl1/go_db/util"
 	"github.com/stretchr/testify/require"
 )
 
 var testStore Store
 
-// func TestMain(m *testing.M) {
-// 	config, err := util.LoadConfig("../..")
-// 	if err != nil {
-// 		log.Fatal("cannot load config:", err)
-// 	}
+func TestMain(m *testing.M) {
+	config, err := util.LoadConfig("../..")
+	if err != nil {
+		log.Fatal("cannot load config:", err)
+	}
 
-// 	connPool, err := pgxpool.New(context.Background(), config.DBSource)
-// 	if err != nil {
-// 		log.Fatal("cannot connect to db:", err)
-// 	}
-
-// 	testStore = NewStore(connPool)
-// 	os.Exit(m.Run())
-// }
+	connPool, err := pgxpool.New(context.Background(), config.DBSource)
+	if err != nil {
+		log.Fatal("cannot connect to db:", err)
+	}
+	imagePathBuilder := services.NewImagePathBuilder(config.ImageBasePath, config.UseCDN)
+	testStore = NewStore(connPool, imagePathBuilder)
+	os.Exit(m.Run())
+}
 
 func TestGetMainPageBanners(t *testing.T) {
 	banners, err := testStore.GetMainPageBanners(context.Background())
