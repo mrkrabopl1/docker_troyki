@@ -24,25 +24,25 @@ const DeliveryTypeRadioGroup: React.FC<propsRadioGroupType> = (props) => {
                     icon='/public/sort.svg' 
                     key={"delivery1"} 
                     checked={selected === "curier"} 
-                    name={"delivery_curier"} 
+                    name={"delivery_type"} 
                     onChange={() => handleChange("curier")} 
                     text={"Доставка по Москве (до МКАД)"} 
                     description={"На следующий день"}
                 />
                 <IconLamp 
                     icon='/public/sort.svg' 
-                    key={"delivery1"}  
+                    key={"delivery2"}  
                     checked={selected === "cdek"} 
-                    name={"delivery_cdek"} 
+                    name={"delivery_type"} 
                     onChange={() => handleChange("cdek")} 
                     text={"Доставка СДЭК"} 
                     description={"1-2 рабочих дня"}
                 />
                 <IconLamp 
                     icon='/public/sort.svg' 
-                    key={"delivery1"}  
+                    key={"delivery3"}  
                     checked={selected === "express"} 
-                    name={"delivery_express"} 
+                    name={"delivery_type"} 
                     onChange={() => handleChange("express")} 
                     text={"Экспресс-доставка"} 
                     description={"8-10 рабочих дней"}

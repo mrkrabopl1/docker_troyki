@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useCallback, useState } from 'react';
+import React, { memo, useEffect, useCallback, useState,useRef } from 'react';
 import InputWithLabel from "src/components/input/InputWithLabel";
 import InputWithLabelWithValidation from "src/components/input/InputWithLabelWithValidation";
 import PhoneInputWithValidation from "src/components/input/PhoneInputWithValidation";
@@ -28,6 +28,8 @@ interface FormData {
     address: Address | null;
     phone: string;
     deliveryComment?: string;
+    save?:boolean,
+    sendInfo?:boolean
 }
 
 interface SendFormProps {
@@ -61,17 +63,13 @@ const SendForm: React.FC<SendFormProps> = memo(({
         ...formValue
     });
 
-    const [unvalidFormData, setUnvalidFormData] = useState({
-        secondName: formValue?.secondName || ""
-    });
+    const unvalidFormData = useRef(["save", "sendInfo","secondName","deliveryComment"]);
 
-    const [saveData, setSaveData] = useState(false);
     const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         if (formValue) {
             setFormData(prev => ({ ...prev, ...formValue }));
-            setUnvalidFormData(prev => ({ ...prev, secondName: formValue.secondName || "" }));
         }
     }, [formValue]);
 
@@ -80,7 +78,7 @@ const SendForm: React.FC<SendFormProps> = memo(({
         let hasErrors = false;
 
         (Object.keys(formData) as Array<keyof FormData>).forEach(key => {
-            if (!formData[key] && !unvalidFormData[key] === undefined) {
+            if (!formData[key] && !unvalidFormData.current.includes(key)) {
                 errors[key] = true;
                 hasErrors = true;
             }
@@ -93,18 +91,21 @@ const SendForm: React.FC<SendFormProps> = memo(({
     const handleChange = useCallback((field: keyof FormData, value: any) => {
         setFormData(prev => {
             const newData = { ...prev, [field]: value };
-            onChange({ ...newData, save: saveData });
+            onChange({ ...newData });
             return newData;
         });
-    }, [onChange, saveData]);
+    }, [onChange]);
 
     const handleUnvalidChange = useCallback((value: string) => {
-        setUnvalidFormData(prev => ({ ...prev, secondName: value }));
+       onChange({ ...formData, secondName: value });
     }, []);
 
     const handleSaveDataChange = useCallback((value: boolean) => {
-        setSaveData(value);
         onChange({ ...formData, save: value });
+    }, [formData]);
+
+    const handleSendInfoChange = useCallback((value: boolean) => {
+        onChange({ ...formData, sendInfo: value });
     }, [formData]);
 
     return (
@@ -125,7 +126,7 @@ const SendForm: React.FC<SendFormProps> = memo(({
                     
                     <div className={s.formField}>
                         <PhoneInputWithValidation 
-                            val={formData.phone} 
+                            val={formData.phone||"+7"} 
                             invalidIncorrect="Неверный формат телефона" 
                             invalidEmpty="Введите номер телефона" 
                             valid={!checkValid || !validationErrors.phone} 
@@ -137,7 +138,7 @@ const SendForm: React.FC<SendFormProps> = memo(({
                 </div>
                 
                 <div className={s.checkboxRow}>
-                    <Checkbox activeData={false} enable={true} onChange={() => {}} />
+                    <Checkbox activeData={formData.sendInfo} enable={true}   onChange={(data) => handleChange('sendInfo', data)}  />
                     <span className={s.checkboxLabel}>Отправляйте мне новости и предложения</span>
                 </div>
                 
@@ -182,9 +183,9 @@ const SendForm: React.FC<SendFormProps> = memo(({
                 {verified && (
                     <div className={s.checkboxRow}>
                         <Checkbox 
-                            activeData={false} 
+                            activeData={formData.save} 
                             enable={true} 
-                            onChange={handleSaveDataChange} 
+                            onChange={(data) => handleChange('save', data)} 
                         />
                         <span className={s.checkboxLabel}>Сохранить эту информацию на будущее</span>
                     </div>

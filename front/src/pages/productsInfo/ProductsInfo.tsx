@@ -14,7 +14,7 @@ import Button from 'src/components/Button';
 import Modal from 'src/components/modal/Modal';
 import Scroller from 'src/components/scroller/Scroller';
 import TableWithComboboxColumn from 'src/components/table/simpleTable/TableWithComboboxColumn';
-import ContentSlider from 'src/components/contentSlider/ContentSliderWithSwitcher';
+import ContentSlider from 'src/components/contentSlider/ContentSliderWithLinks';
 import MerchComplexSliderField from 'src/modules/merchField/MerchComplexSliderField';
 import s from "./style.module.css"
 import { ReactComponent as CopySvg } from "/public/copy.svg";
@@ -145,7 +145,7 @@ const ProductsInfo: React.FC = () => {
             size: currentSize.current,
             price: currentPrice,
             name: merchInfo.name,
-            image_path: merchInfo.image_path
+            image_path: merchInfo.image_path + "1.png"
         };
 
         if (cart) {
@@ -206,7 +206,7 @@ const ProductsInfo: React.FC = () => {
     const renderImagePresentation = useCallback(() => {
         if (merchInfo.image_count > 1) {
             return widthProps
-                ? <ContentSlider content={imageContent} />
+                ? <ContentSlider  content={imageContent} />
                 : <ImagePresantation onClick={(ind) => {
                     setActiveProductsModal(true)
                 }} image_count={merchInfo.image_count} image_path={merchInfo.image_path} />;
@@ -280,7 +280,7 @@ const ProductsInfo: React.FC = () => {
                                 {widthProps ? <div onClick={() => {
                                     navigate(`/search?firm=${merchInfo.firm}`);
                                 }} className={s.firmInfoHolder}>
-                                    <img className={s.firmImage} src={merchInfo.firm} alt="" />
+                                    <img className={s.firmImage} src={"/images/brandLogos/"+merchInfo.firm+"/image.png"} alt="" />
                                     <span className={s.firmName}>{merchInfo.firm}</span>
                                 </div> : null}
                             </div>
@@ -312,7 +312,7 @@ const ProductsInfo: React.FC = () => {
                     </div>
                 </Modal>
                 <Modal onChange={setActiveProductsModal} active={activeProductsModal}>
-                    <ContentSlider className={{ holder: s.modalImageHolder, slider: s.modalSlider }} content={imageContent} />
+                    <ContentSlider  content={imageContent} />
                 </Modal>
             </div>
 

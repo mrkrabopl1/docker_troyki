@@ -1,13 +1,23 @@
 .orderContainer {
   display: flex;
-  flex-direction: column;
   align-items: center;
   padding: 20px;
 }
+
 .orderInfoSection {
   width: 80%;
   background-color: #f9f9f9;
   border-radius: 10px;
   padding: 20px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+.merchSection{
+  margin-bottom: auto;
+  padding: 5px;
+}
+
+@media (max-width:600px) {
+  .orderContainer {
+    flex-direction: column;
+  }
 }

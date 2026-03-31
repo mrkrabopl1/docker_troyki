@@ -43,7 +43,7 @@ const MerchBuyBlockWithControls: React.FC<{
                 {/* Изображение товара */}
                 <img
                     className={s.buyImg}
-                    src={"/" + data.imgs}
+                    src={data.imgs}
                     alt={data.name}
                 />
 

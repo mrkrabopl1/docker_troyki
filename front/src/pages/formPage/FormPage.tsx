@@ -16,8 +16,6 @@ import DeliveryTypeRadioGroup from './pageElements/DeliveryTypeRadio';
 import DeliveryPage from './pageElements/DeliveryPage';
 import PayBlock from './pageElements/PayBlock';
 import LinkButton from 'src/components/LinkButton';
-import { current } from '@reduxjs/toolkit';
-import EmailPhoneInput from 'src/components/input/EmailPhoneInput';
 import ContactForm from 'src/modules/sendForm/ContactForm';
 import MapComponent from 'src/modules/map/Map';
 
@@ -75,6 +73,16 @@ const FormPage: React.FC = () => {
         "mail": "",
         "Телефон": ""
     });
+    const addressInfo = useRef<Record<string, string>>({
+        "Дом": "",
+        "Квартриа": "",
+        "Улица": "",
+        "Почтовый индекс": "",
+        "Город": "",
+        "Регион": "",
+        "Село": "",
+        "Поселок": ""
+    });
     const formId = useRef(0);
     const memoSendForm = useRef(true);
     const respData = useRef<any>({});
@@ -89,7 +97,7 @@ const FormPage: React.FC = () => {
         secondName: "",
         address: null,
         phone: "",
-        deliveryType: "own",
+        deliveryType: delivery.current === 0 ? "curier":"own",
         deliveryComment: ""
     });
 
@@ -111,6 +119,7 @@ const FormPage: React.FC = () => {
 
     const contactInfoChange = (data: any) => {
         contactInfo.current.Имя = data.name;
+        formData.current.name = data.name;
         if (data.mail) {
             contactInfo.current.mail = data.mail;
             formData.current.mail = data.mail;
@@ -155,11 +164,17 @@ const FormPage: React.FC = () => {
                             contactInfo.current.Фамилия = data.secondName;
                             contactInfo.current.mail = data.mail;
                             contactInfo.current.Телефон = data.phone;
+                            addressInfo.current.Город = data?.address?.town
+                            addressInfo.current.Улица = data?.address?.street
+                            addressInfo.current["Почтовый индекс"] = data?.address?.index
+                            addressInfo.current["Дом"] = data?.address?.house
                             formData.current.name = data.name;
                             formData.current.secondName = data.secondName;
                             formData.current.address = { ...data.address };
+                            formData.current.save = data.save;
                             formData.current.phone = data.phone;
                             formData.current.mail = data.mail;
+                            formData.current.sendInfo = data.sendInfo
                             formData.current.deliveryComment = data.deliveryComment
                             respData.current = {
                                 personalData: {
@@ -170,10 +185,11 @@ const FormPage: React.FC = () => {
                                 },
                                 address: { ...data.address },
                                 save: data.save,
+                                sendMail:data.save,
                                 delivery: {
                                     deliveryPrice: 0,
                                     deliveryComment: formData.current.deliveryComment,
-                                    type: formData.current.deliveryType
+                                    type: delivery.current === 0 ? "curier":"own"
                                 },
                                 preorderHash: hash
                             };
@@ -183,6 +199,7 @@ const FormPage: React.FC = () => {
                 } else {
                     return <div>
                         <ContactForm
+                            checkValid={checkValid.current}    
                             memo={memoSendForm.current}
                             valid={true}
                             formValue={formData.current}
@@ -191,7 +208,7 @@ const FormPage: React.FC = () => {
                         />
                         <MapComponent
                             location={[37.67575303913705,
-                                55.77123033359646]} 
+                                55.77123033359646]}
                             path={[
                                 [
                                     37.67872961851563,
@@ -242,7 +259,7 @@ const FormPage: React.FC = () => {
                             formId.current = formId.current - 1;
                             setRefresh(prev => !prev);
                         }}
-                        address={formData.current.address}
+                        address={addressInfo.current}
                         contactInfo={contactInfo.current}
                         onChange={(data) => {
                             formData.current.deliveryType = data;
@@ -251,8 +268,13 @@ const FormPage: React.FC = () => {
                 } else {
                     return <PayBlock
                         deliveryInfo={{ "Доставка": formData.current.deliveryType }}
-                        address={formData.current.address}
+                        address={addressInfo.current}
                         contactInfo={contactInfo.current}
+                        onBack={() => {
+                            if (formId.current === 0) return;
+                            formId.current = formId.current - 1;
+                            setRefresh(prev => !prev);
+                        }}
                         onChange={(val) => {
                             formData.current.save = val;
                             respData.current = {
@@ -277,8 +299,13 @@ const FormPage: React.FC = () => {
             case 2:
                 return <PayBlock
                     deliveryInfo={{ "Доставка": formData.current.deliveryType }}
-                    address={formData.current.address}
+                    address={addressInfo.current}
                     contactInfo={contactInfo.current}
+                    onBack={() => {
+                        if (formId.current === 0) return;
+                        formId.current = formId.current - 1;
+                        setRefresh(prev => !prev);
+                    }}
                     onChange={() => {
                         respData.current = {
                             personalData: {
@@ -308,7 +335,7 @@ const FormPage: React.FC = () => {
             case 0:
                 return <div>
                     <h2>Способ получения товара</h2>
-                    <DeliveryRadioGroup onChange={(data) => {
+                    <DeliveryRadioGroup defaultValue={delivery.current} onChange={(data) => {
                         delivery.current = data;
                         setRefresh(prev => !prev);
                     }} />
@@ -360,7 +387,7 @@ const FormPage: React.FC = () => {
                     />
                 </div>
             </div>
-            <div style={{ marginLeft: "20px", width: "50%", paddingRight: "90px" }}>
+            <div className={s.buyMerchFieldHolder} >
                 <BuyMerchField data={products} />
             </div>
         </div>

@@ -15,7 +15,7 @@ import { fromLonLat } from 'ol/proj';
 import s from "./style.module.css";
 
 const DEFAULT_CENTER = [37.6173, 55.7558];
-const DEFAULT_ZOOM = 14;
+const DEFAULT_ZOOM = 17;
 const MAX_ZOOM = 18;
 
 type MapComponentProps = {

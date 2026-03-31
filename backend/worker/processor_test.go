@@ -193,6 +193,39 @@ func TestNewsletterWithSimpleRedis(t *testing.T) {
 	require.Equal(t, testPayload.Email, retrieved.Email)
 	fmt.Println("✅ JSON marshaling/unmarshaling works")
 }
+func TestDistributeTaskSendOrderEmail(t *testing.T) {
+	ctx := context.Background()
+
+	// Очищаем Redis перед тестом (опционально, но рекомендуется)
+	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+	err := rdb.FlushAll(ctx).Err()
+	require.NoError(t, err)
+
+	redisOpt := asynq.RedisClientOpt{Addr: "localhost:6379"}
+	distributor := NewRedisTaskDistributor(redisOpt)
+
+	t.Run("send_order_email", func(t *testing.T) {
+		payload := &PayloadSendOrderEmail{
+			Id:           12345,
+			Email:        "mr.krabopl12@gmail.com",
+			Name:         "Иван",
+			SecondName:   "Петров",
+			Town:         "Москва",
+			Street:       "Ленина",
+			House:        "10",
+			Flat:         "45",
+			Index:        "123456",
+			DeliveryType: "Courier",
+			Phone:        "+7 (999) 123-45-67",
+			OrderPrice:   12500,
+		}
+
+		err := distributor.DistributeTaskSendOrderEmail(ctx, payload)
+		require.NoError(t, err)
+
+		fmt.Println("✅ Task SendOrderEmail distributed successfully")
+	})
+}
 
 // TestNewsletterWithDifferentOptions - тест с разными опциями
 func TestNewsletterWithDifferentOptions(t *testing.T) {
@@ -421,95 +454,6 @@ func TestAsynqWithNewConfig(t *testing.T) {
 	} else {
 		fmt.Printf("✅ Task sent successfully: %s\n", info.ID)
 	}
-}
-
-func TestRedisLuaScript(t *testing.T) {
-	ctx := context.Background()
-
-	rdb := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-		DB:   0,
-	})
-	defer rdb.Close()
-
-	// 1. Простой Lua скрипт
-	t.Run("simple_lua", func(t *testing.T) {
-		script := `
-			local key = KEYS[1]
-			local value = ARGV[1]
-			redis.call('SET', key, value)
-			return redis.call('GET', key)
-		`
-
-		result, err := rdb.Eval(ctx, script, []string{"test:lua"}, "hello-world").Result()
-		require.NoError(t, err)
-		require.Equal(t, "hello-world", result)
-		fmt.Println("✅ Simple Lua script OK")
-	})
-
-	// 2. Скрипт с множеством аргументов (как в asynq)
-	t.Run("complex_lua", func(t *testing.T) {
-		// Это скрипт похожий на тот, что использует asynq
-		script := `
-			local key = KEYS[1]
-			local field = ARGV[1]
-			local value = ARGV[2]
-			local expire = ARGV[3]
-			
-			redis.call('HSET', key, field, value)
-			if tonumber(expire) > 0 then
-				redis.call('EXPIRE', key, expire)
-			end
-			return redis.call('HGET', key, field)
-		`
-
-		result, err := rdb.Eval(ctx, script,
-			[]string{"test:hash"},
-			"field1", "value1", "3600",
-		).Result()
-
-		if err != nil {
-			fmt.Printf("❌ Lua script error: %v\n", err)
-			t.Logf("This is the same type of error as asynq!")
-			t.Fail()
-		} else {
-			require.Equal(t, "value1", result)
-			fmt.Println("✅ Complex Lua script OK")
-		}
-	})
-
-	// 3. Скрипт с несколькими KEYS и ARGV (как в asynq)
-	t.Run("multiple_args_lua", func(t *testing.T) {
-		// Скрипт, который использует несколько ключей и аргументов
-		script := `
-			local queue_key = KEYS[1]
-			local processing_key = KEYS[2]
-			local task = ARGV[1]
-			local timeout = ARGV[2]
-			
-			-- Добавляем задачу в очередь
-			redis.call('LPUSH', queue_key, task)
-			
-			-- Устанавливаем таймаут
-			redis.call('SETEX', processing_key, timeout, task)
-			
-			return redis.call('LLEN', queue_key)
-		`
-
-		result, err := rdb.Eval(ctx, script,
-			[]string{"test:queue", "test:processing"},
-			`{"id":"123"}`, "60",
-		).Result()
-
-		if err != nil {
-			fmt.Printf("❌ Multiple args Lua error: %v\n", err)
-			t.Logf("This is EXACTLY the error asynq gives!")
-			t.Fail()
-		} else {
-			require.Equal(t, int64(1), result)
-			fmt.Println("✅ Multiple args Lua script OK")
-		}
-	})
 }
 
 func TestAsynqDirect(t *testing.T) {

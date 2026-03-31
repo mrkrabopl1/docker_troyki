@@ -108,13 +108,13 @@ const Main: React.FC = memo(() => {
     <div style={{ position: "relative" }}>
       {/* <ImageSlider images={["1.jpg","2.jpg","1.jpg","1.jpg","2.jpg","1.jpg"]}/>
       <BlobBackground/>
-      <FirmsScroller/>
       <InfiniteRecursionViewport/> */}
       {/* <VideoWallpaper  src={"1.mp4"} /> */}
       <ContentSliderWithLinks
         
         content={createBanners()} 
       />
+       <FirmsScroller/>
       <div>
         {handleMainPageInfo}
       </div>

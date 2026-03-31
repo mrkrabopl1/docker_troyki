@@ -1,108 +1,146 @@
-import React, { useEffect, ReactElement, useState, useRef, memo, useCallback } from 'react'
-
-import InputWithLabelWithValidation from "src/components/input/InputWithLabelWithValidation"
-import PhoneInputWithValidation from "src/components/input/PhoneInputWithValidation"
-import s from './style.module.css'
-import MailInputWithValidation from 'src/components/input/MailInputWithValidation'
-import { extend } from 'src/global'
-import EmailPhoneInput from 'src/components/input/EmailPhoneInput'
-
+import React, { memo, useEffect, useCallback, useState, useRef } from 'react';
+import InputWithLabelWithValidation from "src/components/input/InputWithLabelWithValidation";
+import s from './style.module.css';
+import EmailPhoneInput from 'src/components/input/EmailPhoneInput';
 
 interface ContactFormModuleInterface {
     className?: {
         input?: string,
         checkbox?: string,
         combobox?: string
-    }
-    onChange: (data: any) => void,
-    onValid?: (data: any) => void,
-    valid: boolean,
+    };
+    onChange: (data: any) => void;
+    onValid?: (isValid: boolean) => void;
+    valid: boolean;
     formValue?: {
-        name: string,
-        mail: string,
-        phone: string
-    },
-    memo: boolean
+        name?: string;
+        mail?: string;
+        phone?: string;
+    };
+    memo: boolean;
+    checkValid?: boolean;
 }
 
-const ContactForm: React.FC<ContactFormModuleInterface> = (props) => {
-    let validRef = useRef<any>(false)
+const ContactForm: React.FC<ContactFormModuleInterface> = memo(({
+    className,
+    onChange,
+    onValid,
+    valid,
+    formValue,
+    memo,
+    checkValid
+}) => {
+    const [formData, setFormData] = useState({
+        name: formValue?.name || "",
+        mail: formValue?.mail || "",
+        phone: formValue?.phone || "",
+    });
+
+    const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
     const firstUpdate = useRef(true);
-    let formData = useRef<any>({
-        name: "",
-        mail: "",
-        phone: ""
-    })
+    
+    // Регулярные выражения
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const PHONE_REGEX = /^[\d\+][\d\(\)\ -]{4,14}\d$/;
 
-    let unvalidFormData = useRef<any>({
-        secondName: ""
-    })
+    // Валидация формы
+    const validateForm = useCallback(() => {
+        const errors: Record<string, boolean> = {};
+        let hasErrors = false;
 
-
-    let [refresh, setRefresh] = useState<boolean>(false)
-    let contactRef = useRef<boolean>(false)
-
-    let { className, onChange, valid, formValue, memo, onValid } = { ...props }
-
-
-    const setFormData = (data: string, name: string) => {
-        formData.current[name] = data
-        validate()
-        if (validRef.current) {
-            const finalObj = { ...formData.current }
-            onChange(finalObj)
+        // Валидация имени
+        if (!formData.name?.trim()) {
+            errors.name = true;
+            hasErrors = true;
         }
-    }
 
-    const validate = () => {
-        if (validRef.current !== (contactRef.current && !!formData.current.name)) {
-            validRef.current = contactRef.current && !!formData.current.name
-            onValid(contactRef.current && !!formData.current.name)
+        // Валидация контакта (email или телефон)
+        const hasEmail = !!formData.mail?.trim();
+        const hasPhone = !!formData.phone?.trim();
+        const isEmailValid = hasEmail && EMAIL_REGEX.test(formData.mail);
+        const isPhoneValid = hasPhone && PHONE_REGEX.test(formData.phone);
+        
+        const isContactValid = (hasEmail && isEmailValid) || (hasPhone && isPhoneValid);
+        
+        if (!isContactValid) {
+            errors.contact = true;
+            hasErrors = true;
         }
-    }
 
+        setValidationErrors(errors);
+        return !hasErrors;
+    }, [formData.name, formData.mail, formData.phone]);
+
+    // Эффект для валидации при изменении данных
+    useEffect(() => {
+        const isValid = validateForm();
+        onValid?.(isValid);
+    }, [formData, validateForm, onValid]);
+
+    // Эффект для вызова onChange после первого рендера
     useEffect(() => {
         if (!firstUpdate.current) {
-            validate()
-            setRefresh(prev => !prev)
+            onChange(formData);
         }
-        firstUpdate.current = false
-    }, [memo])
+    }, [formData, onChange]);
+
+    // Сброс флага первого рендера
+    useEffect(() => {
+        firstUpdate.current = false;
+    }, []);
+
+    // Обновление данных при изменении formValue
+    useEffect(() => {
+        if (formValue) {
+            setFormData(prev => ({
+                ...prev,
+                ...(formValue.name !== undefined && { name: formValue.name }),
+                ...(formValue.mail !== undefined && { mail: formValue.mail }),
+                ...(formValue.phone !== undefined && { phone: formValue.phone })
+            }));
+        }
+    }, [formValue]);
+
+    const handleNameChange = useCallback((value: string) => {
+        setFormData(prev => ({ ...prev, name: value }));
+    }, []);
+
+    const handleContactChange = useCallback((data: { type: string; value: string }) => {
+        if (data.type === "phone") {
+            setFormData(prev => ({ ...prev, phone: data.value, mail: "" }));
+        } else {
+            setFormData(prev => ({ ...prev, mail: data.value, phone: "" }));
+        }
+    }, []);
+
+    const getContactValue = useCallback(() => {
+        return formData.mail || formData.phone;
+    }, [formData.mail, formData.phone]);
 
     return (
-
         <div className={s.wrapper}>
-            <div>Контактная информация</div>
+            <div className={s.title}>Контактная информация</div>
+
             <InputWithLabelWithValidation
-                val={formData.current.name}
-                valid={firstUpdate.current?true:!!formData.current.name}
+                val={formData.name}
+                valid={!checkValid || !validationErrors.name}
                 invalidText={"Введите ваше имя для связи с вами."}
                 className={className?.input}
-                onChange={(data) => { setFormData(data, "name") }}
-                placeholder={"Имя"} />
+                onChange={handleNameChange}
+                placeholder={"Имя"}
+            />
+
             <EmailPhoneInput
-                valid={firstUpdate.current?true:contactRef.current}
+                val={getContactValue()}
+                valid={!checkValid || !validationErrors.contact}
                 invalidText='Введите корректный email или телефон'
                 className={s.formInput}
-                onValid={(valid) => {
-                    contactRef.current = valid;
-                    validate()
-                }}
+                onValid={() => {}} // EmailPhoneInput сам управляет валидацией
                 placeholder='Введите email или телефон'
-                onChange={(data) => {
-                    if (data.type === "phone") {
-                        setFormData(data.value, "phone")
-                    } else {
-                        setFormData(data.value, "mail")
-                    }
-
-                }} />
+                onChange={handleContactChange}
+            />
         </div>
+    );
+}, (prevProps, nextProps) => prevProps.memo === nextProps.memo);
 
-    )
-}
-
-function checkMemo(oldData: any, newData: any) {
-    return (oldData.memo === newData.memo)
-}
-export default memo(ContactForm, checkMemo)
+export default ContactForm;

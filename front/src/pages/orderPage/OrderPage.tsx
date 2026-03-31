@@ -92,19 +92,30 @@ const OrderPage: React.FC = () => {
 
     return (
         <div className={s.orderContainer}>
-            <div className={s.orderInfoSection}>
+            {/* <div className={s.orderInfoSection}>
                 <MapComponent location={order.address.coordinates} />
+                <OrderInfo
+                    address={order.address}
+                    orderData={order.orderData}
+                    orderId={order.orderId}
+                />
+            </div> */}
+            <div className={s.orderInfoSection}>
                 {cookie.current ? (
-                    <OrderInfo
-                        address={order.address}
-                        orderData={order.orderData}
-                        orderId={order.orderId}
-                    />
+                    <>
+                        <MapComponent location={order.address.coordinates} />
+                        <OrderInfo
+                            address={order.address}
+                            orderData={order.orderData}
+                            orderId={order.orderId}
+                        />
+                    </>
                 ) : (
+
                     <OrderForm onChange={handleOrderFormSubmit} />
                 )}
             </div>
-            
+
             <div className={s.merchSection}>
                 <BuyMerchField data={products} />
             </div>

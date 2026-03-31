@@ -11,7 +11,6 @@ type PhoneInputProps = {
     valid: boolean;
     invalidEmpty: string;
     invalidIncorrect: string;
-    checkValid?: boolean;
 };
 
 const PHONE_FORMAT = {
@@ -30,23 +29,19 @@ const PhoneInputWithValidation: React.FC<PhoneInputProps> = ({
     val = "+7 ",
     valid,
     invalidEmpty,
-    invalidIncorrect,
-    checkValid
+    invalidIncorrect
 }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const [phoneValue, setPhoneValue] = useState(val);
     const [isValid, setIsValid] = useState(valid);
     const [isFocused, setIsFocused] = useState(false);
     const shouldValidate = useRef(false);
-    const hasChange = useRef<boolean>(false);
 
     // Синхронизация с внешними значениями
     useEffect(() => {
         setPhoneValue(val);
-        if (checkValid) {
-            setIsValid(valid);
-        }
-    }, [val, valid, checkValid]);
+        setIsValid(valid);
+    }, [val, valid]);
 
     // Получение чистого номера без форматирования
     const getCleanPhone = useCallback((value: string): string => {
@@ -125,7 +120,6 @@ const PhoneInputWithValidation: React.FC<PhoneInputProps> = ({
         }
 
         e.preventDefault();
-        hasChange.current = true;
         shouldValidate.current = true;
 
         // Удаление
@@ -191,7 +185,7 @@ const PhoneInputWithValidation: React.FC<PhoneInputProps> = ({
     // Обработка ввода цифр
     const handleDigitInput = useCallback((digit: string, selectionStart: number, selectionEnd: number, cleanValue: string) => {
         if (cleanValue.length >= 10 && selectionStart === selectionEnd) return;
-
+        setIsValid(true);
         // Если есть выделение - заменяем выделенный текст
         if (selectionStart !== selectionEnd) {
             const cleanStart = getCleanCursorPosition(phoneValue, selectionStart);
@@ -219,7 +213,6 @@ const PhoneInputWithValidation: React.FC<PhoneInputProps> = ({
         const formatted = formatPhone(newCleanValue);
         
         setPhoneValue(formatted);
-        validatePhone(formatted);
 
         setTimeout(() => {
             const newPosition = getFormattedCursorPosition(formatted, cleanPosition + 1);
@@ -254,7 +247,6 @@ const PhoneInputWithValidation: React.FC<PhoneInputProps> = ({
     // Обработчик вставки из буфера обмена
     const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
         e.preventDefault();
-        hasChange.current = true;
         shouldValidate.current = true;
 
         const pastedData = e.clipboardData.getData('text');
@@ -277,7 +269,6 @@ const PhoneInputWithValidation: React.FC<PhoneInputProps> = ({
 
     // Текст ошибки
     const errorMessage = useMemo(() => {
-        if (!hasChange.current) return '';
         const cleanValue = getCleanPhone(phoneValue);
         return cleanValue.length === 0 ? invalidEmpty : invalidIncorrect;
     }, [phoneValue, invalidEmpty, invalidIncorrect, getCleanPhone]);
@@ -285,7 +276,7 @@ const PhoneInputWithValidation: React.FC<PhoneInputProps> = ({
     // Классы инпута
     const inputClasses = useMemo(() => {
         const classes = [s.inputWithLabel, className];
-        if (!isValid && hasChange.current) {
+        if (!isValid ) {
             classes.push(s.invalid);
         }
         if (isFocused) {
@@ -307,15 +298,15 @@ const PhoneInputWithValidation: React.FC<PhoneInputProps> = ({
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 onPaste={handlePaste}
-                aria-invalid={!isValid && hasChange.current}
+                aria-invalid={!isValid}
             />
             {placeholder && (
                 <label className={s.label}>
                     {placeholder}
                 </label>
             )}
-            {!isValid && hasChange.current && (
-                <div className={s.errorMessage}>
+            {!isValid && (
+                <div style={{color:"red"}} className={s.errorMessage}>
                     {errorMessage}
                 </div>
             )}

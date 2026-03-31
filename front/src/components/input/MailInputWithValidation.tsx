@@ -32,7 +32,6 @@ const MailInputWithValidation: React.FC<MailInputProps> = ({
     const [inputValue, setInputValue] = useState(value);
     const [isValid, setIsValid] = useState(valid);
     const shouldValidate = useRef(false);
-    const hasChange = useRef<boolean>(false);
 
     // Синхронизация с внешними значениями
     useEffect(() => {
@@ -48,7 +47,6 @@ const MailInputWithValidation: React.FC<MailInputProps> = ({
         const newValue = e.target.value;
         setInputValue(newValue);
         setIsValid(true);
-        hasChange.current = true;
         shouldValidate.current = true;
         onChange(validateEmail(newValue) ? newValue : null);
     }, [onChange]);

@@ -1,11 +1,11 @@
-.formInput{
+.formInput {
     border-radius: 5px;
     padding: 10px 15px;
     border: solid 1px black;
     margin: 10px 0;
 }
 
-.combobox{
+.combobox {
     border-radius: 5px;
     position: relative;
     display: block;
@@ -16,74 +16,88 @@
     color: #60666d;
     box-shadow: inset 0 0 2px #040300;
 }
-.wrapper{
+
+.wrapper {
     font-family: 'Open Sans', 'Helvetica Neue', 'Segoe UI', 'Calibri', 'Arial', sans-serif;
 }
 
-.bmf{
+.bmf {
     width: 50%;
 }
 
-.infoBlock{
-    border:solid 2px black;
-    border-radius:4px;
+.infoBlock {
+    border: solid 2px black;
+    border-radius: 4px;
     display: flex;
-    justify-content:space-between;
-    margin:10px 0;
-    padding:10px;
+    justify-content: space-between;
+    margin: 10px 0;
+    padding: 10px;
 }
 
-.drop_list{
-    
-}
+.drop_list {}
 
-.btn{
+.btn {
     margin-top: auto;
-    padding:5px
+    padding: 5px
 }
 
-.payHeader{
+.payHeader {
     font-size: 22px;
 }
 
 
-.payHolder{
-    border:solid 2px black;
-    border-radius:4px;
+.payHolder {
+    border: solid 2px black;
+    border-radius: 4px;
     font-size: 22px;
 }
 
-.btn:hover{
-    color:red
+.btn:hover {
+    color: red
 }
 
-.fieldHolder{
+.fieldHolder {
     width: 50%;
 }
 
-.backBtn:hover{
-   scale: 1.1;
+.backBtn:hover {
+    scale: 1.1;
 }
 
-.backBtn{
+.backBtn {
     transition: all 0.5s;
     font-size: 16px;
 }
 
-.mainButton{
-   margin-left: auto;
- }
- .buttonHolder{
-    position:relative;
-    display:flex;
- }
+.mainButton {
+    margin-left: auto;
+}
 
- .mainHolder{
+.buttonHolder {
+    position: relative;
+    display: flex;
+}
+
+.mainHolder {
     margin: 10px;
- }
+}
 
+.buyMerchFieldHolder{
+     margin-left: 20px; width: 50%; padding-right: 90px
+}
 
- /* ==================== DeliveryPage Styles ==================== */
+@media (max-width:600px) {
+    .fieldHolder{
+        width: 100%;
+    }
+    .buyMerchFieldHolder{
+        width: 100%;
+        padding-right: 0px;
+        margin-left: 0px;
+    }
+}
+
+/* ==================== DeliveryPage Styles ==================== */
 
 .deliveryPageContainer {
     width: 100%;
@@ -241,6 +255,7 @@
     border-color: #2c3e50;
     transform: translateY(-1px);
 }
+
 .deliveryInfoNotice {
     display: flex;
     align-items: flex-start;
@@ -312,6 +327,7 @@
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -324,27 +340,27 @@
     .deliveryPageContainer {
         padding: 16px;
     }
-    
+
     .sectionTitle {
         font-size: 24px;
     }
-    
+
     .cardHeader {
         padding: 16px 20px;
     }
-    
+
     .cardTitle {
         font-size: 16px;
     }
-    
+
     .infoCardContent {
         padding: 16px;
     }
-    
+
     .mapWrapper {
         min-height: 250px;
     }
-    
+
     .mapHolder {
         min-height: 250px;
     }
@@ -354,19 +370,19 @@
     .sectionTitle {
         font-size: 20px;
     }
-    
+
     .sectionSubtitle {
         font-size: 14px;
     }
-    
+
     .cardIcon {
         font-size: 20px;
     }
-    
+
     .infoCardFooter {
         padding: 12px 16px;
     }
-    
+
     .editButton {
         padding: 8px 12px;
         font-size: 13px;

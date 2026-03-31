@@ -192,6 +192,7 @@ func (store *SQLStore) CreateOrder(ctx context.Context, orderData *CreateOrderTy
 	if err1 != nil {
 		return 0, 0, "", err1
 	}
+	fmt.Println(orderData.Delivery.Type, DeliveryEnumOwn, "dnnnnnnnnnnnnnnnnnnnnnnnn")
 	if orderData.Delivery.Type != DeliveryEnumOwn {
 		_, err9 := store.Queries.SetOrderAddress(ctx, SetOrderAddressParams{
 			Town: orderData.Address.Town,

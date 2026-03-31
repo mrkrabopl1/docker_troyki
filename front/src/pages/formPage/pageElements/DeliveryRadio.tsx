@@ -1,6 +1,6 @@
 import React, { ReactElement, useRef, useState, memo } from 'react'
 import s from "./style.module.css"
-import IconLamp from '../../../components/lamp/IconLamp'
+import IconLamp from "src/components/lamp/IconLamp"
 
 type propsRadioGroupType = {
     onChange: (id: number) => void,

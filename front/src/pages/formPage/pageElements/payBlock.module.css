@@ -1,0 +1,183 @@
+/* PayBlock styles */
+.payBlock {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.paymentSection {
+    margin: 24px 0 32px;
+}
+
+.paymentMethodCard {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 16px 0;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.paymentMethodCard:hover {
+    border-color: #dee2e6;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.paymentMethodHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.paymentIcon {
+    font-size: 28px;
+}
+
+.paymentMethodTitle {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.paymentMethodTitle strong {
+    font-size: 16px;
+    color: #212529;
+}
+
+.paymentBadge {
+    background: #fff3e0;
+    color: #e67e22;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.paymentInfo {
+    margin-bottom: 20px;
+}
+
+.infoRow {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.infoLabel {
+    min-width: 120px;
+    font-size: 14px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.infoValue {
+    flex: 1;
+    font-size: 14px;
+    color: #212529;
+    font-family: 'Courier New', monospace;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+.copyButton {
+    background: #e9ecef;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    color: #495057;
+}
+
+.copyButton:hover {
+    background: #dee2e6;
+    transform: translateY(-1px);
+}
+
+.paymentNotice {
+    background: #e7f3ff;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-top: 16px;
+}
+
+.noticeIcon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.noticeText {
+    font-size: 13px;
+    color: #0056b3;
+    line-height: 1.4;
+}
+
+.billingSection {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid #e9ecef;
+}
+
+.billingDescription {
+    font-size: 14px;
+    color: #6c757d;
+    margin: 12px 0 16px;
+    line-height: 1.5;
+}
+
+.addressSelector {
+    margin-top: 16px;
+}
+
+.addressSelect {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.addressSelect:hover {
+    border-color: #adb5bd;
+}
+
+.addressSelect:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .infoRow {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    
+    .infoLabel {
+        min-width: auto;
+    }
+    
+    .copyButton {
+        margin-top: 6px;
+    }
+    
+    .paymentMethodTitle {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

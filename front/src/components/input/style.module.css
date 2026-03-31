@@ -159,7 +159,6 @@
 .floatingLabel {
     position: absolute;
     top: 12px;
-    left: 12px;
     font-size: inherit;
     color: #888;
     transition: all 0.2s ease;
@@ -172,7 +171,6 @@
 .floatingLabel[data-focused="true"],
 .floatingLabel[data-has-content="true"] {
     top: 4px;
-    font-size: 12px;
     padding: 0 4px;
 }
 

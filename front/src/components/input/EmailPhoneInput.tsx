@@ -69,17 +69,11 @@ const EmailPhoneInput: React.FC<Props> = ({
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const detectedType = detectInputType(value);
-    const isValidInput = validateInput(value, detectedType);
 
     setInputValue(value);
     setCurrentType(detectedType);
-    setIsValid(isValidInput);
 
-    if (isValidInput) {
-      onChange({ type: detectedType, value });
-    }
-
-    onValid?.(isValidInput);
+    onChange({ type: detectedType, value });
   }, [detectInputType, onChange, onValid, validateInput]);
 
   // Обработчик потери фокуса
@@ -122,7 +116,7 @@ const EmailPhoneInput: React.FC<Props> = ({
         </label>
       )}
       {!isValid && invalidText && (
-        <div className={s.errorMessage}>
+        <div className={s.errorMessage} style={{ color: "red" }}>
           {invalidText}
         </div>
       )}

@@ -1,9 +1,6 @@
 import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import SendForm from "src/modules/sendForm/SendForm"
-import { getCartData } from 'src/providers/shopProvider'
 import { useParams } from 'react-router-dom';
-import s from "./style.module.css"
-import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
+import { getOrderDataByHash } from 'src/providers/orderProvider';
 import BuyMerchField from 'src/modules/buyMerchField/BuyMerchField'
 import DataField from 'src/components/dataField/DataField';
 
@@ -17,7 +14,7 @@ const FinalPage: React.FC = () => {
     let { hash } = useParams<urlParamsType>();
     let [snickers,setSnickers] = useState<any>([])
     useEffect(() => {
-        getCartData(hash,setSnickers)
+        getOrderDataByHash(hash,setSnickers)
     }, [])
     return (
         <div style={{ display: "flex" }}>

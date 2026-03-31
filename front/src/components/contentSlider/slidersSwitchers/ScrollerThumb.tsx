@@ -21,7 +21,7 @@ const ScrollerThumb: React.FC<ScrollerThumbProps> = ({
     const thumbRef = useRef<HTMLDivElement>(null);
     const lastMousePosRef = useRef(0);
     const thumbTravelSpaceRef = useRef(0);
-    const isDraggingRef = useRef(false); // Добавляем ref для отслеживания
+    const isDraggingRef = useRef(false);
 
     // Обновление размеров и позиции thumb
     useEffect(() => {
@@ -45,7 +45,7 @@ const ScrollerThumb: React.FC<ScrollerThumbProps> = ({
     }, [kSize, kPos]);
 
     const handleMove = useCallback((e: MouseEvent) => {
-        if (! isDraggingRef.current || !thumbWrapperRef.current) return;
+        if (!isDraggingRef.current || !thumbWrapperRef.current) return;
 
         const wrapper = thumbWrapperRef.current;
         const deltaPixels = e.clientX - lastMousePosRef.current;
@@ -62,13 +62,13 @@ const ScrollerThumb: React.FC<ScrollerThumbProps> = ({
         setThumbPos(newThumbPos);
         callback(proportion, true);
 
-    }, [ thumbSize, thumbPos, callback]);
+    }, [thumbSize, thumbPos, callback]);
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
        
-        isDraggingRef.current = true; // Устанавливаем флаг
+        isDraggingRef.current = true;
         lastMousePosRef.current = e.clientX;
 
         document.addEventListener('mousemove', handleMove);
@@ -81,6 +81,42 @@ const ScrollerThumb: React.FC<ScrollerThumbProps> = ({
         isDraggingRef.current = false; // Сбрасываем флаг
         document.removeEventListener('mousemove', handleMove);
     }, [handleMove]);
+
+    // Добавляем touch обработчики
+    const handleTouchMove = useCallback((e: TouchEvent) => {
+        if (!isDraggingRef.current || !thumbWrapperRef.current) return;
+
+        const wrapper = thumbWrapperRef.current;
+        const deltaPixels = e.touches[0].clientX - lastMousePosRef.current;
+        const currentThumbPos = thumbPos + deltaPixels;
+        const thumbTravelSpace = wrapper.clientWidth - thumbSize;
+
+        lastMousePosRef.current = e.touches[0].clientX;
+
+        if (thumbTravelSpace <= 0) return;
+
+        const newThumbPos = Math.max(0, Math.min(currentThumbPos, thumbTravelSpace));
+        const proportion = newThumbPos / thumbTravelSpace;
+        
+        setThumbPos(newThumbPos);
+        callback(proportion, true);
+    }, [thumbSize, thumbPos, callback]);
+
+    const handleTouchStart = useCallback((e: React.TouchEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+       
+        isDraggingRef.current = true;
+        lastMousePosRef.current = e.touches[0].clientX;
+
+        document.addEventListener('touchmove', handleTouchMove);
+        document.addEventListener('touchend', handleTouchEnd, { once: true });
+    }, [handleTouchMove]);
+
+    const handleTouchEnd = useCallback(() => {
+        isDraggingRef.current = false;
+        document.removeEventListener('touchmove', handleTouchMove);
+    }, [handleTouchMove]);
 
     const handleWheel = useCallback((e: React.WheelEvent) => {
         e.stopPropagation();
@@ -159,6 +195,7 @@ const ScrollerThumb: React.FC<ScrollerThumbProps> = ({
                 ref={thumbRef}
                 style={thumbStyle}
                 onMouseDown={handleMouseDown}
+                onTouchStart={handleTouchStart}
             />
         </div>
     );

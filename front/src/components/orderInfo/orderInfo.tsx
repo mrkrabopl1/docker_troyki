@@ -41,7 +41,7 @@ const OrderInfo: React.FC<propsLampType> = (props) => {
         let entries = [
             ["Электронный адресс",orderData.mail],
             ["Аддресс доставки", createString(address.street, address.home, address.town)],
-            ["Способо оплаты",`Оплата банковской картой${orderData.price}`],
+            ["Способо оплаты",`Оплата банковской картой`],
             ["Способо доставки",orderData.orderId]
         ]
         if(orderData.index){

@@ -75,7 +75,7 @@ func (maker *PasetoMaker) CreatePasetoCookie(userid int32, identifier string, du
 		Expires:  expirationTime,
 		Path:     "/",
 		MaxAge:   int(duration.Seconds()),
-		HttpOnly: true,                 // Рекомендуется true для безопасности
+		HttpOnly: false,                // Рекомендуется true для безопасности
 		Secure:   false,                // В production должно быть true (HTTPS)
 		SameSite: http.SameSiteLaxMode, // Важно для кросс-доменных запросов
 		Domain:   "",                   // Пустой domain означает текущий домен
@@ -93,7 +93,7 @@ func (maker *PasetoMaker) CreateCookie(token string, identifier string, duration
 		Expires:  expirationTime,
 		Path:     "/",
 		MaxAge:   int(duration.Seconds()),
-		HttpOnly: true,                 // Рекомендуется true для безопасности
+		HttpOnly: false,                // Рекомендуется true для безопасности
 		Secure:   false,                // В production должно быть true (HTTPS)
 		SameSite: http.SameSiteLaxMode, // Важно для кросс-доменных запросов
 		Domain:   "",                   // Пустой domain означает текущий домен
