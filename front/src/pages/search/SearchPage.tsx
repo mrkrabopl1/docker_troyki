@@ -4,10 +4,9 @@ import SearchWithList from 'src/modules/searchWithList/SearchWithList'
 import ProductsFilters from "src/modules/settingsPanels/ProductsFilters"
 import Button from 'src/components/Button'
 import MerchSliderField from 'src/modules/merchField/MerchFieldWithPageSwitcher'
-import s from "./style.module.css"
+import s from "./style1.module.css"
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
 import { getProductsAndFiltersByCategoryAndType, getProductsAndFiltersByString, getProductsByString, getProductsByCategoriesAndFilters } from "src/providers/searchProvider"
-import { categories, show, sticky, types } from 'src/store/reducers/menuSlice'
 import { ReactComponent as FoureGrid } from '/public/foureGrid.svg'
 import { ReactComponent as SixGrid } from '/public/sixGrid.svg'
 import { useLocation } from 'react-router-dom'
@@ -15,7 +14,7 @@ import RadioGroup from 'src/components/radio/RadioGroup'
 import { useSearchParams } from 'react-router-dom';
 import { ReactComponent as Filter } from '/public/filter.svg'
 import { set } from 'ol/transform';
-
+import Combobox from 'src/components/combobox/Combobox';
 
 interface FiltersInfoRequest {
   sizes: string[]
@@ -50,7 +49,7 @@ interface FiltersState {
 const SearchPage: React.FC = () => {
   const dispatch = useAppDispatch()
   const [searchParams, setSearchParams] = useSearchParams();
-  const { show, sticky, typesVal, categories } = useAppSelector(state => state.menuReducer);
+  const {  typesVal, categories } = useAppSelector(state => state.menuReducer);
   // Refs для хранения изменяемых данных без перерисовки
   const filtersInfo = useRef<FiltersInfoRequest>({
     sizes: [],
@@ -83,6 +82,7 @@ const SearchPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false)
   const [showGrid, setShowGrid] = useState(true)
 
+  const { widthProps } = useAppSelector(state => state.resizeReducer);
   const [filtersState, setFilters] = useState<FiltersState>({
     priceProps: { max: 0, min: 0 },
     checboxsProps: [],
@@ -337,8 +337,9 @@ const SearchPage: React.FC = () => {
       window.removeEventListener('resize', handleResize);
     };
   }, []);
+
   useEffect(() => {
-    if (Object.entries(typesVal).length === 0) {
+    if (Object.entries(typesVal).length === 0 || Object.entries(categories).length === 0) {
       return;
     }
     if (pageWrap.current && pageWrap.current.clientWidth < 600) {
@@ -349,6 +350,9 @@ const SearchPage: React.FC = () => {
     // Этот эффект сработает при каждом изменении query параметров
     filtersInfo.current.sizes = [];
     filtersInfo.current.firms = [];
+    filtersInfo.current.types = [];
+    typeRef.current = 0;
+    categoryRef.current = 0;
     currentPage.current = 1;
     const category = searchParams.get('category') || "";
     let categoryId;
@@ -379,13 +383,17 @@ const SearchPage: React.FC = () => {
     }
 
 
-    const name = searchParams.get('name') || "";
+    const name = searchParams.get('key_word') || "";
     filtersInfo.current.discount = Boolean(searchParams.get('discount') || "");
-    categoryRef.current = categoryId
-    typeRef.current = typeId
+    if (categoryId) {
+      categoryRef.current = categoryId
+    }
+    if (typeId) {
+      typeRef.current = typeId
+    }
     searchWord.current = name
     searchData()
-  }, [searchParams, typesVal]);
+  }, [searchParams, typesVal, categories]);
 
 
   const searchData = useCallback(() => {
@@ -395,7 +403,8 @@ const SearchPage: React.FC = () => {
         updatePage,
         currentPage.current,
         pageSize.current,
-        filtersInfo.current,
+        categoryRef.current,
+        typeRef.current,
         orderType.current
       )
     } else {
@@ -412,27 +421,170 @@ const SearchPage: React.FC = () => {
     }
   }, [getProductsAndFiltersByString, getProductsAndFiltersByCategoryAndType])
 
-  const styleData = {
-    // main: s.main,
-    // dropList: s.drop_list,
-    // search:s.search,
-    // input:s.input
-  }
 
   const handleMouseEnter = useCallback(() => setHoverSettings(true), []);
   const handleMouseLeave = useCallback(() => setHoverSettings(false), []);
 
+
+  const [showSortPanel, setShowSortPanel] = useState(false) // для сортировки
+  const [showFiltersPanel, setShowFiltersPanel] = useState(false) // для фильтров
+  useEffect(() => {
+    if (showSortPanel || showFiltersPanel) {
+      document.body.classList.add('modalOpen')
+    } else {
+      document.body.classList.remove('modalOpen')
+    }
+
+    return () => {
+      document.body.classList.remove('modalOpen')
+    }
+  }, [showSortPanel, showFiltersPanel])
+  const rightBlockRef = useRef<HTMLDivElement>(null);
+  const [isSticky, setIsSticky] = useState(false);
+  const [stickyTop, setStickyTop] = useState(20);
+  const stickyTopRef = useRef(20);
+
+  useEffect(() => {
+    let rafId: number | null = null;
+    let lastScrollY = window.scrollY;
+
+    const handleScroll = () => {
+      if (rafId) return;
+
+      rafId = requestAnimationFrame(() => {
+        if (!rightBlockRef.current) return;
+        const rightRect = rightBlockRef?.current.getBoundingClientRect();
+        const windowHeight = window.innerHeight;
+        const blockHeight = rightRect.height;
+        const minTopOffset = 120;
+        const startTopOffset = 20;
+
+        const currentScrollY = window.scrollY;
+        const delta = currentScrollY - lastScrollY;
+        lastScrollY = currentScrollY;
+
+        // Проверяем, нужно ли вообще обновлять
+        const shouldBeSticky = rightRect.top <= minTopOffset;
+
+        if (blockHeight <= windowHeight - minTopOffset) {
+          // Короткий блок
+          setIsSticky(shouldBeSticky);
+          if (shouldBeSticky) {
+            // Для короткого блока фиксируем top = minTopOffset
+            const newTop = minTopOffset;
+            if (delta < 0) {
+                if (stickyTopRef.current !== newTop) {
+                  stickyTopRef.current = newTop;
+                  setStickyTop(newTop);
+                }
+              } else {
+                if (stickyTopRef.current !== 0) {
+                  stickyTopRef.current = 0;
+                  setStickyTop(0);
+                }
+              }
+          }
+        } else {
+          // Длинный блок
+          if (isSticky) {
+            // Уже в режиме sticky - двигаем с ограничениями
+            let newTop = stickyTopRef.current - delta;
+            const maxTop = 120;
+            const minTop = windowHeight - blockHeight;
+            newTop = Math.max(minTop, Math.min(maxTop, newTop));
+
+            // Обновляем только если значение реально изменилось
+            if (Math.abs(stickyTopRef.current - newTop) > 0.5) {
+              stickyTopRef.current = newTop;
+              setStickyTop(newTop);
+            }
+          } else {
+            // Вход в sticky
+            if ((delta < 0 && rightRect.top <= minTopOffset) ||
+              (delta > 0 && rightRect.bottom <= windowHeight)) {
+              setIsSticky(true);
+              const initialTop = Math.max(
+                windowHeight - blockHeight,
+                Math.min(120, rightRect.top)
+              );
+              stickyTopRef.current = initialTop;
+              setStickyTop(initialTop);
+            }
+          }
+        }
+
+        rafId = null;
+      });
+    };
+
+    const resizeObserver = new ResizeObserver(() => {
+      // Используем debounce для ResizeObserver
+      setTimeout(() => handleScroll(), 0);
+    });
+
+    resizeObserver.observe(rightBlockRef.current);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [isSticky]);
+
   return (
     <div ref={pageWrap}>
-      <div style={{ position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "relative" }}>
         <div className={s.head}>Результаты поиска.</div>
-        <div style={{ display: 'flex', justifyContent: "center", width: "100%", marginBottom: "20px" }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: "space-between",
+          alignItems: "center",
+          width: "100%",
+          marginBottom: "20px",
+          gap: "10px"
+        }}>
+          <div style={{ margin: "auto", width: "30%", padding: "5px" }}>
+            {/* {showGrid ? <div onClick={() => setGrid(!grid)} className={s.gridSwitcher}>
+            {grid ? <FoureGrid /> : <SixGrid />}
+          </div> : <div style={{ width: "30%" }} />}  */}
+
+            {widthProps ? <Filter style={{
+              color: hoverSettings ? 'white' : 'black',
+              fill: hoverSettings ? 'white' : 'white',
+              stroke: hoverSettings ? 'white' : 'black'
+            }}
+              type="button"
+              onClick={() => setShowSortPanel(true)}
+              className={s.settingsBtn}
+            /> : <Combobox
+              enumProp={true}
+              onChangeIndex={orderTypeChange}
+              data={[
+                "Без сортировки",
+                "По имени вверх",
+                "По имени вниз",
+                "По возрастанию цены",
+                "По убыванию цены"
+              ]}
+            />}
+          </div>
+
           <SearchWithList
             val={searchWord.current}
-            className={styleData}
             searchCallback={searchNameCallback}
             selectList={(data) => { navigate('/product/' + data); }}
+          // style={{ flex: 1, maxWidth: "300px", margin: "0 auto" }} // Центрирование поиска
           />
+          {widthProps ? <div style={{ margin: "auto", width: "30%" }}>
+            <Button
+              className={s.filterBtn}
+              text={''}
+              onClick={() => setShowFiltersPanel(true)}
+            />
+          </div> : <div style={{ margin: "auto", width: "30%" }} />}
+
         </div>
 
         {!emptyData.current ? <div className={s.settings_filters_holder}>
@@ -440,25 +592,6 @@ const SearchPage: React.FC = () => {
             style={showSettings ? { right: "0" } : {}}
             className={s.settings_holder}
           >
-
-
-            <Filter style={{
-              color: hoverSettings ? 'white' : 'black',
-              fill: hoverSettings ? 'white' : 'white',
-              stroke: hoverSettings ? 'white' : 'black'
-            }}
-              type="button"
-              onClick={() => setShowSettings(!showSettings)}
-              className={s.settingsBtn}
-            />
-
-
-            <ProductsFilters
-              classNames={{ secondPage: s.secondPage }}
-              memo={settingsModuleMemo.current}
-              onChange={onFiltersChange}
-              {...filtersState}
-            />
           </div>
 
           <div
@@ -478,11 +611,6 @@ const SearchPage: React.FC = () => {
                 ]}
               />
             </div>
-            <Button
-              className={s.filterBtn}
-              text={''}
-              onClick={() => setShowFilters(!showFilters)}
-            />
           </div>
         </div> : null}
 
@@ -492,7 +620,8 @@ const SearchPage: React.FC = () => {
             <span onClick={resetFilters}></span>
           </div>
         ) : (
-          <div style={{ position: "relative", overflow: "hidden" }}>
+
+          <div style={{ position: "relative", display: "flex", alignItems: "flex-start" }}>
             <MerchSliderField
               onChange={pageChange}
               currentPage={currentPage.current}
@@ -501,15 +630,72 @@ const SearchPage: React.FC = () => {
               size={grid ? 2 : 3}
               data={merchFieldData}
             />
+            {widthProps ? null : <div
+              ref={rightBlockRef}
+              style={{
+                width: "25%",
+                position: isSticky ? "sticky" : "relative",
+                top: isSticky ? `${stickyTop}px` : "0px",
+                height: "fit-content",
+                alignSelf: "flex-start",
+                transition: "none"
+              }}
+            >
 
-            {showGrid ? <div onClick={() => setGrid(!grid)} className={s.gridSwitcher}>
-              {grid ? <FoureGrid /> : <SixGrid />}
-            </div> : null}
 
+              <ProductsFilters
+                classNames={{ secondPage: s.secondPage }}
+                memo={settingsModuleMemo.current}
+                onChange={onFiltersChange}
+                {...filtersState}
+              />
+            </div>}
 
           </div>
         )}
       </div>
+      {showSortPanel && (
+        <div className={s.modalOverlay} onClick={() => setShowSortPanel(false)}>
+          <div className={s.modalPanelLeft} onClick={e => e.stopPropagation()}>
+            <div className={s.modalHeader}>
+              <h3>Сортировка</h3>
+              <button onClick={() => setShowSortPanel(false)}>✕</button>
+            </div>
+            <RadioGroup
+              onChange={(ind) => {
+                orderTypeChange(ind)
+                setShowSortPanel(false)
+              }}
+              name={"ordered"}
+              lampArray={[
+                "Без сортировки",
+                "По имени вверх",
+                "По имени вниз",
+                "По возрастанию цены",
+                "По убыванию цены"
+              ]}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно фильтров */}
+      {showFiltersPanel && (
+        <div className={s.modalOverlay} onClick={() => setShowFiltersPanel(false)}>
+          <div className={s.modalPanelRight} onClick={e => e.stopPropagation()}>
+            <div className={s.modalHeader}>
+              <h3>Фильтры</h3>
+              <button onClick={() => setShowFiltersPanel(false)}>✕</button>
+            </div>
+            <ProductsFilters
+              classNames={{ secondPage: s.secondPage }}
+              memo={settingsModuleMemo.current}
+              onChange={onFiltersChange}
+              {...filtersState}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

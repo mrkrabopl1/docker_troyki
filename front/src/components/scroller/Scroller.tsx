@@ -5,9 +5,10 @@ type ScrollType = {
     className?: string;
     children: React.ReactNode;
     onlyVertical?: boolean;
+    maxHeight?: number;
 };
 
-const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical = false }) => {
+const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical = false,  maxHeight }) => {
     const [contTop, setContTop] = useState(0);
     const [contLeft, setContLeft] = useState(0);
     const [hasHorizontalScroll, setHasHorizontalScroll] = useState(false);
@@ -137,8 +138,8 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         if (!scroller) return;
 
         const handleTouchStart = (e: TouchEvent) => {
-            e.preventDefault();
-            e.stopPropagation();
+           
+            
             
             isTouchingRef.current = true;
             touchDirectionRef.current = null;
@@ -175,8 +176,8 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         };
 
         const handleTouchEnd = (e: TouchEvent) => {
-            e.preventDefault();
-            e.stopPropagation();
+            // e.preventDefault();
+            // e.stopPropagation();
             
             isTouchingRef.current = false;
             touchDirectionRef.current = null;
@@ -220,14 +221,15 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
     const scrollerStyle: CSSProperties = {
         position: "relative",
         width: "100%",
-        height: "100%",
+        height: maxHeight ? "auto" : "100%",
+        maxHeight:  maxHeight ? `${maxHeight}px` : undefined,
         overflow: "hidden",
         touchAction: "none",
         WebkitOverflowScrolling: "touch",
     };
 
     const contentStyle: CSSProperties = {
-        position: "absolute",
+       position:maxHeight ? "relative" : "absolute",
         top: `${contTop}px`,
         left: `${contLeft}px`,
         width: onlyVertical ? "100%" : "auto",

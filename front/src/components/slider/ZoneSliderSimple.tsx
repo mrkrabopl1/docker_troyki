@@ -27,24 +27,22 @@ const ZoneSliderSimple: React.FC<ZoneSliderSetterType> = ({ min, max, onChange }
     sliderLeftData.current = min
     let sliderRightData = useRef<number>(0)
     sliderRightData.current = max
-
+    let [sliderPositionLeft, setSliderPositionLeft] = useState(0)
+    let [sliderPositionRight, setSliderPositionRight] = useState(1)
     useEffect(() => {
         if (wrappRef.current) {
             if (sliderRefLeft.current && min >= 0 && min <= 1) {
                 setSliderPositionLeft(Math.max((wrappRef.current.clientWidth - sliderRefLeft.current.clientWidth) * min, 0))
             }
             if (sliderRefRight.current && max >= 0 && max <= 1) {
-                console.debug(wrappRef.current.clientWidth * max - sliderRefRight.current.clientWidth)
+                console.debug("update slider right", (Math.max((wrappRef.current.clientWidth - sliderRefRight.current.clientWidth) * max, 0)))
                 setSliderPositionRight((Math.max((wrappRef.current.clientWidth - sliderRefRight.current.clientWidth) * max, 0)))
 
             }
         }
 
     }, [min, max])
-
-    let [sliderPositionLeft, setSliderPositionLeft] = useState(0)
-    let [sliderPositionRight, setSliderPositionRight] = useState(1)
-
+    console.debug("Component render", { min, max, sliderPositionRight })
 
     let sliderStyleLeft: any = {
         position: "absolute",
@@ -64,7 +62,7 @@ const ZoneSliderSimple: React.FC<ZoneSliderSetterType> = ({ min, max, onChange }
 
     const handleMouseMove = useCallback((e) => {
         e.preventDefault();
-        console.log(e.clientX)
+        console.debug(sliderPositionRight, "dsjadashdkasj")
         let pos = Math.max(e.clientX, 0)
         if (wrappRef.current) {
             if (activeLeft.current && sliderRefLeft.current) {
@@ -81,7 +79,7 @@ const ZoneSliderSimple: React.FC<ZoneSliderSetterType> = ({ min, max, onChange }
             if (activeRight.current && sliderRefLeft.current) {
                 let left = wrappRef.current.getBoundingClientRect().left
                 console.debug(left, wrappRef.current.getBoundingClientRect().left)
-                let rightPos = Math.max(Math.min((pos - left - sliderRefLeft.current.clientWidth / 2), wrappRef.current.clientWidth - sliderRefLeft.current.clientWidth), 0)
+                let rightPos = Math.max(Math.min((pos - left - sliderRefRight.current.clientWidth / 2), wrappRef.current.clientWidth - sliderRefRight.current.clientWidth), 0)
                 setSliderPositionRight(rightPos)
                 sliderRightData.current = (rightPos) / (wrappRef.current.clientWidth - sliderRefLeft.current.clientWidth);
                 if (rightPos <= sliderPositionLeft) {
@@ -93,7 +91,7 @@ const ZoneSliderSimple: React.FC<ZoneSliderSetterType> = ({ min, max, onChange }
             }
 
         }
-    },[onChange,min,max])
+    }, [onChange, min, max, sliderPositionRight])
     const mouseDownLeft = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
         activeLeft.current = true
@@ -101,10 +99,10 @@ const ZoneSliderSimple: React.FC<ZoneSliderSetterType> = ({ min, max, onChange }
             activeLeft.current = false;
             document.removeEventListener("mousemove", handleMouseMove)
         }, { once: true })
-         document.addEventListener("mousemove", handleMouseMove);
-    }, [min,max,onChange])
+        document.addEventListener("mousemove", handleMouseMove);
+    }, [min, max, onChange, sliderPositionRight])
 
-      const mouseDownRight = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const mouseDownRight = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
         activeRight.current = true
         document.addEventListener("mouseup", () => {
@@ -112,12 +110,12 @@ const ZoneSliderSimple: React.FC<ZoneSliderSetterType> = ({ min, max, onChange }
             document.removeEventListener("mousemove", handleMouseMove)
         }, { once: true })
         document.addEventListener("mousemove", handleMouseMove);
-    }, [min,max,onChange])
+    }, [min, max, onChange, sliderPositionRight])
 
 
     return (
         <div
-         style={styleWrapper} ref={wrappRef}>
+            style={styleWrapper} ref={wrappRef}>
             <div className={s.sliderLine} style={
                 {
                     position: "absolute",
@@ -130,9 +128,8 @@ const ZoneSliderSimple: React.FC<ZoneSliderSetterType> = ({ min, max, onChange }
         </div>
     )
 }
-function arePropsEqual(oldProps: any, newProps: any) {
-
-    return (oldProps.memo == newProps.memo)
+function arePropsEqual(oldProps, newProps) {
+    return oldProps.min === newProps.min && oldProps.max === newProps.max && oldProps.memo === newProps.memo;
 }
 
 export default memo(ZoneSliderSimple)

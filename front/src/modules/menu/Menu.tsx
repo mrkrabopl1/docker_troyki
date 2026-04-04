@@ -5,11 +5,11 @@ import { searchSlice } from 'src/store/reducers/searchSlice';
 import { setGlobalScroller } from 'src/global';
 import BuyButton from "./BuyButton";
 import Burger from 'src/components/burger/Burger';
-import SearchWithList from '../searchWithList/SearchWithList';
+import SearchWithList from 'src/modules/searchWithList/SearchWithList';
 import Modal from 'src/components/modal/Modal';
 import { ReactComponent as Loupe } from "/public/loupe.svg";
 import s from "./style.module.css";
-import ss from "../../pages/search/style.module.css";
+import ss from "src/pages/search/style.module.css";
 import logo from "/public/troyki_logo.svg";
 import global from 'src/global.css';
 import ComplexDropVertical from 'src/components/complexDrop/ComplexDropVertical';
@@ -45,7 +45,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
 
     const searchCallback = useCallback((text: string) => {
         turnActive(false);
-        navigate(`/search?name=${text}`);
+        navigate(`/search?key_word=${text}`);
     }, [navigate, turnActive]);
 
     const selectListHandler = useCallback((id: number) => {
@@ -177,6 +177,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                     />
                 </div>
             </Modal>
+            
             <Modal onChange={setActiveAlphabet} active={activeAlphabet}>
                 <div style={{ height: "100%" }} onClick={(e) => e.stopPropagation()} className={s.modalWrap1}>
                     <AlphabetNavigation

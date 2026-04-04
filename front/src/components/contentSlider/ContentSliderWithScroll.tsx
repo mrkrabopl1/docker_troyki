@@ -152,6 +152,9 @@ const ContentSliderWithScroll: React.FC<ContentSliderProps> = ({ content, classN
         wheelDelta: 0.03
     }), [sliderState.currentStep, sliderState.totalSteps, handleStepChange]);
 
+    // Check if scroller thumb should be visible
+    const isScrollerVisible = sliderState.totalSteps > 1;
+
     return (
         <div 
             onClick={e=>e.stopPropagation()} 
@@ -161,9 +164,11 @@ const ContentSliderWithScroll: React.FC<ContentSliderProps> = ({ content, classN
             onTouchStart={handleTouchStart}
         >
            <ContentSliderWithoutSteps {...contentSliderProps} />
-           <div onClick={e=>e.stopPropagation()} onMouseDown={e=>e.stopPropagation()} style={{ paddingTop: "10px", position: "relative", margin: "0 auto" }}>
-              <ScrollerThumb {...scrollThumbProps} />
-           </div>
+           {isScrollerVisible && (
+               <div onClick={e=>e.stopPropagation()} onMouseDown={e=>e.stopPropagation()} style={{ paddingTop: "10px", position: "relative", margin: "0 auto" }}>
+                  <ScrollerThumb {...scrollThumbProps} />
+               </div>
+           )}
         </div>
     );
 };

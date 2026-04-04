@@ -1,6 +1,7 @@
 import React, { memo, useCallback } from 'react';
 import DoubleInfoDrop from 'src/components/doubleInfoDrop/DoubleInfoDrop';
 import CheckBoxColumn from 'src/components/checkBoxForm/CheckBoxForm';
+import SearchableCheckboxColumn from 'src/modules/columnWithSerch/SearchableCheckboxColumn';
 import Scroller from 'src/components/scroller/Scroller';
 import ZoneSliderValueSetter from 'src/modules/sliderValueSetter/ZoneSliderValueSetter';
 import s from './style.module.css';
@@ -57,9 +58,9 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
         checkboxProps.props.length > 0 &&
         <div style={{ padding: "5px" }} key={checkboxProps.id}>
             <DoubleInfoDrop key={checkboxProps.name} info={checkboxProps.name}>
-                <div style={{ height: "200px" }}>
-                    <Scroller>
-                        <CheckBoxColumn
+                <div style={{ maxHeight: "200px" }}>
+                    <Scroller maxHeight={200}>
+                        <SearchableCheckboxColumn
                             onChange={(data) => handleCheckboxChange(checkboxProps.id, data)}
                             data={checkboxProps.props}
                         />

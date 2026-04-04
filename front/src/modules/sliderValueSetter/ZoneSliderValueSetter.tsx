@@ -11,12 +11,12 @@ interface ZoneSliderSetterProps {
     onChange?: (value: [number, number]) => void;
 }
 
-const ZoneSliderValueSetter: React.FC<ZoneSliderSetterProps> = ({ 
-    onChange, 
-    max, 
-    min, 
-    dataRight = Infinity, 
-    dataLeft = -Infinity 
+const ZoneSliderValueSetter: React.FC<ZoneSliderSetterProps> = ({
+    onChange,
+    max,
+    min,
+    dataRight = Infinity,
+    dataLeft = -Infinity
 }) => {
     const [values, setValues] = useState<[number, number]>([
         dataLeft >= min && dataLeft <= max ? dataLeft : min,
@@ -36,13 +36,13 @@ const ZoneSliderValueSetter: React.FC<ZoneSliderSetterProps> = ({
     const handleSliderChange = useCallback((sliderMin: number, sliderMax: number) => {
         const newLeft = min + (max - min) * sliderMin;
         const newRight = min + (max - min) * sliderMax;
-        
+
         setValues([newLeft, newRight]);
-        
+
         if (throttlingTimerId.current) {
             clearTimeout(throttlingTimerId.current);
         }
-        
+
         throttlingTimerId.current = setTimeout(() => {
             onChange?.([newLeft, newRight]);
         }, 500);
@@ -55,12 +55,21 @@ const ZoneSliderValueSetter: React.FC<ZoneSliderSetterProps> = ({
             setValues(newValues);
             onChange?.(newValues);
         }
+        else if (value > values[1] && value <= max) {
+            const newValues: [number, number] = [value, value];
+            setValues(newValues);
+            onChange?.(newValues);
+        }
     }, [min, values, onChange]);
 
     // Handle right input change
     const handleRightChange = useCallback((value: number) => {
         if (value <= max && value >= values[0]) {
             const newValues: [number, number] = [values[0], value];
+            setValues(newValues);
+            onChange?.(newValues);
+        } else if (value < values[0] && value >= min) {
+            const newValues: [number, number] = [value, value];
             setValues(newValues);
             onChange?.(newValues);
         }
@@ -76,23 +85,23 @@ const ZoneSliderValueSetter: React.FC<ZoneSliderSetterProps> = ({
     }, []);
 
     return (
-        <div style={{padding:"5px"}}>
-            <ZoneSliderSimple 
-                onChange={handleSliderChange} 
-                min={(values[0] - min) / (max - min)} 
-                max={(values[1] - min) / (max - min)} 
+        <div style={{ padding: "5px" }}>
+            <ZoneSliderSimple
+                onChange={handleSliderChange}
+                min={(values[0] - min) / (max - min)}
+                max={(values[1] - min) / (max - min)}
             />
             <div className={s.inputContainer}>
-                <NumInput 
-                    className={s.numInput} 
-                    value={values[0]} 
-                    onChange={handleLeftChange} 
+                <NumInput
+                    className={s.numInput}
+                    value={values[0]}
+                    onChange={handleLeftChange}
                 />
                 <span>-</span>
-                <NumInput 
-                    className={s.numInput} 
-                    value={values[1]} 
-                    onChange={handleRightChange} 
+                <NumInput
+                    className={s.numInput}
+                    value={values[1]}
+                    onChange={handleRightChange}
                 />
             </div>
         </div>

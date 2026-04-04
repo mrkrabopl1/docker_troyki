@@ -380,7 +380,8 @@ const SearchPage: React.FC = () => {
         updatePage,
         currentPage.current,
         pageSize.current,
-        filtersInfo.current,
+        categoryRef.current,
+        typeRef.current,
         orderType.current
       )
     } else {

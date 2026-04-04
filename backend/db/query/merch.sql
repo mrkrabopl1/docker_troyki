@@ -322,6 +322,7 @@ SELECT sizes,
     description,
     line,
     type,
+    category,
     date,
     firm,
     image_count
@@ -439,6 +440,7 @@ SELECT
 FROM product_categories pc
 LEFT JOIN product_types pt ON pc.id = pt.category_id
 ORDER BY pc.name, pt.type_name;
+
 -- name: GetProductsByFilters :many
 SELECT 
     p.id,
@@ -460,7 +462,13 @@ WHERE
         WHERE size_key = ANY(@sizes::text[])
         AND (p.sizes -> size_key ->> 'price')::numeric > 0
     ))
-     AND(@name::text IS NULL OR @name::text = '' OR p.name ILIKE '%' || @name::text || '%')
+    -- Поиск по имени ИЛИ артикулу
+    AND (
+        @name::text IS NULL 
+        OR @name::text = '' 
+        OR p.name ILIKE '%' || @name::text || '%'
+        OR p.article ILIKE '%' || @name::text || '%'
+    )
     -- Простые условия для массивов
     AND (COALESCE(array_length(@categories::int[], 1), 0) = 0 OR p.category = ANY(@categories::int[]))
     AND (COALESCE(array_length(@product_types::int[], 1), 0) = 0 OR p.type = ANY(@product_types::int[]))

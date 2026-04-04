@@ -928,7 +928,13 @@ WHERE
         WHERE size_key = ANY($1::text[])
         AND (p.sizes -> size_key ->> 'price')::numeric > 0
     ))
-     AND($2::text IS NULL OR $2::text = '' OR p.name ILIKE '%' || $2::text || '%')
+    -- Поиск по имени ИЛИ артикулу
+    AND (
+        $2::text IS NULL 
+        OR $2::text = '' 
+        OR p.name ILIKE '%' || $2::text || '%'
+        OR p.article ILIKE '%' || $2::text || '%'
+    )
     -- Простые условия для массивов
     AND (COALESCE(array_length($3::int[], 1), 0) = 0 OR p.category = ANY($3::int[]))
     AND (COALESCE(array_length($4::int[], 1), 0) = 0 OR p.type = ANY($4::int[]))
@@ -1350,6 +1356,7 @@ SELECT sizes,
     description,
     line,
     type,
+    category,
     date,
     firm,
     image_count
@@ -1371,6 +1378,7 @@ type GetProductsInfoByIdRow struct {
 	Description pgtype.Text `json:"description"`
 	Line        pgtype.Text `json:"line"`
 	Type        int32       `json:"type"`
+	Category    int32       `json:"category"`
 	Date        pgtype.Text `json:"date"`
 	Firm        string      `json:"firm"`
 	ImageCount  int32       `json:"image_count"`
@@ -1390,6 +1398,7 @@ func (q *Queries) GetProductsInfoById(ctx context.Context, id int32) (GetProduct
 		&i.Description,
 		&i.Line,
 		&i.Type,
+		&i.Category,
 		&i.Date,
 		&i.Firm,
 		&i.ImageCount,

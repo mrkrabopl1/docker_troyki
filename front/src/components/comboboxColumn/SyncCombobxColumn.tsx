@@ -9,7 +9,7 @@ type ColumnType = {
 }
 
 type TableType = {
-    [key: string]: ColumnType
+    [key: number]: ColumnType
 }
 
 const SyncComboboxColumn: React.FC<{ table: TableType }> = ({ table }) => {
@@ -18,11 +18,11 @@ const SyncComboboxColumn: React.FC<{ table: TableType }> = ({ table }) => {
         const tableValues = Object.values(table)
         return [
             tableValues.map(val => val.title),
-            Object.keys(table)
+            Object.keys(table).map(Number)
         ]
     }, [table])
 
-    const [chosenHeader, setChosenHeader] = useState<string>(indexes[0])
+    const [chosenHeader, setChosenHeader] = useState<number>(indexes[0])
     
     // Get current table data directly from props instead of separate state
     const currentTableData = table[chosenHeader]?.table || []

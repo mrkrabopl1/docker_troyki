@@ -4,9 +4,10 @@ interface ComboboxProps {
     enumProp?: boolean;
     data: string[];
     placeholder?: string;
-    onChangeIndex?: (index: string) => void;
+    onChangeIndex?: (index: number) => void;
     onChangeData?: (data: string) => void;
     className?: string;
+    width?: string | number;
 }
 
 const Combobox: React.FC<ComboboxProps> = memo(({
@@ -15,7 +16,8 @@ const Combobox: React.FC<ComboboxProps> = memo(({
     data,
     placeholder,
     onChangeIndex,
-    onChangeData
+    onChangeData,
+    width= '100%'
 }) => {
     const [active, setActive] = useState(false);
     const [currentValue, setCurrentValue] = useState(placeholder || data[0]);
@@ -39,7 +41,7 @@ const Combobox: React.FC<ComboboxProps> = memo(({
         setActive(false);
         
         if (enumProp) {
-            onChangeIndex?.(String(index));
+            onChangeIndex?.(index);
         } else {
             onChangeData?.(value);
         }
@@ -71,6 +73,7 @@ const Combobox: React.FC<ComboboxProps> = memo(({
     return (
         <div 
             ref={comboRef}
+            style={{ width: typeof width === 'number' ? `${width}px` : width}}
             className={`${s.combobox} ${className || ''} ${active ? s.active : ''}`}
         >
             <div 

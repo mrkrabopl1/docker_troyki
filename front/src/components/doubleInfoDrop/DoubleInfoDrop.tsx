@@ -48,14 +48,14 @@ const DoubleInfoDrop: React.FC<PropsRowType> = ({
         <div style={{ position: "relative" }} className={className.main || ""}>
             <div
                 onClick={toggleActive}
-                style={{ display: "flex", cursor: "pointer" }}
+                style={{ display: "flex", cursor: "pointer", position: "relative" }}
                 role="button"
                 aria-expanded={active}
             >
                 <p style={{ paddingRight: "15px" }} className={className.second}>
                     {info}
                 </p>
-                <div className={s.arrowMain}>
+                <div className={s.arrowMain} style={{margin:"auto", bottom:0,top:0}}>
                     <span className={arrowLeftClass}></span>
                     <span className={arrowRightClass}></span>
                 </div>

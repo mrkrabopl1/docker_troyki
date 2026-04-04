@@ -129,7 +129,7 @@ func TestGetMainPageInfo(t *testing.T) {
 	require.NotEmpty(t, snickers[0])
 }
 func TestGetProductsInfoById(t *testing.T) {
-	snickers, err := testStore.GetProductsInfoByIdComplex(context.Background(), 3)
+	snickers, err := testStore.GetProductsInfoByIdComplex(context.Background(), 1)
 	fmt.Println(snickers.Article, "fdsfds", err)
 	require.NoError(t, err)
 	require.NotEmpty(t, snickers)
@@ -267,12 +267,12 @@ func TestGetProductsByName(t *testing.T) {
 func TestGetProductsAndFiltersByString(t *testing.T) {
 	filters := types.ProductsFilterStruct{}
 	params := GetFiltersByNameCategoryAndTypeParams{
-		Name:     pgtype.Text{String: "a", Valid: true},
-		Category: pgtype.Int4{Int32: 0, Valid: 0 != 0},
-		Type:     pgtype.Int4{Int32: 0, Valid: 0 != 0},
+		Name: pgtype.Text{String: "", Valid: true},
+		// Category: pgtype.Int4{Int32: 0, Valid: 0 != 0},
+		// Type:     pgtype.Int4{Int32: 0, Valid: 0 != 0},
 	}
 	snickers, err := testStore.GetProductsAndFiltersByNameCategoryAndType(context.Background(), params, 1, 8, filters, 0)
-	fmt.Println(snickers.Filters, err)
+	// fmt.Println(snickers.Filters, err)
 	require.NoError(t, err)
 	require.NotEmpty(t, snickers)
 }

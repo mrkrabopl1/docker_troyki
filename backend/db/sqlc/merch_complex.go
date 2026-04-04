@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"reflect"
 
@@ -34,7 +35,8 @@ type ProductsInfoResponse struct {
 	Name         string                 `json:"name"`
 	Info         map[string]interface{} `json:"info"`
 	Discount     map[string]interface{} `json:"discount"`
-	ProductType  string                 `json:"producttype"`
+	ProductType  int32                  `json:"producttype"`
+	Category     int32                  `json:"category"`
 	Article      string                 `json:"article"`
 	Store        interface{}            `json:"store"`
 	Firm         string                 `json:"firm"`
@@ -133,6 +135,7 @@ func getDiscountValueInt32(maxDiscPrice int32) interface{} {
 
 func (store *SQLStore) GetProductsInfoByIdComplex(ctx context.Context, id int32) (ProductsInfoResponse, error) {
 	snickers, err := store.Queries.GetProductsInfoById(ctx, id)
+	fmt.Println(snickers, "test")
 	if err != nil {
 		return ProductsInfoResponse{}, err
 	}
@@ -197,6 +200,7 @@ func (store *SQLStore) buildProductsInfoResponse(snInfo GetProductsInfoByIdRow) 
 		json.Unmarshal(snInfo.Value, &discount)
 	}
 
+	fmt.Println(snInfo, "teaaaaaaaaaaast")
 	return ProductsInfoResponse{
 		Name:        snInfo.Name,
 		ImageCount:  snInfo.ImageCount,
@@ -204,7 +208,8 @@ func (store *SQLStore) buildProductsInfoResponse(snInfo GetProductsInfoByIdRow) 
 		Line:        snInfo.Line.String,
 		Info:        jsonData,
 		Discount:    discount,
-		ProductType: "snickers",
+		ProductType: snInfo.Type,
+		Category:    snInfo.Category,
 		Article:     snInfo.Article,
 		Store:       snInfo.StoreInfo,
 		ImagePath:   store.imagePathBuilder.GetProductImageBasePath(snInfo.ImagePath),
@@ -213,7 +218,7 @@ func (store *SQLStore) buildProductsInfoResponse(snInfo GetProductsInfoByIdRow) 
 }
 
 func (store *SQLStore) GetProductsByString(ctx context.Context, name string, page int, size int, filters types.ProductsFilterStruct, orderedType int) (RespSearchProductsByString, error) {
-	data, err := store.getProductsByFilters(ctx, filters, page, size, orderedType, false)
+	data, err := store.getProductsByFilters(ctx, GetFiltersByNameCategoryAndTypeParams{Name: pgtype.Text{String: name, Valid: true}}, filters, page, size, orderedType, false)
 	if err != nil {
 		return RespSearchProductsByString{}, err
 	}
@@ -225,7 +230,7 @@ func (store *SQLStore) GetProductsByString(ctx context.Context, name string, pag
 }
 
 func (store *SQLStore) GetProductsByFiltersComplex(ctx context.Context, name string, page int, size int, filters types.ProductsFilterStruct, orderedType int32) (RespProductsByStringStruct, error) {
-	data, err := store.getProductsByFilters(ctx, filters, page, size, int(orderedType), true)
+	data, err := store.getProductsByFilters(ctx, GetFiltersByNameCategoryAndTypeParams{Name: pgtype.Text{String: name, Valid: true}}, filters, page, size, int(orderedType), true)
 	if err != nil {
 		return RespProductsByStringStruct{}, err
 	}
@@ -237,7 +242,8 @@ func (store *SQLStore) GetProductsByFiltersComplex(ctx context.Context, name str
 }
 
 func (store *SQLStore) GetProductsAndFiltersByNameCategoryAndType(ctx context.Context, filtersParams GetFiltersByNameCategoryAndTypeParams, page int, size int, filters types.ProductsFilterStruct, orderedType int) (RespSearchProductsAndFiltersByString, error) {
-	data, err := store.getProductsByFilters(ctx, filters, page, size, orderedType, false)
+	fmt.Printf("%+v\n", filtersParams)
+	data, err := store.getProductsByFilters(ctx, filtersParams, filters, page, size, orderedType, false)
 	if err != nil {
 		return RespSearchProductsAndFiltersByString{}, err
 	}
@@ -247,9 +253,17 @@ func (store *SQLStore) GetProductsAndFiltersByNameCategoryAndType(ctx context.Co
 		return RespSearchProductsAndFiltersByString{}, err
 	}
 
+	// Проверяем, есть ли данные
+	var totalCount float64
+	if len(data) > 0 {
+		totalCount = float64(data[0].TotalCount)
+	} else {
+		totalCount = 0
+	}
+
 	return RespSearchProductsAndFiltersByString{
 		Products:   store.buildProductsResponseD(data),
-		TotalCount: float64(data[0].TotalCount),
+		TotalCount: totalCount,
 		Filters: FiltersSearchResponse{
 			Price:      [2]int32{filter.MinPrice.(int32), filter.MaxPrice.(int32)},
 			Sizes:      filter.Sizes,
@@ -260,7 +274,7 @@ func (store *SQLStore) GetProductsAndFiltersByNameCategoryAndType(ctx context.Co
 }
 
 // getProductsByFilters - обобщенная функция для получения продуктов с фильтрами
-func (store *SQLStore) getProductsByFilters(ctx context.Context, filters types.ProductsFilterStruct, page, size, orderedType int, usePriceFilter bool) ([]GetProductsByFiltersRow, error) {
+func (store *SQLStore) getProductsByFilters(ctx context.Context, mainFilter GetFiltersByNameCategoryAndTypeParams, filters types.ProductsFilterStruct, page, size, orderedType int, usePriceFilter bool) ([]GetProductsByFiltersRow, error) {
 	offset := (page - 1) * size
 
 	params := GetProductsByFiltersParams{
@@ -276,15 +290,37 @@ func (store *SQLStore) getProductsByFilters(ctx context.Context, filters types.P
 		WithPrice:    filters.WithPrice,
 	}
 
+	// Используем указатели для nullable полей
+	if mainFilter.Name.Valid {
+		params.Name = mainFilter.Name.String
+	} else {
+		params.Name = "" // или оставляем как есть, если в SQL есть проверка на NULL
+	}
+
+	// Категории: передаем nil если не валидно
+	if mainFilter.Category.Valid {
+		params.Categories = []int32{mainFilter.Category.Int32}
+	} else {
+		params.Categories = nil // или []int32{}
+	}
+
+	// Аналогично для Type, если нужно
+	if mainFilter.Type.Valid {
+		params.ProductTypes = append(params.ProductTypes, mainFilter.Type.Int32)
+	}
+
 	if usePriceFilter && filters.Price != nil && len(filters.Price) == 2 {
 		params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
 		params.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
 	}
 
+	// Отладка
+	log.Printf("Query params: sizes=%v, firms=%v, categories=%v, name=%q",
+		params.Sizes, params.Firms, params.Categories, params.Name)
+
 	return store.GetProductsByFilters(ctx, params)
 }
 
-// buildProductsResponseD - универсальная функция для построения ответа с продуктами
 func (store *SQLStore) buildProductsResponseD(data []GetProductsByFiltersRow) []ProductsResponseD {
 	if len(data) == 0 {
 		return []ProductsResponseD{}

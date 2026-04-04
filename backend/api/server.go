@@ -58,6 +58,14 @@ func (s *Server) setupRouter() {
 		MaxAge:           12 * time.Hour,
 	}
 	router.Use(cors.New(corsConfig))
+	router.Use(func(c *gin.Context) {
+		fmt.Printf("Request: %s %s\n", c.Request.Method, c.Request.URL.Path)
+		start := time.Now()
+
+		c.Next()
+
+		fmt.Printf("Response: %d, Duration: %v\n", c.Writer.Status(), time.Since(start))
+	})
 	// Apply CORS middleware
 	// s.router.Use(corsOptions.Handler)
 	// s.router.Use(loggingMiddleware)

@@ -47,7 +47,7 @@ interface SizeTable {
 }
 
 const ProductsInfo: React.FC = () => {
-
+    const { show, sticky, typesVal, categories } = useAppSelector(state => state.menuReducer);
     const { snickers } = useParams<{ snickers: string }>();
     const { widthProps } = useAppSelector(state => state.resizeReducer);
     const { cartCount } = useAppSelector(state => state.menuReducer);
@@ -71,19 +71,16 @@ const ProductsInfo: React.FC = () => {
     const currentDiscount = useRef<number>(0);
     const currentPriceDiscount = useRef<number>(0);
     const pricesArr = useRef<merchType>({});
-    const merchType = useRef<ProductType>("snickers");
+    const merchType = useRef<string>("snickers");
 
     const setMerchInfoHandler = useCallback((val: ProductInfo) => {
-        merchType.current = val.producttype;
-
+        merchType.current = typesVal[val.producttype]?.category_key;
         processProducts(val);
-    }, []);
+    }, [typesVal, categories]);
 
 
 
     const processProducts = useCallback((val: ProductInfo) => {
-        merchType.current = val.producttype;
-
         if (Object.keys(val.info).length === 0) {
             // ВСЕ обновления для случая "пусто"
             setEmptyPage(true);
@@ -106,7 +103,7 @@ const ProductsInfo: React.FC = () => {
             setCurrentPrice(discount);
             setMerchInfo(val);
         }
-    }, []);
+    }, [typesVal, categories]);
 
 
     const priceChangeHandler = useCallback((index: string) => {
@@ -121,7 +118,7 @@ const ProductsInfo: React.FC = () => {
         // }
 
         currentPriceDiscount.current = priceBlock.price;
-    }, [local, tableInfo.sizes]);
+    }, [local, tableInfo]);
 
     const handleBuyClick = useCallback(() => {
         const data = {
@@ -206,12 +203,12 @@ const ProductsInfo: React.FC = () => {
     const renderImagePresentation = useCallback(() => {
         if (merchInfo.image_count > 1) {
             return widthProps
-                ? <ContentSlider  content={imageContent} />
+                ? <ContentSlider content={imageContent} />
                 : <ImagePresantation onClick={(ind) => {
                     setActiveProductsModal(true)
                 }} image_count={merchInfo.image_count} image_path={merchInfo.image_path} />;
         }
-        return <ImagePresantationBlock image={merchInfo.image_count[0]} />;
+        return <ImagePresantationBlock image={merchInfo.image_path + "1.png"} />;
     }, [merchInfo.image_path, widthProps]);
 
     useEffect(() => {
@@ -224,15 +221,36 @@ const ProductsInfo: React.FC = () => {
         getSizeTable(merchType.current, setTableInfo);
     }, [merchType.current]);
 
+    useEffect(() => {
+        if (Object.entries(typesVal).length === 0) {
+            return;
+        }
+
+        typesVal;
+    }, [typesVal, categories]);
+    const tableIcon = useMemo(() => {
+        switch (merchType.current) {
+            case "snickers":
+                return <div onClick={() => setActiveModal(true)} className={s.sizeLabel}>
+                    <SVGIcon spritePath='public/shoe_size' />
+                </div>
+
+            case "clothes":
+                return <div onClick={() => setActiveModal(true)} className={s.sizeLabel}>
+                    <SVGIcon spritePath='public/clothes_size' />
+                </div>
+            default: return null;
+        }
+    }, [merchType.current]);
     return (
         <div>
             <div className={widthProps ? s.mainWrapVertical : s.mainWrap}>
                 <div className={widthProps ? s.topPart : s.leftPart} style={widthProps ? { width: "100%" } : {}}>
                     {renderImagePresentation()}
-                    {widthProps ? null: <div onClick={() => {
+                    {widthProps ? null : <div onClick={() => {
                         navigate(`/search?firm=${merchInfo.firm}`);
                     }} className={s.firmInfoHolder}>
-                        <img className={s.firmImage} src={"/images/brandLogos/"+merchInfo.firm+"/image.png"} alt="" />
+                        <img className={s.firmImage} src={"/images/brandLogos/" + merchInfo.firm + "/image.png"} alt="" />
                         <span className={s.firmName}>{merchInfo.firm}</span>
                     </div>}
                 </div>
@@ -248,7 +266,7 @@ const ProductsInfo: React.FC = () => {
                                     {toPrice(currentPriceDiscount.current)}
                                 </span>
                                 <span className={s.discountPerce}>
-                                    -{Math.round(((currentPriceDiscount.current-currentDiscount.current) / currentPriceDiscount.current) * 100)}%
+                                    -{Math.round(((currentPriceDiscount.current - currentDiscount.current) / currentPriceDiscount.current) * 100)}%
                                 </span>
                             </>
                         )}
@@ -270,19 +288,20 @@ const ProductsInfo: React.FC = () => {
                             Товар отсутствует
                         </div> : <div className={s.buttonGroup}>
                             <div className={s.articleHolder}>
-                                <div className={s.article}>
+                                <div className={s.article} title={"Размеры"}>
                                     <span className={s.articleText}>{merchInfo.article}</span>
                                     <CopySvg className={s.articleBtn} />
                                 </div>
-                                <div onClick={() => setActiveModal(true)} className={s.sizeLabel}>
-                                    <SVGIcon spritePath='public/shoe_size' />
-                                </div>
+                            </div>
+                            <div style={{ display: "flex" }}>
                                 {widthProps ? <div onClick={() => {
                                     navigate(`/search?firm=${merchInfo.firm}`);
                                 }} className={s.firmInfoHolder}>
-                                    <img className={s.firmImage} src={"/images/brandLogos/"+merchInfo.firm+"/image.png"} alt="" />
+                                    <img className={s.firmImage} src={"/images/brandLogos/" + merchInfo.firm + "/image.png"} alt="" />
                                     <span className={s.firmName}>{merchInfo.firm}</span>
                                 </div> : null}
+
+                                {tableIcon}
                             </div>
                             <Button
                                 text="Купить"
@@ -312,7 +331,7 @@ const ProductsInfo: React.FC = () => {
                     </div>
                 </Modal>
                 <Modal onChange={setActiveProductsModal} active={activeProductsModal}>
-                    <ContentSlider  content={imageContent} />
+                    <ContentSlider content={imageContent} />
                 </Modal>
             </div>
 

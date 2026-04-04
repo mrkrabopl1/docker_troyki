@@ -59,7 +59,7 @@ const MerchFieldWithPageSwitcher: React.FC<MerchFieldProps> = ({
     }, [data, size, className, heightClass, blockWidth]);
 
     return (
-        <div>
+        <div style={{ width: "100%" }}>
             <div className={s.globalMerchField}>
                 {rows}
             </div>
