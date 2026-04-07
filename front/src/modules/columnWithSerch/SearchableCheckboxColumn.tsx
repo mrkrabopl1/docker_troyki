@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import Search from 'src/components/search/Search';
 import CheckBoxColumn from 'src/components/checkBoxForm/CheckBoxForm';
+import Scroller from 'src/components/scroller/Scroller';
 
 interface CheckBoxType {
     enable: boolean;
@@ -73,7 +74,7 @@ const SearchableCheckboxColumn: React.FC<SearchableCheckboxColumnProps> = ({
 
     return (
         <div className={className}>
-            <div style={{padding:"15px  15px  15px 0"}}>
+            <div style={{ padding: "15px  15px  15px 0" }}>
                 <Search
                     val={searchTerm}
                     onDataRecieve={handleSearchDataReceive}
@@ -82,12 +83,14 @@ const SearchableCheckboxColumn: React.FC<SearchableCheckboxColumnProps> = ({
                     placeholder={searchPlaceholder}
                 />
             </div>
-            <div style={{ marginTop: '16px' }}>
-                <CheckBoxColumn
-                    data={filteredData}
-                    onChange={handleCheckboxChange}
-                />
-            </div>
+            <Scroller maxHeight={200}>
+                <div style={{ marginTop: '16px' }}>
+                    <CheckBoxColumn
+                        data={filteredData}
+                        onChange={handleCheckboxChange}
+                    />
+                </div>
+            </Scroller>
             {filteredData.length === 0 && searchTerm && (
                 <div style={{ padding: '10px', textAlign: 'center', color: '#999' }}>
                     No results found for "{searchTerm}"

@@ -30,6 +30,6 @@
     "allowSyntheticDefaultImports": true,     //  Allows the default import from the module without setting the default export
     "noEmit": true							  //  Just want to use TSC type check as a function (when other tools (such as Babel actually compile))
   },
-  "include": ["src","global.d.ts"],
+  "include": ["src","global.d.ts", "src/modules/columnWithSerch/.tsx"],
   "exclude": ["node_modules"]
 }

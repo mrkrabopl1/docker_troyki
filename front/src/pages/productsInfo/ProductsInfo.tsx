@@ -100,7 +100,7 @@ const ProductsInfo: React.FC = () => {
             setEmptyPage(false);
             currentDiscount.current = discount;
             currentPriceDiscount.current = price;
-            setCurrentPrice(discount);
+            setCurrentPrice(discount||price);
             setMerchInfo(val);
         }
     }, [typesVal, categories]);
@@ -230,7 +230,7 @@ const ProductsInfo: React.FC = () => {
     }, [typesVal, categories]);
     const tableIcon = useMemo(() => {
         switch (merchType.current) {
-            case "snickers":
+            case "sneackers":
                 return <div onClick={() => setActiveModal(true)} className={s.sizeLabel}>
                     <SVGIcon spritePath='public/shoe_size' />
                 </div>

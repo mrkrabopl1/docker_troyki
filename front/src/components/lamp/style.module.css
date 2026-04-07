@@ -171,7 +171,6 @@
     color: #2c2c2c;
     line-height: 1.4;
     letter-spacing: -0.2px;
-    font-family: 'Georgia', 'Times New Roman', serif;
     transition: color 0.2s ease;
 }
 
@@ -266,11 +265,6 @@
         min-width: 16px;
     }
 
-    .design::before {
-        width: 8px;
-        height: 8px;
-    }
-
     .lampHolder {
         gap: 12px;
     }
@@ -296,4 +290,60 @@
 /* легкий эффект при выборе */
 .iconLampChecked {
     transition: all 0.3s ease;
+}
+
+
+/* Size variants */
+.lampHolderSmall {
+    gap: 10px;
+}
+
+.lampHolderSmall .design {
+    width: 14px;
+    height: 14px;
+    min-width: 14px;
+}
+
+.lampHolderSmall .text {
+    font-size: 14px;
+}
+
+.lampHolderSmall .description {
+    font-size: 11px;
+}
+
+.lampHolderMedium {
+    gap: 14px;
+}
+
+.lampHolderMedium .design {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+}
+
+.lampHolderMedium .text {
+    font-size: 16px;
+}
+
+.lampHolderMedium .description {
+    font-size: 13px;
+}
+
+.lampHolderBig {
+    gap: 18px;
+}
+
+.lampHolderBig .design {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+}
+
+.lampHolderBig .text {
+    font-size: 24px;
+}
+
+.lampHolderBig .description {
+    font-size: 14px;
 }

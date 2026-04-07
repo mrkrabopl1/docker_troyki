@@ -260,10 +260,7 @@ func (store *SQLStore) CreateOrder(ctx context.Context, orderData *CreateOrderTy
 		fmt.Println(err4, "error in InsertManyOrderItems", prData)
 		return 0, 0, "", err4
 	}
-	if err4 != nil {
-		fmt.Println(err4, "error in InsertManyPreorderItems", prData)
-		return 0, 0, "", err4
-	}
+
 	err5 := store.Queries.DeleteCartData(ctx, preorderId)
 	if err5 != nil {
 		fmt.Println(err5, "error in InsertManyPreorderItems", prData)

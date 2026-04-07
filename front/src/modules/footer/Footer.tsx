@@ -57,19 +57,19 @@ const Footer: React.FC = () => {
 
   const contactItems = useMemo(
     () => [
-      { Icon: LocationPin, text: 'Москва, ул. Тверская 15' },
-      { Icon: Phone, text: '+7 (999) 123-45-67' },
-      { Icon: Clock, text: '10:00 — 22:00' },
+      // { Icon: LocationPin, text: 'Москва, ул. Тверская 15' },
+      // { Icon: Phone, text: '+7 (999) 123-45-67' },
+      // { Icon: Clock, text: '10:00 — 22:00' },
     ],
     []
   );
 
   const socials = useMemo(
     () => [
-      { Icon: Telegram, name: 'Telegram', url: 'https://t.me/yourchannel' },
-      { Icon: Instagram, name: 'Instagram', url: 'https://instagram.com/yourprofile' },
-      { Icon: Vk, name: 'VK', url: 'https://vk.com/yourgroup' },
-      { Icon: Youtube, name: 'YouTube', url: 'https://youtube.com/yourchannel' },
+      // { Icon: Telegram, name: 'Telegram', url: 'https://t.me/yourchannel' },
+      // { Icon: Instagram, name: 'Instagram', url: 'https://instagram.com/yourprofile' },
+      // { Icon: Vk, name: 'VK', url: 'https://vk.com/yourgroup' },
+      // { Icon: Youtube, name: 'YouTube', url: 'https://youtube.com/yourchannel' },
     ],
     []
   );

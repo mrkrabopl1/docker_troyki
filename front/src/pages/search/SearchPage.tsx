@@ -20,6 +20,8 @@ interface FiltersInfoRequest {
   sizes: string[]
   price: number[]
   firms: string[],
+  bodytypes?: string[],
+  lines?: string[],
   types: number[],
   store?: boolean,
   withPrice: boolean,
@@ -103,6 +105,8 @@ const SearchPage: React.FC = () => {
         price: [],
         firms: [],
         types: [],
+        lines: [],
+        bodytypes: [],
         withPrice: true
       }
       const data = convertFilterseData(respData.filters)
@@ -219,7 +223,7 @@ const SearchPage: React.FC = () => {
       checkBoxPropsFirmData.push({
         enable: true,
         activeData: active,
-        name: `${firm}`// `${firm}(${count})`
+        name: `${firm}`
       })
     })
 
@@ -381,7 +385,14 @@ const SearchPage: React.FC = () => {
     if (firm) {
       filtersInfo.current.firms.push(firm)
     }
-
+    let bodytype = searchParams.get('bodytype') || "";
+    if (bodytype) {
+      filtersInfo.current.bodytypes.push(bodytype)
+    }
+    let line = searchParams.get('line') || "";
+    if (line) {
+      filtersInfo.current.lines.push(line)
+    }
 
     const name = searchParams.get('key_word') || "";
     filtersInfo.current.discount = Boolean(searchParams.get('discount') || "");
@@ -666,6 +677,7 @@ const SearchPage: React.FC = () => {
                 orderTypeChange(ind)
                 setShowSortPanel(false)
               }}
+              checked={orderType.current}
               name={"ordered"}
               lampArray={[
                 "Без сортировки",

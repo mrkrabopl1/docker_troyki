@@ -8,6 +8,7 @@ import (
 
 type ProductsFilterStruct struct {
 	Firms       []string  `json:"firms"`
+	Lines       []string  `json:"lines"`
 	Sizes       []string  `json:"sizes"`
 	Price       []float32 `json:"price"`
 	Types       []int32   `json:"types"`

@@ -14,7 +14,7 @@ import (
 )
 
 func (s *Server) handleGetFirms(ctx *gin.Context) {
-	firms, err := s.store.GetMerchFirms(ctx)
+	firms, err := s.store.GetFirms(ctx)
 	if err != nil {
 		//log.WithCaller().Err(err)
 		ctx.JSON(http.StatusUnauthorized, errorResponse(err))

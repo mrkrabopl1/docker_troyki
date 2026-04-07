@@ -46,14 +46,12 @@ import { getCategoriesAndTypes } from './providers/merchProvider';
 import CookiePolicy from './pages/infoPages/CookiePolicy'
 import CookieInfo from './components/cookieInfo/CookieInfo';
 import About from './pages/infoPages/About'
-setTimeout(() => {
-  console.debug(API_URL, "f;lsdmf;ls,d;lf")
-}, 10)
+
 
 const App: React.FC = memo(function App() {
   const dispatch = useAppDispatch();
   const contRef = useRef<HTMLDivElement>(null);
-  const resizeTimeoutRef = useRef<NodeJS.Timeout>();
+  const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const animationFrameRef = useRef<number>();
 
   const { typesVal } = useAppSelector(state => state.menuReducer);

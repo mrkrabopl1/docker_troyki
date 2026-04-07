@@ -59,12 +59,10 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
         <div style={{ padding: "5px" }} key={checkboxProps.id}>
             <DoubleInfoDrop key={checkboxProps.name} info={checkboxProps.name}>
                 <div style={{ maxHeight: "200px" }}>
-                    <Scroller maxHeight={200}>
                         <SearchableCheckboxColumn
                             onChange={(data) => handleCheckboxChange(checkboxProps.id, data)}
                             data={checkboxProps.props}
                         />
-                    </Scroller>
                 </div>
             </DoubleInfoDrop>
         </div>

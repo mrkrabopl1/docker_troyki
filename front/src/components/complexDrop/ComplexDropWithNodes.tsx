@@ -86,6 +86,10 @@ const ComplexDropWithNodes: React.FC<PropsType> = ({ data, onChange }) => {
                         }
                     }}
                     onMouseLeave={() => setShowDrop(false)}
+                    onWheel={(e)=>{
+                        e.stopPropagation();
+                        
+                    }}
                     style={{ left: `${leftPos.current}px` }}
                     className={s.dropField}
                 >

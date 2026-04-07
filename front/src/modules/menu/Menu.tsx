@@ -64,7 +64,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
         let convertedData = {};
         Object.entries(categories).forEach(([key, value]) => {
             convertedData[value.category_name] = {
-                main: value.category_name,
+                main: key,
                 subs: Object.values(typesVal).filter(cat => cat.category_key === key).map(cat => cat.name)
             }
 
@@ -73,14 +73,16 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
         return convertedData;
     }, [categories, typesVal]);
     const handleComplexDrop = useCallback((data: { main?: string; sub?: string }) => {
-        const collection = data.main || data.sub;
-        if (collection) {
-            navigate(`/collections/${collection}`);
+        if (!data.sub) {
+            navigate(`/search?category=${data.main}&type=""`);
+        } else {
+            let type_key = Object.values(typesVal).filter(cat => cat.category_key === data.main && data.sub === cat.name).map(cat => cat.type_key)[0]
+            navigate(`/search?type=${type_key}&category=${data.main}`);
         }
-    }, [navigate]);
+    }, [navigate, typesVal]);
     const handleBurgerChange = useCallback((data: boolean) => {
         onChange(data);
-    }, [onChange]);
+    }, [onChange,typesVal]);
 
     // Styles
 
@@ -177,7 +179,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                     />
                 </div>
             </Modal>
-            
+
             <Modal onChange={setActiveAlphabet} active={activeAlphabet}>
                 <div style={{ height: "100%" }} onClick={(e) => e.stopPropagation()} className={s.modalWrap1}>
                     <AlphabetNavigation

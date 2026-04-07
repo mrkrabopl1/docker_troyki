@@ -6,7 +6,7 @@ SET firm = CASE firm
     WHEN '361' THEN '361°'
     WHEN 'adidas' THEN 'Adidas'
     WHEN 'anta' THEN 'ANTA'
-    WHEN 'arcterix' THEN 'Arcterix'
+    WHEN 'arcteryx' THEN 'Arcteryx'
     WHEN 'asics' THEN 'ASICS'
     WHEN 'atry' THEN 'Atry'
     WHEN 'balenciaga' THEN 'Balenciaga'
@@ -31,13 +31,16 @@ SET firm = CASE firm
     WHEN 'fila' THEN 'FILA'
     WHEN 'gucci' THEN 'GUCCI'
     WHEN 'hermes' THEN 'HERMES'
+    WHEN 'hanqiaoriji' THEN 'HANQIAORIJI'
     WHEN 'jordan' THEN 'Jordan'
     WHEN 'keen' THEN 'Keen'
-    WHEN 'lining' THEN 'LINING'
+    WHEN 'LiNing' THEN 'LINING'
     WHEN 'lululemon' THEN 'Lululemon'
     WHEN 'mizuno' THEN 'Mizuno'
     WHEN 'mlb' THEN 'MLB'
     WHEN 'nike' THEN 'Nike'
+    when 'occupy' then 'OCCUPY'
+    when 'on' then 'ON'
     WHEN 'peak' THEN 'PEAK'
     WHEN 'puma' THEN 'PUMA'
     WHEN 'reebok' THEN 'Reebok'
@@ -52,13 +55,13 @@ SET firm = CASE firm
     ELSE firm
 END
 WHERE firm IN (
-    '361', 'adidas', 'anta', 'arcterix', 'asics', 'atry', 'balenciaga', 
+    '361', 'adidas', 'anta', 'arcteryx', 'asics', 'atry', 'balenciaga', 
     'birkenstock', 'camel', 'carhartt', 'casio', 'cat', 'champion', 
     'chanel', 'clarks', 'clot', 'coach', 'columbia', 'converse', 'crocs',
     'diesel', 'dior', 'disney', 'doraemon', 'ferragamo', 'fila', 'gucci',
     'hermes', 'jordan', 'keen', 'lining', 'lululemon', 'mizuno', 'mlb',
     'nike', 'peak', 'puma', 'reebok', 'salomon', 'skechers', 'supreme',
-    'swarovski', 'timberland', 'ugg', 'vans', 'yeezy'
+    'swarovski', 'timberland', 'ugg', 'vans', 'yeezy','on', 'occupy', 'hanqiaoriji'
 );
 
 -- ========================================

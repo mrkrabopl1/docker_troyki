@@ -24,7 +24,7 @@ interface   MerchBannerInterface  {
 const MerchBanner: React.FC<MerchBannerInterface> = ({img,title,onChange,className,btnText}) => {
     return (
 
-        <div className={className?className.main?className.main:s.main:s.main} style = {{display:"flex"}}>
+        <div onClick={onChange} className={className?className.main?className.main:s.main:s.main} style = {{display:"flex",cursor:"pointer", position:"relative"}}>
             <img className={"fs"} src= {img} alt="" />
             {/* <div className={className?className.contentHolder?className.contentHolder:s.contentHolder:s.contentHolder} style={{display:"flex", margin:"auto", position:"absolute"}}>
                 <p className={s.title}>{title}</p>

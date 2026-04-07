@@ -8,21 +8,24 @@ import CarouselSlider from 'src/components/contentSlider/CarouselSlider';
 const FirmsScroller: React.FC = ({
 
 }) => {
-    const {  firms } = useAppSelector(state => state.menuReducer);
+    const navigate = useNavigate();
+    const { firms } = useAppSelector(state => state.menuReducer);
     const firmsLines = useMemo(() => {
         // Add a safety check
         if (!Array.isArray(firms) || firms.length === 0) {
             return []; // or return a placeholder
         }
-        
+
         return firms.map(value => {
-            return <img style={{"height":"100%"}} src={`/images/brandLogos/${value}/image.png`} alt="" key={value} />
+            return <img onClick={() => {
+                navigate(`/collections/${value}`);
+            }} style={{ "height": "100%", cursor: "pointer" }} src={`/images/brandLogos/${value}/image.png`} alt="" key={value} />
         });
     }, [firms]);
 
     return (
-        <div  className={s.wrap}>
-                <CarouselSlider  items={firmsLines}/>
+        <div className={s.wrap}>
+            <CarouselSlider items={firmsLines} />
         </div>
     );
 };

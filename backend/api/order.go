@@ -75,6 +75,7 @@ func (s *Server) handleCreateOrder(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	} else {
+		ctx.SetCookie("cart", "", -1, "/", "", false, true)
 		myCookie, _ := s.tokenMaker.CreateCookie(hash, hash, 36000)
 		ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
 		if orderData.Save {

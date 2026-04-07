@@ -288,6 +288,7 @@ func (store *SQLStore) getProductsByFilters(ctx context.Context, mainFilter GetF
 		HasDiscount:  filters.HasDiscount,
 		InStore:      filters.InStore,
 		WithPrice:    filters.WithPrice,
+		Lines:        filters.Lines,
 	}
 
 	// Используем указатели для nullable полей

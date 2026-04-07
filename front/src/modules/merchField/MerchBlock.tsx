@@ -105,9 +105,9 @@ const MerchBlock: React.FC<{ className?: string, width?: string, data: MerchInte
             <div className={s.colorLayout}>
                 <div className={s.imageBlock}>
                     <img loading={"lazy"} className={s.img} style={firstImgStyle} src={(data.imgs?data.imgs[0]:data.image_path)} alt={s.imgName} />
-                    {data.discount ? <div className={s.discountMarker}>
-                        "Sale"
-                    </div> : null}
+                    {data.discount ? <div className={s.badge_overlay}><div className={s.discountMarker}>
+                        {"Sale " + Math.round((Number(data.price) - data.discount) / Number(data.price) * 100) + "%" }
+                    </div></div> : null}
                 </div>
                 <div className={s.nameHolder}>
                     {data.name}
@@ -117,10 +117,10 @@ const MerchBlock: React.FC<{ className?: string, width?: string, data: MerchInte
                     <div style={{ textAlign: "center", marginTop: "auto" }}>
                         {data.price ? <div>
                             {data.discount ?
-                                <span className={s.discount}>{toPrice(data.discount)}</span>
+                                <span className={s.discount}>{toPrice(data.price)}</span>
                                 : null
                             }
-                            <span className={s.imgName}>{"От " + toPrice(data.price)}</span>
+                            <span className={s.imgName}>{"От " + toPrice(data.discount)}</span>
                         </div>
                             : <span className={s.imgName}>{"Нет в наличии"}</span>}
                     </div>

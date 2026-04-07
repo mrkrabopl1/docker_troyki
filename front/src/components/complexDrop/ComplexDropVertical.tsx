@@ -21,7 +21,7 @@ const ComplexDropVertical: React.FC<PropsType> = ({ data, onChange }) => {
     
     const mainRef = useRef<HTMLDivElement>(null);
     const inputRefs = useRef<HTMLDivElement[]>([]);
-    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const leftPos = useRef<number>(0);
     const [chosen,setChosen] = useState<string>("");
     
@@ -57,7 +57,7 @@ const ComplexDropVertical: React.FC<PropsType> = ({ data, onChange }) => {
         return data[chosen].subs.map((val, index) => (
             <div 
                 key={`${val}-${index}`}
-                onClick={() => onChange({ sub: val })}
+                onClick={() => onChange({ sub: val,main: data[chosen].main})}
                 className={s.dropItem}
             >
                 {val}

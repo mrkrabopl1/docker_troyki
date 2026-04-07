@@ -6,6 +6,7 @@ type propsRadioGroupType = {
     name: string,
     lampArray: string[],
     onChange: (id: number) => void
+    checked?: number
 }
 
 
@@ -15,7 +16,7 @@ const RadioGroup: React.FC<propsRadioGroupType> = (props) => {
     return (
         <div>
             {lampArray.map((lamp, index) => {
-               return <Lamp key={lamp} checked={index===0?true:false} name={name} onChange={() => { onChange(index) }} text={lamp} />
+               return <Lamp key={lamp} checked={props.checked === index} name={name} onChange={() => { onChange(index) }} text={lamp} />
             })}
         </div>
     )
