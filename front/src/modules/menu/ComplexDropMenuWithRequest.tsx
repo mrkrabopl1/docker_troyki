@@ -19,24 +19,8 @@ const ComplexDropMenuWithRequestComponent: React.FC<ComplexDropMenuWithRequestPr
          image_path:string
     }[]>([]);
 
-  const setFirmsData = useCallback((firms: Array<{ firm: string; collections: string[], categories: string[] }>) => {
-    const fieldData: Record<string, string[]> = {};
-    const collectionsData: string[] = [];
 
-    firms.forEach((cols) => {
-      fieldData[cols.firm] = cols.collections;
-      collectionsData.push(...cols.collections);
-    });
 
-    setMerchFieldData(fieldData);
-    dispatch(collections(collectionsData));
-    dispatch(setFirms(Object.keys(fieldData)))
-    // dispatch(categories(categories));
-  }, [dispatch]);
-
-  useEffect(() => {
-    getFirms(setFirmsData);
-  }, [setFirmsData]);
 
   return <ComplexDropMenu complexDropData={merchFieldData}  categories={categories}/>;
 };

@@ -33,6 +33,21 @@ type TaskDistributor interface {
 		payload *PayloadSendNewsletterBroadcast,
 		opts ...asynq.Option,
 	) error
+	DistributeTaskSendAdminWelcome(
+		ctx context.Context,
+		payload *PayloadSendAdminWelcome,
+		opts ...asynq.Option,
+	) error
+	DistributeTaskSendAdminPasswordReset(
+		ctx context.Context,
+		payload *PayloadSendAdminPasswordReset,
+		opts ...asynq.Option,
+	) error
+	DistributeTaskSendAdminPasswordChanged(
+		ctx context.Context,
+		payload *PayloadSendAdminPasswordChanged,
+		opts ...asynq.Option,
+	) error
 }
 
 type RedisTaskDistributor struct {

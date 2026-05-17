@@ -6,7 +6,7 @@ import s from "./style.module.css"
 import { verified } from 'src/store/reducers/menuSlice'
 import RegistrationForm from  '../loginForm/RegistrationForm'
 import LoginForm from '../loginForm/LoginForm'
-import ForgetPass from '../loginForm/ForgetPass'
+import ForgetPass from '../loginForm/ForgotPasswordForm'
 import Modal from 'src/components/modal/Modal'
 
 
@@ -37,10 +37,10 @@ const RegistrationPanel: React.FC<any> = (props) => {
             {State.login === state ? <Modal onChange={()=>{setState(State.none)}} active={State.login === state}>
                 < LoginForm 
                     onChange={(data) => {}}
-                    onLogin={(data) => {
+                    onSubmit={(data) => {
                         dispatch(verified(data))
                     }}
-                    forgetPass={()=>{setState(State.forget)}}
+                    onForgotPassword={()=>{setState(State.forget)}}
                 />
             </Modal>: null}
             {State.register === state ? <Modal onChange={()=>{setState(State.none)}} active={State.register === state}>
@@ -53,7 +53,7 @@ const RegistrationPanel: React.FC<any> = (props) => {
                 />
             </Modal>: null}
             {State.forget === state ? <Modal onChange={()=>{setState(State.none)}} active={State.forget === state}>
-                < ForgetPass onChange={(data) => {
+                < ForgetPass onSubmit={(data) => {
                     
                 }}
                     

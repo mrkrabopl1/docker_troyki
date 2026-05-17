@@ -43,7 +43,7 @@ func (s *Server) handleCreatePreorder(ctx *gin.Context) {
 	}
 	// Print the result and the time taken
 
-	myCookie, err := s.tokenMaker.CreateCookie(hashUrl, "cart", 36000)
+	myCookie, err := s.tokenMaker.CreateCookie(hashUrl, "cart", 36000, false, true)
 	fmt.Println(myCookie)
 
 	if err != nil {
@@ -76,10 +76,10 @@ func (s *Server) handleCreateOrder(ctx *gin.Context) {
 		return
 	} else {
 		ctx.SetCookie("cart", "", -1, "/", "", false, true)
-		myCookie, _ := s.tokenMaker.CreateCookie(hash, hash, 36000)
+		myCookie, _ := s.tokenMaker.CreateCookie(hash, hash, 36000, false, true)
 		ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
 		if orderData.Save {
-			myCookie, err := s.tokenMaker.CreatePasetoCookie(unregUserId, "saved", 2*time.Hour)
+			myCookie, _, err := s.tokenMaker.CreateCookieWithPasetoToken(unregUserId, "saved", 2*time.Hour, true, true)
 			if err != nil {
 				//log.WithCaller().Err(err)
 				ctx.JSON(http.StatusBadRequest, errorResponse(err))
@@ -278,7 +278,7 @@ func (s *Server) handleGetOrderDataByMail(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	myCookie, _ := s.tokenMaker.CreateCookie(hash, hash, 360000)
+	myCookie, _ := s.tokenMaker.CreateCookie(hash, hash, 360000, true, true)
 	ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
 	//log.Log.Info().Interface("orders", orderResponse)
 	ctx.JSON(http.StatusOK, orderResponse)

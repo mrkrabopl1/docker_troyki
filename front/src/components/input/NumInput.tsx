@@ -10,6 +10,7 @@ type NumInputProps = {
     step?: number;
     showArrows?: boolean;
     value: number;
+    disabled?: boolean;
     precision?: number;
 };
 
@@ -20,6 +21,7 @@ const NumInput: React.FC<NumInputProps> = ({
     showArrows = true,
     min = -Infinity,
     max = Infinity,
+    disabled = false,
     step = 1,
     precision = 0
 }) => {
@@ -40,8 +42,8 @@ const NumInput: React.FC<NumInputProps> = ({
     // Обработчик изменения значения
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const newValue = e.target.value;
-        setDisplayValue(newValue);
-        
+        setDisplayValue(processValue(newValue).toString()); // Обновляем отображаемое значение сразу, но валидацию проводим при полном вводе
+
         // Валидация только при полном вводе (не при каждом нажатии)
         if (!isNaN(parseFloat(newValue)) || newValue === '' || newValue === '-') {
             const processedValue = processValue(newValue);
@@ -54,34 +56,39 @@ const NumInput: React.FC<NumInputProps> = ({
         const currentValue = parseFloat(displayValue) || 0;
         const newValue = direction === 'up' ? currentValue + step : currentValue - step;
         const processedValue = processValue(newValue);
-        
+
         setDisplayValue(formatValue(processedValue));
         onChange(processedValue);
     }, [displayValue, step, processValue, formatValue, onChange]);
 
     // Синхронизация с внешним значением
+
+
+
     useEffect(() => {
         const processedValue = processValue(value);
         const formattedValue = formatValue(processedValue);
-        
+
         if (formattedValue !== displayValue) {
             setDisplayValue(formattedValue);
         }
-    }, [value, min, max, precision, processValue, formatValue, displayValue]);
+    }, [value]);
 
     // Мемоизированные JSX элементы стрелок
     const arrows = useMemo(() => (
         showArrows && (
             <div className={s.arrows}>
-                <button 
-                    className={s.arrowUp} 
+                <button
+                    className={s.arrowUp}
                     onClick={() => handleStep('up')}
                     aria-label="Increase value"
+                    disabled={disabled}
                 >
                     ▲
                 </button>
-                <button 
-                    className={s.arrowDown} 
+                <button
+                    disabled={disabled}
+                    className={s.arrowDown}
                     onClick={() => handleStep('down')}
                     aria-label="Decrease value"
                 >
@@ -95,6 +102,7 @@ const NumInput: React.FC<NumInputProps> = ({
         <div className={`${s.inputHolder} ${className}`} style={{ display: "flex" }}>
             <input
                 ref={inputRef}
+                disabled={disabled}
                 className={s.numInput}
                 value={displayValue}
                 type="text"

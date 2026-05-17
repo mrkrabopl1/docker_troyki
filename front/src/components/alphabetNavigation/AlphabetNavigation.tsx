@@ -1,24 +1,28 @@
 import React, { memo, useCallback, useEffect, useRef, useMemo } from 'react';
 import s from "./style.module.css"
 import Scroller from '../scroller/Scroller';
+import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux';
 
 interface IAlphabetNavigationProps {
-    names: string[];
+    names?: string[];
     onChange?: (name: string) => void;
 }
-
 
 const AlphabetNavigation: React.FC<IAlphabetNavigationProps> = ({
     onChange,
     names,
 }) => {
-
+    const { firms } = useAppSelector(state => state.menuReducer);
+    
     const createAlphabetItems = useMemo(() => {
-        names.sort();
-        let alphabet: any = {};
-        names.forEach(name => {
+       
+        const sortedFirms = [...firms].sort();
+        
+        const alphabet: Record<string, string[]> = {};
+        
+        sortedFirms.forEach(name => {
             let firstChar = name.charAt(0).toUpperCase();
-            if (Number(firstChar)) {
+            if (/[0-9]/.test(firstChar)) {
                 firstChar = '0-9';
             }
             if (!alphabet[firstChar]) {
@@ -27,13 +31,17 @@ const AlphabetNavigation: React.FC<IAlphabetNavigationProps> = ({
             alphabet[firstChar].push(name);
         });
 
-        return Object.entries(alphabet).map(([key, value]: [string, string[]]) => {
+        return Object.entries(alphabet).map(([key, value]) => {
             return (
                 <div className={s.alphabetTable} key={key}>
                     <div className={s.alphabetKey}>{key}</div>
                     <div>
                         {value.map((name, index) => (
-                            <div className={s.alphabetName} onClick={() => onChange?.(name)} key={index} >
+                            <div 
+                                className={s.alphabetName} 
+                                onClick={() => onChange?.(name)} 
+                                key={`${key}-${index}`}
+                            >
                                 {name}
                             </div>
                         ))}
@@ -41,15 +49,15 @@ const AlphabetNavigation: React.FC<IAlphabetNavigationProps> = ({
                 </div>
             );
         });
-
-    }, [names]);
-
+    }, [firms, onChange]);
 
     return (
-        <div style={{ width: '100%', height: '100%'}}>
-            <Scroller children={<div className={s.alphabetContainer} style={{ width: '100%', height: '100%', display: 'flex' }}>
-                {createAlphabetItems}
-            </div>} />
+        <div style={{ width: '100%', height: '100%' }}>
+            <Scroller>
+                <div className={s.alphabetContainer} style={{ width: '100%', height: '100%', display: 'flex' }}>
+                    {createAlphabetItems}
+                </div>
+            </Scroller>
         </div>
     );
 };

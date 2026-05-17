@@ -7,9 +7,52 @@ package db
 import (
 	"database/sql/driver"
 	"fmt"
+	"net/netip"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type AdminRoleEnum string
+
+const (
+	AdminRoleEnumAdmin      AdminRoleEnum = "admin"
+	AdminRoleEnumSuperadmin AdminRoleEnum = "superadmin"
+)
+
+func (e *AdminRoleEnum) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AdminRoleEnum(s)
+	case string:
+		*e = AdminRoleEnum(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AdminRoleEnum: %T", src)
+	}
+	return nil
+}
+
+type NullAdminRoleEnum struct {
+	AdminRoleEnum AdminRoleEnum `json:"admin_role_enum"`
+	Valid         bool          `json:"valid"` // Valid is true if AdminRoleEnum is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAdminRoleEnum) Scan(value interface{}) error {
+	if value == nil {
+		ns.AdminRoleEnum, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AdminRoleEnum.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAdminRoleEnum) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AdminRoleEnum), nil
+}
 
 type BodyEnum string
 
@@ -53,53 +96,6 @@ func (ns NullBodyEnum) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.BodyEnum), nil
-}
-
-type ClothesEnum string
-
-const (
-	ClothesEnumTShirt     ClothesEnum = "t-shirt"
-	ClothesEnumHoodie     ClothesEnum = "hoodie"
-	ClothesEnumSweatshirt ClothesEnum = "sweatshirt"
-	ClothesEnumJacket     ClothesEnum = "jacket"
-	ClothesEnumPants      ClothesEnum = "pants"
-	ClothesEnumShorts     ClothesEnum = "shorts"
-	ClothesEnumOther      ClothesEnum = "other"
-)
-
-func (e *ClothesEnum) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = ClothesEnum(s)
-	case string:
-		*e = ClothesEnum(s)
-	default:
-		return fmt.Errorf("unsupported scan type for ClothesEnum: %T", src)
-	}
-	return nil
-}
-
-type NullClothesEnum struct {
-	ClothesEnum ClothesEnum `json:"clothes_enum"`
-	Valid       bool        `json:"valid"` // Valid is true if ClothesEnum is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullClothesEnum) Scan(value interface{}) error {
-	if value == nil {
-		ns.ClothesEnum, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.ClothesEnum.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullClothesEnum) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.ClothesEnum), nil
 }
 
 type DeliveryEnum string
@@ -146,135 +142,6 @@ func (ns NullDeliveryEnum) Value() (driver.Value, error) {
 	return string(ns.DeliveryEnum), nil
 }
 
-type MerchEnum string
-
-const (
-	MerchEnumHat   MerchEnum = "hat"
-	MerchEnumToys  MerchEnum = "toys"
-	MerchEnumBag   MerchEnum = "bag"
-	MerchEnumOther MerchEnum = "other"
-)
-
-func (e *MerchEnum) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = MerchEnum(s)
-	case string:
-		*e = MerchEnum(s)
-	default:
-		return fmt.Errorf("unsupported scan type for MerchEnum: %T", src)
-	}
-	return nil
-}
-
-type NullMerchEnum struct {
-	MerchEnum MerchEnum `json:"merch_enum"`
-	Valid     bool      `json:"valid"` // Valid is true if MerchEnum is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullMerchEnum) Scan(value interface{}) error {
-	if value == nil {
-		ns.MerchEnum, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.MerchEnum.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullMerchEnum) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.MerchEnum), nil
-}
-
-type ProductSourceEnum string
-
-const (
-	ProductSourceEnumSnickers  ProductSourceEnum = "snickers"
-	ProductSourceEnumSolomerch ProductSourceEnum = "solomerch"
-	ProductSourceEnumClothes   ProductSourceEnum = "clothes"
-)
-
-func (e *ProductSourceEnum) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = ProductSourceEnum(s)
-	case string:
-		*e = ProductSourceEnum(s)
-	default:
-		return fmt.Errorf("unsupported scan type for ProductSourceEnum: %T", src)
-	}
-	return nil
-}
-
-type NullProductSourceEnum struct {
-	ProductSourceEnum ProductSourceEnum `json:"product_source_enum"`
-	Valid             bool              `json:"valid"` // Valid is true if ProductSourceEnum is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullProductSourceEnum) Scan(value interface{}) error {
-	if value == nil {
-		ns.ProductSourceEnum, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.ProductSourceEnum.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullProductSourceEnum) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.ProductSourceEnum), nil
-}
-
-type SnickersEnum string
-
-const (
-	SnickersEnumSlepowers SnickersEnum = "slepowers"
-	SnickersEnumOther     SnickersEnum = "other"
-)
-
-func (e *SnickersEnum) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = SnickersEnum(s)
-	case string:
-		*e = SnickersEnum(s)
-	default:
-		return fmt.Errorf("unsupported scan type for SnickersEnum: %T", src)
-	}
-	return nil
-}
-
-type NullSnickersEnum struct {
-	SnickersEnum SnickersEnum `json:"snickers_enum"`
-	Valid        bool         `json:"valid"` // Valid is true if SnickersEnum is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullSnickersEnum) Scan(value interface{}) error {
-	if value == nil {
-		ns.SnickersEnum, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.SnickersEnum.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullSnickersEnum) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.SnickersEnum), nil
-}
-
 type StatusEnum string
 
 const (
@@ -318,6 +185,93 @@ func (ns NullStatusEnum) Value() (driver.Value, error) {
 	return string(ns.StatusEnum), nil
 }
 
+type Admin struct {
+	ID           int32              `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash []byte             `json:"password_hash"`
+	Name         string             `json:"name"`
+	Role         AdminRoleEnum      `json:"role"`
+	IsActive     pgtype.Bool        `json:"is_active"`
+	LastLoginAt  pgtype.Timestamptz `json:"last_login_at"`
+	LastLoginIp  *netip.Addr        `json:"last_login_ip"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+type AdminLog struct {
+	ID         int32              `json:"id"`
+	AdminID    int32              `json:"admin_id"`
+	Action     string             `json:"action"`
+	EntityType pgtype.Text        `json:"entity_type"`
+	EntityID   pgtype.Int4        `json:"entity_id"`
+	Details    pgtype.Text        `json:"details"`
+	IpAddress  *netip.Addr        `json:"ip_address"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+type AdminPasswordReset struct {
+	ID        int32              `json:"id"`
+	Email     string             `json:"email"`
+	Token     string             `json:"token"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	UsedAt    pgtype.Timestamptz `json:"used_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type Banner struct {
+	ID        int32              `json:"id"`
+	Title     pgtype.Text        `json:"title"`
+	ImageUrl  string             `json:"image_url"`
+	LinkUrl   string             `json:"link_url"`
+	IsActive  bool               `json:"is_active"`
+	SortOrder pgtype.Int4        `json:"sort_order"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Brand struct {
+	ID          int32              `json:"id"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+	ImagePath   pgtype.Text        `json:"image_path"`
+	Description pgtype.Text        `json:"description"`
+	Website     pgtype.Text        `json:"website"`
+	Country     pgtype.Text        `json:"country"`
+	SortOrder   int32              `json:"sort_order"`
+	FoundedYear pgtype.Int4        `json:"founded_year"`
+	IsActive    bool               `json:"is_active"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type BrandLine struct {
+	ID          int32              `json:"id"`
+	BrandID     int32              `json:"brand_id"`
+	Name        string             `json:"name"`
+	ImagePath   pgtype.Text        `json:"image_path"`
+	Slug        string             `json:"slug"`
+	Description pgtype.Text        `json:"description"`
+	Season      pgtype.Text        `json:"season"`
+	Year        pgtype.Int4        `json:"year"`
+	SortOrder   pgtype.Int4        `json:"sort_order"`
+	IsActive    pgtype.Bool        `json:"is_active"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type BrandsStat struct {
+	BrandID          int32            `json:"brand_id"`
+	TotalProducts    pgtype.Int4      `json:"total_products"`
+	ActiveProducts   pgtype.Int4      `json:"active_products"`
+	InactiveProducts pgtype.Int4      `json:"inactive_products"`
+	SneakersCount    pgtype.Int4      `json:"sneakers_count"`
+	MerchCount       pgtype.Int4      `json:"merch_count"`
+	ClothesCount     pgtype.Int4      `json:"clothes_count"`
+	ToysCount        pgtype.Int4      `json:"toys_count"`
+	LinesCount       pgtype.Int4      `json:"lines_count"`
+	UpdatedAt        pgtype.Timestamp `json:"updated_at"`
+}
+
 type Color struct {
 	ID      int32  `json:"id"`
 	EnumKey string `json:"enum_key"`
@@ -326,20 +280,30 @@ type Color struct {
 }
 
 type Customer struct {
-	ID          int32       `json:"id"`
-	Name        pgtype.Text `json:"name"`
-	Secondname  pgtype.Text `json:"secondname"`
-	Mail        string      `json:"mail"`
-	Pass        []byte      `json:"pass"`
-	Phone       pgtype.Text `json:"phone"`
-	Town        pgtype.Text `json:"town"`
-	Index       pgtype.Text `json:"index"`
-	Sendmail    pgtype.Bool `json:"sendmail"`
-	Street      pgtype.Text `json:"street"`
-	Region      pgtype.Text `json:"region"`
-	Home        pgtype.Text `json:"home"`
-	Flat        pgtype.Text `json:"flat"`
-	Coordinates []int32     `json:"coordinates"`
+	ID          int32              `json:"id"`
+	Name        pgtype.Text        `json:"name"`
+	Secondname  pgtype.Text        `json:"secondname"`
+	Mail        string             `json:"mail"`
+	Pass        []byte             `json:"pass"`
+	Phone       pgtype.Text        `json:"phone"`
+	Town        pgtype.Text        `json:"town"`
+	Index       pgtype.Text        `json:"index"`
+	Sendmail    pgtype.Bool        `json:"sendmail"`
+	Street      pgtype.Text        `json:"street"`
+	Region      pgtype.Text        `json:"region"`
+	Home        pgtype.Text        `json:"home"`
+	Flat        pgtype.Text        `json:"flat"`
+	Coordinates []int32            `json:"coordinates"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+type CustomerPasswordReset struct {
+	ID        int32              `json:"id"`
+	Email     string             `json:"email"`
+	Token     string             `json:"token"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	UsedAt    pgtype.Timestamptz `json:"used_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Discount struct {
@@ -352,14 +316,25 @@ type Discount struct {
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
-type HomepageBlock struct {
-	ID          int32       `json:"id"`
-	Title       pgtype.Text `json:"title"`
-	Subtitle    pgtype.Text `json:"subtitle"`
-	Description pgtype.Text `json:"description"`
-	ImageUrl    pgtype.Text `json:"image_url"`
-	ButtonText  pgtype.Text `json:"button_text"`
-	ButtonUrl   pgtype.Text `json:"button_url"`
+type DiscountRule struct {
+	ID            int32              `json:"id"`
+	Name          string             `json:"name"`
+	Description   string             `json:"description"`
+	DiscountType  string             `json:"discount_type"`
+	DiscountValue int32              `json:"discount_value"`
+	StartsAt      pgtype.Timestamptz `json:"starts_at"`
+	EndsAt        pgtype.Timestamptz `json:"ends_at"`
+	IsActive      bool               `json:"is_active"`
+	Priority      int32              `json:"priority"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+type DiscountRuleItem struct {
+	ID       int32  `json:"id"`
+	RuleID   int32  `json:"rule_id"`
+	ItemType string `json:"item_type"`
+	ItemID   int32  `json:"item_id"`
 }
 
 type NewsletterSubscriber struct {
@@ -375,19 +350,21 @@ type NewsletterSubscriber struct {
 }
 
 type Order struct {
-	ID                   int32        `json:"id"`
-	Customerid           pgtype.Int4  `json:"customerid"`
-	Unregistercustomerid pgtype.Int4  `json:"unregistercustomerid"`
-	Orderdate            pgtype.Date  `json:"orderdate"`
-	Status               StatusEnum   `json:"status"`
-	Hash                 string       `json:"hash"`
-	Deliveryprice        int32        `json:"deliveryprice"`
-	Deliverycomment      pgtype.Text  `json:"deliverycomment"`
-	Deliverytype         DeliveryEnum `json:"deliverytype"`
+	ID                   int32              `json:"id"`
+	Customerid           pgtype.Int4        `json:"customerid"`
+	Unregistercustomerid pgtype.Int4        `json:"unregistercustomerid"`
+	Orderdate            pgtype.Date        `json:"orderdate"`
+	Status               StatusEnum         `json:"status"`
+	Hash                 string             `json:"hash"`
+	Deliveryprice        int32              `json:"deliveryprice"`
+	Deliverycomment      pgtype.Text        `json:"deliverycomment"`
+	Deliverytype         DeliveryEnum       `json:"deliverytype"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
 }
 
 type Orderaddress struct {
 	ID              int32       `json:"id"`
+	Orderid         int32       `json:"orderid"`
 	Town            string      `json:"town"`
 	Index           string      `json:"index"`
 	Sendmail        pgtype.Bool `json:"sendmail"`
@@ -395,7 +372,6 @@ type Orderaddress struct {
 	Region          pgtype.Text `json:"region"`
 	Deliverycomment pgtype.Text `json:"deliverycomment"`
 	House           pgtype.Text `json:"house"`
-	Orderid         int32       `json:"orderid"`
 	Flat            pgtype.Text `json:"flat"`
 	Coordinates     []string    `json:"coordinates"`
 }
@@ -409,6 +385,16 @@ type Orderitem struct {
 	ImagePath string      `json:"image_path"`
 	Name      string      `json:"name"`
 	Size      pgtype.Text `json:"size"`
+}
+
+type PasswordReset struct {
+	ID        int32              `json:"id"`
+	Email     string             `json:"email"`
+	Token     string             `json:"token"`
+	UserType  string             `json:"user_type"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	UsedAt    pgtype.Timestamptz `json:"used_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Preorder struct {
@@ -442,29 +428,34 @@ type Preorderitem struct {
 }
 
 type Product struct {
-	ID          int32       `json:"id"`
-	Qid         string      `json:"qid"`
-	Name        string      `json:"name"`
-	Firm        string      `json:"firm"`
-	Line        pgtype.Text `json:"line"`
-	ImagePath   string      `json:"image_path"`
-	Minprice    int32       `json:"minprice"`
-	Maxprice    int32       `json:"maxprice"`
-	Type        int32       `json:"type"`
-	Category    int32       `json:"category"`
-	Article     string      `json:"article"`
-	Date        pgtype.Text `json:"date"`
-	Description pgtype.Text `json:"description"`
-	Bodytype    BodyEnum    `json:"bodytype"`
-	ImageCount  int32       `json:"image_count"`
-	Sizes       []byte      `json:"sizes"`
+	ID          int32              `json:"id"`
+	Qid         string             `json:"qid"`
+	Name        string             `json:"name"`
+	ImagePath   string             `json:"image_path"`
+	Minprice    int32              `json:"minprice"`
+	Maxprice    int32              `json:"maxprice"`
+	Type        int32              `json:"type"`
+	Category    int32              `json:"category"`
+	Article     string             `json:"article"`
+	Date        pgtype.Text        `json:"date"`
+	Description pgtype.Text        `json:"description"`
+	Bodytype    BodyEnum           `json:"bodytype"`
+	ImageCount  int32              `json:"image_count"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	Sizes       []byte             `json:"sizes"`
+	BrandID     int32              `json:"brand_id"`
+	LineID      pgtype.Int4        `json:"line_id"`
+	Status      string             `json:"status"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+	ArchivedAt  pgtype.Timestamptz `json:"archived_at"`
 }
 
 type ProductCategory struct {
 	ID        int32       `json:"id"`
-	ImagePath pgtype.Text `json:"image_path"`
 	Name      string      `json:"name"`
 	EnumKey   string      `json:"enum_key"`
+	ImagePath pgtype.Text `json:"image_path"`
 }
 
 type ProductColor struct {

@@ -21,7 +21,7 @@ const ComplexDropWithNodes: React.FC<PropsType> = ({ data, onChange }) => {
     const { setName, clear } = complexDropSlice.actions;
     
     const inputRefs = useRef<HTMLDivElement[]>([]);
-    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const leftPos = useRef<number>(0);
     
     const [showDrop, setShowDrop] = useState(false);

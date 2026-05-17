@@ -6,6 +6,7 @@ interface IButtonProps {
     className?: string;
     style?: React.CSSProperties;
     disabled?: boolean;
+    type?: 'button' | 'submit' | 'reset';
 }
 
 const Button: React.FC<IButtonProps> = ({ 
@@ -13,7 +14,8 @@ const Button: React.FC<IButtonProps> = ({
     onClick, 
     className,
     style,
-    disabled = false 
+    disabled = false ,
+    type = 'button'
 }) => {
     const handleClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
@@ -32,6 +34,7 @@ const Button: React.FC<IButtonProps> = ({
             className={className}
             onClick={handleClick}
             disabled={disabled}
+            type={type}
         >
             {text}
         </button>

@@ -51,7 +51,7 @@ interface FiltersState {
 const SearchPage: React.FC = () => {
   const dispatch = useAppDispatch()
   const [searchParams, setSearchParams] = useSearchParams();
-  const {  typesVal, categories } = useAppSelector(state => state.menuReducer);
+  const { typesVal, categories } = useAppSelector(state => state.menuReducer);
   // Refs для хранения изменяемых данных без перерисовки
   const filtersInfo = useRef<FiltersInfoRequest>({
     sizes: [],
@@ -270,6 +270,19 @@ const SearchPage: React.FC = () => {
         filtersInfo.current.price = filter.data
         break
 
+      // case "type":
+      //   filter.data.forEach((data: boolean, index: number) => {
+      //     const firm = firms.current[index]
+      //     const firmIndex = filtersInfo.current.types.indexOf(firm)
+
+      //     if (firmIndex !== -1 && !data) {
+      //       filtersInfo.current.firms.splice(firmIndex, 1)
+      //     } else if (firmIndex === -1 && data) {
+      //       filtersInfo.current.firms.push(firm)
+      //     }
+      //   })
+      //   break
+
       case "firms":
         filter.data.forEach((data: boolean, index: number) => {
           const firm = firms.current[index]
@@ -303,8 +316,8 @@ const SearchPage: React.FC = () => {
     searchCallback(searchWord.current)
   }, [updatMerch])
 
-  const orderTypeChange = useCallback((ind: number) => {
-    orderType.current = ind
+  const orderTypeChange = useCallback((ind: number | string) => {
+    orderType.current = Number(ind)
     searchCallback(searchWord.current)
   }, [updatMerch])
 
@@ -484,16 +497,16 @@ const SearchPage: React.FC = () => {
             // Для короткого блока фиксируем top = minTopOffset
             const newTop = minTopOffset;
             if (delta < 0) {
-                if (stickyTopRef.current !== newTop) {
-                  stickyTopRef.current = newTop;
-                  setStickyTop(newTop);
-                }
-              } else {
-                if (stickyTopRef.current !== 0) {
-                  stickyTopRef.current = 0;
-                  setStickyTop(0);
-                }
+              if (stickyTopRef.current !== newTop) {
+                stickyTopRef.current = newTop;
+                setStickyTop(newTop);
               }
+            } else {
+              if (stickyTopRef.current !== 0) {
+                stickyTopRef.current = 0;
+                setStickyTop(0);
+              }
+            }
           }
         } else {
           // Длинный блок
@@ -558,8 +571,8 @@ const SearchPage: React.FC = () => {
         }}>
           <div style={{ margin: "auto", width: "30%", padding: "5px" }}>
             {/* {showGrid ? <div onClick={() => setGrid(!grid)} className={s.gridSwitcher}>
-            {grid ? <FoureGrid /> : <SixGrid />}
-          </div> : <div style={{ width: "30%" }} />}  */}
+                {grid ? <FoureGrid /> : <SixGrid />}
+              </div> : <div style={{ width: "30%" }} />}  */}
 
             {widthProps ? <Filter style={{
               color: hoverSettings ? 'white' : 'black',

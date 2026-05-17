@@ -2,7 +2,7 @@ import React, { useEffect, ReactElement, useState, useRef, lazy, useCallback, me
 import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux'
 import { cartCountAction } from 'src/store/reducers/menuSlice'
 import axios from "axios";
-import { show, sticky, verified, types, categories } from 'src/store/reducers/menuSlice'
+import { show, sticky, verified, types, categories, setFirmMap, setFirms, collections } from 'src/store/reducers/menuSlice'
 import { setFooter } from 'src/store/reducers/dispetcherSlice'
 import { setWidthProps } from 'src/store/reducers/resizeSlice'
 import DropZone from "src/develop/dropZone/DropZone"
@@ -18,6 +18,8 @@ import ScrollToTop from './scrollToTop';
 import { setUniqueCustomer } from './providers/userProvider';
 import { getCdekDeliveryData, chackPostalIndex } from './providers/cdek';
 import Refund from './pages/infoPages/Refund';
+import AdminBrandsManager from './pages/admin/brandsManager/BrandsManager';
+import AdminBrandDetails from './modules/admin/brandDetails/BrandsDetailsForm';
 import {
   Link, Route, BrowserRouter as Router, Routes,
   createBrowserRouter,
@@ -25,6 +27,7 @@ import {
   RouterProvider,
   createRoutesFromElements,
   NavLink,
+  Navigate,
 } from "react-router-dom";
 import SettingsModule from './modules/settingsModule/SettingsModule.old'
 import SearchPage from './pages/search/SearchPage'
@@ -42,11 +45,23 @@ import global from "src/global.css"
 import OrderInfo from './components/orderInfo/orderInfo';
 import { getCartCount } from './providers/shopProvider';
 import { useContentHeight } from 'src/store/hooks/redux';
-import { getCategoriesAndTypes } from './providers/merchProvider';
+import { getCategoriesAndTypes, getFirms } from './providers/merchProvider';
 import CookiePolicy from './pages/infoPages/CookiePolicy'
 import CookieInfo from './components/cookieInfo/CookieInfo';
 import About from './pages/infoPages/About'
-
+import ProtectedRoute from 'src/components/admin/ProtectedRoute';
+import AdminLogin from './pages/admin/login/Login';
+import ForgotPassword from './pages/admin/forgotPassword/ForgotPassword';
+import ResetPassword from './pages/admin/resetPassword/ResetPassword';
+import AdminLayout from './pages/admin/adminLayout/AdminLayout';
+import AdminDashboard from './pages/admin/adminDashBoard/AdminDashboard';
+import AdminProducts from './pages/admin/adminProducts/AdminProducts';
+import AdminProductForm from './pages/admin/productForm.tsx/AdminProductsForm';
+import OrdersManager from 'src/pages/admin/ordersManager/OrdersManager';
+import AdminsManager from 'src/pages/admin/adminManager/AdminsManager';
+import BannersManager from './pages/admin/bannersManager/BannersManager';
+import PrivacyPolicy from './pages/infoPages/PrivacyPolicy';
+import SQLConsole from './pages/admin/sqlExecuter/SqlExecuter';
 
 const App: React.FC = memo(function App() {
   const dispatch = useAppDispatch();
@@ -99,8 +114,33 @@ const App: React.FC = memo(function App() {
       dispatch(categories(categoriesVal))
       localStorage.setItem('cachedData', JSON.stringify({ categories: categoriesVal, types: typesVal }));
     })
-  }, [])
 
+  }, [])
+  useEffect(() => {
+    getFirms((data) => {
+      const fieldData: Record<string, Record<string, string>> = {};
+      const collectionsSet = new Set<string>();
+      const firmMap: Record<string, number> = {};
+
+      data.forEach((row: { brand_id: number; firm: string; line_id: number | null; collection_name: string | null }) => {
+        // Сохраняем name -> id
+        firmMap[row.firm] = row.brand_id;
+
+        // Собираем коллекции для меню
+        if (!fieldData[row.firm]) {
+          fieldData[row.firm] = {};
+        }
+        if (row.collection_name) {
+          fieldData[row.firm][row.line_id] = row.collection_name;
+          collectionsSet.add(row.collection_name);
+        }
+      });
+
+      dispatch(setFirms(Object.keys(fieldData)));  // массив имён
+      dispatch(setFirmMap(firmMap));               // name -> id
+      dispatch(collections(fieldData));   // уникальные коллекции
+    });
+  }, []);
   // App initialization
   useEffect(() => {
     handleResize();
@@ -243,6 +283,7 @@ const App: React.FC = memo(function App() {
           <Route path="/buy" element={<BuyPage />} />
           <Route path="/way_to_pay" element={<WayToPay />} />
           <Route path="/delivery" element={<Delivery />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/faq" element={<Faq />} />
           <Route path="/user" element={<User />} />
           <Route path="/verification/:verHash" element={<Verification />} />
@@ -251,6 +292,78 @@ const App: React.FC = memo(function App() {
           <Route path="/refund-policy" element={<Refund />} />
           <Route path="/cookie-policy" element={<CookiePolicy />} />
           <Route path="/about" element={<About />} />
+          <Route path="/admin">
+            <Route index element={<Navigate to="/admin/login" replace />} />
+            {/* Публичный админский маршрут */}
+            <Route path="login" element={<AdminLogin />} />
+            <Route path="forgot-password" element={<ForgotPassword />} />
+            <Route path="reset-password/:token" element={<ResetPassword />} />
+
+            {/* Защищенные админские маршруты */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="" element={<AdminLayout />}>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="products">
+                  <Route index element={<AdminProducts />} />
+                  <Route path="create" element={<AdminProductForm />} />
+                  <Route path="edit/:id" element={<AdminProductForm />} />
+                </Route>
+                <Route path="brands">
+                  <Route index element={<AdminBrandsManager />} />
+                  <Route path=":brandId" element={<AdminBrandDetails />} />
+                </Route>
+                <Route path="logs" element={<AdminsManager />} />
+                <Route path="sqlConsole" element={<SQLConsole />} />
+                <Route path="banners" element={<BannersManager />} />
+                <Route path="orders">
+                  <Route index element={<OrdersManager />} />
+                  {/* <Route path=":id" element={<OrderDetails />} /> */}
+                </Route>
+              </Route>
+
+              {/* <Route path="" element={<AdminLayout />}>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<AdminDashboard />} />
+                
+              
+                <Route path="products">
+                  <Route index element={<ProductsManagement />} />
+                  <Route path="create" element={<ProductForm />} />
+                  <Route path="edit/:id" element={<ProductForm />} />
+                </Route>
+                
+              
+                <Route path="orders">
+                  <Route index element={<OrdersManagement />} />
+                  <Route path=":id" element={<OrderDetails />} />
+                </Route>
+                
+             
+                <Route path="sales">
+                  <Route index element={<SalesManagement />} />
+                  <Route path="create" element={<SaleForm />} />
+                  <Route path="edit/:id" element={<SaleForm />} />
+                </Route>
+                
+              
+                <Route path="banners">
+                  <Route index element={<BannersManagement />} />
+                  <Route path="create" element={<BannerForm />} />
+                  <Route path="edit/:id" element={<BannerForm />} />
+                </Route>
+                
+               
+                <Route element={<ProtectedRoute requiredRole="superadmin" />}>
+                  <Route path="users" element={<UsersManagement />} />
+                  <Route path="settings" element={<Settings />} />
+                </Route>
+              </Route> */}
+            </Route>
+
+            {/* <Route path="unauthorized" element={<Unauthorized />} />
+            <Route path="*" element={<Navigate to="dashboard" replace />} /> */} */
+          </Route>
         </Route>
       </Routes>
     </Router>

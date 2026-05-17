@@ -1,0 +1,41 @@
+.container {
+    width: 100%;
+}
+
+.productsList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.loaderContainer,
+.emptyContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}
+
+.loader {
+    font-size: 16px;
+    color: #666;
+}
+
+.emptyText {
+    font-size: 16px;
+    color: #999;
+}
+
+.paginationWrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+}
+
+/* Адаптив */
+@media (max-width: 768px) {
+    .productsList {
+        gap: 8px;
+    }
+}

@@ -11,6 +11,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const checkProductInOrders = `-- name: CheckProductInOrders :one
+SELECT EXISTS(
+    SELECT 1 FROM orderitems WHERE ProductId = $1
+) as exists
+`
+
+func (q *Queries) CheckProductInOrders(ctx context.Context, productid int32) (bool, error) {
+	row := q.db.QueryRow(ctx, checkProductInOrders, productid)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const checkProductInPreorders = `-- name: CheckProductInPreorders :one
+SELECT EXISTS(
+    SELECT 1 FROM preorderitems WHERE ProductId = $1
+) as exists
+`
+
+func (q *Queries) CheckProductInPreorders(ctx context.Context, productid int32) (bool, error) {
+	row := q.db.QueryRow(ctx, checkProductInPreorders, productid)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const deleteCartData = `-- name: DeleteCartData :exec
 DELETE FROM preorderitems
 WHERE id = $1
@@ -19,6 +45,29 @@ WHERE id = $1
 func (q *Queries) DeleteCartData(ctx context.Context, id int32) error {
 	_, err := q.db.Exec(ctx, deleteCartData, id)
 	return err
+}
+
+const getCustomerByID = `-- name: GetCustomerByID :one
+SELECT id, name, mail, phone FROM customers WHERE id = $1
+`
+
+type GetCustomerByIDRow struct {
+	ID    int32       `json:"id"`
+	Name  pgtype.Text `json:"name"`
+	Mail  string      `json:"mail"`
+	Phone pgtype.Text `json:"phone"`
+}
+
+func (q *Queries) GetCustomerByID(ctx context.Context, id int32) (GetCustomerByIDRow, error) {
+	row := q.db.QueryRow(ctx, getCustomerByID, id)
+	var i GetCustomerByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Mail,
+		&i.Phone,
+	)
+	return i, err
 }
 
 const getFullPreorderCount = `-- name: GetFullPreorderCount :one
@@ -116,6 +165,7 @@ SELECT id,
     hash,
     status,
     customerId,
+    OrderDate,
     unregistercustomerid
 FROM orders
 WHERE id = $1
@@ -126,6 +176,7 @@ type GetOrderByIdRow struct {
 	Hash                 string      `json:"hash"`
 	Status               StatusEnum  `json:"status"`
 	Customerid           pgtype.Int4 `json:"customerid"`
+	Orderdate            pgtype.Date `json:"orderdate"`
 	Unregistercustomerid pgtype.Int4 `json:"unregistercustomerid"`
 }
 
@@ -137,6 +188,7 @@ func (q *Queries) GetOrderById(ctx context.Context, id int32) (GetOrderByIdRow, 
 		&i.Hash,
 		&i.Status,
 		&i.Customerid,
+		&i.Orderdate,
 		&i.Unregistercustomerid,
 	)
 	return i, err
@@ -224,6 +276,73 @@ func (q *Queries) GetOrderInfo(ctx context.Context, orderid int32) ([]GetOrderIn
 	for rows.Next() {
 		var i GetOrderInfoRow
 		if err := rows.Scan(&i.Address, &i.Items); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getOrdersWithPagination = `-- name: GetOrdersWithPagination :many
+SELECT 
+    o.id,
+    o.OrderDate,
+    o.Status,
+    o.Hash,
+    o.DeliveryPrice,
+    o.DeliveryType,
+    o.DeliveryComment,
+    COALESCE(c.name, uc.name) as customer_name,
+    COALESCE(c.mail, uc.mail) as customer_email
+FROM orders o
+LEFT JOIN customers c ON o.CustomerID = c.id
+LEFT JOIN unregistercustomer uc ON o.UnregisterCustomerID = uc.id
+WHERE ($3 = '' OR o.Status = $3)
+ORDER BY o.OrderDate DESC
+LIMIT $1 OFFSET $2
+`
+
+type GetOrdersWithPaginationParams struct {
+	Limit  int32       `json:"limit"`
+	Offset int32       `json:"offset"`
+	Status interface{} `json:"status"`
+}
+
+type GetOrdersWithPaginationRow struct {
+	ID              int32        `json:"id"`
+	Orderdate       pgtype.Date  `json:"orderdate"`
+	Status          StatusEnum   `json:"status"`
+	Hash            string       `json:"hash"`
+	Deliveryprice   int32        `json:"deliveryprice"`
+	Deliverytype    DeliveryEnum `json:"deliverytype"`
+	Deliverycomment pgtype.Text  `json:"deliverycomment"`
+	CustomerName    string       `json:"customer_name"`
+	CustomerEmail   string       `json:"customer_email"`
+}
+
+func (q *Queries) GetOrdersWithPagination(ctx context.Context, arg GetOrdersWithPaginationParams) ([]GetOrdersWithPaginationRow, error) {
+	rows, err := q.db.Query(ctx, getOrdersWithPagination, arg.Limit, arg.Offset, arg.Status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetOrdersWithPaginationRow
+	for rows.Next() {
+		var i GetOrdersWithPaginationRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Orderdate,
+			&i.Status,
+			&i.Hash,
+			&i.Deliveryprice,
+			&i.Deliverytype,
+			&i.Deliverycomment,
+			&i.CustomerName,
+			&i.CustomerEmail,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -367,6 +486,29 @@ func (q *Queries) GetPreorderInfo(ctx context.Context, orderid int32) ([]GetPreo
 		return nil, err
 	}
 	return items, nil
+}
+
+const getUnregisterCustomerByID = `-- name: GetUnregisterCustomerByID :one
+SELECT id, name, mail, phone FROM unregistercustomer WHERE id = $1
+`
+
+type GetUnregisterCustomerByIDRow struct {
+	ID    int32  `json:"id"`
+	Name  string `json:"name"`
+	Mail  string `json:"mail"`
+	Phone string `json:"phone"`
+}
+
+func (q *Queries) GetUnregisterCustomerByID(ctx context.Context, id int32) (GetUnregisterCustomerByIDRow, error) {
+	row := q.db.QueryRow(ctx, getUnregisterCustomerByID, id)
+	var i GetUnregisterCustomerByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Mail,
+		&i.Phone,
+	)
+	return i, err
 }
 
 const insertManyOrderItems = `-- name: InsertManyOrderItems :exec

@@ -13,6 +13,12 @@ import (
 	"github.com/mrkrabopl1/go_db/types"
 )
 
+type SizeData struct {
+	Price    int32 `json:"price"`
+	Quantity int32 `json:"quantity"`
+	Discount int32 `json:"discount"`
+}
+
 func (s *Server) handleGetFirms(ctx *gin.Context) {
 	firms, err := s.store.GetFirms(ctx)
 	if err != nil {
@@ -58,7 +64,7 @@ func (s *Server) handleGetCollectionCount(ctx *gin.Context) {
 	name := ctx.Query("name")
 	count, err := s.store.GetMerchCountOfCollectionsOrFirms(ctx, db.GetMerchCountOfCollectionsOrFirmsParams{
 		Firm: name,
-		Line: pgtype.Text{String: name, Valid: name != ""},
+		Line: "",
 	})
 	if err != nil {
 		//log.WithCaller().Err(err)
@@ -94,10 +100,10 @@ func (s *Server) handleGetProductsInfoById(ctx *gin.Context) {
 	if err1 != nil {
 		fmt.Println(err1)
 	} else {
-		fmt.Println(user, user.UserId, "fdslfsd;mfdskmf;sdmfs")
-		err := s.store.SetSnickersHistory(ctx, int32(numId), user.UserId)
+		fmt.Println(user, user.UserID, "fdslfsd;mfdskmf;sdmfs")
+		err := s.store.SetSnickersHistory(ctx, int32(numId), user.UserID)
 		if err != nil {
-			fmt.Println(user, user.UserId, "blya")
+			fmt.Println(user, user.UserID, "blya")
 		}
 	}
 }
@@ -108,12 +114,6 @@ type ProductsResponseD struct {
 	Image    []string    `json:"imgs"`
 	Discount interface{} `json:"discount"`
 	Price    int         `json:"price"`
-}
-
-type RespSearchProductsAndFiltersByString struct {
-	Products   []ProductsResponseD   `json:"products"`
-	TotalCount int                   `json:"totalCount"`
-	Filters    FiltersSearchResponse `json:"filters"`
 }
 
 type Clothes struct {
@@ -129,39 +129,6 @@ type ProductsFilterStruct struct {
 	Price      []float32              `json:"price"`
 	Types      []int32                `json:"types"`
 	Categories []int32                `json:"categories"`
-}
-type Snickers struct {
-	Size35  int64 `json:"3.5"`
-	Size4   int64 `json:"4"`
-	Size45  int64 `json:"4.5"`
-	Size5   int64 `json:"5"`
-	Size55  int64 `json:"5.5"`
-	Size6   int64 `json:"6"`
-	Size65  int64 `json:"6.5"`
-	Size7   int64 `json:"7"`
-	Size75  int64 `json:"7.5"`
-	Size8   int64 `json:"8"`
-	Size85  int64 `json:"8.5"`
-	Size9   int64 `json:"9"`
-	Size95  int64 `json:"9.5"`
-	Size10  int64 `json:"10"`
-	Size105 int64 `json:"10.5"`
-	Size11  int64 `json:"11"`
-	Size115 int64 `json:"11.5"`
-	Size12  int64 `json:"12"`
-	Size125 int64 `json:"12.5"`
-	Size13  int64 `json:"13"`
-}
-type SizeData struct {
-	Snickers Snickers
-	Clothes  Clothes
-}
-
-type FiltersSearchResponse struct {
-	FirmsCount map[string]int `json:"firmsCount"`
-	Price      [2]int         `json:"price"`
-	Sizes      SizeData       `json:"sizes"`
-	Type       *int           `json:"type"`
 }
 
 func (s *Server) handleSearchSnickersAndFiltersByNameCategoryAndType(ctx *gin.Context) {
@@ -195,7 +162,7 @@ func (s *Server) handleSearchProductByCategoriesAndFilters(ctx *gin.Context) {
 
 	//fmt.Println(postData.Filters.Price, "postData postData postData postData postData postData postData postData ")
 	fmt.Println(postData.Filters.Types, "postData postData postData postData postData postData postData postData ")
-
+	postData.Filters.Status = "active"
 	resp, err := s.store.GetProductsByFiltersComplex(ctx, "", postData.Page, postData.Size, postData.Filters, postData.SortType)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -226,7 +193,7 @@ func (s *Server) handleSearchProductAndByCategoriesAndFilters(ctx *gin.Context) 
 	}
 
 	fmt.Println(postData.Filters.InStore, "dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
-
+	postData.Filters.Status = "active"
 	resp, err := s.store.GetProductsByFiltersComplex(ctx, "", 0, postData.Page, postData.Filters, postData.SortType)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -295,10 +262,10 @@ func (s *Server) handleGetSoloCollection(ctx *gin.Context) {
 	offset := (postData.Page - 1) * postData.Size
 	response, _ := s.store.GetMerchCollectionComplex(ctx,
 		db.GetMerchCollectionParams{
-			Firm:   postData.Name,
-			Line:   pgtype.Text{String: postData.Name, Valid: postData.Name != ""},
-			Limit:  int32(postData.Size),
-			Offset: int32(offset),
+			Firm:      postData.Name,
+			Line:      "",
+			Limitval:  int32(postData.Size),
+			Offsetval: int32(offset),
 		})
 	ctx.JSON(http.StatusOK, response)
 }

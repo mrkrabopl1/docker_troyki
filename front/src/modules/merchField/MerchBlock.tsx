@@ -5,7 +5,7 @@ import { toPrice } from 'src/global';
 
 
 
-interface MerchInterface { name: string, imgs: string[],image_path?:string, id: string, price: string, discount?: number }
+interface MerchInterface { name: string, imgs: string[], image_path?: string, id: string, price: string, discount?: number }
 
 
 
@@ -104,9 +104,9 @@ const MerchBlock: React.FC<{ className?: string, width?: string, data: MerchInte
         >
             <div className={s.colorLayout}>
                 <div className={s.imageBlock}>
-                    <img loading={"lazy"} className={s.img} style={firstImgStyle} src={(data.imgs?data.imgs[0]:data.image_path)} alt={s.imgName} />
+                    <img loading={"lazy"} className={s.img} style={firstImgStyle} src={(data.imgs ? data.imgs[0] : data.image_path)} alt={s.imgName} />
                     {data.discount ? <div className={s.badge_overlay}><div className={s.discountMarker}>
-                        {"Sale " + Math.round((Number(data.price) - data.discount) / Number(data.price) * 100) + "%" }
+                        {"Sale " + Math.round((Number(data.price) - data.discount) / Number(data.price) * 100) + "%"}
                     </div></div> : null}
                 </div>
                 <div className={s.nameHolder}>
@@ -120,7 +120,10 @@ const MerchBlock: React.FC<{ className?: string, width?: string, data: MerchInte
                                 <span className={s.discount}>{toPrice(data.price)}</span>
                                 : null
                             }
-                            <span className={s.imgName}>{"От " + toPrice(data.discount)}</span>
+                            {data.discount ?
+                                <span className={s.imgName}>{"От " + toPrice(data.discount)}</span>
+                                : <span className={s.imgName}>{"От " + toPrice(data.price)}</span>
+                            }
                         </div>
                             : <span className={s.imgName}>{"Нет в наличии"}</span>}
                     </div>

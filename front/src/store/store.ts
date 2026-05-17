@@ -11,7 +11,9 @@ import searchReducer from "./reducers/searchSlice"
 import formReducer from "./reducers/formSlice"
 import dispetcherReducer from "./reducers/dispetcherSlice"
 import resizeReducer from "./reducers/resizeSlice"
+import adminReducer from "./reducers/adminSlice"
 import listenerMiddleware from "./listenerMiddleware"
+
 const rootReducer = combineReducers({
     fieldReducer,
     appReducer,
@@ -24,7 +26,8 @@ const rootReducer = combineReducers({
     formReducer,
     searchReducer,
     dispetcherReducer,
-    resizeReducer
+    resizeReducer,
+    adminReducer
 })
 export const setupStore = () =>{
     return configureStore({

@@ -1,0 +1,524 @@
+/* ========== Базовые стили (без изменений, кроме удаления min-width у таблицы) ========== */
+.container {
+ 
+    background: #f5f5f5;
+    min-height: 100vh;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.titleSection h2 {
+    margin: 0 0 8px 0;
+    font-size: 24px;
+    color: #333;
+}
+
+.stats {
+    font-size: 14px;
+    color: #666;
+}
+
+.headerActions {
+    display: flex;
+    gap: 12px;
+}
+
+.controlsBar {
+    margin-bottom: 20px;
+    background: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.searchWrapper {
+    max-width: 300px;
+}
+
+.tableWrapper {
+    background: white;
+    border-radius: 12px;
+    overflow-x: auto;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.brandsTable {
+    width: 100%;
+    border-collapse: collapse;
+    /* убираем min-width, чтобы на телефоне не было горизонтальной прокрутки */
+}
+
+.brandsTable th,
+.brandsTable td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.brandsTable th {
+    background: #fafafa;
+    font-weight: 600;
+    color: #555;
+    font-size: 14px;
+}
+
+.sortableHeader {
+    cursor: pointer;
+    user-select: none;
+}
+
+.sortableHeader:hover {
+    background: #f0f0f0;
+}
+
+.sortIndicator {
+    margin-left: 4px;
+    font-size: 12px;
+}
+
+.brandRow {
+    transition: background 0.2s;
+}
+
+.brandRow:hover {
+    background: #fafafa;
+}
+
+.brandRow.inactive {
+    opacity: 0.6;
+}
+
+.brandRow.dragging {
+    opacity: 0.5;
+}
+
+.dropAbove {
+    border-top: 2px solid #007bff;
+}
+
+.dropBelow {
+    border-bottom: 2px solid #007bff;
+}
+
+.imageCell {
+    width: 60px;
+}
+
+.imageCell img {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+.noImage {
+    width: 50px;
+    height: 50px;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #999;
+    border-radius: 6px;
+}
+
+.nameCell {
+    min-width: 200px;
+}
+
+.brandName {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.website {
+    font-size: 12px;
+    color: #007bff;
+    text-decoration: none;
+}
+
+.website:hover {
+    text-decoration: underline;
+}
+
+.productsCell {
+    min-width: 100px;
+}
+
+.productStats {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.totalProducts {
+    font-weight: 600;
+    font-size: 16px;
+    color: #333;
+}
+
+.productBreakdown {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+}
+
+.activeProducts {
+    color: #28a745;
+}
+
+.inactiveProducts {
+    color: #dc3545;
+}
+
+.separator {
+    color: #999;
+}
+
+.linesCell {
+    text-align: center;
+}
+
+.linesCount {
+    display: inline-block;
+    background: #007bff;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.sortOrderCell {
+    width: 80px;
+}
+
+.sortOrderInput {
+    width: 60px;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.sortOrderInput:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.statusToggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+    padding: 4px 8px;
+}
+
+.statusToggle.active {
+    color: #28a745;
+}
+
+.statusToggle.inactive {
+    color: #dc3545;
+}
+
+.actionsCell {
+    white-space: nowrap;
+}
+
+.actionBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 8px;
+    margin: 0 2px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.actionBtn:hover {
+    background: #f0f0f0;
+}
+
+.deleteBtn:hover {
+    background: #fee;
+    color: #dc3545;
+}
+
+.loadingCell,
+.emptyCell {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 24px;
+    padding: 16px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.pagination button {
+    padding: 8px 16px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pagination button:hover:not(:disabled) {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination span {
+    font-size: 14px;
+    color: #666;
+}
+
+/* ========== Массовые действия ========== */
+.bulkButtons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.bulkButton {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    color: #444;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.bulkButton:hover {
+    background: #f5f5f5;
+    border-color: #aaa;
+    color: #222;
+}
+
+.bulkButton:active {
+    background: #eee;
+}
+
+.bulkButtonIcon {
+    font-size: 15px;
+    line-height: 1;
+}
+
+.bulkButtonDiscount:hover {
+    border-color: #ff4757;
+    color: #ff4757;
+    background: #fff5f5;
+}
+
+.bulkButtonStatus:hover {
+    border-color: #3742fa;
+    color: #3742fa;
+    background: #f5f6ff;
+}
+
+.bulkButtonActive:hover {
+    border-color: #27ae60;
+    color: #27ae60;
+    background: #f5fff9;
+}
+
+.bulkControls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 10px 0;
+}
+
+.bulkInfo {
+    font-size: 14px;
+    font-weight: 500;
+    color: #444;
+    white-space: nowrap;
+}
+
+.bulkSelectWrapper {
+    min-width: 200px;
+}
+
+.bulkActions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.bulkApplyBtn {
+    padding: 7px 20px;
+    background: #3742fa;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.bulkApplyBtn:hover:not(:disabled) {
+    background: #2b32d9;
+}
+
+.bulkApplyBtn:disabled {
+    background: #a0a0a0;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.bulkCancelBtn {
+    padding: 7px 16px;
+    background: #fff;
+    color: #666;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.bulkCancelBtn:hover {
+    background: #f5f5f5;
+    color: #333;
+}
+
+.bulkResult {
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+.bulkResult.success {
+    background: #e8f5e9;
+    color: #27ae60;
+}
+
+.bulkResult.error {
+    background: #fde8e8;
+    color: #e74c3c;
+}
+
+/* ========== Мобильная адаптация (карточки) ========== */
+@media (max-width: 500px) {
+    /* Скрываем заголовки таблицы */
+    .brandsTable thead {
+        display: none;
+    }
+
+    /* Превращаем строки в карточки */
+    .brandsTable,
+    .brandsTable tbody,
+    .brandsTable tr,
+    .brandsTable td {
+        display: block;
+        width: 100%;
+    }
+
+    .brandsTable tr {
+        margin-bottom: 16px;
+        border: 1px solid #e2e5ea;
+        border-radius: 12px;
+        background: white;
+        padding: 8px 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .brandsTable td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 14px;
+        text-align: left;
+    }
+
+    .brandsTable td:last-child {
+        border-bottom: none;
+    }
+
+    /* Подписи из data-label */
+    .brandsTable td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #64748b;
+        margin-right: 10px;
+        text-transform: uppercase;
+        font-size: 11px;
+        width: 40%;
+        flex-shrink: 0;
+    }
+
+    /* Корректировка специфичных ячеек */
+    .imageCell img,
+    .noImage {
+        width: 60px;
+        height: 60px;
+        margin-right: 0;
+    }
+
+    .imageCell::before {
+        /* если не нужна подпись "Фото" — можно скрыть, но лучше оставить */
+    }
+
+    .statusToggle {
+        font-size: 16px;
+        padding: 4px 12px;
+    }
+
+    .sortOrderInput {
+        width: 70px;
+    }
+
+    .actionsCell {
+        justify-content: flex-end;
+    }
+
+    .actionsCell::before {
+        /* можно скрыть подпись для действий или оставить */
+    }
+
+    /* Убираем принудительную ширину и min-width */
+    .brandsTable {
+        min-width: unset;
+    }
+}

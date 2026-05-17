@@ -1,0 +1,150 @@
+.dateRangePicker {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.dateInputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dateInput {
+    flex: 1;
+}
+
+.separator {
+    color: #666;
+}
+
+.calendarPopup {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    margin-top: 8px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 16px;
+    min-width: 600px;
+}
+
+.quickButtons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eee;
+    flex-wrap: wrap;
+}
+
+.quickButtons button {
+    padding: 6px 12px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.quickButtons button:hover {
+    background: #e8e8e8;
+}
+
+.calendarContainer {
+    display: flex;
+    gap: 24px;
+    justify-content: space-between;
+}
+
+.calendar {
+    flex: 1;
+}
+
+.calendarHeader {
+    margin-bottom: 12px;
+}
+
+.calendarHeader h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #333;
+}
+
+.monthNavigation {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.monthNavigation button {
+    padding: 4px 8px;
+    background: none;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.monthNavigation span {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.weekDays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.weekDay {
+    text-align: center;
+    font-size: 12px;
+    color: #666;
+    padding: 4px;
+}
+
+.days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.day, .emptyDay {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    border-radius: 4px;
+}
+
+.day {
+    background: white;
+    border: 1px solid #eee;
+    cursor: pointer;
+}
+
+.day:hover:not(.disabled) {
+    background: #f0f0f0;
+}
+
+.day.selected {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.day.disabled {
+    background: #f5f5f5;
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+.emptyDay {
+    background: transparent;
+}

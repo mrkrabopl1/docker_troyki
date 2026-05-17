@@ -53,8 +53,15 @@ func main() {
 		log.Fatal("Error while creating connection to the database!!")
 		return
 	}
-	imagePathBuilder := services.NewImagePathBuilder(cfg1.ImageBasePath, cfg1.UseCDN)
-	store := db.NewStore(connPool, imagePathBuilder)
+	imageService := services.NewImageService(
+		cfg1.ImageBaseDir,
+		cfg1.ImageBasePath,
+		cfg1.UseCDN,
+		cfg1.MaxImageSizeMB,
+	)
+
+	// СОЗДАЕМ Store с ImageService
+	store := db.NewStore(connPool, imageService.ImagePathBuilder)
 
 	redisOpt := asynq.RedisClientOpt{
 		Addr: cfg1.RedisAddress,
@@ -66,7 +73,7 @@ func main() {
 	waitGroup, ctx := errgroup.WithContext(ctx)
 
 	taskProcessor := runTaskProcessor(ctx, waitGroup, cfg1, redisOpt, store)
-	runGinServer(cfg1, store, taskDistributor, taskProcessor)
+	runGinServer(cfg1, store, taskDistributor, taskProcessor, imageService)
 	//postgres_db
 
 	// dbPath := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", "localhost", "5432", cfg.PgUser, cfg.PgPass, cfg.PgBase)
@@ -87,8 +94,8 @@ func main() {
 
 }
 
-func runGinServer(config util.Config, store db.Store, taskDistributor worker.TaskDistributor, taskProcessor worker.TaskProcessor) {
-	server, err := api.NewServer(config, store, taskDistributor, taskProcessor)
+func runGinServer(config util.Config, store db.Store, taskDistributor worker.TaskDistributor, taskProcessor worker.TaskProcessor, imageService *services.ImageService) {
+	server, err := api.NewServer(config, store, taskDistributor, taskProcessor, imageService)
 	if err != nil {
 		fmt.Println(err, "Error while creating server")
 		//log.Fatal().Err(err).Msg("cannot create server")

@@ -1,0 +1,320 @@
+/* style.module.css */
+
+.container {
+    padding: 24px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.container h2 {
+    margin: 0 0 24px 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+/* Фильтры */
+.filters {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.filters input,
+.filters select {
+    padding: 10px 14px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 14px;
+    background: #fff;
+    transition: all 0.2s;
+    min-width: 200px;
+}
+
+.filters input:focus,
+.filters select:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.filters input::placeholder {
+    color: #999;
+}
+
+/* Таблица */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 24px;
+}
+
+.table thead {
+    background: #f5f5f5;
+}
+
+.table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+    color: #555;
+    border-bottom: 2px solid #e0e0e0;
+    white-space: nowrap;
+}
+
+.table td {
+    padding: 16px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 14px;
+    color: #333;
+}
+
+.table tbody tr:hover {
+    background: #fafafa;
+}
+
+.table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.table small {
+    font-size: 12px;
+    color: #777;
+}
+
+/* Статусы */
+.statusBadge {
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    background: transparent;
+    transition: all 0.2s;
+}
+
+.statusBadge:focus {
+    outline: none;
+    ring: 2px solid #1976d2;
+}
+
+.pending {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.approved {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.rejected {
+    background: #ffebee;
+    color: #c62828;
+}
+
+/* Кнопки действий */
+.table button {
+    padding: 6px 12px;
+    background: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.table button:hover {
+    background: #1565c0;
+}
+
+/* Пагинация */
+.pagination {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    margin-top: 24px;
+}
+
+.pagination button {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 8px;
+    border: 1px solid #e0e0e0;
+    background: white;
+    color: #333;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pagination button:hover {
+    background: #f5f5f5;
+    border-color: #1976d2;
+}
+
+.pagination button.active {
+    background: #1976d2;
+    color: white;
+    border-color: #1976d2;
+}
+
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Загрузка */
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    font-size: 16px;
+    color: #777;
+}
+
+.loading::after {
+    content: '';
+    width: 24px;
+    height: 24px;
+    margin-left: 12px;
+    border: 2px solid #e0e0e0;
+    border-top-color: #1976d2;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Пустое состояние */
+.empty {
+    text-align: center;
+    padding: 48px;
+    color: #999;
+    font-size: 16px;
+}
+
+/* Адаптивность */
+@media (max-width: 1200px) {
+    .table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    
+    .filters {
+        flex-direction: column;
+    }
+    
+    .filters input,
+    .filters select {
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 16px;
+    }
+    
+    .container h2 {
+        font-size: 20px;
+        margin-bottom: 16px;
+    }
+    
+    .table th,
+    .table td {
+        padding: 12px;
+        font-size: 13px;
+    }
+    
+    .pagination button {
+        min-width: 32px;
+        height: 32px;
+        font-size: 13px;
+    }
+}
+
+/* Дополнительные стили для информации о доставке */
+.deliveryInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.deliveryType {
+    font-weight: 500;
+    color: #333;
+}
+
+.deliveryAddress {
+    font-size: 12px;
+    color: #777;
+}
+
+/* Стили для суммы заказа */
+.amount {
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+/* Стили для ID заказа */
+.orderId {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-weight: 500;
+    color: #1976d2;
+}
+
+/* Кнопка обновления */
+.refreshButton {
+    margin-left: auto;
+    padding: 8px 16px;
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.refreshButton:hover {
+    background: #e0e0e0;
+}
+
+/* Индикатор загрузки в таблице */
+.tableLoading {
+    opacity: 0.6;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+
+/* Анимация появления строк */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.table tbody tr {
+    animation: fadeIn 0.3s ease-out;
+}

@@ -1,0 +1,497 @@
+/* src/pages/admin/BrandDetails/style.module.css */
+
+/* Добавьте CSS переменные в начало файла */
+:root {
+  --bg-secondary: #ffffff;
+  --bg-primary: #f8f9fa;
+  --border-color: #e9ecef;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --primary-color: #007bff;
+}
+
+.container {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.loading,
+.error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  font-size: 18px;
+  color: #666;
+}
+
+.error {
+  color: #dc3545;
+}
+
+/* Хлебные крошки */
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  color: #666;
+  font-size: 14px;
+}
+
+.breadcrumbs span {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.breadcrumbs span:hover:not(.separator):not(.current) {
+  color: #007bff;
+  text-decoration: underline;
+}
+
+.breadcrumbs .separator {
+  cursor: default;
+  color: #999;
+}
+
+.breadcrumbs .current {
+  color: #333;
+  font-weight: 500;
+  cursor: default;
+}
+
+/* Заголовок */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.titleSection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.titleSection h2 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.statusBadge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.statusBadge.active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.statusBadge.inactive {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+}
+
+/* Карточка с информацией о бренде */
+.brandInfoCard,
+.brandInfoCardEdit {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.brandInfoCardEdit {
+  border: 1px solid #e9ecef;
+}
+
+.brandMainInfo {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .brandMainInfo {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+.brandLogo {
+  width: 160px;
+  height: 160px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #f5f5f5;
+  padding: 8px;
+}
+
+.noLogo {
+  width: 160px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border-radius: 8px;
+  color: #999;
+  font-size: 14px;
+}
+
+.brandDetails {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 200px;
+}
+
+.detailRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .detailRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+.detailLabel {
+  min-width: 140px;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.detailValue {
+  color: #333;
+  font-weight: 500;
+}
+
+/* Стили для полей ввода в режиме редактирования */
+.detailRow input,
+.detailRow textarea,
+.brandDescription textarea {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  background: white;
+  color: #333;
+  transition: border-color 0.2s;
+}
+
+.detailRow input:focus,
+.detailRow textarea:focus,
+.brandDescription textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+.websiteLink {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.websiteLink:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.websiteLink svg {
+  width: 16px;
+  height: 16px;
+}
+
+.brandDescription {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #eee;
+}
+
+.brandDescription h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.brandDescription p {
+  margin: 0;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* Секция редактирования изображения */
+.editImageSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.editImageContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.changeImageBtn {
+  cursor: pointer;
+  color: #007bff;
+  font-size: 14px;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+}
+
+.changeImageBtn:hover {
+  color: #0056b3;
+}
+
+.uploadImagePlaceholder {
+  width: 160px;
+  height: 160px;
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  color: #999;
+  text-align: center;
+  background: #fafafa;
+  transition: all 0.2s;
+}
+
+.uploadImagePlaceholder:hover {
+  border-color: #007bff;
+  background: #f0f7ff;
+}
+
+.uploadImagePlaceholder input {
+  display: none;
+}
+
+/* Статистика */
+.statsSection {
+  margin-bottom: 32px;
+}
+
+.statsSection h3 {
+  margin: 0 0 20px 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.statCard {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s;
+}
+
+.statCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.statValue {
+  display: block;
+  font-size: 36px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.statLabel {
+  color: #666;
+  font-size: 14px;
+}
+
+.statCard.active .statValue {
+  color: #28a745;
+}
+
+.statCard.inactive .statValue {
+  color: #dc3545;
+}
+
+/* Категории */
+.categoryStats {
+  background: white;
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.categoryStats h4 {
+  margin: 0 0 20px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.categoryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.categoryCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.categoryHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.categoryIcon {
+  font-size: 24px;
+}
+
+.categoryName {
+  font-weight: 500;
+  color: #333;
+}
+
+.categoryProgress {
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  background: linear-gradient(90deg, #28a745, #20c997);
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+
+.categoryNumbers {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.activeCount {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.separator {
+  color: #999;
+}
+
+.totalCount {
+  color: #666;
+}
+
+/* Линейки */
+.linesSection {
+  margin-top: 32px;
+}
+
+.linesSection h3 {
+  margin: 0 0 20px 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .titleSection {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .categoryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .detailLabel {
+    min-width: 120px;
+  }
+  
+  .brandLogo,
+  .noLogo,
+  .uploadImagePlaceholder {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .titleSection {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

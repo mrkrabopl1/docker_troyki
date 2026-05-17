@@ -1,0 +1,263 @@
+/* style.module.css for AdminLogs */
+
+.container {
+    padding: 24px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.container h2 {
+    margin: 0 0 24px 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+/* Фильтры */
+.filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.filters select,
+.filters input {
+    padding: 10px 14px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 14px;
+    background: #fff;
+    transition: all 0.2s;
+}
+
+.filters select:focus,
+.filters input:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.resetButton {
+    padding: 10px 16px;
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.resetButton:hover {
+    background: #e0e0e0;
+}
+
+/* Таблица */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 24px;
+}
+
+.table thead {
+    background: #f5f5f5;
+}
+
+.table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+    color: #555;
+    border-bottom: 2px solid #e0e0e0;
+    white-space: nowrap;
+}
+
+.table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+    color: #333;
+}
+
+.table tbody tr:hover {
+    background: #fafafa;
+}
+
+/* Информация об админе */
+.adminInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.adminName {
+    font-weight: 500;
+    color: #1a1a1a;
+}
+
+.adminEmail {
+    font-size: 12px;
+    color: #777;
+}
+
+/* Бейджи действий */
+.actionBadge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+}
+
+.create {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.update {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.delete {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.update_status {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.login {
+    background: #f3e5f5;
+    color: #6a1b9a;
+}
+
+.logout {
+    background: #eceff1;
+    color: #546e7a;
+}
+
+/* Тип объекта */
+.entityType {
+    font-weight: 500;
+    color: #555;
+}
+
+.entityId {
+    font-family: 'Monaco', 'Menlo', monospace;
+    color: #1976d2;
+}
+
+/* Детали */
+.details {
+    max-width: 300px;
+    word-break: break-word;
+    font-size: 12px;
+    color: #666;
+}
+
+/* IP адрес */
+.ipAddress {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 12px;
+    color: #777;
+}
+
+/* Пагинация */
+.pagination {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    margin-top: 24px;
+}
+
+.pagination button {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 8px;
+    border: 1px solid #e0e0e0;
+    background: white;
+    color: #333;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pagination button:hover {
+    background: #f5f5f5;
+    border-color: #1976d2;
+}
+
+.pagination button.active {
+    background: #1976d2;
+    color: white;
+    border-color: #1976d2;
+}
+
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Статистика */
+.stats {
+    margin-top: 16px;
+    font-size: 14px;
+    color: #666;
+    text-align: right;
+}
+
+/* Загрузка */
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    font-size: 16px;
+    color: #777;
+}
+
+.tableLoading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.empty {
+    text-align: center;
+    padding: 48px !important;
+    color: #999;
+    font-size: 16px;
+}
+
+/* Адаптивность */
+@media (max-width: 1200px) {
+    .table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 16px;
+    }
+    
+    .filters {
+        flex-direction: column;
+    }
+    
+    .filters select,
+    .filters input,
+    .resetButton {
+        width: 100%;
+    }
+}

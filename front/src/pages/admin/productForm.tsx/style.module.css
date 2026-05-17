@@ -1,0 +1,537 @@
+.container {
+    padding: 24px;
+    max-width: 1440px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background: #f7f8fa;
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #e2e5ea;
+}
+
+.header h2 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 600;
+}
+
+.headerActions {
+    display: flex;
+    gap: 12px;
+}
+
+.content {
+    display: flex;
+    gap: 24px;
+}
+
+/* Left column */
+.leftColumn {
+    width: 320px;
+    flex-shrink: 0;
+}
+
+.dropZone {
+    background: white;
+    border: 2px dashed #c5cdd8;
+    border-radius: 16px;
+    min-height: 420px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dropZone.dragActive {
+    border-color: #4f46e5;
+    background: #f0f0ff;
+}
+
+.dropZoneContent {
+    text-align: center;
+    color: #7c7f87;
+}
+
+.uploadIcon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 16px;
+    opacity: 0.6;
+}
+
+.imagesGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 12px;
+    padding: 16px;
+    width: 100%;
+}
+
+.imageItem {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f1f3f5;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.imageItem img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.deleteImageBtn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(255, 77, 79, 0.85);
+    border: none;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.deleteImageBtn:hover {
+    background: #ff4d4f;
+}
+
+.addImageBtn {
+    aspect-ratio: 1;
+    border: 2px dashed #cdd2d9;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #7c7f87;
+}
+
+.addImageBtn:hover {
+    border-color: #4f46e5;
+    color: #4f46e5;
+}
+
+.addImageBtn svg {
+    width: 28px;
+    height: 28px;
+}
+
+.uploading {
+    text-align: center;
+    padding: 12px;
+    color: #4f46e5;
+    font-weight: 500;
+}
+
+/* Right column */
+.rightColumn {
+    flex: 1;
+    min-width: 0;
+}
+
+.card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02);
+}
+
+.card h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* Переключатель размерного/безразмерного */
+.sizeTypeSwitch {
+    display: flex;
+    background: #f1f5f9;
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+}
+
+.switchBtn {
+    border: none;
+    background: transparent;
+    padding: 6px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.switchBtn.active {
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    color: #1e293b;
+}
+
+.noSizeLabel {
+    display: inline-block;
+    padding: 8px 12px;
+    background: #f1f5f9;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.formGroup {
+    margin-bottom: 20px;
+}
+
+.formGroup label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #334155;
+    font-size: 14px;
+}
+
+.formGroup input,
+.formGroup select,
+.formGroup textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #e2e5ea;
+    border-radius: 10px;
+    font-size: 14px;
+    transition: all 0.2s;
+    background: #fafbfc;
+}
+
+.formGroup input:focus,
+.formGroup select:focus,
+.formGroup textarea:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    background: white;
+}
+
+.formRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* Bulk actions – чистый блок */
+.bulkActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    padding: 16px 0 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.bulkGroup {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    padding: 6px 12px;
+    border-radius: 12px;
+    border: 1px solid #e9eef2;
+    transition: box-shadow 0.2s;
+}
+
+.bulkGroup:hover {
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.bulkLabel {
+    font-size: 13px;
+    font-weight: 500;
+    color: #334155;
+    white-space: nowrap;
+}
+
+.smallInput {
+    width: 75px;
+    padding: 6px 8px;
+    border: 1px solid #e2e5ea;
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.modeSelect {
+    width: 44px;
+    padding: 6px 4px;
+    border: 1px solid #e2e5ea;
+    border-radius: 8px;
+    font-size: 15px;
+    text-align: center;
+}
+
+/* Size table */
+.sizeTableHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.sizesTableWrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -16px;
+    padding: 0 16px;
+}
+
+.sizesGrid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.sizesGrid th,
+.sizesGrid td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.sizesGrid th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #475569;
+    font-size: 13px;
+    letter-spacing: 0.3px;
+}
+
+.sizesGrid td input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #e2e5ea;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+    transition: 0.15s;
+}
+
+.sizesGrid td input:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+    outline: none;
+}
+
+.removeBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.removeBtn:hover {
+    opacity: 1;
+}
+
+.emptySizes {
+    text-align: center;
+    padding: 40px 0;
+    color: #94a3b8;
+    font-size: 15px;
+}
+
+.linkBtn {
+    background: none;
+    border: none;
+    color: #4f46e5;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.linkBtn:hover {
+    color: #3730a3;
+    text-decoration: underline;
+}
+
+.scrollContainer {
+    max-height: 80vh;
+    overflow: hidden;
+}
+
+.scrollStyle {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modalTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.addSizeBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    background: #f8fafc;
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    color: #475569;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    justify-self: end; /* для grid-родителя */
+}
+.errorText {
+    color: #f44336;
+    font-size: 12px;
+    margin-top: 4px;
+}
+.errorCombobox {
+    border: 1px solid #f44336 !important;
+    border-radius: 4px;
+}
+.errorInput {
+    border-color: #f44336 !important;
+}
+.errorDropZone {
+    border-color: #f44336 !important;
+    background-color: rgba(244, 67, 54, 0.05);
+}
+.serverError {
+    background-color: #ffebee;
+    border-left: 4px solid #f44336;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    color: #c62828;
+}
+.firmModalContent{
+    background: white;
+}
+.fieldError {
+    color: #f44336;
+    font-size: 12px;
+    margin-top: 2px;
+}
+.addSizeBtn:hover {
+    border-color: #4f46e5;
+    color: #4f46e5;
+    background: #f0f0ff;
+}
+
+/* Адаптивность */
+@media (max-width: 1024px) {
+    .content {
+        flex-direction: column;
+    }
+
+    .leftColumn {
+        width: 100%;
+    }
+}
+
+/* Планшеты и мобильные */
+@media (max-width: 768px) {
+    .container {
+        padding: 12px;
+    }
+
+    .card {
+        padding: 16px;
+    }
+
+    .formRow {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .bulkActions {
+        flex-direction: column;
+        align-items: stretch;
+        border-bottom: none;
+        padding-bottom: 8px;
+    }
+
+    .bulkGroup {
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+
+    /* Мобильная таблица */
+    .sizesGrid thead {
+        display: none;
+    }
+
+    .sizesGrid tr {
+        display: block;
+        margin-bottom: 12px;
+        border: 1px solid #e2e5ea;
+        border-radius: 12px;
+        padding: 12px;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .sizesGrid td {
+        display: block;
+        padding: 6px 0;
+        border: none;
+        text-align: left;
+    }
+
+    .sizesGrid td::before {
+        content: attr(data-label);
+        display: block;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 4px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .sizesGrid td:last-child {
+        display: flex;
+        justify-content: flex-end;
+        padding-top: 8px;
+    }
+
+    .sizesGrid td input {
+        max-width: 100%;
+    }
+
+    .sizeTableHeader {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+}

@@ -14,6 +14,7 @@ import (
 )
 
 var testStore Store
+var testImagePathBuilder *services.ImagePathBuilder
 
 func TestMain(m *testing.M) {
 	config, err := util.LoadConfig("../..")
@@ -25,13 +26,22 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal("cannot connect to db:", err)
 	}
-	imagePathBuilder := services.NewImagePathBuilder(config.ImageBasePath, config.UseCDN)
-	testStore = NewStore(connPool, imagePathBuilder)
+
+	imageService := services.NewImageService(
+		config.ImageBaseDir,
+		config.ImageBasePath,
+		config.UseCDN,
+		config.MaxImageSizeMB,
+	)
+
+	// СОЗДАЕМ Store с ImageService
+	testStore = NewStore(connPool, imageService.ImagePathBuilder)
+	testImagePathBuilder = imageService.ImagePathBuilder
 	os.Exit(m.Run())
 }
 
 func TestGetMainPageBanners(t *testing.T) {
-	banners, err := testStore.GetMainPageBanners(context.Background())
+	banners, err := testStore.GetActiveBanners(context.Background())
 	require.NoError(t, err)
 	fmt.Println(banners[0].ImageUrl)
 }

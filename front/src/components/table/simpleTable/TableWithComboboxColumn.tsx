@@ -19,7 +19,7 @@ const TableWithComboboxColumn: React.FC<TableProps> = memo(({
     comboTable,
     className
 }) => {
-    const [selectedIndex, setSelectedIndex] = useState<number>(0);
+    const [selectedIndex, setSelectedIndex] = useState<string>("0");
 
     const comboBoxHeaders = useMemo(() =>
         comboTable ? comboTable.map(val => val.title) : [],

@@ -1,0 +1,723 @@
+/* pages/admin/ProductVisibility/style.module.css */
+
+.container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f7f8fa;
+  min-height: 100vh;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.titleSection h2 {
+  margin: 0 0 4px 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.stats {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+}
+
+/* Панели управления */
+.controlsBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  background: white;
+  padding: 16px 20px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.sortBtn,
+.filterBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #e2e5ea;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
+  transition: all 0.2s;
+}
+
+.sortBtn {
+  display: none
+}
+
+.sortBtn:hover,
+.filterBtn:hover {
+  border-color: #4f46e5;
+  color: #4f46e5;
+  background: #f0f0ff;
+}
+
+.sortBtn svg,
+.filterBtn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.searchWrapper {
+  flex: 1;
+  min-width: 200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  max-width: 100%;
+}
+
+/* Групповые действия */
+.groupActions {
+  background: white;
+  padding: 14px 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.groupActionsTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.groupButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.groupActionItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #f8f9fb;
+  padding: 6px 14px;
+  border-radius: 30px;
+  font-size: 13px;
+  color: #334155;
+  border: 1px solid #e2e5ea;
+  transition: background 0.2s;
+}
+
+.groupActionItem:hover {
+  background: #eef2ff;
+  border-color: #4f46e5;
+}
+
+.groupActionItem button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.groupActionItem button:first-of-type {
+  color: #10b981;
+}
+
+.groupActionItem button:last-of-type {
+  color: #ef4444;
+}
+
+/* Массовые действия */
+.bulkPanel {
+  margin-bottom: 16px;
+}
+
+.bulkButtons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.bulkButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+
+.bulkButton:hover {
+  opacity: 0.9;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.bulkButtonDiscount {
+  background: #7c3aed;
+}
+
+.bulkButtonPrice {
+  background: #2563eb;
+}
+
+.bulkButtonActive {
+  background: #059669;
+}
+
+.bulkControls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: white;
+  padding: 14px 18px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.bulkInfo {
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.bulkFieldGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #475569;
+}
+
+.bulkFieldGroup label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.priceUnit {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.bulkActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.bulkApplyBtn {
+  background: #4f46e5;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.bulkApplyBtn:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.bulkApplyBtn:disabled {
+  background: #a0a0a0;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.bulkCancelBtn {
+  background: #f1f5f9;
+  border: 1px solid #e2e5ea;
+  padding: 8px 16px;
+  border-radius: 6px;
+  color: #475569;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.bulkCancelBtn:hover {
+  background: #e2e5ea;
+}
+
+.bulkResult {
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.bulkResult.success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.bulkResult.error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.selectAllBanner {
+  background: #eff6ff;
+  padding: 10px 18px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.selectAllLink {
+  background: none;
+  border: none;
+  color: #2563eb;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.selectAllLink:hover {
+  text-decoration: underline;
+}
+
+/* Таблица */
+.tableWrapper {
+  background: white;
+  border-radius: 12px;
+  overflow-x: auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+}
+
+.productsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.productsTable thead {
+  background: #f9fafb;
+}
+
+.productsTable th {
+  padding: 12px 10px;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.sortableHeader {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortIndicator {
+  margin-left: 4px;
+  font-size: 12px;
+  color: #4f46e5;
+}
+
+.productsTable td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+
+.productRow {
+  transition: background 0.2s;
+}
+
+.productRow:hover {
+  background: #f8fafc;
+}
+
+.productRow.inactive {
+  opacity: 0.6;
+}
+
+.loadingCell,
+.emptyCell {
+  text-align: center;
+  padding: 40px;
+  color: #94a3b8;
+}
+
+.imageCell img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.noImage {
+  width: 48px;
+  height: 48px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.productName {
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.article {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.priceCell {
+  white-space: nowrap;
+}
+
+.currentPrice {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.oldPrice {
+  text-decoration: line-through;
+  color: #94a3b8;
+  margin-left: 6px;
+  font-size: 13px;
+}
+
+.discountBadge {
+  background: #fef3c7;
+  color: #b45309;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.noDiscount {
+  color: #cbd5e1;
+}
+
+.statusToggle {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid #d1d5db;
+  background: white;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.statusToggle.active {
+  background: #ecfdf5;
+  border-color: #10b981;
+  color: #065f46;
+}
+
+.statusToggle.inactive {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+  color: #6b7280;
+}
+
+.statusToggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Пагинация */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.pagination button {
+  padding: 6px 14px;
+  border: 1px solid #d9d9d9;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #334155;
+  font-weight: 500;
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Модальные окна */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  display: flex;
+}
+
+.modalPanelLeft {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 320px;
+  height: 100%;
+  background: white;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+  padding: 20px;
+  overflow-y: auto;
+  animation: slideInLeft 0.3s ease;
+}
+
+.modalPanelRight {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 360px;
+  height: 100%;
+  background: white;
+  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.15);
+  padding: 20px;
+  overflow-y: auto;
+  animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.modalHeader h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.modalHeader button {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #64748b;
+  padding: 4px 8px;
+}
+
+.modalHeader button:hover {
+  color: #0f172a;
+}
+
+.secondPage {
+  margin-top: 12px;
+}
+
+/* Скроллбар */
+.modalPanelRight::-webkit-scrollbar,
+.secondPage::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modalPanelRight::-webkit-scrollbar-track,
+.secondPage::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.modalPanelRight::-webkit-scrollbar-thumb,
+.secondPage::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.modalPanelRight::-webkit-scrollbar-thumb:hover,
+.secondPage::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ===== Адаптивная карточная вёрстка для ширины ≤ 500px ===== */
+@media (max-width: 500px) {
+  .productsTable thead {
+    display: none;
+  }
+
+  .productsTable,
+  .productsTable tbody,
+  .productsTable tr,
+  .productsTable td {
+    display: block;
+    width: 100%;
+  }
+
+  .sortBtn {
+    display: block
+  }
+
+  .productsTable tr {
+    margin-bottom: 16px;
+    border: 1px solid #e2e5ea;
+    border-radius: 12px;
+    background: white;
+    padding: 8px 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .productsTable td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+  }
+
+  .productsTable td:last-child {
+    border-bottom: none;
+  }
+
+  .productsTable td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #64748b;
+    margin-right: 10px;
+    text-transform: uppercase;
+    font-size: 11px;
+    width: 40%;
+    flex-shrink: 0;
+  }
+
+  .imageCell img,
+  .noImage {
+    width: 60px;
+    height: 60px;
+    margin-right: 0;
+  }
+
+  .statusToggle {
+    font-size: 12px;
+    padding: 4px 12px;
+  }
+}
+
+/* Общая адаптивность для планшетов */
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+  }
+
+  .filterBtnText {
+    display: none
+  }
+
+  .header {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .controlsBar {
+    flex-wrap: wrap;
+  }
+
+  .sortBtn,
+  .filterBtn {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .searchWrapper {
+    order: -1;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .bulkControls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .bulkFieldGroup {
+    flex-wrap: wrap;
+  }
+
+  .modalPanelLeft,
+  .modalPanelRight {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .productsTable {
+    font-size: 13px;
+  }
+
+  .productsTable th,
+  .productsTable td {
+    padding: 10px 8px;
+  }
+}

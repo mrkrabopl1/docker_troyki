@@ -30,8 +30,8 @@ type TaskProcessor interface {
 	// Существующие методы
 	SetProductsInfo(ctx context.Context, ID string, merchant db.ProductsInfoResponse) error
 	GetProductsInfo(ctx context.Context, ID string) (db.ProductsInfoResponse, error)
-	SetBanners(ctx context.Context, banners []db.HomepageBlock) error
-	GetBanners(ctx context.Context) ([]db.HomepageBlock, error)
+	SetBanners(ctx context.Context, banners []db.CreateBannerParams) error
+	GetBanners(ctx context.Context) ([]db.CreateBannerParams, error)
 }
 
 type RedisTaskProcessor struct {
@@ -112,7 +112,7 @@ func (p *RedisTaskProcessor) GetProductsInfo(ctx context.Context, ID string) (db
 	return snickers, nil
 }
 
-func (p *RedisTaskProcessor) SetBanners(ctx context.Context, banners []db.HomepageBlock) error {
+func (p *RedisTaskProcessor) SetBanners(ctx context.Context, banners []db.CreateBannerParams) error {
 	// Конвертируем слайс баннеров в JSON
 	data, err := json.Marshal(banners)
 	if err != nil {
@@ -126,7 +126,7 @@ func (p *RedisTaskProcessor) SetBanners(ctx context.Context, banners []db.Homepa
 }
 
 // GetBanners - получает баннеры из Redis
-func (p *RedisTaskProcessor) GetBanners(ctx context.Context) ([]db.HomepageBlock, error) {
+func (p *RedisTaskProcessor) GetBanners(ctx context.Context) ([]db.CreateBannerParams, error) {
 	// Ключ для баннеров
 	key := "mainpage:banners:v1"
 
@@ -141,7 +141,7 @@ func (p *RedisTaskProcessor) GetBanners(ctx context.Context) ([]db.HomepageBlock
 	}
 
 	// Конвертируем JSON в слайс баннеров
-	var banners []db.HomepageBlock
+	var banners []db.CreateBannerParams
 	if err := json.Unmarshal([]byte(data), &banners); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal banners: %w", err)
 	}
@@ -161,7 +161,10 @@ func (processor *RedisTaskProcessor) Start() error {
 	mux.HandleFunc(TaskSendNewsletterVerification, processor.ProcessTaskSendNewsletterVerification)
 	mux.HandleFunc(TaskSendNewsletterWelcome, processor.ProcessTaskSendNewsletterWelcome)
 	mux.HandleFunc(TaskSendNewsletterBroadcast, processor.ProcessTaskSendNewsletterBroadcast)
-
+	// Регистрируем обработчики для админских email
+	mux.HandleFunc(TaskSendAdminWelcome, processor.ProcessTaskSendAdminWelcome)
+	mux.HandleFunc(TaskSendAdminPasswordReset, processor.ProcessTaskSendAdminPasswordReset)
+	mux.HandleFunc(TaskSendAdminPasswordChanged, processor.ProcessTaskSendAdminPasswordChanged)
 	return processor.server.Start(mux)
 }
 

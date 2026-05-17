@@ -7,8 +7,8 @@ import (
 )
 
 type ProductsFilterStruct struct {
-	Firms       []string  `json:"firms"`
-	Lines       []string  `json:"lines"`
+	Firms       []int32   `json:"firms"`
+	Lines       []int32   `json:"lines"`
 	Sizes       []string  `json:"sizes"`
 	Price       []float32 `json:"price"`
 	Types       []int32   `json:"types"`
@@ -16,6 +16,22 @@ type ProductsFilterStruct struct {
 	InStore     bool      `json:"store"`
 	HasDiscount bool      `json:"discount"`
 	WithPrice   bool      `json:"withPrice"`
+	Status      string    `json:"status"`
+}
+
+type ProductsForAdminFilterStruct struct {
+	Firms       []int32   `json:"firms"`
+	Lines       []int32   `json:"lines"`
+	Sizes       []string  `json:"sizes"`
+	Price       []float32 `json:"price"`
+	Types       []int32   `json:"types"`
+	Bodytypes   []string  `json:"bodytypes"`
+	InStore     bool      `json:"store"`
+	HasDiscount bool      `json:"discount"`
+	WithPrice   bool      `json:"withPrice"`
+	Status      string    `json:"status"`
+	UpdatedFrom time.Time `json:"updated_from"`
+	CreatedFrom time.Time `json:"created_from"`
 }
 type MainPage struct {
 	Text    string `db:"maintext"`

@@ -1,5 +1,5 @@
 import React, { useEffect, ReactElement, useState, useRef, memo } from 'react'
-import ChangeForgetPasswordForm from 'src/modules/loginForm/ChangeForgetPasswordForm';
+import ChangeForgetPasswordForm from 'src/modules/loginForm/ResetPasswordForm';
 import { useNavigate } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
 import { changForgetPass } from 'src/providers/userProvider'
@@ -32,8 +32,8 @@ const ChangeForgetPass: React.FC<any> = () => {
                 <NavLink to={"/"}>На главную</NavLink>
             </div> : <div>
                 {changeError ? <div>Ссылка на смену пароля истекла. Запросите ее снова.</div> : null}
-                <ChangeForgetPasswordForm onChange={(newPass) => {
-                    changForgetPass(newPass, (data) => {
+                <ChangeForgetPasswordForm onSubmit={(data) => {
+                    changForgetPass(data.password, (data) => {
                         switch (data) {
                             case 0:
                                 setConfirm(Confirm[0])

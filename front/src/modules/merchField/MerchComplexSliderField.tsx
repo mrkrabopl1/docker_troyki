@@ -38,22 +38,22 @@ const MerchComplexSliderFieldComponent: React.FC = () => {
   }, []);
 
   // Обработка коллекций
-  useEffect(() => {
-    if (!collections.length) return;
+  // useEffect(() => {
+  //   if (!collections.length) return;
     
-    const colLength = Math.min(MAX_COLLECTIONS, collections.length);
-    if (colLength > 0) {
-      const randomizeArr = [...collections];
-      shuffle(randomizeArr);
-      randomizeArr.length = colLength;
+  //   const colLength = Math.min(MAX_COLLECTIONS, collections.length);
+  //   if (colLength > 0) {
+  //     const randomizeArr = [...collections];
+  //     shuffle(randomizeArr);
+  //     randomizeArr.length = colLength;
 
-      getCollections({ 
-        names: randomizeArr, 
-        size: 8, 
-        page: 1 
-      }, setSlidersData);
-    }
-  }, [collections]);
+  //     getCollections({ 
+  //       names: randomizeArr, 
+  //       size: 8, 
+  //       page: 1 
+  //     }, setSlidersData);
+  //   }
+  // }, [collections]);
 
   // Создание слайдеров
   const sliders = useMemo(() => {

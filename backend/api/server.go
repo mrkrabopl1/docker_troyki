@@ -10,6 +10,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
+	"github.com/mrkrabopl1/go_db/services"
 	"github.com/mrkrabopl1/go_db/token"
 	"github.com/mrkrabopl1/go_db/util"
 	"github.com/mrkrabopl1/go_db/worker"
@@ -23,10 +24,11 @@ type Server struct {
 	router          *gin.Engine
 	taskDistributor worker.TaskDistributor
 	taskProcessor   worker.TaskProcessor
+	imageService    *services.ImageService
 }
 
 // NewServer creates a new HTTP server and set up routing.
-func NewServer(config util.Config, store db.Store, taskDistributor worker.TaskDistributor, taskProcessor worker.TaskProcessor) (*Server, error) {
+func NewServer(config util.Config, store db.Store, taskDistributor worker.TaskDistributor, taskProcessor worker.TaskProcessor, imageService *services.ImageService) (*Server, error) {
 	fmt.Println("NewServer")
 	tokenMaker, err := token.NewPasetoMaker(config.TokenSymmetricKey)
 	if err != nil {
@@ -34,11 +36,13 @@ func NewServer(config util.Config, store db.Store, taskDistributor worker.TaskDi
 	}
 
 	server := &Server{
-		config:          config,
-		store:           store,
+		config: config,
+		store:  store,
+
 		taskDistributor: taskDistributor,
 		taskProcessor:   taskProcessor,
 		tokenMaker:      tokenMaker,
+		imageService:    imageService,
 	}
 
 	fmt.Println("NewServer")
@@ -125,10 +129,96 @@ func (s *Server) setupRouter() {
 	router.POST("/verifyChangePass", s.handleVerifyForgetPass)
 	router.POST("/changeForgetPass", s.handleChangeForgetPass)
 	router.POST("/getDataByCategoriesAndFilters", s.handleSearchProductByCategoriesAndFilters)
-
 	router.GET("/getMainPage", s.handleGetMainPageInfo)
-
 	router.GET("/checkCustomerData", s.handleCheckCustomerData)
+
+	router.POST("/admin/auth/login", s.handleAdminLogin)
+	router.POST("/admin/auth/forgot-password", s.handleAdminForgotPass)
+	router.POST("/admin/auth/refresh", s.handleAdminRefreshToken)
+	router.POST("/admin/auth/change-forgot-password", s.handleAdminChangeForgetPass)
+	adminGroup := router.Group("/admin")
+
+	adminGroup.Use(s.AdminAuthMiddleware()) // Только админский middleware!
+	{
+		adminGroup.GET("/dashboard/stats", s.handleAdminGetDashboardStats)
+		// Управление товарами (доступно admin и superadmin)
+		adminGroup.POST("/products", s.handleAdminCreateProduct)
+
+		adminGroup.GET("/productsAndFilters", s.handleAdminGetProductsAndFilters)
+		adminGroup.POST("/products/search", s.handleAdminGetProducts)
+		adminGroup.PUT("/products/:id", s.handleAdminUpdateProduct)
+		adminGroup.GET("/products/:id", s.handleAdminGetProductById)
+		adminGroup.DELETE("/products/:id", s.handleAdminHardDeleteProduct)
+		adminGroup.POST("/products/:id/image", s.handleAdminUploadProductImage)
+		adminGroup.PATCH("/products/bulk-status", s.handleAdminBulkUpdateProductStatus)
+		adminGroup.PATCH("/products/bulk-price", s.handleBulkUpdateProductPrice)
+		adminGroup.PATCH("/products/:id/status", s.handleAdminUpdateProductStatus)
+		adminGroup.DELETE("/products/:id/image", s.handleAdminDeleteProductImage)
+
+		adminGroup.POST("/tempImage/:id", s.handleAdminUploadTempImage)
+		adminGroup.GET("/tempImage/:id", s.handleAdminGetTempImages)
+
+		adminGroup.GET("/brandsWithLines", s.handleGetAllBrandsWithLines)
+		adminGroup.POST("/firms", s.handleAdminCreateFirm)
+		adminGroup.GET("/brands/:id", s.handleAdminGetBrandById)
+		adminGroup.POST("/brands/:id", s.handleAdminUpdateBrand)
+		adminGroup.PUT("/brands/bulk-sort-order", s.handleAdminBulkUpdateSortOrder)
+		adminGroup.PUT("/brands/bulk-active", s.handleAdminBulkUpdateBrandActive)
+		adminGroup.GET("/firms/stats", s.handleAdminGetFirmsStats)
+
+		adminGroup.POST("/sql/execute", s.handleAdminExecuteSQL)
+
+		// Управление скидками
+		adminGroup.POST("/sales", s.handleAdminCreateSale)
+		adminGroup.PUT("/sales/:id", s.handleAdminUpdateSale)
+		adminGroup.DELETE("/sales/:id", s.handleAdminDeleteSale)
+		adminGroup.GET("/sales", s.handleAdminGetSales)
+
+		// Управление заказами
+		adminGroup.GET("/orders", s.handleAdminGetOrders)
+		adminGroup.GET("/orders/:id", s.handleAdminGetOrderDetails)
+		adminGroup.PUT("/orders/:id/status", s.handleAdminUpdateOrderStatus)
+
+		// Управление баннерами
+		adminGroup.GET("/banners/filters", s.handleAdminGetBannersAndFilters)
+		adminGroup.GET("/banners", s.handleAdminGetBanners)
+		adminGroup.POST("/banners", s.handleAdminCreateBanner)
+		adminGroup.PUT("/banners/:id", s.handleAdminUpdateBanner)
+		adminGroup.DELETE("/banners/:id", s.handleAdminDeleteBanner)
+
+		discountRules := adminGroup.Group("/discount-rules")
+		{
+			discountRules.POST("", s.handleAdminCreateDiscountRule)
+			discountRules.GET("", s.handleAdminGetDiscountRules)
+			discountRules.GET("active", s.handleAdminGetDiscountActiveRules)
+			discountRules.GET("/by-entity", s.handleAdminGetDiscountRulesByEntity)
+			discountRules.GET("/:id", s.handleAdminGetDiscountRule)
+			discountRules.PUT("/:id", s.handleAdminUpdateDiscountRule)
+			discountRules.DELETE("/:id", s.handleAdminDeleteDiscountRule)
+			discountRules.POST("/:id/items", s.handleAdminAddRuleItems)
+			discountRules.PATCH("/products", s.handleBulkUpdateProductDiscount)
+			discountRules.DELETE("/:id/items", s.handleAdminRemoveRuleItem)
+			discountRules.POST("/:id/toggle", s.handleAdminToggleRule)
+		}
+
+		adminGroup.GET("/auth/me", s.handleAdminGetMe)
+		// // Управление пользователями
+		// adminGroup.GET("/users", s.handleAdminGetUsers)
+		// adminGroup.PUT("/users/:id/role", s.handleAdminUpdateUserRole)
+
+		// Статистика
+
+		// ========== ТОЛЬКО SUPERADMIN ==========
+		superAdminGroup := adminGroup.Group("/")
+		superAdminGroup.Use(s.SuperAdminMiddleware())
+		{
+			superAdminGroup.GET("/admins", s.handleAdminGetAdmins)
+			superAdminGroup.POST("/admins", s.handleAdminCreateAdmin)
+			superAdminGroup.PUT("/admins/:id", s.handleAdminUpdateAdmin)
+			superAdminGroup.DELETE("/admins/:id", s.handleAdminDeleteAdmin)
+			superAdminGroup.GET("/logs", s.handleAdminGetLogs)
+		}
+	}
 
 	s.router = router
 }

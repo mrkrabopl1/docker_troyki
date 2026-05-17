@@ -11,6 +11,82 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const activateBrand = `-- name: ActivateBrand :exec
+UPDATE brands
+SET is_active = true,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) ActivateBrand(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, activateBrand, id)
+	return err
+}
+
+const activateBrandLine = `-- name: ActivateBrandLine :exec
+UPDATE brand_lines
+SET is_active = true,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) ActivateBrandLine(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, activateBrandLine, id)
+	return err
+}
+
+const addRuleItem = `-- name: AddRuleItem :exec
+INSERT INTO discount_rule_items (rule_id, item_type, item_id)
+VALUES ($1, $2, $3) ON CONFLICT (rule_id, item_type, item_id) DO NOTHING
+`
+
+type AddRuleItemParams struct {
+	RuleID   int32  `json:"rule_id"`
+	ItemType string `json:"item_type"`
+	ItemID   int32  `json:"item_id"`
+}
+
+// ============================================
+// DISCOUNT RULE ITEMS
+// ============================================
+func (q *Queries) AddRuleItem(ctx context.Context, arg AddRuleItemParams) error {
+	_, err := q.db.Exec(ctx, addRuleItem, arg.RuleID, arg.ItemType, arg.ItemID)
+	return err
+}
+
+const archiveProduct = `-- name: ArchiveProduct :exec
+UPDATE products
+SET status = 'archived',
+    archived_at = NOW()
+WHERE id = $1
+    AND status = 'active'
+`
+
+func (q *Queries) ArchiveProduct(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, archiveProduct, id)
+	return err
+}
+
+const bulkAddRuleItems = `-- name: BulkAddRuleItems :exec
+INSERT INTO discount_rule_items (rule_id, item_type, item_id)
+SELECT 
+    $1::int,
+    $2::text,
+    unnest($3::int[])
+ON CONFLICT (rule_id, item_type, item_id) DO NOTHING
+`
+
+type BulkAddRuleItemsParams struct {
+	RuleID   int32   `json:"rule_id"`
+	ItemType string  `json:"item_type"`
+	ItemIds  []int32 `json:"item_ids"`
+}
+
+func (q *Queries) BulkAddRuleItems(ctx context.Context, arg BulkAddRuleItemsParams) error {
+	_, err := q.db.Exec(ctx, bulkAddRuleItems, arg.RuleID, arg.ItemType, arg.ItemIds)
+	return err
+}
+
 const bulkInsertDiscounts = `-- name: BulkInsertDiscounts :exec
 INSERT INTO discount (productid, value, minprice, maxdiscprice)
 SELECT unnest($1::integer []),
@@ -41,6 +117,235 @@ func (q *Queries) BulkInsertDiscounts(ctx context.Context, arg BulkInsertDiscoun
 	return err
 }
 
+const bulkUpdateProductStatus = `-- name: BulkUpdateProductStatus :exec
+UPDATE products
+SET status = $1,
+    updated_at = NOW()
+WHERE id = ANY($2::int [])
+`
+
+type BulkUpdateProductStatusParams struct {
+	Status     string  `json:"status"`
+	ProductIds []int32 `json:"product_ids"`
+}
+
+func (q *Queries) BulkUpdateProductStatus(ctx context.Context, arg BulkUpdateProductStatusParams) error {
+	_, err := q.db.Exec(ctx, bulkUpdateProductStatus, arg.Status, arg.ProductIds)
+	return err
+}
+
+const bulkUpsertDiscount = `-- name: BulkUpsertDiscount :exec
+INSERT INTO discount (productid, value, minprice, maxdiscprice)
+SELECT
+    unnest($1::int[]),
+    unnest($2::jsonb[]),
+    unnest($3::int[]),
+    unnest($4::int[])
+ON CONFLICT (productid) DO UPDATE SET
+    value = EXCLUDED.value,
+    minprice = EXCLUDED.minprice,
+    maxdiscprice = EXCLUDED.maxdiscprice,
+    updated_at = NOW()
+`
+
+type BulkUpsertDiscountParams struct {
+	ProductIds    []int32  `json:"product_ids"`
+	Values        [][]byte `json:"values"`
+	MinPrices     []int32  `json:"min_prices"`
+	MaxDiscPrices []int32  `json:"max_disc_prices"`
+}
+
+func (q *Queries) BulkUpsertDiscount(ctx context.Context, arg BulkUpsertDiscountParams) error {
+	_, err := q.db.Exec(ctx, bulkUpsertDiscount,
+		arg.ProductIds,
+		arg.Values,
+		arg.MinPrices,
+		arg.MaxDiscPrices,
+	)
+	return err
+}
+
+const checkBrandExistsById = `-- name: CheckBrandExistsById :one
+SELECT EXISTS(
+        SELECT 1
+        FROM brands
+        WHERE id = $1
+    ) as exists
+`
+
+func (q *Queries) CheckBrandExistsById(ctx context.Context, id int32) (bool, error) {
+	row := q.db.QueryRow(ctx, checkBrandExistsById, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const checkBrandExistsBySlug = `-- name: CheckBrandExistsBySlug :one
+SELECT EXISTS(
+        SELECT 1
+        FROM brands
+        WHERE slug = $1
+    ) as exists
+`
+
+func (q *Queries) CheckBrandExistsBySlug(ctx context.Context, slug string) (bool, error) {
+	row := q.db.QueryRow(ctx, checkBrandExistsBySlug, slug)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const checkBrandLineExistsById = `-- name: CheckBrandLineExistsById :one
+SELECT EXISTS(
+        SELECT 1
+        FROM brand_lines
+        WHERE id = $1
+    ) as exists
+`
+
+func (q *Queries) CheckBrandLineExistsById(ctx context.Context, id int32) (bool, error) {
+	row := q.db.QueryRow(ctx, checkBrandLineExistsById, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const checkBrandLineExistsBySlug = `-- name: CheckBrandLineExistsBySlug :one
+SELECT EXISTS(
+        SELECT 1
+        FROM brand_lines
+        WHERE slug = $1
+    ) as exists
+`
+
+func (q *Queries) CheckBrandLineExistsBySlug(ctx context.Context, slug string) (bool, error) {
+	row := q.db.QueryRow(ctx, checkBrandLineExistsBySlug, slug)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const checkCategoryExists = `-- name: CheckCategoryExists :one
+SELECT EXISTS(
+        SELECT 1
+        FROM product_categories
+        WHERE enum_key = $1
+    ) as exists
+`
+
+func (q *Queries) CheckCategoryExists(ctx context.Context, enumKey string) (bool, error) {
+	row := q.db.QueryRow(ctx, checkCategoryExists, enumKey)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const checkCategoryExistsById = `-- name: CheckCategoryExistsById :one
+SELECT EXISTS(
+        SELECT 1
+        FROM product_categories
+        WHERE id = $1
+    ) as exists
+`
+
+func (q *Queries) CheckCategoryExistsById(ctx context.Context, id int32) (bool, error) {
+	row := q.db.QueryRow(ctx, checkCategoryExistsById, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const checkProductExists = `-- name: CheckProductExists :one
+SELECT EXISTS(
+        SELECT 1
+        FROM products
+        WHERE products.article = $1
+    ) as article_exists,
+    EXISTS(
+        SELECT 1
+        FROM products
+        WHERE products.name = $2
+            AND products.brand_id = $3
+    ) as name_firm_exists
+`
+
+type CheckProductExistsParams struct {
+	Article string `json:"article"`
+	Name    string `json:"name"`
+	BrandID int32  `json:"brand_id"`
+}
+
+type CheckProductExistsRow struct {
+	ArticleExists  bool `json:"article_exists"`
+	NameFirmExists bool `json:"name_firm_exists"`
+}
+
+func (q *Queries) CheckProductExists(ctx context.Context, arg CheckProductExistsParams) (CheckProductExistsRow, error) {
+	row := q.db.QueryRow(ctx, checkProductExists, arg.Article, arg.Name, arg.BrandID)
+	var i CheckProductExistsRow
+	err := row.Scan(&i.ArticleExists, &i.NameFirmExists)
+	return i, err
+}
+
+const checkProductExistsById = `-- name: CheckProductExistsById :one
+SELECT EXISTS(
+        SELECT 1
+        FROM products
+        WHERE id = $1
+    ) as exists
+`
+
+func (q *Queries) CheckProductExistsById(ctx context.Context, id int32) (bool, error) {
+	row := q.db.QueryRow(ctx, checkProductExistsById, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const checkTypeExists = `-- name: CheckTypeExists :one
+SELECT EXISTS(
+        SELECT 1
+        FROM product_types pt
+            JOIN product_categories pc ON pt.category_id = pc.id
+        WHERE pt.enum_key = $1
+            AND pc.enum_key = $2
+    ) as exists
+`
+
+type CheckTypeExistsParams struct {
+	Type     string `json:"type"`
+	Category string `json:"category"`
+}
+
+func (q *Queries) CheckTypeExists(ctx context.Context, arg CheckTypeExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, checkTypeExists, arg.Type, arg.Category)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const checkTypeExistsByIds = `-- name: CheckTypeExistsByIds :one
+SELECT EXISTS(
+        SELECT 1
+        FROM product_types pt
+            JOIN product_categories pc ON pt.category_id = pc.id
+        WHERE pt.id = $1
+            AND pc.id = $2
+    ) as exists
+`
+
+type CheckTypeExistsByIdsParams struct {
+	Type     int32 `json:"type"`
+	Category int32 `json:"category"`
+}
+
+func (q *Queries) CheckTypeExistsByIds(ctx context.Context, arg CheckTypeExistsByIdsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, checkTypeExistsByIds, arg.Type, arg.Category)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const clearDiscounts = `-- name: ClearDiscounts :exec
 DELETE FROM discount
 `
@@ -48,6 +353,2733 @@ DELETE FROM discount
 func (q *Queries) ClearDiscounts(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, clearDiscounts)
 	return err
+}
+
+const countBrands = `-- name: CountBrands :one
+SELECT 
+    COUNT(*) AS total_brands,
+    COUNT(*) FILTER (WHERE b.is_active) AS total_active_brands,
+    COUNT(*) FILTER (WHERE NOT b.is_active) AS total_inactive_brands
+FROM brands b
+WHERE (
+    $1::text = ''
+    OR b.name ILIKE '%' || $1::text || '%'
+)
+`
+
+type CountBrandsRow struct {
+	TotalBrands         int64 `json:"total_brands"`
+	TotalActiveBrands   int64 `json:"total_active_brands"`
+	TotalInactiveBrands int64 `json:"total_inactive_brands"`
+}
+
+func (q *Queries) CountBrands(ctx context.Context, name string) (CountBrandsRow, error) {
+	row := q.db.QueryRow(ctx, countBrands, name)
+	var i CountBrandsRow
+	err := row.Scan(&i.TotalBrands, &i.TotalActiveBrands, &i.TotalInactiveBrands)
+	return i, err
+}
+
+const countProductsByFilters = `-- name: CountProductsByFilters :one
+SELECT COUNT(*)
+FROM products p
+WHERE (
+        COALESCE(array_length($1::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($1::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        $2::text IS NULL
+        OR $2::text = ''
+        OR p.status = $2::text
+    )
+    AND (
+        $3::text IS NULL
+        OR $3::text = ''
+        OR p.name ILIKE '%' || $3::text || '%'
+        OR p.article ILIKE '%' || $3::text || '%'
+    )
+    AND (
+        COALESCE(array_length($4::int[], 1), 0) = 0
+        OR p.category = ANY($4::int[])
+    )
+    AND (
+        COALESCE(array_length($5::int[], 1), 0) = 0
+        OR p.type = ANY($5::int[])
+    )
+    AND (
+        COALESCE(array_length($6::int[], 1), 0) = 0
+        OR p.brand_id = ANY($6::int[])
+    )
+    AND (
+        COALESCE(array_length($7::int[], 1), 0) = 0
+        OR p.line_id = ANY($7::int[])
+    )
+    AND (
+        COALESCE(array_length($8::text[], 1), 0) = 0
+        OR p.bodytype = ANY($8::body_enum[])
+    )
+    AND (
+        $9::int IS NULL
+        OR p.maxprice >= $9::int
+    )
+    AND (
+        $10::int IS NULL
+        OR p.minprice <= $10::int
+    )
+    AND (
+        $11::boolean IS NULL
+        OR $11::boolean = false
+        OR EXISTS (
+            SELECT 1
+            FROM discount d
+            WHERE d.productid = p.id
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM discount_rule_items dri
+            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE (dri.item_type = 'brand'   AND dri.item_id = p.brand_id)
+               OR (dri.item_type = 'line'    AND dri.item_id = p.line_id)
+               OR (dri.item_type = 'product' AND dri.item_id = p.id)
+        )
+    )
+    AND (
+        $12::boolean IS NULL
+        OR $12::boolean = false
+        OR EXISTS (
+            SELECT 1
+            FROM store_house sh
+            WHERE sh.productid = p.id
+              AND sh.quantity > 0
+        )
+    )
+    AND (
+        $13::boolean IS NULL
+        OR $13::boolean = false
+        OR p.minprice > 0
+    )
+`
+
+type CountProductsByFiltersParams struct {
+	Sizes        []string    `json:"sizes"`
+	Status       string      `json:"status"`
+	Name         string      `json:"name"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	HasDiscount  bool        `json:"has_discount"`
+	InStore      bool        `json:"in_store"`
+	WithPrice    bool        `json:"with_price"`
+}
+
+func (q *Queries) CountProductsByFilters(ctx context.Context, arg CountProductsByFiltersParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countProductsByFilters,
+		arg.Sizes,
+		arg.Status,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.HasDiscount,
+		arg.InStore,
+		arg.WithPrice,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createBrand = `-- name: CreateBrand :one
+INSERT INTO brands (
+        name,
+        slug,
+        image_path,
+        description,
+        website,
+        country,
+        founded_year,
+        is_active,
+        sort_order
+    )
+VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        COALESCE($8, true),
+        COALESCE($9, 0)
+    )
+RETURNING id,
+    name,
+    slug,
+    image_path,
+    description,
+    website,
+    country,
+    founded_year,
+    is_active,
+    sort_order,
+    created_at,
+    updated_at
+`
+
+type CreateBrandParams struct {
+	Name        string      `json:"name"`
+	Slug        string      `json:"slug"`
+	ImagePath   pgtype.Text `json:"image_path"`
+	Description pgtype.Text `json:"description"`
+	Website     pgtype.Text `json:"website"`
+	Country     pgtype.Text `json:"country"`
+	FoundedYear pgtype.Int4 `json:"founded_year"`
+	IsActive    interface{} `json:"is_active"`
+	SortOrder   interface{} `json:"sort_order"`
+}
+
+type CreateBrandRow struct {
+	ID          int32              `json:"id"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+	ImagePath   pgtype.Text        `json:"image_path"`
+	Description pgtype.Text        `json:"description"`
+	Website     pgtype.Text        `json:"website"`
+	Country     pgtype.Text        `json:"country"`
+	FoundedYear pgtype.Int4        `json:"founded_year"`
+	IsActive    bool               `json:"is_active"`
+	SortOrder   int32              `json:"sort_order"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) CreateBrand(ctx context.Context, arg CreateBrandParams) (CreateBrandRow, error) {
+	row := q.db.QueryRow(ctx, createBrand,
+		arg.Name,
+		arg.Slug,
+		arg.ImagePath,
+		arg.Description,
+		arg.Website,
+		arg.Country,
+		arg.FoundedYear,
+		arg.IsActive,
+		arg.SortOrder,
+	)
+	var i CreateBrandRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.ImagePath,
+		&i.Description,
+		&i.Website,
+		&i.Country,
+		&i.FoundedYear,
+		&i.IsActive,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createBrandLine = `-- name: CreateBrandLine :one
+INSERT INTO brand_lines (
+        brand_id,
+        name,
+        slug,
+        description,
+        image_path,
+        season,
+        year,
+        is_active,
+        sort_order
+    )
+VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        COALESCE($8, true),
+        COALESCE($9, 0)
+    )
+RETURNING id,
+    brand_id,
+    name,
+    slug,
+    description,
+    image_path,
+    season,
+    year,
+    is_active,
+    sort_order,
+    created_at,
+    updated_at
+`
+
+type CreateBrandLineParams struct {
+	BrandID     int32       `json:"brand_id"`
+	Name        string      `json:"name"`
+	Slug        string      `json:"slug"`
+	Description pgtype.Text `json:"description"`
+	ImagePath   pgtype.Text `json:"image_path"`
+	Season      pgtype.Text `json:"season"`
+	Year        pgtype.Int4 `json:"year"`
+	IsActive    interface{} `json:"is_active"`
+	SortOrder   interface{} `json:"sort_order"`
+}
+
+type CreateBrandLineRow struct {
+	ID          int32              `json:"id"`
+	BrandID     int32              `json:"brand_id"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+	Description pgtype.Text        `json:"description"`
+	ImagePath   pgtype.Text        `json:"image_path"`
+	Season      pgtype.Text        `json:"season"`
+	Year        pgtype.Int4        `json:"year"`
+	IsActive    pgtype.Bool        `json:"is_active"`
+	SortOrder   pgtype.Int4        `json:"sort_order"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) CreateBrandLine(ctx context.Context, arg CreateBrandLineParams) (CreateBrandLineRow, error) {
+	row := q.db.QueryRow(ctx, createBrandLine,
+		arg.BrandID,
+		arg.Name,
+		arg.Slug,
+		arg.Description,
+		arg.ImagePath,
+		arg.Season,
+		arg.Year,
+		arg.IsActive,
+		arg.SortOrder,
+	)
+	var i CreateBrandLineRow
+	err := row.Scan(
+		&i.ID,
+		&i.BrandID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.ImagePath,
+		&i.Season,
+		&i.Year,
+		&i.IsActive,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createDiscountRule = `-- name: CreateDiscountRule :one
+INSERT INTO discount_rules (
+        name,
+        description,
+        discount_type,
+        discount_value,
+        starts_at,
+        ends_at,
+        priority
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, name, description, discount_type, discount_value, starts_at, ends_at, is_active, priority, created_at, updated_at
+`
+
+type CreateDiscountRuleParams struct {
+	Name          string             `json:"name"`
+	Description   string             `json:"description"`
+	DiscountType  string             `json:"discount_type"`
+	DiscountValue int32              `json:"discount_value"`
+	StartsAt      pgtype.Timestamptz `json:"starts_at"`
+	EndsAt        pgtype.Timestamptz `json:"ends_at"`
+	Priority      int32              `json:"priority"`
+}
+
+func (q *Queries) CreateDiscountRule(ctx context.Context, arg CreateDiscountRuleParams) (DiscountRule, error) {
+	row := q.db.QueryRow(ctx, createDiscountRule,
+		arg.Name,
+		arg.Description,
+		arg.DiscountType,
+		arg.DiscountValue,
+		arg.StartsAt,
+		arg.EndsAt,
+		arg.Priority,
+	)
+	var i DiscountRule
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.DiscountType,
+		&i.DiscountValue,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.IsActive,
+		&i.Priority,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createProduct = `-- name: CreateProduct :one
+INSERT INTO products (
+        qId,
+        name,
+        brand_id,
+        line_id,
+        image_path,
+        minprice,
+        maxprice,
+        article,
+        date,
+        description,
+        image_count,
+        type,
+        category,
+        sizes,
+        bodytype
+    )
+VALUES (
+        CONCAT(
+            $1,
+            '_',
+            $2,
+            '_',
+            floor(
+                extract(
+                    epoch
+                    from now()
+                ) * 1000
+            )::bigint
+        ),
+        $3,
+        $1,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10,
+        $11,
+        (
+            SELECT pt.id
+            FROM product_types pt
+                JOIN product_categories pc ON pt.category_id = pc.id
+            WHERE pt.enum_key = $2
+                AND pc.enum_key = $12
+        ),
+        (
+            SELECT id
+            FROM product_categories
+            WHERE enum_key = $12
+        ),
+        $13::jsonb,
+        $14
+    )
+RETURNING id,
+    qId,
+    name,
+    brand_id,
+    line_id,
+    image_path,
+    minprice,
+    maxprice,
+    article,
+    date,
+    description,
+    image_count,
+    type,
+    category,
+    sizes,
+    bodytype
+`
+
+type CreateProductParams struct {
+	BrandID     int32       `json:"brand_id"`
+	TypeKey     interface{} `json:"type_key"`
+	Name        string      `json:"name"`
+	LineID      pgtype.Int4 `json:"line_id"`
+	ImagePath   string      `json:"image_path"`
+	Minprice    int32       `json:"minprice"`
+	Maxprice    int32       `json:"maxprice"`
+	Article     string      `json:"article"`
+	Date        pgtype.Text `json:"date"`
+	Description pgtype.Text `json:"description"`
+	ImageCount  int32       `json:"image_count"`
+	CategoryKey string      `json:"category_key"`
+	Sizes       []byte      `json:"sizes"`
+	Bodytype    BodyEnum    `json:"bodytype"`
+}
+
+type CreateProductRow struct {
+	ID          int32       `json:"id"`
+	Qid         string      `json:"qid"`
+	Name        string      `json:"name"`
+	BrandID     int32       `json:"brand_id"`
+	LineID      pgtype.Int4 `json:"line_id"`
+	ImagePath   string      `json:"image_path"`
+	Minprice    int32       `json:"minprice"`
+	Maxprice    int32       `json:"maxprice"`
+	Article     string      `json:"article"`
+	Date        pgtype.Text `json:"date"`
+	Description pgtype.Text `json:"description"`
+	ImageCount  int32       `json:"image_count"`
+	Type        int32       `json:"type"`
+	Category    int32       `json:"category"`
+	Sizes       []byte      `json:"sizes"`
+	Bodytype    BodyEnum    `json:"bodytype"`
+}
+
+func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (CreateProductRow, error) {
+	row := q.db.QueryRow(ctx, createProduct,
+		arg.BrandID,
+		arg.TypeKey,
+		arg.Name,
+		arg.LineID,
+		arg.ImagePath,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.Article,
+		arg.Date,
+		arg.Description,
+		arg.ImageCount,
+		arg.CategoryKey,
+		arg.Sizes,
+		arg.Bodytype,
+	)
+	var i CreateProductRow
+	err := row.Scan(
+		&i.ID,
+		&i.Qid,
+		&i.Name,
+		&i.BrandID,
+		&i.LineID,
+		&i.ImagePath,
+		&i.Minprice,
+		&i.Maxprice,
+		&i.Article,
+		&i.Date,
+		&i.Description,
+		&i.ImageCount,
+		&i.Type,
+		&i.Category,
+		&i.Sizes,
+		&i.Bodytype,
+	)
+	return i, err
+}
+
+const createProductWithIds = `-- name: CreateProductWithIds :one
+INSERT INTO products (
+        qId,
+        name,
+        brand_id,
+        line_id,
+        image_path,
+        minprice,
+        maxprice,
+        article,
+        date,
+        description,
+        image_count,
+        type,
+        category,
+        sizes,
+        bodytype
+    )
+VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10,
+        $11,
+        $12,
+        -- Прямой ID типа
+        $13,
+        -- Прямой ID категории
+        $14::jsonb,
+        $15
+    )
+RETURNING id,
+    qId,
+    name,
+    brand_id,
+    line_id,
+    image_path,
+    minprice,
+    maxprice,
+    article,
+    date,
+    description,
+    image_count,
+    type,
+    category,
+    sizes,
+    bodytype
+`
+
+type CreateProductWithIdsParams struct {
+	QID         string      `json:"q_id"`
+	Name        string      `json:"name"`
+	BrandID     int32       `json:"brand_id"`
+	LineID      pgtype.Int4 `json:"line_id"`
+	ImagePath   string      `json:"image_path"`
+	Minprice    int32       `json:"minprice"`
+	Maxprice    int32       `json:"maxprice"`
+	Article     string      `json:"article"`
+	Date        pgtype.Text `json:"date"`
+	Description pgtype.Text `json:"description"`
+	ImageCount  int32       `json:"image_count"`
+	TypeID      int32       `json:"type_id"`
+	CategoryID  int32       `json:"category_id"`
+	Sizes       []byte      `json:"sizes"`
+	Bodytype    BodyEnum    `json:"bodytype"`
+}
+
+type CreateProductWithIdsRow struct {
+	ID          int32       `json:"id"`
+	Qid         string      `json:"qid"`
+	Name        string      `json:"name"`
+	BrandID     int32       `json:"brand_id"`
+	LineID      pgtype.Int4 `json:"line_id"`
+	ImagePath   string      `json:"image_path"`
+	Minprice    int32       `json:"minprice"`
+	Maxprice    int32       `json:"maxprice"`
+	Article     string      `json:"article"`
+	Date        pgtype.Text `json:"date"`
+	Description pgtype.Text `json:"description"`
+	ImageCount  int32       `json:"image_count"`
+	Type        int32       `json:"type"`
+	Category    int32       `json:"category"`
+	Sizes       []byte      `json:"sizes"`
+	Bodytype    BodyEnum    `json:"bodytype"`
+}
+
+func (q *Queries) CreateProductWithIds(ctx context.Context, arg CreateProductWithIdsParams) (CreateProductWithIdsRow, error) {
+	row := q.db.QueryRow(ctx, createProductWithIds,
+		arg.QID,
+		arg.Name,
+		arg.BrandID,
+		arg.LineID,
+		arg.ImagePath,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.Article,
+		arg.Date,
+		arg.Description,
+		arg.ImageCount,
+		arg.TypeID,
+		arg.CategoryID,
+		arg.Sizes,
+		arg.Bodytype,
+	)
+	var i CreateProductWithIdsRow
+	err := row.Scan(
+		&i.ID,
+		&i.Qid,
+		&i.Name,
+		&i.BrandID,
+		&i.LineID,
+		&i.ImagePath,
+		&i.Minprice,
+		&i.Maxprice,
+		&i.Article,
+		&i.Date,
+		&i.Description,
+		&i.ImageCount,
+		&i.Type,
+		&i.Category,
+		&i.Sizes,
+		&i.Bodytype,
+	)
+	return i, err
+}
+
+const deactivateBrand = `-- name: DeactivateBrand :exec
+UPDATE brands
+SET is_active = false,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) DeactivateBrand(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, deactivateBrand, id)
+	return err
+}
+
+const deactivateBrandLine = `-- name: DeactivateBrandLine :exec
+UPDATE brand_lines
+SET is_active = false,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) DeactivateBrandLine(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, deactivateBrandLine, id)
+	return err
+}
+
+const deleteAllRuleBasedDiscounts = `-- name: DeleteAllRuleBasedDiscounts :exec
+DELETE FROM discount
+WHERE value::text LIKE '%"rule_id"%'
+`
+
+func (q *Queries) DeleteAllRuleBasedDiscounts(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, deleteAllRuleBasedDiscounts)
+	return err
+}
+
+const deleteAllRuleItems = `-- name: DeleteAllRuleItems :exec
+DELETE FROM discount_rule_items
+WHERE rule_id = $1
+`
+
+func (q *Queries) DeleteAllRuleItems(ctx context.Context, ruleID int32) error {
+	_, err := q.db.Exec(ctx, deleteAllRuleItems, ruleID)
+	return err
+}
+
+const deleteBrandLine = `-- name: DeleteBrandLine :one
+DELETE FROM brand_lines
+WHERE id = $1
+RETURNING id,
+    name,
+    brand_id
+`
+
+type DeleteBrandLineRow struct {
+	ID      int32  `json:"id"`
+	Name    string `json:"name"`
+	BrandID int32  `json:"brand_id"`
+}
+
+func (q *Queries) DeleteBrandLine(ctx context.Context, id int32) (DeleteBrandLineRow, error) {
+	row := q.db.QueryRow(ctx, deleteBrandLine, id)
+	var i DeleteBrandLineRow
+	err := row.Scan(&i.ID, &i.Name, &i.BrandID)
+	return i, err
+}
+
+const deleteDiscount = `-- name: DeleteDiscount :exec
+DELETE FROM discount
+WHERE productid = $1
+`
+
+func (q *Queries) DeleteDiscount(ctx context.Context, productid int32) error {
+	_, err := q.db.Exec(ctx, deleteDiscount, productid)
+	return err
+}
+
+const deleteDiscountRule = `-- name: DeleteDiscountRule :exec
+DELETE FROM discount_rules
+WHERE id = $1
+`
+
+func (q *Queries) DeleteDiscountRule(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, deleteDiscountRule, id)
+	return err
+}
+
+const deleteHardProduct = `-- name: DeleteHardProduct :one
+DELETE FROM products
+WHERE id = $1
+RETURNING id,
+    qId,
+    name,
+    brand_id,
+    article,
+    image_path,
+    image_count
+`
+
+type DeleteHardProductRow struct {
+	ID         int32  `json:"id"`
+	Qid        string `json:"qid"`
+	Name       string `json:"name"`
+	BrandID    int32  `json:"brand_id"`
+	Article    string `json:"article"`
+	ImagePath  string `json:"image_path"`
+	ImageCount int32  `json:"image_count"`
+}
+
+func (q *Queries) DeleteHardProduct(ctx context.Context, id int32) (DeleteHardProductRow, error) {
+	row := q.db.QueryRow(ctx, deleteHardProduct, id)
+	var i DeleteHardProductRow
+	err := row.Scan(
+		&i.ID,
+		&i.Qid,
+		&i.Name,
+		&i.BrandID,
+		&i.Article,
+		&i.ImagePath,
+		&i.ImageCount,
+	)
+	return i, err
+}
+
+const draftProduct = `-- name: DraftProduct :exec
+UPDATE products
+SET status = 'draft'
+WHERE id = $1
+    AND status = 'active'
+`
+
+func (q *Queries) DraftProduct(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, draftProduct, id)
+	return err
+}
+
+const getActiveBrandLines = `-- name: GetActiveBrandLines :many
+SELECT bl.id,
+    bl.brand_id,
+    bl.name,
+    bl.slug,
+    bl.description,
+    bl.image_path,
+    bl.season,
+    bl.year,
+    bl.is_active,
+    bl.sort_order,
+    bl.created_at,
+    bl.updated_at,
+    b.name as brand_name,
+    b.slug as brand_slug
+FROM brand_lines bl
+    JOIN brands b ON bl.brand_id = b.id
+WHERE bl.is_active = true
+    AND b.is_active = true
+ORDER BY b.sort_order ASC,
+    bl.sort_order ASC,
+    bl.name ASC
+`
+
+type GetActiveBrandLinesRow struct {
+	ID          int32              `json:"id"`
+	BrandID     int32              `json:"brand_id"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+	Description pgtype.Text        `json:"description"`
+	ImagePath   pgtype.Text        `json:"image_path"`
+	Season      pgtype.Text        `json:"season"`
+	Year        pgtype.Int4        `json:"year"`
+	IsActive    pgtype.Bool        `json:"is_active"`
+	SortOrder   pgtype.Int4        `json:"sort_order"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	BrandName   string             `json:"brand_name"`
+	BrandSlug   string             `json:"brand_slug"`
+}
+
+func (q *Queries) GetActiveBrandLines(ctx context.Context) ([]GetActiveBrandLinesRow, error) {
+	rows, err := q.db.Query(ctx, getActiveBrandLines)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetActiveBrandLinesRow
+	for rows.Next() {
+		var i GetActiveBrandLinesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.BrandID,
+			&i.Name,
+			&i.Slug,
+			&i.Description,
+			&i.ImagePath,
+			&i.Season,
+			&i.Year,
+			&i.IsActive,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.BrandName,
+			&i.BrandSlug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getActiveBrands = `-- name: GetActiveBrands :many
+SELECT id,
+    name,
+    slug,
+    image_path,
+    description,
+    website,
+    country,
+    founded_year,
+    is_active,
+    sort_order,
+    created_at,
+    updated_at
+FROM brands
+WHERE is_active = true
+ORDER BY sort_order ASC,
+    name ASC
+`
+
+type GetActiveBrandsRow struct {
+	ID          int32              `json:"id"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+	ImagePath   pgtype.Text        `json:"image_path"`
+	Description pgtype.Text        `json:"description"`
+	Website     pgtype.Text        `json:"website"`
+	Country     pgtype.Text        `json:"country"`
+	FoundedYear pgtype.Int4        `json:"founded_year"`
+	IsActive    bool               `json:"is_active"`
+	SortOrder   int32              `json:"sort_order"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetActiveBrands(ctx context.Context) ([]GetActiveBrandsRow, error) {
+	rows, err := q.db.Query(ctx, getActiveBrands)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetActiveBrandsRow
+	for rows.Next() {
+		var i GetActiveBrandsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.ImagePath,
+			&i.Description,
+			&i.Website,
+			&i.Country,
+			&i.FoundedYear,
+			&i.IsActive,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getActiveDiscountRules = `-- name: GetActiveDiscountRules :many
+SELECT id, name, description, discount_type, discount_value, starts_at, ends_at, is_active, priority, created_at, updated_at
+FROM discount_rules
+WHERE is_active = true
+    AND starts_at <= NOW()
+    AND (
+        ends_at IS NULL
+        OR ends_at >= NOW()
+    )
+ORDER BY priority DESC
+`
+
+func (q *Queries) GetActiveDiscountRules(ctx context.Context) ([]DiscountRule, error) {
+	rows, err := q.db.Query(ctx, getActiveDiscountRules)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DiscountRule
+	for rows.Next() {
+		var i DiscountRule
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.DiscountType,
+			&i.DiscountValue,
+			&i.StartsAt,
+			&i.EndsAt,
+			&i.IsActive,
+			&i.Priority,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllActiveDiscountRules = `-- name: GetAllActiveDiscountRules :many
+SELECT id, name, description, discount_type, discount_value, starts_at, ends_at, is_active, priority, created_at, updated_at
+FROM discount_rules
+WHERE is_active = true
+  AND starts_at <= NOW()
+  AND (ends_at IS NULL OR ends_at >= NOW())
+ORDER BY priority DESC, created_at DESC
+`
+
+func (q *Queries) GetAllActiveDiscountRules(ctx context.Context) ([]DiscountRule, error) {
+	rows, err := q.db.Query(ctx, getAllActiveDiscountRules)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DiscountRule
+	for rows.Next() {
+		var i DiscountRule
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.DiscountType,
+			&i.DiscountValue,
+			&i.StartsAt,
+			&i.EndsAt,
+			&i.IsActive,
+			&i.Priority,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllActiveDiscounts = `-- name: GetAllActiveDiscounts :many
+SELECT
+    (COALESCE(
+        CASE WHEN di.item_type = 'product' THEN di.item_id END,
+        CASE WHEN di.item_type = 'brand'   THEN p_brand.id END,
+        CASE WHEN di.item_type = 'line'    THEN p_line.id END
+    ))::int AS product_id,
+    dr.discount_value,
+    dr.discount_type,
+    dr.priority,
+    dr.id AS rule_id
+FROM discount_rule_items di
+JOIN discount_rules dr ON di.rule_id = dr.id
+LEFT JOIN products p_brand ON di.item_type = 'brand' AND p_brand.brand_id = di.item_id AND p_brand.status != 'deleted'
+LEFT JOIN products p_line  ON di.item_type = 'line'  AND p_line.line_id  = di.item_id AND p_line.status != 'deleted'
+WHERE dr.is_active = true
+  AND dr.starts_at <= NOW()
+  AND (dr.ends_at IS NULL OR dr.ends_at >= NOW())
+  AND (
+       (di.item_type = 'product')
+    OR (di.item_type = 'brand'   AND p_brand.id IS NOT NULL)
+    OR (di.item_type = 'line'    AND p_line.id IS NOT NULL)
+  )
+ORDER BY product_id, dr.priority DESC, dr.discount_value DESC
+`
+
+type GetAllActiveDiscountsRow struct {
+	ProductID     int32  `json:"product_id"`
+	DiscountValue int32  `json:"discount_value"`
+	DiscountType  string `json:"discount_type"`
+	Priority      int32  `json:"priority"`
+	RuleID        int32  `json:"rule_id"`
+}
+
+func (q *Queries) GetAllActiveDiscounts(ctx context.Context) ([]GetAllActiveDiscountsRow, error) {
+	rows, err := q.db.Query(ctx, getAllActiveDiscounts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllActiveDiscountsRow
+	for rows.Next() {
+		var i GetAllActiveDiscountsRow
+		if err := rows.Scan(
+			&i.ProductID,
+			&i.DiscountValue,
+			&i.DiscountType,
+			&i.Priority,
+			&i.RuleID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllBrandLinesByBrandId = `-- name: GetAllBrandLinesByBrandId :many
+SELECT id,
+    brand_id,
+    name,
+    slug,
+    description,
+    image_path,
+    season,
+    year,
+    is_active,
+    sort_order,
+    created_at,
+    updated_at
+FROM brand_lines
+WHERE brand_id = $1
+ORDER BY sort_order ASC,
+    name ASC
+`
+
+type GetAllBrandLinesByBrandIdRow struct {
+	ID          int32              `json:"id"`
+	BrandID     int32              `json:"brand_id"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+	Description pgtype.Text        `json:"description"`
+	ImagePath   pgtype.Text        `json:"image_path"`
+	Season      pgtype.Text        `json:"season"`
+	Year        pgtype.Int4        `json:"year"`
+	IsActive    pgtype.Bool        `json:"is_active"`
+	SortOrder   pgtype.Int4        `json:"sort_order"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetAllBrandLinesByBrandId(ctx context.Context, brandID int32) ([]GetAllBrandLinesByBrandIdRow, error) {
+	rows, err := q.db.Query(ctx, getAllBrandLinesByBrandId, brandID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllBrandLinesByBrandIdRow
+	for rows.Next() {
+		var i GetAllBrandLinesByBrandIdRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.BrandID,
+			&i.Name,
+			&i.Slug,
+			&i.Description,
+			&i.ImagePath,
+			&i.Season,
+			&i.Year,
+			&i.IsActive,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllBrands = `-- name: GetAllBrands :many
+SELECT id,
+    name,
+    slug,
+    image_path,
+    description,
+    website,
+    country,
+    founded_year,
+    is_active,
+    sort_order,
+    created_at,
+    updated_at
+FROM brands
+ORDER BY sort_order ASC,
+    name ASC
+`
+
+type GetAllBrandsRow struct {
+	ID          int32              `json:"id"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+	ImagePath   pgtype.Text        `json:"image_path"`
+	Description pgtype.Text        `json:"description"`
+	Website     pgtype.Text        `json:"website"`
+	Country     pgtype.Text        `json:"country"`
+	FoundedYear pgtype.Int4        `json:"founded_year"`
+	IsActive    bool               `json:"is_active"`
+	SortOrder   int32              `json:"sort_order"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetAllBrands(ctx context.Context) ([]GetAllBrandsRow, error) {
+	rows, err := q.db.Query(ctx, getAllBrands)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllBrandsRow
+	for rows.Next() {
+		var i GetAllBrandsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.ImagePath,
+			&i.Description,
+			&i.Website,
+			&i.Country,
+			&i.FoundedYear,
+			&i.IsActive,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllBrandsWithLines = `-- name: GetAllBrandsWithLines :many
+SELECT b.id,
+    b.name,
+    COALESCE(
+        json_agg(
+            json_build_object(
+                'id',
+                bl.id,
+                'name',
+                bl.name,
+                'slug',
+                bl.slug
+            )
+            ORDER BY bl.sort_order,
+                bl.name
+        ) FILTER (
+            WHERE bl.id IS NOT NULL
+        ),
+        '[]'::json
+    ) AS lines
+FROM brands b
+    LEFT JOIN brand_lines bl ON b.id = bl.brand_id
+GROUP BY b.id,
+    b.name
+ORDER BY b.sort_order,
+    b.name
+`
+
+type GetAllBrandsWithLinesRow struct {
+	ID    int32       `json:"id"`
+	Name  string      `json:"name"`
+	Lines interface{} `json:"lines"`
+}
+
+func (q *Queries) GetAllBrandsWithLines(ctx context.Context) ([]GetAllBrandsWithLinesRow, error) {
+	rows, err := q.db.Query(ctx, getAllBrandsWithLines)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllBrandsWithLinesRow
+	for rows.Next() {
+		var i GetAllBrandsWithLinesRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.Lines); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getBrandByID = `-- name: GetBrandByID :one
+SELECT b.id,
+    b.name,
+    b.slug,
+    b.country,
+    b.website,
+    b.description,
+    b.image_path,
+    b.is_active,
+    b.sort_order,
+    b.created_at,
+    b.updated_at,
+    COALESCE(p.total_products, 0) as total_products,
+    COALESCE(p.active_products, 0) as active_products,
+    COALESCE(p.inactive_products, 0) as inactive_products,
+    -- Статистика по категориям для всей фирмы
+    COALESCE(p.sneakers_total, 0) as sneakers_total,
+    COALESCE(p.sneakers_active, 0) as sneakers_active,
+    COALESCE(p.sneakers_inactive, 0) as sneakers_inactive,
+    COALESCE(p.merch_total, 0) as merch_total,
+    COALESCE(p.merch_active, 0) as merch_active,
+    COALESCE(p.merch_inactive, 0) as merch_inactive,
+    COALESCE(p.clothes_total, 0) as clothes_total,
+    COALESCE(p.clothes_active, 0) as clothes_active,
+    COALESCE(p.clothes_inactive, 0) as clothes_inactive,
+    COALESCE(p.toys_total, 0) as toys_total,
+    COALESCE(p.toys_active, 0) as toys_active,
+    COALESCE(p.toys_inactive, 0) as toys_inactive,
+    COALESCE(
+        (
+            SELECT json_agg(
+                    json_build_object(
+                        'id',
+                        bl.id,
+                        'name',
+                        bl.name,
+                        'slug',
+                        bl.slug,
+                        'total_products',
+                        COALESCE(lp.total_products, 0),
+                        'active_products',
+                        COALESCE(lp.active_products, 0),
+                        'inactive_products',
+                        COALESCE(lp.inactive_products, 0)
+                    )
+                    ORDER BY bl.sort_order
+                )
+            FROM brand_lines bl
+                LEFT JOIN (
+                    SELECT p.line_id,
+                        COUNT(*) as total_products,
+                        COUNT(
+                            CASE
+                                WHEN p.status = 'active' THEN 1
+                            END
+                        ) as active_products,
+                        COUNT(
+                            CASE
+                                WHEN p.status != 'active' THEN 1
+                            END
+                        ) as inactive_products
+                    FROM products p
+                    WHERE p.brand_id = $1::int
+                    GROUP BY p.line_id
+                ) lp ON lp.line_id = bl.id
+            WHERE bl.brand_id = b.id
+        ),
+        '[]'::json
+    ) AS lines
+FROM brands b
+    LEFT JOIN (
+        SELECT brand_id,
+            COUNT(*) as total_products,
+            COUNT(
+                CASE
+                    WHEN status = 'active' THEN 1
+                END
+            ) as active_products,
+            COUNT(
+                CASE
+                    WHEN status != 'active' THEN 1
+                END
+            ) as inactive_products,
+            -- Sneakers
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'sneakers' THEN 1
+                END
+            ) as sneakers_total,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'sneakers'
+                    AND p.status = 'active' THEN 1
+                END
+            ) as sneakers_active,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'sneakers'
+                    AND p.status != 'active' THEN 1
+                END
+            ) as sneakers_inactive,
+            -- Merch
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'merch' THEN 1
+                END
+            ) as merch_total,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'merch'
+                    AND p.status = 'active' THEN 1
+                END
+            ) as merch_active,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'merch'
+                    AND p.status != 'active' THEN 1
+                END
+            ) as merch_inactive,
+            -- Clothes
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'clothes' THEN 1
+                END
+            ) as clothes_total,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'clothes'
+                    AND p.status = 'active' THEN 1
+                END
+            ) as clothes_active,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'clothes'
+                    AND p.status != 'active' THEN 1
+                END
+            ) as clothes_inactive,
+            -- Toys
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'toys' THEN 1
+                END
+            ) as toys_total,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'toys'
+                    AND p.status = 'active' THEN 1
+                END
+            ) as toys_active,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'toys'
+                    AND p.status != 'active' THEN 1
+                END
+            ) as toys_inactive
+        FROM products p
+            LEFT JOIN product_categories pc ON p.category = pc.id
+        WHERE p.brand_id = $1::int
+        GROUP BY brand_id
+    ) p ON p.brand_id = b.id
+WHERE b.id = $1::int
+`
+
+type GetBrandByIDRow struct {
+	ID               int32              `json:"id"`
+	Name             string             `json:"name"`
+	Slug             string             `json:"slug"`
+	Country          pgtype.Text        `json:"country"`
+	Website          pgtype.Text        `json:"website"`
+	Description      pgtype.Text        `json:"description"`
+	ImagePath        pgtype.Text        `json:"image_path"`
+	IsActive         bool               `json:"is_active"`
+	SortOrder        int32              `json:"sort_order"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	TotalProducts    int64              `json:"total_products"`
+	ActiveProducts   int64              `json:"active_products"`
+	InactiveProducts int64              `json:"inactive_products"`
+	SneakersTotal    int64              `json:"sneakers_total"`
+	SneakersActive   int64              `json:"sneakers_active"`
+	SneakersInactive int64              `json:"sneakers_inactive"`
+	MerchTotal       int64              `json:"merch_total"`
+	MerchActive      int64              `json:"merch_active"`
+	MerchInactive    int64              `json:"merch_inactive"`
+	ClothesTotal     int64              `json:"clothes_total"`
+	ClothesActive    int64              `json:"clothes_active"`
+	ClothesInactive  int64              `json:"clothes_inactive"`
+	ToysTotal        int64              `json:"toys_total"`
+	ToysActive       int64              `json:"toys_active"`
+	ToysInactive     int64              `json:"toys_inactive"`
+	Lines            interface{}        `json:"lines"`
+}
+
+func (q *Queries) GetBrandByID(ctx context.Context, brandID int32) (GetBrandByIDRow, error) {
+	row := q.db.QueryRow(ctx, getBrandByID, brandID)
+	var i GetBrandByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Country,
+		&i.Website,
+		&i.Description,
+		&i.ImagePath,
+		&i.IsActive,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.TotalProducts,
+		&i.ActiveProducts,
+		&i.InactiveProducts,
+		&i.SneakersTotal,
+		&i.SneakersActive,
+		&i.SneakersInactive,
+		&i.MerchTotal,
+		&i.MerchActive,
+		&i.MerchInactive,
+		&i.ClothesTotal,
+		&i.ClothesActive,
+		&i.ClothesInactive,
+		&i.ToysTotal,
+		&i.ToysActive,
+		&i.ToysInactive,
+		&i.Lines,
+	)
+	return i, err
+}
+
+const getBrandByIDWithDiscount = `-- name: GetBrandByIDWithDiscount :one
+SELECT b.id,
+    b.name,
+    b.slug,
+    b.country,
+    b.website,
+    b.description,
+    b.image_path,
+    b.is_active,
+    b.sort_order,
+    b.created_at,
+    b.updated_at,
+    COALESCE(p.total_products, 0) as total_products,
+    COALESCE(p.active_products, 0) as active_products,
+    COALESCE(p.inactive_products, 0) as inactive_products,
+    COALESCE(p.sneakers_total, 0) as sneakers_total,
+    COALESCE(p.sneakers_active, 0) as sneakers_active,
+    COALESCE(p.sneakers_inactive, 0) as sneakers_inactive,
+    COALESCE(p.merch_total, 0) as merch_total,
+    COALESCE(p.merch_active, 0) as merch_active,
+    COALESCE(p.merch_inactive, 0) as merch_inactive,
+    COALESCE(p.clothes_total, 0) as clothes_total,
+    COALESCE(p.clothes_active, 0) as clothes_active,
+    COALESCE(p.clothes_inactive, 0) as clothes_inactive,
+    COALESCE(p.toys_total, 0) as toys_total,
+    COALESCE(p.toys_active, 0) as toys_active,
+    COALESCE(p.toys_inactive, 0) as toys_inactive,
+    -- Активная скидка на бренд
+    (
+        SELECT dr.discount_value
+        FROM discount_rules dr
+            JOIN discount_rule_items dri ON dri.rule_id = dr.id
+        WHERE dri.item_type = 'brand'
+            AND dri.item_id = b.id
+            AND dr.is_active = true
+            AND dr.starts_at <= NOW()
+            AND (
+                dr.ends_at IS NULL
+                OR dr.ends_at >= NOW()
+            )
+        ORDER BY dr.priority DESC
+        LIMIT 1
+    ) as brand_discount_percent,
+    (
+        SELECT dr.name
+        FROM discount_rules dr
+            JOIN discount_rule_items dri ON dri.rule_id = dr.id
+        WHERE dri.item_type = 'brand'
+            AND dri.item_id = b.id
+            AND dr.is_active = true
+            AND dr.starts_at <= NOW()
+            AND (
+                dr.ends_at IS NULL
+                OR dr.ends_at >= NOW()
+            )
+        ORDER BY dr.priority DESC
+        LIMIT 1
+    ) as brand_discount_name,
+    COALESCE(
+        (
+            SELECT json_agg(
+                    json_build_object(
+                        'id',
+                        bl.id,
+                        'name',
+                        bl.name,
+                        'slug',
+                        bl.slug,
+                        'total_products',
+                        COALESCE(lp.total_products, 0),
+                        'active_products',
+                        COALESCE(lp.active_products, 0),
+                        'inactive_products',
+                        COALESCE(lp.inactive_products, 0),
+                        'discount_percent',
+                        line_discount.discount_value,
+                        'discount_name',
+                        line_discount.discount_name
+                    )
+                    ORDER BY bl.sort_order
+                )
+            FROM brand_lines bl
+                LEFT JOIN (
+                    SELECT p.line_id,
+                        COUNT(*) as total_products,
+                        COUNT(
+                            CASE
+                                WHEN p.status = 'active' THEN 1
+                            END
+                        ) as active_products,
+                        COUNT(
+                            CASE
+                                WHEN p.status != 'active' THEN 1
+                            END
+                        ) as inactive_products
+                    FROM products p
+                    WHERE p.brand_id = $1::int
+                    GROUP BY p.line_id
+                ) lp ON lp.line_id = bl.id
+                LEFT JOIN LATERAL (
+                    SELECT dr2.discount_value,
+                        dr2.name as discount_name
+                    FROM discount_rules dr2
+                        JOIN discount_rule_items dri2 ON dri2.rule_id = dr2.id
+                    WHERE dri2.item_type = 'line'
+                        AND dri2.item_id = bl.id
+                        AND dr2.is_active = true
+                        AND dr2.starts_at <= NOW()
+                        AND (
+                            dr2.ends_at IS NULL
+                            OR dr2.ends_at >= NOW()
+                        )
+                    ORDER BY dr2.priority DESC
+                    LIMIT 1
+                ) line_discount ON true
+            WHERE bl.brand_id = b.id
+        ),
+        '[]'::json
+    ) AS lines
+FROM brands b
+    LEFT JOIN (
+        SELECT brand_id,
+            COUNT(*) as total_products,
+            COUNT(
+                CASE
+                    WHEN status = 'active' THEN 1
+                END
+            ) as active_products,
+            COUNT(
+                CASE
+                    WHEN status != 'active' THEN 1
+                END
+            ) as inactive_products,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'sneakers' THEN 1
+                END
+            ) as sneakers_total,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'sneakers'
+                    AND p.status = 'active' THEN 1
+                END
+            ) as sneakers_active,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'sneakers'
+                    AND p.status != 'active' THEN 1
+                END
+            ) as sneakers_inactive,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'merch' THEN 1
+                END
+            ) as merch_total,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'merch'
+                    AND p.status = 'active' THEN 1
+                END
+            ) as merch_active,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'merch'
+                    AND p.status != 'active' THEN 1
+                END
+            ) as merch_inactive,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'clothes' THEN 1
+                END
+            ) as clothes_total,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'clothes'
+                    AND p.status = 'active' THEN 1
+                END
+            ) as clothes_active,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'clothes'
+                    AND p.status != 'active' THEN 1
+                END
+            ) as clothes_inactive,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'toys' THEN 1
+                END
+            ) as toys_total,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'toys'
+                    AND p.status = 'active' THEN 1
+                END
+            ) as toys_active,
+            COUNT(
+                CASE
+                    WHEN pc.enum_key = 'toys'
+                    AND p.status != 'active' THEN 1
+                END
+            ) as toys_inactive
+        FROM products p
+            LEFT JOIN product_categories pc ON p.category = pc.id
+        WHERE p.brand_id = $1::int
+        GROUP BY brand_id
+    ) p ON p.brand_id = b.id
+WHERE b.id = $1::int
+`
+
+type GetBrandByIDWithDiscountRow struct {
+	ID                   int32              `json:"id"`
+	Name                 string             `json:"name"`
+	Slug                 string             `json:"slug"`
+	Country              pgtype.Text        `json:"country"`
+	Website              pgtype.Text        `json:"website"`
+	Description          pgtype.Text        `json:"description"`
+	ImagePath            pgtype.Text        `json:"image_path"`
+	IsActive             bool               `json:"is_active"`
+	SortOrder            int32              `json:"sort_order"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	TotalProducts        int64              `json:"total_products"`
+	ActiveProducts       int64              `json:"active_products"`
+	InactiveProducts     int64              `json:"inactive_products"`
+	SneakersTotal        int64              `json:"sneakers_total"`
+	SneakersActive       int64              `json:"sneakers_active"`
+	SneakersInactive     int64              `json:"sneakers_inactive"`
+	MerchTotal           int64              `json:"merch_total"`
+	MerchActive          int64              `json:"merch_active"`
+	MerchInactive        int64              `json:"merch_inactive"`
+	ClothesTotal         int64              `json:"clothes_total"`
+	ClothesActive        int64              `json:"clothes_active"`
+	ClothesInactive      int64              `json:"clothes_inactive"`
+	ToysTotal            int64              `json:"toys_total"`
+	ToysActive           int64              `json:"toys_active"`
+	ToysInactive         int64              `json:"toys_inactive"`
+	BrandDiscountPercent int32              `json:"brand_discount_percent"`
+	BrandDiscountName    string             `json:"brand_discount_name"`
+	Lines                interface{}        `json:"lines"`
+}
+
+func (q *Queries) GetBrandByIDWithDiscount(ctx context.Context, brandID int32) (GetBrandByIDWithDiscountRow, error) {
+	row := q.db.QueryRow(ctx, getBrandByIDWithDiscount, brandID)
+	var i GetBrandByIDWithDiscountRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Country,
+		&i.Website,
+		&i.Description,
+		&i.ImagePath,
+		&i.IsActive,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.TotalProducts,
+		&i.ActiveProducts,
+		&i.InactiveProducts,
+		&i.SneakersTotal,
+		&i.SneakersActive,
+		&i.SneakersInactive,
+		&i.MerchTotal,
+		&i.MerchActive,
+		&i.MerchInactive,
+		&i.ClothesTotal,
+		&i.ClothesActive,
+		&i.ClothesInactive,
+		&i.ToysTotal,
+		&i.ToysActive,
+		&i.ToysInactive,
+		&i.BrandDiscountPercent,
+		&i.BrandDiscountName,
+		&i.Lines,
+	)
+	return i, err
+}
+
+const getBrandById = `-- name: GetBrandById :one
+SELECT id,
+    name,
+    slug,
+    image_path,
+    description,
+    website,
+    country,
+    founded_year,
+    is_active,
+    sort_order,
+    created_at,
+    updated_at
+FROM brands
+WHERE id = $1
+`
+
+type GetBrandByIdRow struct {
+	ID          int32              `json:"id"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+	ImagePath   pgtype.Text        `json:"image_path"`
+	Description pgtype.Text        `json:"description"`
+	Website     pgtype.Text        `json:"website"`
+	Country     pgtype.Text        `json:"country"`
+	FoundedYear pgtype.Int4        `json:"founded_year"`
+	IsActive    bool               `json:"is_active"`
+	SortOrder   int32              `json:"sort_order"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetBrandById(ctx context.Context, id int32) (GetBrandByIdRow, error) {
+	row := q.db.QueryRow(ctx, getBrandById, id)
+	var i GetBrandByIdRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.ImagePath,
+		&i.Description,
+		&i.Website,
+		&i.Country,
+		&i.FoundedYear,
+		&i.IsActive,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getBrandBySlug = `-- name: GetBrandBySlug :one
+SELECT id,
+    name,
+    slug,
+    image_path,
+    description,
+    website,
+    country,
+    founded_year,
+    is_active,
+    sort_order,
+    created_at,
+    updated_at
+FROM brands
+WHERE slug = $1
+`
+
+type GetBrandBySlugRow struct {
+	ID          int32              `json:"id"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+	ImagePath   pgtype.Text        `json:"image_path"`
+	Description pgtype.Text        `json:"description"`
+	Website     pgtype.Text        `json:"website"`
+	Country     pgtype.Text        `json:"country"`
+	FoundedYear pgtype.Int4        `json:"founded_year"`
+	IsActive    bool               `json:"is_active"`
+	SortOrder   int32              `json:"sort_order"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetBrandBySlug(ctx context.Context, slug string) (GetBrandBySlugRow, error) {
+	row := q.db.QueryRow(ctx, getBrandBySlug, slug)
+	var i GetBrandBySlugRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.ImagePath,
+		&i.Description,
+		&i.Website,
+		&i.Country,
+		&i.FoundedYear,
+		&i.IsActive,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getBrandLineById = `-- name: GetBrandLineById :one
+SELECT id,
+    brand_id,
+    name,
+    slug,
+    description,
+    image_path,
+    season,
+    year,
+    is_active,
+    sort_order,
+    created_at,
+    updated_at
+FROM brand_lines
+WHERE id = $1
+`
+
+type GetBrandLineByIdRow struct {
+	ID          int32              `json:"id"`
+	BrandID     int32              `json:"brand_id"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+	Description pgtype.Text        `json:"description"`
+	ImagePath   pgtype.Text        `json:"image_path"`
+	Season      pgtype.Text        `json:"season"`
+	Year        pgtype.Int4        `json:"year"`
+	IsActive    pgtype.Bool        `json:"is_active"`
+	SortOrder   pgtype.Int4        `json:"sort_order"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetBrandLineById(ctx context.Context, id int32) (GetBrandLineByIdRow, error) {
+	row := q.db.QueryRow(ctx, getBrandLineById, id)
+	var i GetBrandLineByIdRow
+	err := row.Scan(
+		&i.ID,
+		&i.BrandID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.ImagePath,
+		&i.Season,
+		&i.Year,
+		&i.IsActive,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getBrandLinesByBrandId = `-- name: GetBrandLinesByBrandId :many
+SELECT id,
+    brand_id,
+    name,
+    slug,
+    description,
+    image_path,
+    season,
+    year,
+    is_active,
+    sort_order,
+    created_at,
+    updated_at
+FROM brand_lines
+WHERE brand_id = $1
+    AND is_active = true
+ORDER BY sort_order ASC,
+    name ASC
+`
+
+type GetBrandLinesByBrandIdRow struct {
+	ID          int32              `json:"id"`
+	BrandID     int32              `json:"brand_id"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+	Description pgtype.Text        `json:"description"`
+	ImagePath   pgtype.Text        `json:"image_path"`
+	Season      pgtype.Text        `json:"season"`
+	Year        pgtype.Int4        `json:"year"`
+	IsActive    pgtype.Bool        `json:"is_active"`
+	SortOrder   pgtype.Int4        `json:"sort_order"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetBrandLinesByBrandId(ctx context.Context, brandID int32) ([]GetBrandLinesByBrandIdRow, error) {
+	rows, err := q.db.Query(ctx, getBrandLinesByBrandId, brandID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBrandLinesByBrandIdRow
+	for rows.Next() {
+		var i GetBrandLinesByBrandIdRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.BrandID,
+			&i.Name,
+			&i.Slug,
+			&i.Description,
+			&i.ImagePath,
+			&i.Season,
+			&i.Year,
+			&i.IsActive,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getBrandLinesByBrandSlug = `-- name: GetBrandLinesByBrandSlug :many
+SELECT bl.id,
+    bl.name,
+    bl.slug,
+    bl.description,
+    bl.image_path,
+    bl.season,
+    bl.year,
+    bl.is_active
+FROM brand_lines bl
+    JOIN brands b ON bl.brand_id = b.id
+WHERE b.slug = $1
+    AND bl.is_active = true
+    AND b.is_active = true
+ORDER BY bl.sort_order ASC,
+    bl.name ASC
+`
+
+type GetBrandLinesByBrandSlugRow struct {
+	ID          int32       `json:"id"`
+	Name        string      `json:"name"`
+	Slug        string      `json:"slug"`
+	Description pgtype.Text `json:"description"`
+	ImagePath   pgtype.Text `json:"image_path"`
+	Season      pgtype.Text `json:"season"`
+	Year        pgtype.Int4 `json:"year"`
+	IsActive    pgtype.Bool `json:"is_active"`
+}
+
+func (q *Queries) GetBrandLinesByBrandSlug(ctx context.Context, slug string) ([]GetBrandLinesByBrandSlugRow, error) {
+	rows, err := q.db.Query(ctx, getBrandLinesByBrandSlug, slug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBrandLinesByBrandSlugRow
+	for rows.Next() {
+		var i GetBrandLinesByBrandSlugRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.Description,
+			&i.ImagePath,
+			&i.Season,
+			&i.Year,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getBrandLinesWithProductCount = `-- name: GetBrandLinesWithProductCount :many
+SELECT bl.id,
+    bl.name,
+    bl.slug,
+    bl.is_active,
+    bl.sort_order,
+    COUNT(p.id) as product_count
+FROM brand_lines bl
+    LEFT JOIN products p ON bl.id = p.line_id
+    AND p.status = 'active'
+WHERE bl.brand_id = $1
+GROUP BY bl.id
+ORDER BY bl.sort_order ASC,
+    bl.name ASC
+`
+
+type GetBrandLinesWithProductCountRow struct {
+	ID           int32       `json:"id"`
+	Name         string      `json:"name"`
+	Slug         string      `json:"slug"`
+	IsActive     pgtype.Bool `json:"is_active"`
+	SortOrder    pgtype.Int4 `json:"sort_order"`
+	ProductCount int64       `json:"product_count"`
+}
+
+func (q *Queries) GetBrandLinesWithProductCount(ctx context.Context, brandID int32) ([]GetBrandLinesWithProductCountRow, error) {
+	rows, err := q.db.Query(ctx, getBrandLinesWithProductCount, brandID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBrandLinesWithProductCountRow
+	for rows.Next() {
+		var i GetBrandLinesWithProductCountRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.IsActive,
+			&i.SortOrder,
+			&i.ProductCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getBrandsIds = `-- name: GetBrandsIds :many
+SELECT 
+    b.id
+FROM brands b
+WHERE (
+    $1::text = ''
+    OR b.name ILIKE '%' || $1::text || '%'
+)
+`
+
+func (q *Queries) GetBrandsIds(ctx context.Context, name string) ([]int32, error) {
+	rows, err := q.db.Query(ctx, getBrandsIds, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int32
+	for rows.Next() {
+		var id int32
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getBrandsWithProductCount = `-- name: GetBrandsWithProductCount :many
+SELECT b.id,
+    b.name,
+    b.slug,
+    b.image_path,
+    b.is_active,
+    b.sort_order,
+    COUNT(p.id) as product_count
+FROM brands b
+    LEFT JOIN products p ON b.id = p.brand_id
+    AND p.status = 'active'
+GROUP BY b.id
+ORDER BY b.sort_order ASC,
+    b.name ASC
+`
+
+type GetBrandsWithProductCountRow struct {
+	ID           int32       `json:"id"`
+	Name         string      `json:"name"`
+	Slug         string      `json:"slug"`
+	ImagePath    pgtype.Text `json:"image_path"`
+	IsActive     bool        `json:"is_active"`
+	SortOrder    int32       `json:"sort_order"`
+	ProductCount int64       `json:"product_count"`
+}
+
+func (q *Queries) GetBrandsWithProductCount(ctx context.Context) ([]GetBrandsWithProductCountRow, error) {
+	rows, err := q.db.Query(ctx, getBrandsWithProductCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBrandsWithProductCountRow
+	for rows.Next() {
+		var i GetBrandsWithProductCountRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.ImagePath,
+			&i.IsActive,
+			&i.SortOrder,
+			&i.ProductCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getBrandsWithStats = `-- name: GetBrandsWithStats :many
+SELECT b.id,
+    b.name,
+    b.slug,
+    b.country,
+    b.is_active,
+    b.sort_order,
+    b.created_at,
+    COALESCE(s.total_products, 0) as total_products,
+    COALESCE(s.active_products, 0) as active_products,
+    COALESCE(s.inactive_products, 0) as inactive_products,
+    COALESCE(s.sneakers_count, 0) as sneakers_count,
+    COALESCE(s.merch_count, 0) as merch_count,
+    COALESCE(s.clothes_count, 0) as clothes_count,
+    COALESCE(s.toys_count, 0) as toys_count,
+    COALESCE(s.lines_count, 0) as lines_count,
+    COALESCE(
+        (
+            SELECT json_agg(
+                    json_build_object('id', bl.id, 'name', bl.name, 'slug', bl.slug)
+                    ORDER BY bl.sort_order
+                )
+            FROM brand_lines bl
+            WHERE bl.brand_id = b.id
+        ),
+        '[]'::json
+    ) AS lines
+FROM brands b
+    LEFT JOIN brands_stats s ON b.id = s.brand_id
+WHERE (
+        $1::text = ''
+        OR b.name ILIKE '%' || $1::text || '%'
+    )
+ORDER BY CASE
+        WHEN $2::int = 1 THEN b.name
+    END ASC,
+    CASE
+        WHEN $2::int = 2 THEN b.name
+    END DESC,
+    CASE
+        WHEN $2::int = 3 THEN b.sort_order
+    END ASC,
+    CASE
+        WHEN $2::int = 4 THEN b.sort_order
+    END DESC,
+    CASE
+        WHEN $2::int = 5 THEN COALESCE(s.total_products, 0)
+    END ASC,
+    CASE
+        WHEN $2::int = 6 THEN COALESCE(s.total_products, 0)
+    END DESC,
+    CASE
+        WHEN $2::int = 7 THEN b.created_at
+    END ASC,
+    CASE
+        WHEN $2::int = 8 THEN b.created_at
+    END DESC,
+    b.sort_order ASC,
+    b.id ASC
+LIMIT $4::integer OFFSET $3::integer
+`
+
+type GetBrandsWithStatsParams struct {
+	Name      string `json:"name"`
+	SortType  int32  `json:"sort_type"`
+	OffsetVal int32  `json:"offset_val"`
+	LimitVal  int32  `json:"limit_val"`
+}
+
+type GetBrandsWithStatsRow struct {
+	ID               int32              `json:"id"`
+	Name             string             `json:"name"`
+	Slug             string             `json:"slug"`
+	Country          pgtype.Text        `json:"country"`
+	IsActive         bool               `json:"is_active"`
+	SortOrder        int32              `json:"sort_order"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	TotalProducts    int32              `json:"total_products"`
+	ActiveProducts   int32              `json:"active_products"`
+	InactiveProducts int32              `json:"inactive_products"`
+	SneakersCount    int32              `json:"sneakers_count"`
+	MerchCount       int32              `json:"merch_count"`
+	ClothesCount     int32              `json:"clothes_count"`
+	ToysCount        int32              `json:"toys_count"`
+	LinesCount       int32              `json:"lines_count"`
+	Lines            interface{}        `json:"lines"`
+}
+
+func (q *Queries) GetBrandsWithStats(ctx context.Context, arg GetBrandsWithStatsParams) ([]GetBrandsWithStatsRow, error) {
+	rows, err := q.db.Query(ctx, getBrandsWithStats,
+		arg.Name,
+		arg.SortType,
+		arg.OffsetVal,
+		arg.LimitVal,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBrandsWithStatsRow
+	for rows.Next() {
+		var i GetBrandsWithStatsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.Country,
+			&i.IsActive,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.TotalProducts,
+			&i.ActiveProducts,
+			&i.InactiveProducts,
+			&i.SneakersCount,
+			&i.MerchCount,
+			&i.ClothesCount,
+			&i.ToysCount,
+			&i.LinesCount,
+			&i.Lines,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getBrandsWithStatsAndDiscounts = `-- name: GetBrandsWithStatsAndDiscounts :many
+SELECT b.id,
+    b.name,
+    b.slug,
+    b.country,
+    b.is_active,
+    b.sort_order,
+    b.created_at,
+    b.image_path,
+    COALESCE(s.total_products, 0) as total_products,
+    COALESCE(s.active_products, 0) as active_products,
+    COALESCE(s.inactive_products, 0) as inactive_products,
+    COALESCE(s.sneakers_count, 0) as sneakers_count,
+    COALESCE(s.merch_count, 0) as merch_count,
+    COALESCE(s.clothes_count, 0) as clothes_count,
+    COALESCE(s.toys_count, 0) as toys_count,
+    COALESCE(s.lines_count, 0) as lines_count,
+    COALESCE(bd.discount_value, 0) as brand_discount_percent,
+    COALESCE(
+        (
+            SELECT json_agg(
+                    json_build_object(
+                        'id',
+                        bl.id,
+                        'name',
+                        bl.name,
+                        'slug',
+                        bl.slug,
+                        'discount_percent',
+                        ld.discount_value
+                    )
+                    ORDER BY bl.sort_order
+                )
+            FROM brand_lines bl
+                LEFT JOIN LATERAL (
+                    SELECT dr2.discount_value
+                    FROM discount_rules dr2
+                        JOIN discount_rule_items dri2 ON dri2.rule_id = dr2.id
+                    WHERE dri2.item_type = 'line'
+                        AND dri2.item_id = bl.id
+                        AND dr2.is_active = true
+                        AND dr2.starts_at <= NOW()
+                        AND (
+                            dr2.ends_at IS NULL
+                            OR dr2.ends_at >= NOW()
+                        )
+                    ORDER BY dr2.priority DESC
+                    LIMIT 1
+                ) ld ON true
+            WHERE bl.brand_id = b.id
+        ),
+        '[]'::json
+    ) AS lines
+FROM brands b
+    LEFT JOIN brands_stats s ON b.id = s.brand_id
+    LEFT JOIN LATERAL (
+        SELECT dr.discount_value
+        FROM discount_rules dr
+            JOIN discount_rule_items dri ON dri.rule_id = dr.id
+        WHERE dri.item_type = 'brand'
+            AND dri.item_id = b.id
+            AND dr.is_active = true
+            AND dr.starts_at <= NOW()
+            AND (
+                dr.ends_at IS NULL
+                OR dr.ends_at >= NOW()
+            )
+        ORDER BY dr.priority DESC
+        LIMIT 1
+    ) bd ON true
+WHERE (
+        $1::text = ''
+        OR b.name ILIKE '%' || $1::text || '%'
+    )
+ORDER BY CASE
+        WHEN $2::int = 1 THEN b.name
+    END ASC,
+    CASE
+        WHEN $2::int = 2 THEN b.name
+    END DESC,
+    CASE
+        WHEN $2::int = 3 THEN b.sort_order
+    END ASC,
+    CASE
+        WHEN $2::int = 4 THEN b.sort_order
+    END DESC,
+    CASE
+        WHEN $2::int = 5 THEN COALESCE(s.total_products, 0)
+    END ASC,
+    CASE
+        WHEN $2::int = 6 THEN COALESCE(s.total_products, 0)
+    END DESC,
+    CASE
+        WHEN $2::int = 7 THEN b.created_at
+    END ASC,
+    CASE
+        WHEN $2::int = 8 THEN b.created_at
+    END DESC,
+    CASE
+        WHEN $2::int = 9 THEN COALESCE(s.lines_count, 0)
+        ELSE 0
+    END ASC,
+    CASE
+        WHEN $2::int = 10 THEN COALESCE(s.lines_count, 0)
+        ELSE 0
+    END DESC,
+    CASE
+        WHEN $2::int = 11 THEN b.is_active::int
+        ELSE 0
+    END ASC,
+    CASE
+        WHEN $2::int = 12 THEN b.is_active::int
+        ELSE 0
+    END DESC,
+    CASE
+        WHEN $2::int = 13 THEN bd.discount_value
+        ELSE 0
+    END ASC NULLS LAST,
+    CASE
+        WHEN $2::int = 14 THEN bd.discount_value
+        ELSE 0
+    END DESC NULLS LAST,
+    b.sort_order ASC,
+    b.id ASC
+LIMIT $4::integer OFFSET $3::integer
+`
+
+type GetBrandsWithStatsAndDiscountsParams struct {
+	Name      string `json:"name"`
+	SortType  int32  `json:"sort_type"`
+	OffsetVal int32  `json:"offset_val"`
+	LimitVal  int32  `json:"limit_val"`
+}
+
+type GetBrandsWithStatsAndDiscountsRow struct {
+	ID                   int32              `json:"id"`
+	Name                 string             `json:"name"`
+	Slug                 string             `json:"slug"`
+	Country              pgtype.Text        `json:"country"`
+	IsActive             bool               `json:"is_active"`
+	SortOrder            int32              `json:"sort_order"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	ImagePath            pgtype.Text        `json:"image_path"`
+	TotalProducts        int32              `json:"total_products"`
+	ActiveProducts       int32              `json:"active_products"`
+	InactiveProducts     int32              `json:"inactive_products"`
+	SneakersCount        int32              `json:"sneakers_count"`
+	MerchCount           int32              `json:"merch_count"`
+	ClothesCount         int32              `json:"clothes_count"`
+	ToysCount            int32              `json:"toys_count"`
+	LinesCount           int32              `json:"lines_count"`
+	BrandDiscountPercent int32              `json:"brand_discount_percent"`
+	Lines                interface{}        `json:"lines"`
+}
+
+func (q *Queries) GetBrandsWithStatsAndDiscounts(ctx context.Context, arg GetBrandsWithStatsAndDiscountsParams) ([]GetBrandsWithStatsAndDiscountsRow, error) {
+	rows, err := q.db.Query(ctx, getBrandsWithStatsAndDiscounts,
+		arg.Name,
+		arg.SortType,
+		arg.OffsetVal,
+		arg.LimitVal,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBrandsWithStatsAndDiscountsRow
+	for rows.Next() {
+		var i GetBrandsWithStatsAndDiscountsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.Country,
+			&i.IsActive,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.ImagePath,
+			&i.TotalProducts,
+			&i.ActiveProducts,
+			&i.InactiveProducts,
+			&i.SneakersCount,
+			&i.MerchCount,
+			&i.ClothesCount,
+			&i.ToysCount,
+			&i.LinesCount,
+			&i.BrandDiscountPercent,
+			&i.Lines,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getBrandsWithStatsAndDiscountsWithTotalCount = `-- name: GetBrandsWithStatsAndDiscountsWithTotalCount :many
+SELECT b.id,
+    b.name,
+    b.slug,
+    b.country,
+    b.is_active,
+    b.sort_order,
+    b.created_at,
+    COALESCE(s.total_products, 0) as total_products,
+    COALESCE(s.active_products, 0) as active_products,
+    COALESCE(s.inactive_products, 0) as inactive_products,
+    COALESCE(s.sneakers_count, 0) as sneakers_count,
+    COALESCE(s.merch_count, 0) as merch_count,
+    COALESCE(s.clothes_count, 0) as clothes_count,
+    COALESCE(s.toys_count, 0) as toys_count,
+    COALESCE(s.lines_count, 0) as lines_count,
+    COALESCE(bd.discount_value, 0) as brand_discount_percent,
+    COALESCE(
+        (
+            SELECT json_agg(
+                    json_build_object(
+                        'id', bl.id,
+                        'name', bl.name,
+                        'slug', bl.slug,
+                        'discount_percent', ld.discount_value
+                    )
+                    ORDER BY bl.sort_order
+                )
+            FROM brand_lines bl
+                LEFT JOIN LATERAL (
+                    SELECT dr2.discount_value
+                    FROM discount_rules dr2
+                        JOIN discount_rule_items dri2 ON dri2.rule_id = dr2.id
+                    WHERE dri2.item_type = 'line'
+                        AND dri2.item_id = bl.id
+                        AND dr2.is_active = true
+                        AND dr2.starts_at <= NOW()
+                        AND (
+                            dr2.ends_at IS NULL
+                            OR dr2.ends_at >= NOW()
+                        )
+                    ORDER BY dr2.priority DESC
+                    LIMIT 1
+                ) ld ON true
+            WHERE bl.brand_id = b.id
+        ),
+        '[]'::json
+    ) AS lines,
+    COUNT(*) OVER() AS total_count
+FROM brands b
+    LEFT JOIN brands_stats s ON b.id = s.brand_id
+    LEFT JOIN LATERAL (
+        SELECT dr.discount_value
+        FROM discount_rules dr
+            JOIN discount_rule_items dri ON dri.rule_id = dr.id
+        WHERE dri.item_type = 'brand'
+            AND dri.item_id = b.id
+            AND dr.is_active = true
+            AND dr.starts_at <= NOW()
+            AND (
+                dr.ends_at IS NULL
+                OR dr.ends_at >= NOW()
+            )
+        ORDER BY dr.priority DESC
+        LIMIT 1
+    ) bd ON true
+WHERE (
+        $1::text = ''
+        OR b.name ILIKE '%' || $1::text || '%'
+    )
+ORDER BY CASE
+        WHEN $2::int = 1 THEN b.name
+    END ASC,
+    CASE
+        WHEN $2::int = 2 THEN b.name
+    END DESC,
+    CASE
+        WHEN $2::int = 3 THEN b.sort_order
+    END ASC,
+    CASE
+        WHEN $2::int = 4 THEN b.sort_order
+    END DESC,
+    CASE
+        WHEN $2::int = 5 THEN COALESCE(s.total_products, 0)
+    END ASC,
+    CASE
+        WHEN $2::int = 6 THEN COALESCE(s.total_products, 0)
+    END DESC,
+    CASE
+        WHEN $2::int = 7 THEN b.created_at
+    END ASC,
+    CASE
+        WHEN $2::int = 8 THEN b.created_at
+    END DESC,
+    CASE
+        WHEN $2::int = 9 THEN COALESCE(s.lines_count, 0)
+        ELSE 0
+    END ASC,
+    CASE
+        WHEN $2::int = 10 THEN COALESCE(s.lines_count, 0)
+        ELSE 0
+    END DESC,
+    CASE
+        WHEN $2::int = 11 THEN b.is_active::int
+        ELSE 0
+    END ASC,
+    CASE
+        WHEN $2::int = 12 THEN b.is_active::int
+        ELSE 0
+    END DESC,
+    CASE
+        WHEN $2::int = 13 THEN bd.discount_value
+        ELSE 0
+    END ASC NULLS LAST,
+    CASE
+        WHEN $2::int = 14 THEN bd.discount_value
+        ELSE 0
+    END DESC NULLS LAST,
+    b.sort_order ASC,
+    b.id ASC
+LIMIT $4::integer OFFSET $3::integer
+`
+
+type GetBrandsWithStatsAndDiscountsWithTotalCountParams struct {
+	Name      string `json:"name"`
+	SortType  int32  `json:"sort_type"`
+	OffsetVal int32  `json:"offset_val"`
+	LimitVal  int32  `json:"limit_val"`
+}
+
+type GetBrandsWithStatsAndDiscountsWithTotalCountRow struct {
+	ID                   int32              `json:"id"`
+	Name                 string             `json:"name"`
+	Slug                 string             `json:"slug"`
+	Country              pgtype.Text        `json:"country"`
+	IsActive             bool               `json:"is_active"`
+	SortOrder            int32              `json:"sort_order"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	TotalProducts        int32              `json:"total_products"`
+	ActiveProducts       int32              `json:"active_products"`
+	InactiveProducts     int32              `json:"inactive_products"`
+	SneakersCount        int32              `json:"sneakers_count"`
+	MerchCount           int32              `json:"merch_count"`
+	ClothesCount         int32              `json:"clothes_count"`
+	ToysCount            int32              `json:"toys_count"`
+	LinesCount           int32              `json:"lines_count"`
+	BrandDiscountPercent int32              `json:"brand_discount_percent"`
+	Lines                interface{}        `json:"lines"`
+	TotalCount           int64              `json:"total_count"`
+}
+
+func (q *Queries) GetBrandsWithStatsAndDiscountsWithTotalCount(ctx context.Context, arg GetBrandsWithStatsAndDiscountsWithTotalCountParams) ([]GetBrandsWithStatsAndDiscountsWithTotalCountRow, error) {
+	rows, err := q.db.Query(ctx, getBrandsWithStatsAndDiscountsWithTotalCount,
+		arg.Name,
+		arg.SortType,
+		arg.OffsetVal,
+		arg.LimitVal,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBrandsWithStatsAndDiscountsWithTotalCountRow
+	for rows.Next() {
+		var i GetBrandsWithStatsAndDiscountsWithTotalCountRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.Country,
+			&i.IsActive,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.TotalProducts,
+			&i.ActiveProducts,
+			&i.InactiveProducts,
+			&i.SneakersCount,
+			&i.MerchCount,
+			&i.ClothesCount,
+			&i.ToysCount,
+			&i.LinesCount,
+			&i.BrandDiscountPercent,
+			&i.Lines,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getCategories = `-- name: GetCategories :many
@@ -135,14 +3167,52 @@ func (q *Queries) GetCategoriesWithTypes(ctx context.Context) ([]GetCategoriesWi
 	return items, nil
 }
 
+const getCategoryAndTypeByIDs = `-- name: GetCategoryAndTypeByIDs :one
+SELECT pc.id as category_id,
+    pc.enum_key as category_key,
+    pt.id as type_id,
+    pt.enum_key as type_key
+FROM product_categories pc
+    CROSS JOIN product_types pt
+WHERE pc.id = $1
+    AND pt.id = $2
+LIMIT 1
+`
+
+type GetCategoryAndTypeByIDsParams struct {
+	CategoryID int32 `json:"category_id"`
+	TypeID     int32 `json:"type_id"`
+}
+
+type GetCategoryAndTypeByIDsRow struct {
+	CategoryID  int32  `json:"category_id"`
+	CategoryKey string `json:"category_key"`
+	TypeID      int32  `json:"type_id"`
+	TypeKey     string `json:"type_key"`
+}
+
+func (q *Queries) GetCategoryAndTypeByIDs(ctx context.Context, arg GetCategoryAndTypeByIDsParams) (GetCategoryAndTypeByIDsRow, error) {
+	row := q.db.QueryRow(ctx, getCategoryAndTypeByIDs, arg.CategoryID, arg.TypeID)
+	var i GetCategoryAndTypeByIDsRow
+	err := row.Scan(
+		&i.CategoryID,
+		&i.CategoryKey,
+		&i.TypeID,
+		&i.TypeKey,
+	)
+	return i, err
+}
+
 const getCombinedFiltersByString = `-- name: GetCombinedFiltersByString :one
 WITH product_data AS (
     SELECT p.minprice,
         p.maxprice,
-        p.firm,
+        b.name as firm,
         p.sizes
     FROM products p
+        JOIN brands b ON p.brand_id = b.id
     WHERE p.name ILIKE '%' || $1::text || '%'
+        AND p.status = 'active'
 ),
 firm_counts AS (
     SELECT firm,
@@ -158,24 +3228,30 @@ size_counts AS (
     WHERE (pd.sizes->size_key->'price')::numeric > 0
     GROUP BY size_key
 )
-SELECT -- Все размеры в виде JSON объекта с количеством
-    jsonb_object_agg(size_key, size_count) as sizes,
-    -- Диапазон цен
+SELECT COALESCE(
+        jsonb_object_agg(size_key, size_count) FILTER (
+            WHERE size_key IS NOT NULL
+        ),
+        '{}'::jsonb
+    ) as sizes,
     MIN(minprice) AS min_price,
     MAX(maxprice) AS max_price,
-    -- Количество товаров по брендам
-    jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) AS firm_count_map
+    COALESCE(
+        jsonb_object_agg(COALESCE(fc.firm, 'Unknown'), fc.firm_count) FILTER (
+            WHERE fc.firm IS NOT NULL
+        ),
+        '{}'::jsonb
+    ) AS firm_count_map
 FROM product_data pd
     CROSS JOIN size_counts sc
     LEFT JOIN firm_counts fc ON pd.firm = fc.firm
-GROUP BY ()
 `
 
 type GetCombinedFiltersByStringRow struct {
-	Sizes        []byte      `json:"sizes"`
+	Sizes        interface{} `json:"sizes"`
 	MinPrice     interface{} `json:"min_price"`
 	MaxPrice     interface{} `json:"max_price"`
-	FirmCountMap []byte      `json:"firm_count_map"`
+	FirmCountMap interface{} `json:"firm_count_map"`
 }
 
 func (q *Queries) GetCombinedFiltersByString(ctx context.Context, dollar_1 string) (GetCombinedFiltersByStringRow, error) {
@@ -191,11 +3267,14 @@ func (q *Queries) GetCombinedFiltersByString(ctx context.Context, dollar_1 strin
 }
 
 const getCountIdByName = `-- name: GetCountIdByName :many
-SELECT firm,
-    COUNT(id) count
-FROM products
-WHERE name ILIKE '%' || CAST($1 AS text) || '%'
-GROUP BY $1
+SELECT b.name as firm,
+    COUNT(p.id) count
+FROM products p
+    JOIN brands b ON p.brand_id = b.id
+    AND b.is_active = true
+WHERE p.name ILIKE '%' || CAST($1 AS text) || '%'
+    AND p.status = 'active'
+GROUP BY b.name
 `
 
 type GetCountIdByNameRow struct {
@@ -224,15 +3303,22 @@ func (q *Queries) GetCountIdByName(ctx context.Context, dollar_1 string) ([]GetC
 }
 
 const getCountOfCollectionsOrFirms = `-- name: GetCountOfCollectionsOrFirms :one
-SELECT COUNT(products.id) AS count
-FROM products
-WHERE firm = $1
-    OR line = $2
+SELECT COUNT(p.id) AS count
+FROM products p
+    JOIN brands b ON p.brand_id = b.id
+    AND b.is_active = true
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id
+    AND bl.is_active = true
+WHERE (
+        b.name = $1
+        OR bl.name = $2
+    )
+    AND p.status = 'active'
 `
 
 type GetCountOfCollectionsOrFirmsParams struct {
-	Firm string      `json:"firm"`
-	Line pgtype.Text `json:"line"`
+	Firm string `json:"firm"`
+	Line string `json:"line"`
 }
 
 func (q *Queries) GetCountOfCollectionsOrFirms(ctx context.Context, arg GetCountOfCollectionsOrFirmsParams) (int64, error) {
@@ -242,17 +3328,261 @@ func (q *Queries) GetCountOfCollectionsOrFirms(ctx context.Context, arg GetCount
 	return count, err
 }
 
+const getDiscountByProductID = `-- name: GetDiscountByProductID :one
+SELECT d.productid,
+    p.name AS product_name,
+    p.article,
+    d.value,
+    d.minprice,
+    d.maxdiscprice,
+    d.created_at,
+    d.updated_at
+FROM discount d
+    JOIN products p ON d.productid = p.id
+WHERE d.productid = $1
+`
+
+type GetDiscountByProductIDRow struct {
+	Productid    int32              `json:"productid"`
+	ProductName  string             `json:"product_name"`
+	Article      string             `json:"article"`
+	Value        []byte             `json:"value"`
+	Minprice     int32              `json:"minprice"`
+	Maxdiscprice pgtype.Int4        `json:"maxdiscprice"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetDiscountByProductID(ctx context.Context, productid int32) (GetDiscountByProductIDRow, error) {
+	row := q.db.QueryRow(ctx, getDiscountByProductID, productid)
+	var i GetDiscountByProductIDRow
+	err := row.Scan(
+		&i.Productid,
+		&i.ProductName,
+		&i.Article,
+		&i.Value,
+		&i.Minprice,
+		&i.Maxdiscprice,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getDiscountRule = `-- name: GetDiscountRule :one
+SELECT id, name, description, discount_type, discount_value, starts_at, ends_at, is_active, priority, created_at, updated_at
+FROM discount_rules
+WHERE id = $1
+`
+
+func (q *Queries) GetDiscountRule(ctx context.Context, id int32) (DiscountRule, error) {
+	row := q.db.QueryRow(ctx, getDiscountRule, id)
+	var i DiscountRule
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.DiscountType,
+		&i.DiscountValue,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.IsActive,
+		&i.Priority,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getDiscountRules = `-- name: GetDiscountRules :many
+SELECT id, name, description, discount_type, discount_value, starts_at, ends_at, is_active, priority, created_at, updated_at
+FROM discount_rules
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type GetDiscountRulesParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) GetDiscountRules(ctx context.Context, arg GetDiscountRulesParams) ([]DiscountRule, error) {
+	rows, err := q.db.Query(ctx, getDiscountRules, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DiscountRule
+	for rows.Next() {
+		var i DiscountRule
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.DiscountType,
+			&i.DiscountValue,
+			&i.StartsAt,
+			&i.EndsAt,
+			&i.IsActive,
+			&i.Priority,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getDiscountRulesByEntity = `-- name: GetDiscountRulesByEntity :many
+SELECT dr.id, dr.name, dr.description, dr.discount_type, dr.discount_value, dr.starts_at, dr.ends_at, dr.is_active, dr.priority, dr.created_at, dr.updated_at
+FROM discount_rules dr
+    JOIN discount_rule_items dri ON dri.rule_id = dr.id
+WHERE dri.item_type = $1
+    AND dri.item_id = $2
+ORDER BY dr.priority DESC,
+    dr.created_at DESC
+`
+
+type GetDiscountRulesByEntityParams struct {
+	ItemType string `json:"item_type"`
+	ItemID   int32  `json:"item_id"`
+}
+
+func (q *Queries) GetDiscountRulesByEntity(ctx context.Context, arg GetDiscountRulesByEntityParams) ([]DiscountRule, error) {
+	rows, err := q.db.Query(ctx, getDiscountRulesByEntity, arg.ItemType, arg.ItemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DiscountRule
+	for rows.Next() {
+		var i DiscountRule
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.DiscountType,
+			&i.DiscountValue,
+			&i.StartsAt,
+			&i.EndsAt,
+			&i.IsActive,
+			&i.Priority,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getDiscountRulesCount = `-- name: GetDiscountRulesCount :one
+SELECT COUNT(*)
+FROM discount_rules
+`
+
+func (q *Queries) GetDiscountRulesCount(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getDiscountRulesCount)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const getDiscounts = `-- name: GetDiscounts :many
+SELECT d.productid,
+    p.name AS product_name,
+    p.article,
+    d.value,
+    d.minprice,
+    d.maxdiscprice,
+    d.created_at,
+    d.updated_at
+FROM discount d
+    JOIN products p ON d.productid = p.id
+ORDER BY d.created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type GetDiscountsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type GetDiscountsRow struct {
+	Productid    int32              `json:"productid"`
+	ProductName  string             `json:"product_name"`
+	Article      string             `json:"article"`
+	Value        []byte             `json:"value"`
+	Minprice     int32              `json:"minprice"`
+	Maxdiscprice pgtype.Int4        `json:"maxdiscprice"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetDiscounts(ctx context.Context, arg GetDiscountsParams) ([]GetDiscountsRow, error) {
+	rows, err := q.db.Query(ctx, getDiscounts, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetDiscountsRow
+	for rows.Next() {
+		var i GetDiscountsRow
+		if err := rows.Scan(
+			&i.Productid,
+			&i.ProductName,
+			&i.Article,
+			&i.Value,
+			&i.Minprice,
+			&i.Maxdiscprice,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getDiscountsCount = `-- name: GetDiscountsCount :one
+SELECT COUNT(*)
+FROM discount
+`
+
+func (q *Queries) GetDiscountsCount(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getDiscountsCount)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getFiltersByNameCategoryAndType = `-- name: GetFiltersByNameCategoryAndType :one
 WITH product_data AS (
     SELECT p.id as global_id,
-        p.firm,
+        b.name as firm,
         p.minprice,
         p.maxprice,
         p.sizes,
         p.bodytype,
         p.type as product_type_id
     FROM products p
-    WHERE (
+        JOIN brands b ON p.brand_id = b.id
+        AND b.is_active = true
+    WHERE p.status = 'active'
+        AND (
             $1::int IS NULL
             OR p.type = $1::int
         )
@@ -277,6 +3607,7 @@ firm_counts AS (
     SELECT firm,
         COUNT(*) AS firm_count
     FROM product_data
+    WHERE firm IS NOT NULL
     GROUP BY firm
 ),
 bodytype_counts AS (
@@ -293,19 +3624,16 @@ price_range AS (
 type_data AS (
     SELECT product_type_id,
         COUNT(*) as type_count
-    FROM product_data -- Optional: Join to a 'product_types' table to get the type name
-        -- INNER JOIN product_types pt ON pt.id = product_data.product_type_id
+    FROM product_data
     GROUP BY product_type_id
 )
-SELECT -- Все размеры в виде JSON объекта
-    COALESCE(
+SELECT COALESCE(
         (
             SELECT jsonb_object_agg(size_key, count)
             FROM size_data
         ),
         '{}'::jsonb
     ) as sizes,
-    -- Статистика по типам тела
     COALESCE(
         (
             SELECT jsonb_object_agg(bodytype::text, count)
@@ -313,7 +3641,6 @@ SELECT -- Все размеры в виде JSON объекта
         ),
         '{}'::jsonb
     ) as bodytypes,
-    -- Минимальная и максимальная цена
     (
         SELECT min_price
         FROM price_range
@@ -322,7 +3649,6 @@ SELECT -- Все размеры в виде JSON объекта
         SELECT max_price
         FROM price_range
     ) as max_price,
-    -- Статистика по брендам
     COALESCE(
         (
             SELECT jsonb_object_agg(COALESCE(firm, 'Unknown'), firm_count)
@@ -369,20 +3695,22 @@ func (q *Queries) GetFiltersByNameCategoryAndType(ctx context.Context, arg GetFi
 }
 
 const getFirms = `-- name: GetFirms :many
-SELECT firm,
-    array_agg(DISTINCT line) AS collections
-FROM (
-        SELECT firm,
-            line
-        FROM products
-    ) AS combined_products
-GROUP BY firm
-ORDER BY firm
+SELECT 
+    b.id as brand_id,
+    b.name as firm,
+    bl.id as line_id,
+    bl.name as collection_name
+FROM brands b
+    LEFT JOIN brand_lines bl ON bl.brand_id = b.id AND bl.is_active = true
+WHERE b.is_active = true
+ORDER BY b.name, bl.name
 `
 
 type GetFirmsRow struct {
-	Firm        string      `json:"firm"`
-	Collections interface{} `json:"collections"`
+	BrandID        int32       `json:"brand_id"`
+	Firm           string      `json:"firm"`
+	LineID         pgtype.Int4 `json:"line_id"`
+	CollectionName pgtype.Text `json:"collection_name"`
 }
 
 func (q *Queries) GetFirms(ctx context.Context) ([]GetFirmsRow, error) {
@@ -394,7 +3722,12 @@ func (q *Queries) GetFirms(ctx context.Context) ([]GetFirmsRow, error) {
 	var items []GetFirmsRow
 	for rows.Next() {
 		var i GetFirmsRow
-		if err := rows.Scan(&i.Firm, &i.Collections); err != nil {
+		if err := rows.Scan(
+			&i.BrandID,
+			&i.Firm,
+			&i.LineID,
+			&i.CollectionName,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -411,12 +3744,14 @@ SELECT p.minprice,
     p.id as global_id,
     p.image_path,
     p.name,
-    p.firm,
+    b.name as firm,
     d.maxdiscprice,
     p.type,
-    p.sizes as sizes_jsonb -- Все размеры в JSONB формате
+    p.sizes as sizes_jsonb
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
+    JOIN brands b ON p.brand_id = b.id
+    AND b.is_active = true
 WHERE p.id = ANY($1::integer [])
 ORDER BY p.minprice ASC
 `
@@ -467,7 +3802,7 @@ const getMainPageInfo = `-- name: GetMainPageInfo :many
 SELECT p.category,
     COUNT(*) OVER (PARTITION BY p.category) as category_product_count,
     p.id,
-    p.firm,
+    b.name as firm,
     p.name,
     p.minprice,
     p.maxprice,
@@ -475,7 +3810,7 @@ SELECT p.category,
     p.bodytype
 FROM (
         SELECT p.id,
-            p.firm,
+            p.brand_id,
             p.name,
             p.minprice,
             p.maxprice,
@@ -489,7 +3824,10 @@ FROM (
         FROM products p
         WHERE p.minprice IS NOT NULL
             AND p.minprice > 0
+            AND p.status = 'active'
     ) p
+    JOIN brands b ON p.brand_id = b.id
+    AND b.is_active = true
 WHERE p.row_num <= $1::int
 ORDER BY p.category,
     p.row_num
@@ -542,7 +3880,7 @@ SELECT COALESCE(d.minprice, p.minprice) AS minprice,
     p.id AS global_id,
     p.image_path,
     p.name,
-    p.firm,
+    b.name as firm,
     d.maxdiscprice,
     st.productid,
     p.type,
@@ -550,20 +3888,27 @@ SELECT COALESCE(d.minprice, p.minprice) AS minprice,
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
     LEFT JOIN store_house st ON p.id = st.productid
-WHERE p.firm = $1
-    OR p.line = $2
+    JOIN brands b ON p.brand_id = b.id
+    AND b.is_active = true
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id
+    AND bl.is_active = true
+WHERE (
+        b.name = $1
+        OR bl.name = $2
+    )
+    AND p.status = 'active'
 ORDER BY CASE
         WHEN COALESCE(COALESCE(d.minprice, p.minprice), 0) > 0 THEN 0
         ELSE 1
     END
-LIMIT $3 OFFSET $4
+LIMIT $4 OFFSET $3
 `
 
 type GetMerchCollectionParams struct {
-	Firm   string      `json:"firm"`
-	Line   pgtype.Text `json:"line"`
-	Limit  int32       `json:"limit"`
-	Offset int32       `json:"offset"`
+	Firm      string `json:"firm"`
+	Line      string `json:"line"`
+	Offsetval int32  `json:"offsetval"`
+	Limitval  int32  `json:"limitval"`
 }
 
 type GetMerchCollectionRow struct {
@@ -582,8 +3927,8 @@ func (q *Queries) GetMerchCollection(ctx context.Context, arg GetMerchCollection
 	rows, err := q.db.Query(ctx, getMerchCollection,
 		arg.Firm,
 		arg.Line,
-		arg.Limit,
-		arg.Offset,
+		arg.Offsetval,
+		arg.Limitval,
 	)
 	if err != nil {
 		return nil, err
@@ -618,23 +3963,30 @@ SELECT COALESCE(d.minprice, p.minprice) AS minprice,
     p.id,
     p.image_path,
     p.name,
-    p.firm,
+    b.name as firm,
     d.maxdiscprice,
     p.type,
     COUNT(*) OVER () AS total_count
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
-WHERE p.firm = $1
-    OR p.line = $2
+    JOIN brands b ON p.brand_id = b.id
+    AND b.is_active = true
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id
+    AND bl.is_active = true
+WHERE (
+        b.name = $1
+        OR bl.name = $2
+    )
+    AND p.status = 'active'
 ORDER BY p.name
-LIMIT $3 OFFSET $4
+LIMIT $4 OFFSET $3
 `
 
 type GetMerchCollectionWithCountParams struct {
-	Firm   string      `json:"firm"`
-	Line   pgtype.Text `json:"line"`
-	Limit  int32       `json:"limit"`
-	Offset int32       `json:"offset"`
+	Firm      string `json:"firm"`
+	Line      string `json:"line"`
+	Offsetval int32  `json:"offsetval"`
+	Limitval  int32  `json:"limitval"`
 }
 
 type GetMerchCollectionWithCountRow struct {
@@ -652,8 +4004,8 @@ func (q *Queries) GetMerchCollectionWithCount(ctx context.Context, arg GetMerchC
 	rows, err := q.db.Query(ctx, getMerchCollectionWithCount,
 		arg.Firm,
 		arg.Line,
-		arg.Limit,
-		arg.Offset,
+		arg.Offsetval,
+		arg.Limitval,
 	)
 	if err != nil {
 		return nil, err
@@ -684,14 +4036,21 @@ func (q *Queries) GetMerchCollectionWithCount(ctx context.Context, arg GetMerchC
 
 const getMerchCountOfCollectionsOrFirms = `-- name: GetMerchCountOfCollectionsOrFirms :one
 SELECT COUNT(*) AS total_count
-FROM products
-WHERE firm = $1
-    OR line = $2
+FROM products p
+    JOIN brands b ON p.brand_id = b.id
+    AND b.is_active = true
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id
+    AND bl.is_active = true
+WHERE (
+        b.name = $1
+        OR bl.name = $2
+    )
+    AND p.status = 'active'
 `
 
 type GetMerchCountOfCollectionsOrFirmsParams struct {
-	Firm string      `json:"firm"`
-	Line pgtype.Text `json:"line"`
+	Firm string `json:"firm"`
+	Line string `json:"line"`
 }
 
 func (q *Queries) GetMerchCountOfCollectionsOrFirms(ctx context.Context, arg GetMerchCountOfCollectionsOrFirmsParams) (int64, error) {
@@ -702,16 +4061,21 @@ func (q *Queries) GetMerchCountOfCollectionsOrFirms(ctx context.Context, arg Get
 }
 
 const getMerchFirms = `-- name: GetMerchFirms :many
-SELECT firm,
-    array_agg(DISTINCT line) AS collections
-FROM (
-        SELECT firm,
-            line
-        FROM products
-        WHERE line IS NOT NULL
-    ) AS combined_products
-GROUP BY firm
-ORDER BY firm
+SELECT b.name as firm,
+    array_agg(DISTINCT bl.name) AS collections
+FROM brands b
+    JOIN brand_lines bl ON bl.brand_id = b.id
+WHERE b.is_active = true
+    AND bl.is_active = true
+    AND EXISTS (
+        SELECT 1
+        FROM products p
+        WHERE p.brand_id = b.id
+            AND p.line_id = bl.id
+            AND p.status = 'active'
+    )
+GROUP BY b.name
+ORDER BY b.name
 `
 
 type GetMerchFirmsRow struct {
@@ -748,7 +4112,10 @@ SELECT p.name,
     p.type
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
-WHERE p.firm = $1
+    JOIN brands b ON p.brand_id = b.id
+    AND b.is_active = true
+WHERE b.name = $1
+    AND p.status = 'active'
 ORDER BY p.name
 `
 
@@ -761,8 +4128,8 @@ type GetMerchProductsByFirmNameRow struct {
 	Type      int32  `json:"type"`
 }
 
-func (q *Queries) GetMerchProductsByFirmName(ctx context.Context, firm string) ([]GetMerchProductsByFirmNameRow, error) {
-	rows, err := q.db.Query(ctx, getMerchProductsByFirmName, firm)
+func (q *Queries) GetMerchProductsByFirmName(ctx context.Context, name string) ([]GetMerchProductsByFirmNameRow, error) {
+	rows, err := q.db.Query(ctx, getMerchProductsByFirmName, name)
 	if err != nil {
 		return nil, err
 	}
@@ -794,11 +4161,14 @@ SELECT p.minprice,
     p.id,
     p.image_path,
     p.name,
-    p.firm,
+    b.name as firm,
     d.maxdiscprice,
     p.type
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
+    JOIN brands b ON p.brand_id = b.id
+    AND b.is_active = true
+WHERE p.status = 'active'
 ORDER BY p.minprice ASC
 `
 
@@ -843,15 +4213,18 @@ func (q *Queries) GetMerchWithDiscount(ctx context.Context) ([]GetMerchWithDisco
 }
 
 const getProductByArticle = `-- name: GetProductByArticle :one
-SELECT id,
-    qid,
-    name,
-    firm,
-    line,
-    image_path,
-    sizes
-FROM products
-WHERE article = $1
+SELECT p.id,
+    p.qid,
+    p.name,
+    b.name as firm,
+    bl.name as line,
+    p.image_path,
+    p.sizes
+FROM products p
+    JOIN brands b ON p.brand_id = b.id
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id
+WHERE p.article = $1
+    AND p.status = 'active'
 LIMIT 1
 `
 
@@ -925,16 +4298,46 @@ const getProductsByFilters = `-- name: GetProductsByFilters :many
 SELECT p.id,
     p.name,
     p.image_path,
-    p.firm,
+    b.name as firm,
     p.minprice,
     p.maxprice,
-    d.maxdiscprice,
+    p.status,
+    COALESCE(d.maxdiscprice, 0) as maxdiscprice,
+    COALESCE(dr.discount_value, 0) as discount_percent,
     COUNT(*) OVER() AS total_count
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
     LEFT JOIN store_house sh ON p.id = sh.productid
-WHERE -- Размеры (самое сложное условие оставляем как есть)
-    (
+    JOIN brands b ON p.brand_id = b.id
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id
+    LEFT JOIN LATERAL (
+        SELECT dr2.discount_value,
+            dr2.name
+        FROM discount_rule_items dri
+            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+            AND dr2.is_active = true
+            AND dr2.starts_at <= NOW()
+            AND (
+                dr2.ends_at IS NULL
+                OR dr2.ends_at >= NOW()
+            )
+        WHERE (
+                dri.item_type = 'brand'
+                AND dri.item_id = p.brand_id
+            )
+            OR (
+                dri.item_type = 'line'
+                AND dri.item_id = p.line_id
+            )
+            OR (
+                dri.item_type = 'product'
+                AND dri.item_id = p.id
+            )
+            AND d.id IS NULL
+        ORDER BY dr2.priority DESC
+        LIMIT 1
+    ) dr ON true
+WHERE (
         COALESCE(array_length($1::text [], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -942,94 +4345,98 @@ WHERE -- Размеры (самое сложное условие оставля
             WHERE size_key = ANY($1::text [])
                 AND (p.sizes->size_key->>'price')::numeric > 0
         )
-    ) -- Поиск по имени ИЛИ артикулу
+    )
     AND (
         $2::text IS NULL
         OR $2::text = ''
-        OR p.name ILIKE '%' || $2::text || '%'
-        OR p.article ILIKE '%' || $2::text || '%'
-    ) -- Простые условия для массивов
+        OR p.status = $2::text
+    )
     AND (
-        COALESCE(array_length($3::int [], 1), 0) = 0
-        OR p.category = ANY($3::int [])
+        $3::text IS NULL
+        OR $3::text = ''
+        OR p.name ILIKE '%' || $3::text || '%'
+        OR p.article ILIKE '%' || $3::text || '%'
     )
     AND (
         COALESCE(array_length($4::int [], 1), 0) = 0
-        OR p.type = ANY($4::int [])
+        OR p.category = ANY($4::int [])
     )
     AND (
-        COALESCE(array_length($5::text [], 1), 0) = 0
-        OR p.firm = ANY($5::text [])
+        COALESCE(array_length($5::int [], 1), 0) = 0
+        OR p.type = ANY($5::int [])
     )
     AND (
-        COALESCE(array_length($6::text [], 1), 0) = 0
-        OR p.line = ANY($6::text [])
+        COALESCE(array_length($6::int [], 1), 0) = 0
+        OR p.brand_id = ANY($6::int [])
     )
     AND (
-        COALESCE(array_length($7::text [], 1), 0) = 0
-        OR p.bodytype = ANY($7::body_enum [])
-    ) -- Условия для цен
+        COALESCE(array_length($7::int [], 1), 0) = 0
+        OR p.line_id = ANY($7::int [])
+    )
     AND (
-        $8::int IS NULL
-        OR p.maxprice >= $8::int
+        COALESCE(array_length($8::text [], 1), 0) = 0
+        OR p.bodytype = ANY($8::body_enum [])
     )
     AND (
         $9::int IS NULL
-        OR p.minprice <= $9::int
+        OR p.maxprice >= $9::int
     )
     AND (
-        $10::boolean IS NULL
-        OR $10::boolean = false
-        OR d.id IS NOT NULL
+        $10::int IS NULL
+        OR p.minprice <= $10::int
     )
     AND (
         $11::boolean IS NULL
         OR $11::boolean = false
+        OR d.id IS NOT NULL
+        OR dr.discount_value IS NOT NULL
+    )
+    AND (
+        $12::boolean IS NULL
+        OR $12::boolean = false
         OR (
             sh.id IS NOT NULL
             AND sh.quantity > 0
         )
     )
     AND (
-        $12::boolean IS NULL
-        OR $12::boolean = false
+        $13::boolean IS NULL
+        OR $13::boolean = false
         OR p.minprice > 0
     )
 ORDER BY CASE
-        WHEN $13::int = 1 THEN p.name
+        WHEN $14::int = 1 THEN p.name
     END ASC,
     CASE
-        WHEN $13::int = 2 THEN p.name
+        WHEN $14::int = 2 THEN p.name
     END DESC,
-    -- Сортировка по цене
     CASE
-        WHEN $13::int = 3 THEN p.minprice
+        WHEN $14::int = 3 THEN p.minprice
     END ASC,
     CASE
-        WHEN $13::int = 4 THEN p.minprice
+        WHEN $14::int = 4 THEN p.minprice
     END DESC,
-    -- Сортировка по умолчанию
     CASE
-        WHEN $13::int NOT IN (1, 2, 3, 4) THEN p.name
+        WHEN $14::int NOT IN (1, 2, 3, 4) THEN p.name
     END ASC,
-    -- Стабильная сортировка
     p.id ASC
 LIMIT CASE
-        WHEN $15::integer > 0 THEN $15::integer
+        WHEN $16::integer > 0 THEN $16::integer
         ELSE 50
     END OFFSET CASE
-        WHEN $14::integer > 0 THEN $14::integer
+        WHEN $15::integer > 0 THEN $15::integer
         ELSE 0
     END
 `
 
 type GetProductsByFiltersParams struct {
 	Sizes        []string    `json:"sizes"`
+	Status       string      `json:"status"`
 	Name         string      `json:"name"`
 	Categories   []int32     `json:"categories"`
 	ProductTypes []int32     `json:"product_types"`
-	Firms        []string    `json:"firms"`
-	Lines        []string    `json:"lines"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
 	Bodytypes    []string    `json:"bodytypes"`
 	Minprice     pgtype.Int4 `json:"minprice"`
 	Maxprice     pgtype.Int4 `json:"maxprice"`
@@ -1042,19 +4449,22 @@ type GetProductsByFiltersParams struct {
 }
 
 type GetProductsByFiltersRow struct {
-	ID           int32       `json:"id"`
-	Name         string      `json:"name"`
-	ImagePath    string      `json:"image_path"`
-	Firm         string      `json:"firm"`
-	Minprice     int32       `json:"minprice"`
-	Maxprice     int32       `json:"maxprice"`
-	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-	TotalCount   int64       `json:"total_count"`
+	ID              int32  `json:"id"`
+	Name            string `json:"name"`
+	ImagePath       string `json:"image_path"`
+	Firm            string `json:"firm"`
+	Minprice        int32  `json:"minprice"`
+	Maxprice        int32  `json:"maxprice"`
+	Status          string `json:"status"`
+	Maxdiscprice    int32  `json:"maxdiscprice"`
+	DiscountPercent int32  `json:"discount_percent"`
+	TotalCount      int64  `json:"total_count"`
 }
 
 func (q *Queries) GetProductsByFilters(ctx context.Context, arg GetProductsByFiltersParams) ([]GetProductsByFiltersRow, error) {
 	rows, err := q.db.Query(ctx, getProductsByFilters,
 		arg.Sizes,
+		arg.Status,
 		arg.Name,
 		arg.Categories,
 		arg.ProductTypes,
@@ -1084,7 +4494,9 @@ func (q *Queries) GetProductsByFilters(ctx context.Context, arg GetProductsByFil
 			&i.Firm,
 			&i.Minprice,
 			&i.Maxprice,
+			&i.Status,
 			&i.Maxdiscprice,
+			&i.DiscountPercent,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err
@@ -1104,8 +4516,9 @@ SELECT p.id,
     p.image_path
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
-WHERE -- Размеры (самое сложное условие оставляем как есть)
-    (
+    JOIN brands b ON p.brand_id = b.id
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id
+WHERE (
         COALESCE(array_length($1::text [], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -1114,11 +4527,11 @@ WHERE -- Размеры (самое сложное условие оставля
                 AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
-    AND(
+    AND (
         $2::text IS NULL
         OR $2::text = ''
         OR p.name ILIKE '%' || $2::text || '%'
-    ) -- Простые условия для массивов
+    )
     AND (
         COALESCE(array_length($3::int [], 1), 0) = 0
         OR p.category = ANY($3::int [])
@@ -1128,13 +4541,13 @@ WHERE -- Размеры (самое сложное условие оставля
         OR p.type = ANY($4::int [])
     )
     AND (
-        COALESCE(array_length($5::text [], 1), 0) = 0
-        OR p.firm = ANY($5::text [])
+        COALESCE(array_length($5::int [], 1), 0) = 0
+        OR p.brand_id = ANY($5::int [])
     )
     AND (
         COALESCE(array_length($6::text [], 1), 0) = 0
         OR p.bodytype = ANY($6::body_enum [])
-    ) -- Условия для цен
+    )
     AND (
         $7::int IS NULL
         OR p.minprice >= $7::int
@@ -1150,7 +4563,7 @@ type GetProductsByFiltersNewTestParams struct {
 	Name         string      `json:"name"`
 	Categories   []int32     `json:"categories"`
 	ProductTypes []int32     `json:"product_types"`
-	Firms        []string    `json:"firms"`
+	Firms        []int32     `json:"firms"`
 	Bodytypes    []string    `json:"bodytypes"`
 	Minprice     pgtype.Int4 `json:"minprice"`
 	Maxprice     pgtype.Int4 `json:"maxprice"`
@@ -1197,19 +4610,233 @@ func (q *Queries) GetProductsByFiltersNewTest(ctx context.Context, arg GetProduc
 	return items, nil
 }
 
+const getProductsByFiltersPaginate = `-- name: GetProductsByFiltersPaginate :many
+SELECT p.id,
+    p.name,
+    p.image_path,
+    b.name as firm,
+    p.minprice,
+    p.maxprice,
+    p.status,
+    COALESCE(d.maxdiscprice, 0) as maxdiscprice,
+    COALESCE(dr.discount_value, 0) as discount_percent
+FROM products p
+    LEFT JOIN discount d ON p.id = d.productid
+    LEFT JOIN store_house sh ON p.id = sh.productid
+    JOIN brands b ON p.brand_id = b.id
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id
+    LEFT JOIN LATERAL (
+        SELECT dr2.discount_value,
+            dr2.name
+        FROM discount_rule_items dri
+            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+            AND dr2.is_active = true
+            AND dr2.starts_at <= NOW()
+            AND (
+                dr2.ends_at IS NULL
+                OR dr2.ends_at >= NOW()
+            )
+        WHERE (
+                dri.item_type = 'brand'
+                AND dri.item_id = p.brand_id
+            )
+            OR (
+                dri.item_type = 'line'
+                AND dri.item_id = p.line_id
+            )
+            OR (
+                dri.item_type = 'product'
+                AND dri.item_id = p.id
+            )
+            AND d.id IS NULL
+        ORDER BY dr2.priority DESC
+        LIMIT 1
+    ) dr ON true
+WHERE (
+        COALESCE(array_length($1::text [], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($1::text [])
+                AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        $2::text IS NULL
+        OR $2::text = ''
+        OR p.status = $2::text
+    )
+    AND (
+        $3::text IS NULL
+        OR $3::text = ''
+        OR p.name ILIKE '%' || $3::text || '%'
+        OR p.article ILIKE '%' || $3::text || '%'
+    )
+    AND (
+        COALESCE(array_length($4::int [], 1), 0) = 0
+        OR p.category = ANY($4::int [])
+    )
+    AND (
+        COALESCE(array_length($5::int [], 1), 0) = 0
+        OR p.type = ANY($5::int [])
+    )
+    AND (
+        COALESCE(array_length($6::int [], 1), 0) = 0
+        OR p.brand_id = ANY($6::int [])
+    )
+    AND (
+        COALESCE(array_length($7::int [], 1), 0) = 0
+        OR p.line_id = ANY($7::int [])
+    )
+    AND (
+        COALESCE(array_length($8::text [], 1), 0) = 0
+        OR p.bodytype = ANY($8::body_enum [])
+    )
+    AND (
+        $9::int IS NULL
+        OR p.maxprice >= $9::int
+    )
+    AND (
+        $10::int IS NULL
+        OR p.minprice <= $10::int
+    )
+    AND (
+        $11::boolean IS NULL
+        OR $11::boolean = false
+        OR d.id IS NOT NULL
+        OR dr.discount_value IS NOT NULL
+    )
+    AND (
+        $12::boolean IS NULL
+        OR $12::boolean = false
+        OR (
+            sh.id IS NOT NULL
+            AND sh.quantity > 0
+        )
+    )
+    AND (
+        $13::boolean IS NULL
+        OR $13::boolean = false
+        OR p.minprice > 0
+    )
+ORDER BY CASE
+        WHEN $14::int = 1 THEN p.name
+    END ASC,
+    CASE
+        WHEN $14::int = 2 THEN p.name
+    END DESC,
+    CASE
+        WHEN $14::int = 3 THEN p.minprice
+    END ASC,
+    CASE
+        WHEN $14::int = 4 THEN p.minprice
+    END DESC,
+    CASE
+        WHEN $14::int NOT IN (1, 2, 3, 4) THEN p.name
+    END ASC,
+    p.id ASC
+LIMIT CASE
+        WHEN $16::integer > 0 THEN $16::integer
+        ELSE 50
+    END OFFSET CASE
+        WHEN $15::integer > 0 THEN $15::integer
+        ELSE 0
+    END
+`
+
+type GetProductsByFiltersPaginateParams struct {
+	Sizes        []string    `json:"sizes"`
+	Status       string      `json:"status"`
+	Name         string      `json:"name"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	HasDiscount  bool        `json:"has_discount"`
+	InStore      bool        `json:"in_store"`
+	WithPrice    bool        `json:"with_price"`
+	SortType     int32       `json:"sort_type"`
+	Offsetval    int32       `json:"offsetval"`
+	Limitval     int32       `json:"limitval"`
+}
+
+type GetProductsByFiltersPaginateRow struct {
+	ID              int32  `json:"id"`
+	Name            string `json:"name"`
+	ImagePath       string `json:"image_path"`
+	Firm            string `json:"firm"`
+	Minprice        int32  `json:"minprice"`
+	Maxprice        int32  `json:"maxprice"`
+	Status          string `json:"status"`
+	Maxdiscprice    int32  `json:"maxdiscprice"`
+	DiscountPercent int32  `json:"discount_percent"`
+}
+
+func (q *Queries) GetProductsByFiltersPaginate(ctx context.Context, arg GetProductsByFiltersPaginateParams) ([]GetProductsByFiltersPaginateRow, error) {
+	rows, err := q.db.Query(ctx, getProductsByFiltersPaginate,
+		arg.Sizes,
+		arg.Status,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.HasDiscount,
+		arg.InStore,
+		arg.WithPrice,
+		arg.SortType,
+		arg.Offsetval,
+		arg.Limitval,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductsByFiltersPaginateRow
+	for rows.Next() {
+		var i GetProductsByFiltersPaginateRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ImagePath,
+			&i.Firm,
+			&i.Minprice,
+			&i.Maxprice,
+			&i.Status,
+			&i.Maxdiscprice,
+			&i.DiscountPercent,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getProductsByIds = `-- name: GetProductsByIds :many
 SELECT p.minprice,
     p.id as global_id,
-    -- Теперь id products это global_id
     p.image_path,
     p.name,
-    p.firm,
+    b.name as firm,
     d.maxdiscprice,
     p.type,
     p.article
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
+    JOIN brands b ON p.brand_id = b.id
+    AND b.is_active = true
 WHERE p.id = ANY($1::integer [])
+    AND p.status = 'active'
 ORDER BY p.minprice ASC
 `
 
@@ -1254,24 +4881,27 @@ func (q *Queries) GetProductsByIds(ctx context.Context, dollar_1 []int32) ([]Get
 }
 
 const getProductsByLineName = `-- name: GetProductsByLineName :many
-SELECT line,
-    array_agg(id) AS id,
-    array_agg(image_path) AS image_path,
-    array_agg(name) AS name_data
-FROM products
-WHERE line = $1
-GROUP BY line
+SELECT bl.name as line,
+    array_agg(p.id) AS id,
+    array_agg(p.image_path) AS image_path,
+    array_agg(p.name) AS name_data
+FROM products p
+    JOIN brand_lines bl ON p.line_id = bl.id
+    AND bl.is_active = true
+WHERE bl.name = $1
+    AND p.status = 'active'
+GROUP BY bl.name
 `
 
 type GetProductsByLineNameRow struct {
-	Line      pgtype.Text `json:"line"`
+	Line      string      `json:"line"`
 	ID        interface{} `json:"id"`
 	ImagePath interface{} `json:"image_path"`
 	NameData  interface{} `json:"name_data"`
 }
 
-func (q *Queries) GetProductsByLineName(ctx context.Context, line pgtype.Text) ([]GetProductsByLineNameRow, error) {
-	rows, err := q.db.Query(ctx, getProductsByLineName, line)
+func (q *Queries) GetProductsByLineName(ctx context.Context, name string) ([]GetProductsByLineNameRow, error) {
+	rows, err := q.db.Query(ctx, getProductsByLineName, name)
 	if err != nil {
 		return nil, err
 	}
@@ -1299,7 +4929,7 @@ const getProductsByName = `-- name: GetProductsByName :many
 SELECT p.id as global_id,
     p.image_path,
     p.name,
-    p.firm,
+    b.name as firm,
     p.minprice,
     p.maxprice,
     d.maxdiscprice,
@@ -1309,7 +4939,10 @@ SELECT p.id as global_id,
     p.category
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
-WHERE p.name ILIKE '%' || $1::text || '%'
+    JOIN brands b ON p.brand_id = b.id
+    AND b.is_active = true
+WHERE (p.name ILIKE '%' || $1::text || '%')
+    AND p.status = 'active'
 ORDER BY CASE
         WHEN COALESCE(p.minprice, 0) > 0 THEN 0
         ELSE 1
@@ -1371,16 +5004,18 @@ func (q *Queries) GetProductsByName(ctx context.Context, arg GetProductsByNamePa
 
 const getProductsByNameCategoryAndType = `-- name: GetProductsByNameCategoryAndType :many
 SELECT p.id as global_id,
-    p.firm,
+    b.name as firm,
     p.minprice,
     p.maxprice,
     p.sizes,
     p.bodytype
 FROM products p
+    JOIN brands b ON p.brand_id = b.id
 WHERE (
         $1::int IS NULL
         OR p.type = $1::int
     )
+    AND p.status = 'active'
     AND (
         $2::int IS NULL
         OR p.category = $2
@@ -1434,31 +5069,35 @@ func (q *Queries) GetProductsByNameCategoryAndType(ctx context.Context, arg GetP
 }
 
 const getProductsInfoById = `-- name: GetProductsInfoById :one
-SELECT sizes,
-    products.id AS id,
-    image_path,
-    name,
-    discount.value AS value,
+SELECT p.sizes,
+    p.id AS id,
+    p.image_path,
+    p.name,
+    d.value AS value,
     COALESCE(
         jsonb_object_agg(st.size, st.quantity) FILTER (
             WHERE st.size IS NOT NULL
         ),
         '{}'::jsonb
     ) as store_info,
-    article,
-    description,
-    line,
-    type,
-    category,
-    date,
-    firm,
-    image_count
-FROM products
-    LEFT JOIN discount ON products.id = productid
-    LEFT JOIN store_house st ON products.id = st.productid
-WHERE products.id = $1
-GROUP BY products.id,
-    discount.value
+    p.article,
+    p.description,
+    bl.name as line,
+    p.type,
+    p.category,
+    p.date,
+    b.name as firm,
+    p.image_count
+FROM products p
+    LEFT JOIN discount d ON p.id = d.productid
+    LEFT JOIN store_house st ON p.id = st.productid
+    JOIN brands b ON p.brand_id = b.id
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id
+WHERE p.id = $1
+GROUP BY p.id,
+    d.value,
+    b.name,
+    bl.name
 `
 
 type GetProductsInfoByIdRow struct {
@@ -1506,12 +5145,14 @@ SELECT p.type,
     p.id,
     p.image_path,
     p.name,
-    p.firm,
+    b.name as firm,
     d.maxdiscprice,
-    -- из таблицы discount
-    d.value AS discount_value -- из таблицы discount
+    d.value AS discount_value
 FROM products p
     JOIN discount d ON p.id = d.productid
+    JOIN brands b ON p.brand_id = b.id
+    AND b.is_active = true
+WHERE p.status = 'active'
 `
 
 type GetProductsWithDiscountRow struct {
@@ -1554,27 +5195,120 @@ func (q *Queries) GetProductsWithDiscount(ctx context.Context) ([]GetProductsWit
 	return items, nil
 }
 
+const getRuleItems = `-- name: GetRuleItems :many
+SELECT dri.id, dri.rule_id, dri.item_type, dri.item_id,
+    CASE
+        WHEN dri.item_type = 'brand' THEN b.name
+        WHEN dri.item_type = 'line' THEN bl.name
+        WHEN dri.item_type = 'product' THEN p.name
+    END as item_name
+FROM discount_rule_items dri
+    LEFT JOIN brands b ON dri.item_type = 'brand'
+    AND dri.item_id = b.id
+    LEFT JOIN brand_lines bl ON dri.item_type = 'line'
+    AND dri.item_id = bl.id
+    LEFT JOIN products p ON dri.item_type = 'product'
+    AND dri.item_id = p.id
+WHERE dri.rule_id = $1
+ORDER BY dri.item_type,
+    dri.item_id
+`
+
+type GetRuleItemsRow struct {
+	ID       int32       `json:"id"`
+	RuleID   int32       `json:"rule_id"`
+	ItemType string      `json:"item_type"`
+	ItemID   int32       `json:"item_id"`
+	ItemName interface{} `json:"item_name"`
+}
+
+func (q *Queries) GetRuleItems(ctx context.Context, ruleID int32) ([]GetRuleItemsRow, error) {
+	rows, err := q.db.Query(ctx, getRuleItems, ruleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRuleItemsRow
+	for rows.Next() {
+		var i GetRuleItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RuleID,
+			&i.ItemType,
+			&i.ItemID,
+			&i.ItemName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRuleItemsByType = `-- name: GetRuleItemsByType :many
+SELECT id, rule_id, item_type, item_id
+FROM discount_rule_items
+WHERE rule_id = $1
+    AND item_type = $2
+`
+
+type GetRuleItemsByTypeParams struct {
+	RuleID   int32  `json:"rule_id"`
+	ItemType string `json:"item_type"`
+}
+
+func (q *Queries) GetRuleItemsByType(ctx context.Context, arg GetRuleItemsByTypeParams) ([]DiscountRuleItem, error) {
+	rows, err := q.db.Query(ctx, getRuleItemsByType, arg.RuleID, arg.ItemType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DiscountRuleItem
+	for rows.Next() {
+		var i DiscountRuleItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.RuleID,
+			&i.ItemType,
+			&i.ItemID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSnickersByFirmName = `-- name: GetSnickersByFirmName :many
-SELECT name,
-    image_path,
-    products.id,
-    value,
-    article
-FROM products
-    LEFT JOIN discount ON products.id = productid
-WHERE firm = $1
+SELECT p.name,
+    p.image_path,
+    p.id,
+    COALESCE(d.minprice, p.minprice) AS value,
+    p.article
+FROM products p
+    LEFT JOIN discount d ON p.id = d.productid
+    JOIN brands b ON p.brand_id = b.id
+    AND b.is_active = true
+WHERE b.name = $1
+    AND p.status = 'active'
 `
 
 type GetSnickersByFirmNameRow struct {
 	Name      string `json:"name"`
 	ImagePath string `json:"image_path"`
 	ID        int32  `json:"id"`
-	Value     []byte `json:"value"`
+	Value     int32  `json:"value"`
 	Article   string `json:"article"`
 }
 
-func (q *Queries) GetSnickersByFirmName(ctx context.Context, firm string) ([]GetSnickersByFirmNameRow, error) {
-	rows, err := q.db.Query(ctx, getSnickersByFirmName, firm)
+func (q *Queries) GetSnickersByFirmName(ctx context.Context, name string) ([]GetSnickersByFirmNameRow, error) {
+	rows, err := q.db.Query(ctx, getSnickersByFirmName, name)
 	if err != nil {
 		return nil, err
 	}
@@ -1600,24 +5334,31 @@ func (q *Queries) GetSnickersByFirmName(ctx context.Context, firm string) ([]Get
 }
 
 const getSoloCollection = `-- name: GetSoloCollection :many
-SELECT COALESCE(discount.minprice, products.minprice) AS minprice,
-    products.id,
-    image_path,
-    name,
-    firm,
-    maxdiscprice
-FROM products
-    LEFT JOIN discount ON products.id = productid
-WHERE firm = $1
-    OR line = $2
+SELECT COALESCE(d.minprice, p.minprice) AS minprice,
+    p.id,
+    p.image_path,
+    p.name,
+    b.name as firm,
+    d.maxdiscprice
+FROM products p
+    LEFT JOIN discount d ON p.id = d.productid
+    JOIN brands b ON p.brand_id = b.id
+    AND b.is_active = true
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id
+    AND bl.is_active = true
+WHERE (
+        b.name = $1
+        OR bl.name = $2
+    )
+    AND p.status = 'active'
 LIMIT $3 OFFSET $4
 `
 
 type GetSoloCollectionParams struct {
-	Firm   string      `json:"firm"`
-	Line   pgtype.Text `json:"line"`
-	Limit  int32       `json:"limit"`
-	Offset int32       `json:"offset"`
+	Name   string `json:"name"`
+	Name_2 string `json:"name_2"`
+	Limit  int32  `json:"limit"`
+	Offset int32  `json:"offset"`
 }
 
 type GetSoloCollectionRow struct {
@@ -1631,8 +5372,8 @@ type GetSoloCollectionRow struct {
 
 func (q *Queries) GetSoloCollection(ctx context.Context, arg GetSoloCollectionParams) ([]GetSoloCollectionRow, error) {
 	rows, err := q.db.Query(ctx, getSoloCollection,
-		arg.Firm,
-		arg.Line,
+		arg.Name,
+		arg.Name_2,
 		arg.Limit,
 		arg.Offset,
 	)
@@ -1662,25 +5403,30 @@ func (q *Queries) GetSoloCollection(ctx context.Context, arg GetSoloCollectionPa
 }
 
 const getSoloCollectionWithCount = `-- name: GetSoloCollectionWithCount :many
-SELECT COALESCE(discount.minprice, products.minprice) AS minprice,
-    products.id,
-    image_path,
-    name,
-    firm,
-    maxdiscprice,
+SELECT COALESCE(d.minprice, p.minprice) AS minprice,
+    p.id,
+    p.image_path,
+    p.name,
+    b.name as firm,
+    d.maxdiscprice,
     COUNT(*) OVER () AS total_count
-FROM products
-    LEFT JOIN discount ON products.id = productid
-WHERE firm = $1
-    AND line = $2
-LIMIT $3 OFFSET $4
+FROM products p
+    LEFT JOIN discount d ON p.id = d.productid
+    JOIN brands b ON p.brand_id = b.id
+    AND b.is_active = true
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id
+    AND bl.is_active = true
+WHERE b.name = $1
+    AND bl.name = $2
+    AND p.status = 'active'
+LIMIT $4 OFFSET $3
 `
 
 type GetSoloCollectionWithCountParams struct {
-	Firm   string      `json:"firm"`
-	Line   pgtype.Text `json:"line"`
-	Limit  int32       `json:"limit"`
-	Offset int32       `json:"offset"`
+	Firm      string `json:"firm"`
+	Line      string `json:"line"`
+	Offsetval int32  `json:"offsetval"`
+	Limitval  int32  `json:"limitval"`
 }
 
 type GetSoloCollectionWithCountRow struct {
@@ -1697,8 +5443,8 @@ func (q *Queries) GetSoloCollectionWithCount(ctx context.Context, arg GetSoloCol
 	rows, err := q.db.Query(ctx, getSoloCollectionWithCount,
 		arg.Firm,
 		arg.Line,
-		arg.Limit,
-		arg.Offset,
+		arg.Offsetval,
+		arg.Limitval,
 	)
 	if err != nil {
 		return nil, err
@@ -1759,6 +5505,65 @@ func (q *Queries) InsertDiscounts(ctx context.Context, arg InsertDiscountsParams
 	return id, err
 }
 
+const removeRuleItem = `-- name: RemoveRuleItem :exec
+DELETE FROM discount_rule_items
+WHERE rule_id = $1
+    AND item_type = $2
+    AND item_id = $3
+`
+
+type RemoveRuleItemParams struct {
+	RuleID   int32  `json:"rule_id"`
+	ItemType string `json:"item_type"`
+	ItemID   int32  `json:"item_id"`
+}
+
+func (q *Queries) RemoveRuleItem(ctx context.Context, arg RemoveRuleItemParams) error {
+	_, err := q.db.Exec(ctx, removeRuleItem, arg.RuleID, arg.ItemType, arg.ItemID)
+	return err
+}
+
+const restoreBrand = `-- name: RestoreBrand :exec
+UPDATE brands
+SET is_active = true
+WHERE id = $1
+    AND is_active = false
+`
+
+func (q *Queries) RestoreBrand(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, restoreBrand, id)
+	return err
+}
+
+const restoreBrandLine = `-- name: RestoreBrandLine :exec
+UPDATE brand_lines
+SET is_active = true
+WHERE id = $1
+    AND is_active = false
+`
+
+func (q *Queries) RestoreBrandLine(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, restoreBrandLine, id)
+	return err
+}
+
+const restoreProduct = `-- name: RestoreProduct :exec
+UPDATE products
+SET status = 'active',
+    deleted_at = NULL,
+    archived_at = NULL
+WHERE id = $1
+    AND (
+        status = 'deleted'
+        OR status = 'archived'
+    )
+`
+
+func (q *Queries) RestoreProduct(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, restoreProduct, id)
+	return err
+}
+
 const selectMainCategories = `-- name: SelectMainCategories :one
 SELECT enum_range(NULL::main_categories)
 `
@@ -1768,4 +5573,292 @@ func (q *Queries) SelectMainCategories(ctx context.Context) (interface{}, error)
 	var enum_range interface{}
 	err := row.Scan(&enum_range)
 	return enum_range, err
+}
+
+const softDeleteBrandLine = `-- name: SoftDeleteBrandLine :exec
+UPDATE brand_lines
+SET is_active = false
+WHERE id = $1
+    AND is_active = true
+`
+
+func (q *Queries) SoftDeleteBrandLine(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, softDeleteBrandLine, id)
+	return err
+}
+
+const softDeleteProduct = `-- name: SoftDeleteProduct :exec
+UPDATE products
+SET status = 'deleted',
+    deleted_at = NOW()
+WHERE id = $1
+    AND status = 'active'
+`
+
+func (q *Queries) SoftDeleteProduct(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, softDeleteProduct, id)
+	return err
+}
+
+const toggleDiscountRule = `-- name: ToggleDiscountRule :one
+UPDATE discount_rules
+SET is_active = NOT is_active,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, name, description, discount_type, discount_value, starts_at, ends_at, is_active, priority, created_at, updated_at
+`
+
+func (q *Queries) ToggleDiscountRule(ctx context.Context, id int32) (DiscountRule, error) {
+	row := q.db.QueryRow(ctx, toggleDiscountRule, id)
+	var i DiscountRule
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.DiscountType,
+		&i.DiscountValue,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.IsActive,
+		&i.Priority,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateBrand = `-- name: UpdateBrand :exec
+UPDATE brands
+SET 
+    name = CASE 
+        WHEN $1::text IS NOT NULL AND $1::text != '' 
+        THEN $1::text 
+        ELSE name 
+    END,
+    slug = CASE 
+        WHEN $2::text IS NOT NULL AND $2::text != '' 
+        THEN $2::text 
+        ELSE slug 
+    END,
+    
+    image_path = COALESCE($3::text, image_path),
+    description = COALESCE($4::text, description),
+    website = COALESCE($5::text, website),
+    country = COALESCE($6::text, country),
+    founded_year = COALESCE($7::integer, founded_year),
+    
+    is_active = CASE 
+        WHEN $8::boolean IS NOT NULL 
+        THEN $8::boolean 
+        ELSE is_active 
+    END,
+    
+    sort_order = CASE 
+        WHEN $9::integer IS NOT NULL 
+        THEN $9::integer 
+        ELSE sort_order 
+    END,
+    
+    updated_at = NOW()
+WHERE id = $10
+RETURNING id
+`
+
+type UpdateBrandParams struct {
+	Name        pgtype.Text `json:"name"`
+	Slug        pgtype.Text `json:"slug"`
+	ImagePath   pgtype.Text `json:"image_path"`
+	Description pgtype.Text `json:"description"`
+	Website     pgtype.Text `json:"website"`
+	Country     pgtype.Text `json:"country"`
+	FoundedYear pgtype.Int4 `json:"founded_year"`
+	IsActive    pgtype.Bool `json:"is_active"`
+	SortOrder   pgtype.Int4 `json:"sort_order"`
+	ID          int32       `json:"id"`
+}
+
+func (q *Queries) UpdateBrand(ctx context.Context, arg UpdateBrandParams) error {
+	_, err := q.db.Exec(ctx, updateBrand,
+		arg.Name,
+		arg.Slug,
+		arg.ImagePath,
+		arg.Description,
+		arg.Website,
+		arg.Country,
+		arg.FoundedYear,
+		arg.IsActive,
+		arg.SortOrder,
+		arg.ID,
+	)
+	return err
+}
+
+const updateBrandLine = `-- name: UpdateBrandLine :exec
+UPDATE brand_lines
+SET brand_id = COALESCE($1, brand_id),
+    name = COALESCE($2, name),
+    slug = COALESCE($3, slug),
+    description = $4,
+    image_path = $5,
+    season = $6,
+    year = $7,
+    is_active = COALESCE($8, is_active),
+    sort_order = COALESCE($9, sort_order),
+    updated_at = NOW()
+WHERE id = $10
+RETURNING id
+`
+
+type UpdateBrandLineParams struct {
+	BrandID     int32       `json:"brand_id"`
+	Name        string      `json:"name"`
+	Slug        string      `json:"slug"`
+	Description pgtype.Text `json:"description"`
+	ImagePath   pgtype.Text `json:"image_path"`
+	Season      pgtype.Text `json:"season"`
+	Year        pgtype.Int4 `json:"year"`
+	IsActive    pgtype.Bool `json:"is_active"`
+	SortOrder   pgtype.Int4 `json:"sort_order"`
+	ID          int32       `json:"id"`
+}
+
+func (q *Queries) UpdateBrandLine(ctx context.Context, arg UpdateBrandLineParams) error {
+	_, err := q.db.Exec(ctx, updateBrandLine,
+		arg.BrandID,
+		arg.Name,
+		arg.Slug,
+		arg.Description,
+		arg.ImagePath,
+		arg.Season,
+		arg.Year,
+		arg.IsActive,
+		arg.SortOrder,
+		arg.ID,
+	)
+	return err
+}
+
+const updateDiscountRule = `-- name: UpdateDiscountRule :one
+UPDATE discount_rules
+SET name = COALESCE($2, name),
+    description = COALESCE($3, description),
+    discount_type = COALESCE($4, discount_type),
+    discount_value = COALESCE($5, discount_value),
+    starts_at = COALESCE($6, starts_at),
+    ends_at = $7,
+    priority = COALESCE($8, priority),
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, name, description, discount_type, discount_value, starts_at, ends_at, is_active, priority, created_at, updated_at
+`
+
+type UpdateDiscountRuleParams struct {
+	ID            int32              `json:"id"`
+	Name          string             `json:"name"`
+	Description   string             `json:"description"`
+	DiscountType  string             `json:"discount_type"`
+	DiscountValue int32              `json:"discount_value"`
+	StartsAt      pgtype.Timestamptz `json:"starts_at"`
+	EndsAt        pgtype.Timestamptz `json:"ends_at"`
+	Priority      int32              `json:"priority"`
+}
+
+func (q *Queries) UpdateDiscountRule(ctx context.Context, arg UpdateDiscountRuleParams) (DiscountRule, error) {
+	row := q.db.QueryRow(ctx, updateDiscountRule,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.DiscountType,
+		arg.DiscountValue,
+		arg.StartsAt,
+		arg.EndsAt,
+		arg.Priority,
+	)
+	var i DiscountRule
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.DiscountType,
+		&i.DiscountValue,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.IsActive,
+		&i.Priority,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateProduct = `-- name: UpdateProduct :exec
+UPDATE products
+SET -- Обязательные поля (NULL не принимают)
+    name = COALESCE($1, name),
+    brand_id    = COALESCE($2, brand_id),   
+    line_id     = $3, 
+    article = COALESCE($4, article),
+    bodytype = COALESCE($5, bodytype),
+    category = COALESCE($6, category),
+    type = COALESCE($7, type),
+    -- Числовые поля
+    minprice = COALESCE($8, minprice),
+    maxprice = COALESCE($9, maxprice),
+    image_count = COALESCE($10, image_count),
+    -- JSON поле
+    sizes = COALESCE($11::jsonb, sizes),
+    description = $12
+WHERE id = $13
+RETURNING id
+`
+
+type UpdateProductParams struct {
+	Name        string      `json:"name"`
+	BrandID     int32       `json:"brand_id"`
+	LineID      pgtype.Int4 `json:"line_id"`
+	Article     string      `json:"article"`
+	Bodytype    BodyEnum    `json:"bodytype"`
+	Category    int32       `json:"category"`
+	Type        int32       `json:"type"`
+	Minprice    int32       `json:"minprice"`
+	Maxprice    int32       `json:"maxprice"`
+	ImageCount  int32       `json:"image_count"`
+	Sizes       []byte      `json:"sizes"`
+	Description pgtype.Text `json:"description"`
+	ID          int32       `json:"id"`
+}
+
+func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) error {
+	_, err := q.db.Exec(ctx, updateProduct,
+		arg.Name,
+		arg.BrandID,
+		arg.LineID,
+		arg.Article,
+		arg.Bodytype,
+		arg.Category,
+		arg.Type,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.ImageCount,
+		arg.Sizes,
+		arg.Description,
+		arg.ID,
+	)
+	return err
+}
+
+const updateProductStatus = `-- name: UpdateProductStatus :exec
+UPDATE products
+SET status = $1
+WHERE id = $2
+`
+
+type UpdateProductStatusParams struct {
+	Status string `json:"status"`
+	ID     int32  `json:"id"`
+}
+
+func (q *Queries) UpdateProductStatus(ctx context.Context, arg UpdateProductStatusParams) error {
+	_, err := q.db.Exec(ctx, updateProductStatus, arg.Status, arg.ID)
+	return err
 }

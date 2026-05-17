@@ -11,37 +11,141 @@ import (
 )
 
 type Querier interface {
+	ActivateBrand(ctx context.Context, id int32) error
+	ActivateBrandLine(ctx context.Context, id int32) error
+	// ============================================
+	// DISCOUNT RULE ITEMS
+	// ============================================
+	AddRuleItem(ctx context.Context, arg AddRuleItemParams) error
+	ArchiveProduct(ctx context.Context, id int32) error
+	BulkAddRuleItems(ctx context.Context, arg BulkAddRuleItemsParams) error
 	BulkInsertDiscounts(ctx context.Context, arg BulkInsertDiscountsParams) error
+	BulkUpdateBrandActive(ctx context.Context, arg BulkUpdateBrandActiveParams) error
+	BulkUpdateBrandSortOrder(ctx context.Context, arg BulkUpdateBrandSortOrderParams) error
+	BulkUpdateProductStatus(ctx context.Context, arg BulkUpdateProductStatusParams) error
+	BulkUpsertDiscount(ctx context.Context, arg BulkUpsertDiscountParams) error
+	CheckBrandExistsById(ctx context.Context, id int32) (bool, error)
+	CheckBrandExistsBySlug(ctx context.Context, slug string) (bool, error)
+	CheckBrandLineExistsById(ctx context.Context, id int32) (bool, error)
+	CheckBrandLineExistsBySlug(ctx context.Context, slug string) (bool, error)
+	CheckCategoryExists(ctx context.Context, enumKey string) (bool, error)
+	CheckCategoryExistsById(ctx context.Context, id int32) (bool, error)
 	CheckCustomerExistence(ctx context.Context, arg CheckCustomerExistenceParams) (bool, error)
 	CheckMail(ctx context.Context, mail string) (bool, error)
+	CheckProductExists(ctx context.Context, arg CheckProductExistsParams) (CheckProductExistsRow, error)
+	CheckProductExistsById(ctx context.Context, id int32) (bool, error)
+	CheckProductInOrders(ctx context.Context, productid int32) (bool, error)
+	CheckProductInPreorders(ctx context.Context, productid int32) (bool, error)
+	CheckTypeExists(ctx context.Context, arg CheckTypeExistsParams) (bool, error)
+	CheckTypeExistsByIds(ctx context.Context, arg CheckTypeExistsByIdsParams) (bool, error)
 	ClearDiscounts(ctx context.Context) error
+	CountActiveBanners(ctx context.Context) (int64, error)
+	CountBrands(ctx context.Context, name string) (CountBrandsRow, error)
+	CountProductsByFilters(ctx context.Context, arg CountProductsByFiltersParams) (int64, error)
+	CreateAdmin(ctx context.Context, arg CreateAdminParams) (CreateAdminRow, error)
+	CreateAdminLog(ctx context.Context, arg CreateAdminLogParams) error
+	CreateAdminPasswordResetToken(ctx context.Context, arg CreateAdminPasswordResetTokenParams) error
+	CreateBanner(ctx context.Context, arg CreateBannerParams) (CreateBannerRow, error)
+	CreateBrand(ctx context.Context, arg CreateBrandParams) (CreateBrandRow, error)
+	CreateBrandLine(ctx context.Context, arg CreateBrandLineParams) (CreateBrandLineRow, error)
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (int32, error)
+	CreateDiscountRule(ctx context.Context, arg CreateDiscountRuleParams) (DiscountRule, error)
 	// query/newsletter.sql
 	CreateNewsletterSubscriber(ctx context.Context, arg CreateNewsletterSubscriberParams) (NewsletterSubscriber, error)
+	CreateProduct(ctx context.Context, arg CreateProductParams) (CreateProductRow, error)
+	CreateProductWithIds(ctx context.Context, arg CreateProductWithIdsParams) (CreateProductWithIdsRow, error)
 	CreateUniqueCustomer(ctx context.Context, creationtime pgtype.Date) (int32, error)
+	DeactivateBrand(ctx context.Context, id int32) error
+	DeactivateBrandLine(ctx context.Context, id int32) error
+	DeleteAdmin(ctx context.Context, id int32) error
+	DeleteAdminByEmail(ctx context.Context, email string) error
+	DeleteAllRuleBasedDiscounts(ctx context.Context) error
+	DeleteAllRuleItems(ctx context.Context, ruleID int32) error
+	DeleteBanner(ctx context.Context, id int32) error
+	DeleteBrand(ctx context.Context, id int32) error
+	DeleteBrandLine(ctx context.Context, id int32) (DeleteBrandLineRow, error)
 	DeleteCartData(ctx context.Context, id int32) error
+	DeleteDiscount(ctx context.Context, productid int32) error
+	DeleteDiscountRule(ctx context.Context, id int32) error
 	DeleteFromVerifivation(ctx context.Context, id int32) error
+	DeleteHardProduct(ctx context.Context, id int32) (DeleteHardProductRow, error)
 	DeleteNewsletterSubscriber(ctx context.Context, email string) error
+	DeleteOldPasswordResetTokenByEmail(ctx context.Context, email string) error
+	DeleteOldPasswordResetTokens(ctx context.Context) error
 	DeleteVerification(ctx context.Context, id int32) error
+	DraftProduct(ctx context.Context, id int32) error
+	GetActiveBanners(ctx context.Context) ([]GetActiveBannersRow, error)
+	GetActiveBrandLines(ctx context.Context) ([]GetActiveBrandLinesRow, error)
+	GetActiveBrands(ctx context.Context) ([]GetActiveBrandsRow, error)
+	GetActiveDiscountRules(ctx context.Context) ([]DiscountRule, error)
+	GetAdminBanners(ctx context.Context) ([]GetAdminBannersRow, error)
+	GetAdminByEmail(ctx context.Context, email string) (GetAdminByEmailRow, error)
+	GetAdminByID(ctx context.Context, id int32) (GetAdminByIDRow, error)
+	GetAdminByResetToken(ctx context.Context, token string) (GetAdminByResetTokenRow, error)
+	GetAdminDashboardStats(ctx context.Context) (GetAdminDashboardStatsRow, error)
+	GetAdminLogs(ctx context.Context, arg GetAdminLogsParams) ([]GetAdminLogsRow, error)
+	// ========== ЛОГИ АДМИНИСТРАТОРОВ ==========
+	GetAdminLogsCount(ctx context.Context, arg GetAdminLogsCountParams) (int64, error)
+	GetAdminProductsInfoById(ctx context.Context, id int32) (GetAdminProductsInfoByIdRow, error)
+	GetAdminStats(ctx context.Context) (GetAdminStatsRow, error)
+	// ========== АДМИНИСТРАТОРЫ ==========
+	GetAdminsList(ctx context.Context, arg GetAdminsListParams) ([]GetAdminsListRow, error)
+	GetAllActiveDiscountRules(ctx context.Context) ([]DiscountRule, error)
+	GetAllActiveDiscounts(ctx context.Context) ([]GetAllActiveDiscountsRow, error)
+	GetAllBanners(ctx context.Context) ([]GetAllBannersRow, error)
+	GetAllBrandLinesByBrandId(ctx context.Context, brandID int32) ([]GetAllBrandLinesByBrandIdRow, error)
+	GetAllBrands(ctx context.Context) ([]GetAllBrandsRow, error)
+	GetAllBrandsWithLines(ctx context.Context) ([]GetAllBrandsWithLinesRow, error)
+	GetAllFiltersForAdmin(ctx context.Context) (GetAllFiltersForAdminRow, error)
+	GetAllProductsForAdmin(ctx context.Context, arg GetAllProductsForAdminParams) ([]GetAllProductsForAdminRow, error)
+	GetBannerByID(ctx context.Context, id int32) (GetBannerByIDRow, error)
 	GetBaseCustomerData(ctx context.Context, mail string) (GetBaseCustomerDataRow, error)
+	GetBrandByID(ctx context.Context, brandID int32) (GetBrandByIDRow, error)
+	GetBrandByIDWithDiscount(ctx context.Context, brandID int32) (GetBrandByIDWithDiscountRow, error)
+	GetBrandById(ctx context.Context, id int32) (GetBrandByIdRow, error)
+	GetBrandBySlug(ctx context.Context, slug string) (GetBrandBySlugRow, error)
+	GetBrandLineById(ctx context.Context, id int32) (GetBrandLineByIdRow, error)
+	GetBrandLinesByBrandId(ctx context.Context, brandID int32) ([]GetBrandLinesByBrandIdRow, error)
+	GetBrandLinesByBrandSlug(ctx context.Context, slug string) ([]GetBrandLinesByBrandSlugRow, error)
+	GetBrandLinesWithProductCount(ctx context.Context, brandID int32) ([]GetBrandLinesWithProductCountRow, error)
+	GetBrandsIds(ctx context.Context, name string) ([]int32, error)
+	GetBrandsWithProductCount(ctx context.Context) ([]GetBrandsWithProductCountRow, error)
+	GetBrandsWithStats(ctx context.Context, arg GetBrandsWithStatsParams) ([]GetBrandsWithStatsRow, error)
+	GetBrandsWithStatsAndDiscounts(ctx context.Context, arg GetBrandsWithStatsAndDiscountsParams) ([]GetBrandsWithStatsAndDiscountsRow, error)
+	GetBrandsWithStatsAndDiscountsWithTotalCount(ctx context.Context, arg GetBrandsWithStatsAndDiscountsWithTotalCountParams) ([]GetBrandsWithStatsAndDiscountsWithTotalCountRow, error)
 	GetCategories(ctx context.Context) ([]GetCategoriesRow, error)
 	GetCategoriesWithTypes(ctx context.Context) ([]GetCategoriesWithTypesRow, error)
+	GetCategoryAndTypeByIDs(ctx context.Context, arg GetCategoryAndTypeByIDsParams) (GetCategoryAndTypeByIDsRow, error)
 	GetCombinedFiltersByString(ctx context.Context, dollar_1 string) (GetCombinedFiltersByStringRow, error)
 	GetCountIdByName(ctx context.Context, dollar_1 string) ([]GetCountIdByNameRow, error)
 	GetCountOfCollectionsOrFirms(ctx context.Context, arg GetCountOfCollectionsOrFirmsParams) (int64, error)
+	GetCustomerByID(ctx context.Context, id int32) (GetCustomerByIDRow, error)
 	GetCustomerData(ctx context.Context, id int32) (GetCustomerDataRow, error)
+	GetCustomerDetails(ctx context.Context, customerID int32) (GetCustomerDetailsRow, error)
 	GetCustomerId(ctx context.Context, mail string) (int32, error)
+	GetCustomersCount(ctx context.Context) (int64, error)
+	// ========== УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ ==========
+	GetCustomersList(ctx context.Context, arg GetCustomersListParams) ([]GetCustomersListRow, error)
+	// ========== СТАТИСТИКА ДЛЯ ДАШБОРДА ==========
+	GetDashboardStats(ctx context.Context) (GetDashboardStatsRow, error)
+	GetDiscountByProductID(ctx context.Context, productid int32) (GetDiscountByProductIDRow, error)
+	GetDiscountRule(ctx context.Context, id int32) (DiscountRule, error)
+	GetDiscountRuleByID(ctx context.Context, id int32) (int32, error)
+	GetDiscountRules(ctx context.Context, arg GetDiscountRulesParams) ([]DiscountRule, error)
+	GetDiscountRulesByEntity(ctx context.Context, arg GetDiscountRulesByEntityParams) ([]DiscountRule, error)
+	GetDiscountRulesCount(ctx context.Context) (int64, error)
+	GetDiscounts(ctx context.Context, arg GetDiscountsParams) ([]GetDiscountsRow, error)
+	GetDiscountsCount(ctx context.Context) (int64, error)
 	GetFiltersByNameCategoryAndType(ctx context.Context, arg GetFiltersByNameCategoryAndTypeParams) (GetFiltersByNameCategoryAndTypeRow, error)
 	GetFirms(ctx context.Context) ([]GetFirmsRow, error)
 	GetFullPreorderCount(ctx context.Context, orderid int32) (interface{}, error)
 	GetFullProductsInfoByIds(ctx context.Context, dollar_1 []int32) ([]GetFullProductsInfoByIdsRow, error)
-	GetMainPageBanners(ctx context.Context) ([]HomepageBlock, error)
 	GetMainPageInfo(ctx context.Context, productsPerCategory int32) ([]GetMainPageInfoRow, error)
 	GetMerchCollection(ctx context.Context, arg GetMerchCollectionParams) ([]GetMerchCollectionRow, error)
 	GetMerchCollectionWithCount(ctx context.Context, arg GetMerchCollectionWithCountParams) ([]GetMerchCollectionWithCountRow, error)
 	GetMerchCountOfCollectionsOrFirms(ctx context.Context, arg GetMerchCountOfCollectionsOrFirmsParams) (int64, error)
 	GetMerchFirms(ctx context.Context) ([]GetMerchFirmsRow, error)
-	GetMerchProductsByFirmName(ctx context.Context, firm string) ([]GetMerchProductsByFirmNameRow, error)
+	GetMerchProductsByFirmName(ctx context.Context, name string) ([]GetMerchProductsByFirmNameRow, error)
 	GetMerchWithDiscount(ctx context.Context) ([]GetMerchWithDiscountRow, error)
 	GetNewsletterPendingCount(ctx context.Context) (int64, error)
 	GetNewsletterSubscriberByEmail(ctx context.Context, email string) (NewsletterSubscriber, error)
@@ -53,27 +157,42 @@ type Querier interface {
 	GetOrderAddressById(ctx context.Context, orderid int32) (GetOrderAddressByIdRow, error)
 	GetOrderById(ctx context.Context, id int32) (GetOrderByIdRow, error)
 	GetOrderDataById(ctx context.Context, orderid int32) ([]GetOrderDataByIdRow, error)
+	GetOrderDetails(ctx context.Context, orderID int32) (GetOrderDetailsRow, error)
 	GetOrderIdByHashUrl(ctx context.Context, hash string) (int32, error)
 	GetOrderInfo(ctx context.Context, orderid int32) ([]GetOrderInfoRow, error)
+	GetOrdersCount(ctx context.Context, arg GetOrdersCountParams) (int64, error)
+	GetOrdersWithFilters(ctx context.Context, arg GetOrdersWithFiltersParams) ([]GetOrdersWithFiltersRow, error)
+	GetOrdersWithPagination(ctx context.Context, arg GetOrdersWithPaginationParams) ([]GetOrdersWithPaginationRow, error)
 	GetPassword(ctx context.Context, id int32) ([]byte, error)
 	GetPreorderAddressById(ctx context.Context, orderid int32) (GetPreorderAddressByIdRow, error)
 	GetPreorderDataById(ctx context.Context, orderid int32) ([]GetPreorderDataByIdRow, error)
 	GetPreorderIdByHashUrl(ctx context.Context, hashurl string) (int32, error)
 	GetPreorderInfo(ctx context.Context, orderid int32) ([]GetPreorderInfoRow, error)
 	GetProductByArticle(ctx context.Context, article string) (GetProductByArticleRow, error)
+	GetProductIDsForAdminByFilters(ctx context.Context, arg GetProductIDsForAdminByFiltersParams) ([]int32, error)
 	GetProductsBasicInfo(ctx context.Context, productIds []int32) ([]GetProductsBasicInfoRow, error)
 	GetProductsByFilters(ctx context.Context, arg GetProductsByFiltersParams) ([]GetProductsByFiltersRow, error)
 	GetProductsByFiltersNewTest(ctx context.Context, arg GetProductsByFiltersNewTestParams) ([]GetProductsByFiltersNewTestRow, error)
+	GetProductsByFiltersPaginate(ctx context.Context, arg GetProductsByFiltersPaginateParams) ([]GetProductsByFiltersPaginateRow, error)
 	GetProductsByIds(ctx context.Context, dollar_1 []int32) ([]GetProductsByIdsRow, error)
-	GetProductsByLineName(ctx context.Context, line pgtype.Text) ([]GetProductsByLineNameRow, error)
+	GetProductsByLineName(ctx context.Context, name string) ([]GetProductsByLineNameRow, error)
 	GetProductsByName(ctx context.Context, arg GetProductsByNameParams) ([]GetProductsByNameRow, error)
 	GetProductsByNameCategoryAndType(ctx context.Context, arg GetProductsByNameCategoryAndTypeParams) ([]GetProductsByNameCategoryAndTypeRow, error)
+	GetProductsForAdminByFilters(ctx context.Context, arg GetProductsForAdminByFiltersParams) ([]GetProductsForAdminByFiltersRow, error)
 	GetProductsInfoById(ctx context.Context, id int32) (GetProductsInfoByIdRow, error)
 	GetProductsWithDiscount(ctx context.Context) ([]GetProductsWithDiscountRow, error)
-	GetSnickersByFirmName(ctx context.Context, firm string) ([]GetSnickersByFirmNameRow, error)
+	GetProductsWithSizesByIDs(ctx context.Context, productIds []int32) ([]GetProductsWithSizesByIDsRow, error)
+	GetRecentActivity(ctx context.Context) ([]GetRecentActivityRow, error)
+	GetRecentOrders(ctx context.Context) ([]GetRecentOrdersRow, error)
+	GetRuleItems(ctx context.Context, ruleID int32) ([]GetRuleItemsRow, error)
+	GetRuleItemsByType(ctx context.Context, arg GetRuleItemsByTypeParams) ([]DiscountRuleItem, error)
+	GetSnickersByFirmName(ctx context.Context, name string) ([]GetSnickersByFirmNameRow, error)
 	GetSoloCollection(ctx context.Context, arg GetSoloCollectionParams) ([]GetSoloCollectionRow, error)
 	GetSoloCollectionWithCount(ctx context.Context, arg GetSoloCollectionWithCountParams) ([]GetSoloCollectionWithCountRow, error)
 	GetUnregisterCustomer(ctx context.Context, id int32) (Unregistercustomer, error)
+	GetUnregisterCustomerByID(ctx context.Context, id int32) (GetUnregisterCustomerByIDRow, error)
+	GetUnregisterCustomersCount(ctx context.Context) (int64, error)
+	GetUnregisterCustomersList(ctx context.Context, arg GetUnregisterCustomersListParams) ([]GetUnregisterCustomersListRow, error)
 	GetVerification(ctx context.Context, token string) (GetVerificationRow, error)
 	GetVerifiedNewsletterSubscribers(ctx context.Context) ([]string, error)
 	InsertDiscounts(ctx context.Context, arg InsertDiscountsParams) (int32, error)
@@ -84,15 +203,37 @@ type Querier interface {
 	InsertPreorder(ctx context.Context, arg InsertPreorderParams) (int32, error)
 	InsertPreorderItem(ctx context.Context, arg InsertPreorderItemParams) (int32, error)
 	InsertVerification(ctx context.Context, arg InsertVerificationParams) error
+	ListAdmins(ctx context.Context, arg ListAdminsParams) ([]ListAdminsRow, error)
+	RemoveRuleItem(ctx context.Context, arg RemoveRuleItemParams) error
+	RestoreBrand(ctx context.Context, id int32) error
+	RestoreBrandLine(ctx context.Context, id int32) error
+	RestoreProduct(ctx context.Context, id int32) error
 	SelectHistoryFromUniqueCustomer(ctx context.Context, id int32) ([]int32, error)
 	SelectMainCategories(ctx context.Context) (interface{}, error)
 	SelectQuantityFromPreorderItems(ctx context.Context, arg SelectQuantityFromPreorderItemsParams) (int32, error)
 	SetOrderAddress(ctx context.Context, arg SetOrderAddressParams) (int32, error)
 	SetPreorderAddress(ctx context.Context, arg SetPreorderAddressParams) (int32, error)
 	SetUnregisterCustomer(ctx context.Context, arg SetUnregisterCustomerParams) (int32, error)
+	SoftDeleteBrandLine(ctx context.Context, id int32) error
+	SoftDeleteProduct(ctx context.Context, id int32) error
+	ToggleDiscountRule(ctx context.Context, id int32) (DiscountRule, error)
 	UnsubscribeNewsletter(ctx context.Context, email string) error
+	UpdateAdmin(ctx context.Context, arg UpdateAdminParams) error
+	UpdateAdminLastLogin(ctx context.Context, arg UpdateAdminLastLoginParams) error
+	UpdateAdminPassword(ctx context.Context, arg UpdateAdminPasswordParams) error
+	UpdateAdminRole(ctx context.Context, arg UpdateAdminRoleParams) error
+	UpdateAdminStatus(ctx context.Context, arg UpdateAdminStatusParams) error
+	UpdateBanner(ctx context.Context, arg UpdateBannerParams) error
+	UpdateBannerImage(ctx context.Context, arg UpdateBannerImageParams) error
+	UpdateBrand(ctx context.Context, arg UpdateBrandParams) error
+	UpdateBrandLine(ctx context.Context, arg UpdateBrandLineParams) error
 	UpdateCustomerPass(ctx context.Context, arg UpdateCustomerPassParams) error
+	UpdateDiscountRule(ctx context.Context, arg UpdateDiscountRuleParams) (DiscountRule, error)
+	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) error
 	UpdatePreorderItems(ctx context.Context, arg UpdatePreorderItemsParams) error
+	UpdateProduct(ctx context.Context, arg UpdateProductParams) error
+	UpdateProductPrice(ctx context.Context, arg UpdateProductPriceParams) error
+	UpdateProductStatus(ctx context.Context, arg UpdateProductStatusParams) error
 	UpdateUniqueCustomerHistry(ctx context.Context, arg UpdateUniqueCustomerHistryParams) error
 	VerifyNewsletterSubscriber(ctx context.Context, verificationToken string) error
 }

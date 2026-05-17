@@ -2,12 +2,10 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"math"
-	"reflect"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mrkrabopl1/go_db/types"
@@ -35,8 +33,8 @@ type ProductsInfoResponse struct {
 	Name         string                 `json:"name"`
 	Info         map[string]interface{} `json:"info"`
 	Discount     map[string]interface{} `json:"discount"`
-	ProductType  int32                  `json:"producttype"`
-	Category     int32                  `json:"category"`
+	ProductType  int32                  `json:"type_id"`
+	Category     int32                  `json:"category_id"`
 	Article      string                 `json:"article"`
 	Store        interface{}            `json:"store"`
 	Firm         string                 `json:"firm"`
@@ -53,6 +51,7 @@ type ProductsResponseD struct {
 	Image    []string    `json:"imgs"`
 	Discount interface{} `json:"discount"`
 	Price    int         `json:"price"`
+	Status   string      `json:"status"`
 }
 
 type FiltersSearchResponse struct {
@@ -102,7 +101,7 @@ func (store *SQLStore) getProductImages(imagePath string, count int) []string {
 		return []string{}
 	}
 
-	imageBasePath := store.imagePathBuilder.GetProductImageBasePath(imagePath)
+	imageBasePath := store.ImagePathBuilder.GetProductImageBasePath(imagePath)
 	images := make([]string, 0, count)
 	for i := 1; i <= count; i++ {
 		images = append(images, fmt.Sprintf("%s%d.png", imageBasePath, i))
@@ -112,7 +111,7 @@ func (store *SQLStore) getProductImages(imagePath string, count int) []string {
 
 // getProductMainImage возвращает главное изображение продукта
 func (store *SQLStore) getProductMainImage(imagePath string) string {
-	return store.imagePathBuilder.GetProductMainImage(imagePath)
+	return store.ImagePathBuilder.GetProductMainImage(imagePath)
 }
 
 // getDiscountValue возвращает значение скидки или nil
@@ -141,10 +140,10 @@ func (store *SQLStore) GetProductsInfoByIdComplex(ctx context.Context, id int32)
 	}
 
 	lineMerch, err := store.Queries.GetSoloCollectionWithCount(ctx, GetSoloCollectionWithCountParams{
-		Line:   snickers.Line,
-		Firm:   snickers.Firm,
-		Limit:  10,
-		Offset: 0,
+		Line:      snickers.Line.String,
+		Firm:      snickers.Firm,
+		Limitval:  10,
+		Offsetval: 0,
 	})
 	if err != nil {
 		return ProductsInfoResponse{}, err
@@ -169,7 +168,7 @@ type LineProductResponse struct {
 func (store *SQLStore) buildLineProductsResponse(products []GetSoloCollectionWithCountRow) []LineProductResponse {
 	result := make([]LineProductResponse, 0, len(products))
 	for _, p := range products {
-		fullImagePath := store.imagePathBuilder.GetProductMainImage(p.ImagePath)
+		fullImagePath := store.ImagePathBuilder.GetProductMainImage(p.ImagePath)
 
 		var discount interface{}
 		if p.Maxdiscprice.Valid && p.Maxdiscprice.Int32 != 0 {
@@ -212,7 +211,7 @@ func (store *SQLStore) buildProductsInfoResponse(snInfo GetProductsInfoByIdRow) 
 		Category:    snInfo.Category,
 		Article:     snInfo.Article,
 		Store:       snInfo.StoreInfo,
-		ImagePath:   store.imagePathBuilder.GetProductImageBasePath(snInfo.ImagePath),
+		ImagePath:   store.ImagePathBuilder.GetProductImageBasePath(snInfo.ImagePath),
 		Id:          snInfo.ID,
 	}
 }
@@ -245,11 +244,13 @@ func (store *SQLStore) GetProductsAndFiltersByNameCategoryAndType(ctx context.Co
 	fmt.Printf("%+v\n", filtersParams)
 	data, err := store.getProductsByFilters(ctx, filtersParams, filters, page, size, orderedType, false)
 	if err != nil {
+		fmt.Println(err, "2222222")
 		return RespSearchProductsAndFiltersByString{}, err
 	}
 
 	filter, err := store.GetFiltersByNameCategoryAndType(ctx, filtersParams)
 	if err != nil {
+		fmt.Println(err, "333333333333333")
 		return RespSearchProductsAndFiltersByString{}, err
 	}
 
@@ -289,6 +290,7 @@ func (store *SQLStore) getProductsByFilters(ctx context.Context, mainFilter GetF
 		InStore:      filters.InStore,
 		WithPrice:    filters.WithPrice,
 		Lines:        filters.Lines,
+		Status:       filters.Status,
 	}
 
 	// Используем указатели для nullable полей
@@ -332,9 +334,10 @@ func (store *SQLStore) buildProductsResponseD(data []GetProductsByFiltersRow) []
 		result = append(result, ProductsResponseD{
 			Name:     row.Name,
 			Id:       row.ID,
+			Status:   row.Status,
 			Image:    store.getProductImages(row.ImagePath, 2), // 2 изображения
 			Price:    int(row.Minprice),
-			Discount: getDiscountValue(row.Maxdiscprice),
+			Discount: getDiscountValue(pgtype.Int4{Valid: row.Maxdiscprice != 0, Int32: row.Maxdiscprice}),
 		})
 	}
 	return result
@@ -365,7 +368,7 @@ func (store *SQLStore) groupProducts(rows []GetMainPageInfoRow) map[int32]Catego
 			Id:    row.ID,
 			Name:  row.Name,
 			Price: row.Minprice,
-			Image: store.getProductMainImage(row.ImagePath),
+			Image: store.ImagePathBuilder.GetProductMainImage(row.ImagePath),
 		})
 		categories[row.Category] = cat
 	}
@@ -498,8 +501,13 @@ func (store *SQLStore) buildDiscountMerchResponse(products []GetMerchWithDiscoun
 }
 
 // ==================== DISCOUNTS ====================
+type DiscountData struct {
+	Value        json.RawMessage `json:"value"`          // JSONB с ценами со скидкой для каждого размера
+	MinPrice     int32           `json:"min_price"`      // Минимальная цена со скидкой
+	MaxDiscPrice int32           `json:"max_disc_price"` // Максимальная цена со скидкой
+}
 
-func (store *SQLStore) CreateDiscounts(ctx context.Context, discountData map[int32]types.DiscountData) error {
+func (store *SQLStore) CreateDiscounts(ctx context.Context, discountData map[int32]DiscountData) error {
 	if len(discountData) == 0 {
 		return nil
 	}
@@ -509,119 +517,31 @@ func (store *SQLStore) CreateDiscounts(ctx context.Context, discountData map[int
 		productIDs = append(productIDs, productID)
 	}
 
-	products, err := store.GetProductsBasicInfo(ctx, productIDs)
-	if err != nil {
-		return fmt.Errorf("error getting products info: %w", err)
-	}
-
 	var productIDsBatch []int32
 	var discountValues [][]byte
 	var minPrices []int32
 	var maxDiscPrices []int32
 
-	for _, product := range products {
-		discount, exists := discountData[product.ID]
+	for _, productID := range productIDs {
+		discount, exists := discountData[productID]
 		if !exists {
 			continue
 		}
 
-		value := make(map[string]interface{})
-		minPrice := int32(math.MaxInt32)
-		maxDiscPrice := int32(0)
-
-		// Проверяем, есть ли данные о размерах
-		if len(product.Sizes) > 0 {
-			// Парсим JSON
-			var sizesMap map[string]map[string]interface{}
-			if err := json.Unmarshal(product.Sizes, &sizesMap); err != nil {
-				// Пробуем другой формат
-				var simpleMap map[string]interface{}
-				if err2 := json.Unmarshal(product.Sizes, &simpleMap); err2 != nil {
-					fmt.Printf("Error unmarshaling sizes for product %d: %v\n", product.ID, err)
-					continue
-				}
-				// Обрабатываем простой формат
-				for sizeKey, sizeValue := range simpleMap {
-					var originalPrice int32
-
-					// Если значение - число
-					if price, ok := sizeValue.(float64); ok {
-						originalPrice = int32(price)
-					} else {
-						continue
-					}
-
-					discountPrice := originalPrice - (originalPrice*discount.Percent)/100
-					value[sizeKey] = discountPrice
-
-					if discountPrice < minPrice {
-						minPrice = discountPrice
-					}
-					if discountPrice > maxDiscPrice {
-						maxDiscPrice = discountPrice
-					}
-				}
-				goto afterSizes
-			}
-
-			// Обрабатываем вложенный формат (с price, in_stock, quantity)
-			for sizeKey, sizeData := range sizesMap {
-				// Извлекаем цену из вложенного объекта
-				var originalPrice int32
-				if price, ok := sizeData["price"]; ok {
-					switch p := price.(type) {
-					case float64:
-						originalPrice = int32(p)
-					case int:
-						originalPrice = int32(p)
-					case int32:
-						originalPrice = p
-					default:
-						continue
-					}
-				} else {
-					continue
-				}
-
-				discountPrice := originalPrice - (originalPrice*discount.Percent)/100
-				value[sizeKey] = discountPrice
-
-				if discountPrice < minPrice {
-					minPrice = discountPrice
-				}
-				if discountPrice > maxDiscPrice {
-					maxDiscPrice = discountPrice
-				}
-			}
-		}
-
-	afterSizes:
-		// Если нет размеров, но есть минимальная цена
-		if len(value) == 0 && product.Minprice > 0 {
-			discountPrice := product.Minprice - (product.Minprice*discount.Percent)/100
-			value["default"] = discountPrice
-			minPrice = discountPrice
-			maxDiscPrice = discountPrice
-		}
-
-		if len(value) == 0 {
-			fmt.Printf("Skipping product %d: no valid size data\n", product.ID)
+		// Проверяем, что Value не пустой
+		if len(discount.Value) == 0 {
+			fmt.Printf("Skipping product %d: no discount value\n", productID)
 			continue
 		}
 
-		jsonData, err := json.Marshal(value)
-		if err != nil {
-			return fmt.Errorf("error marshaling discount value: %w", err)
-		}
-
-		productIDsBatch = append(productIDsBatch, product.ID)
-		discountValues = append(discountValues, jsonData)
-		minPrices = append(minPrices, minPrice)
-		maxDiscPrices = append(maxDiscPrices, maxDiscPrice)
+		productIDsBatch = append(productIDsBatch, productID)
+		discountValues = append(discountValues, discount.Value)
+		minPrices = append(minPrices, discount.MinPrice)
+		maxDiscPrices = append(maxDiscPrices, discount.MaxDiscPrice)
 	}
 
 	if len(productIDsBatch) > 0 {
-		err = store.BulkInsertDiscounts(ctx, BulkInsertDiscountsParams{
+		err := store.BulkInsertDiscounts(ctx, BulkInsertDiscountsParams{
 			ProductIds:     productIDsBatch,
 			DiscountValues: discountValues,
 			MinPrices:      minPrices,
@@ -633,59 +553,4 @@ func (store *SQLStore) CreateDiscounts(ctx context.Context, discountData map[int
 	}
 
 	return nil
-}
-
-// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
-
-func getFieldInt32(obj interface{}, fieldName string) (int32, error) {
-	val := reflect.ValueOf(obj)
-	if val.Kind() == reflect.Ptr {
-		val = val.Elem()
-	}
-
-	field := val.FieldByName(fieldName)
-	if !field.IsValid() {
-		return 0, fmt.Errorf("field %s not found", fieldName)
-	}
-
-	switch v := field.Interface().(type) {
-	case int32:
-		return v, nil
-	case sql.NullInt32:
-		if v.Valid {
-			return v.Int32, nil
-		}
-		return 0, fmt.Errorf("field %s is null", fieldName)
-	case *int32:
-		if v != nil {
-			return *v, nil
-		}
-		return 0, fmt.Errorf("field %s is nil", fieldName)
-	default:
-		return 0, fmt.Errorf("unsupported type for field %s", fieldName)
-	}
-}
-
-func getSizePrice(sizes json.RawMessage, sizeKey string) (int32, error) {
-	var sizesMap map[string]interface{}
-	if err := json.Unmarshal(sizes, &sizesMap); err != nil {
-		return 0, err
-	}
-
-	sizeData, exists := sizesMap[sizeKey]
-	if !exists {
-		return 0, fmt.Errorf("size not found")
-	}
-
-	sizeMap, ok := sizeData.(map[string]interface{})
-	if !ok {
-		return 0, fmt.Errorf("invalid size data structure")
-	}
-
-	price, ok := sizeMap["price"].(float64)
-	if !ok {
-		return 0, fmt.Errorf("price not found or invalid")
-	}
-
-	return int32(price), nil
 }

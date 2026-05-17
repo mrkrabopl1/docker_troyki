@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mrkrabopl1/go_db/services"
 	"github.com/mrkrabopl1/go_db/types"
@@ -11,7 +12,8 @@ import (
 // Store defines all functions to execute db queries and transactions
 type Store interface {
 	Querier
-
+	DB() *pgxpool.Pool
+	BeginTx(ctx context.Context) (*Tx, error)
 	//InsertIntoOrderItems(ctx context.Context, products []types.ProductsInsert, orderID int) error
 	SetSnickersHistory(ctx context.Context, idSnickers int32, idCustomer int32) error
 	CreatePreorder(ctx context.Context, id int32, size string, price int32, name string, image_path string) (string, error)
@@ -37,24 +39,44 @@ type Store interface {
 	GetOrderDataByMail(ctx context.Context, mail string, id int32) (OrderDataResp, string, error)
 	UpdateForgetPass(ctx context.Context, mail string) error
 	GetProductsWithDiscountComplex(ctx context.Context) ([]types.ProductsSearchResponse1, error)
+	GetProductsForAdminByFiltersComplex(ctx context.Context, name string, page int, size int, filters types.ProductsForAdminFilterStruct, orderedType int32) (RespProductsForAdminByStringStruct, error)
 	GetSnickersHistoryComplex(ctx context.Context, idCustomer int32) ([]types.ProductsSearchResponse1, error)
 	GetProductsAndFiltersByNameCategoryAndType(ctx context.Context, filterParams GetFiltersByNameCategoryAndTypeParams, page int, size int, filters types.ProductsFilterStruct, orderedType int) (RespSearchProductsAndFiltersByString, error)
 	GetProductsByString(ctx context.Context, name string, page int, size int, filters types.ProductsFilterStruct, orderedType int) (RespSearchProductsByString, error)
-	CreateDiscounts(ctx context.Context, discountData map[int32]types.DiscountData) error
+	CreateDiscounts(ctx context.Context, discountData map[int32]DiscountData) error
 	GetProductsByFiltersComplex(ctx context.Context, name string, page int, size int, filters types.ProductsFilterStruct, orderedType int32) (RespProductsByStringStruct, error)
+	GetAllProductsAndFilters(ctx context.Context, page int, size int, orderedType int) (RespSearchProductsAndFiltersByStringForAdmin, error)
+	GetAdminProductsInfoByIdComplex(ctx context.Context, id int32) (ProductsAdminInfoResponse, error)
+	RecalculateAllDiscounts(ctx context.Context) error
 }
 
 // SQLStore provides all functions to execute SQL queries and transactions
 type SQLStore struct {
 	*Queries
 	connPool         *pgxpool.Pool
-	imagePathBuilder *services.ImagePathBuilder // добавляем поле
+	ImagePathBuilder *services.ImagePathBuilder // добавляем поле
 }
 
-func NewStore(connPool *pgxpool.Pool, imagePathBuilder *services.ImagePathBuilder) Store {
+func (s *SQLStore) DB() *pgxpool.Pool {
+	return s.connPool
+}
+func NewStore(connPool *pgxpool.Pool, ImagePathBuilder *services.ImagePathBuilder) Store {
 	return &SQLStore{
 		Queries:          New(connPool),
 		connPool:         connPool,
-		imagePathBuilder: imagePathBuilder,
+		ImagePathBuilder: ImagePathBuilder,
 	}
+}
+
+type Tx struct {
+	pgx.Tx
+	*Queries
+}
+
+func (s *SQLStore) BeginTx(ctx context.Context) (*Tx, error) {
+	tx, err := s.connPool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &Tx{Tx: tx, Queries: New(tx)}, nil
 }

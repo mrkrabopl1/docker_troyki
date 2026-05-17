@@ -20,6 +20,7 @@ type Config struct {
 	MigrationURL         string        `mapstructure:"MIGRATION_URL"`
 	RedisAddress         string        `mapstructure:"REDIS_ADDRESS"`
 	HTTPServerAddress    string        `mapstructure:"HTTP_SERVER_ADDRESS"`
+	AppURL               string        `mapstructure:"APP_URL"`
 	GRPCServerAddress    string        `mapstructure:"GRPC_SERVER_ADDRESS"`
 	TokenSymmetricKey    string        `mapstructure:"TOKEN_SYMMETRIC_KEY"`
 	AccessTokenDuration  time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
@@ -29,6 +30,8 @@ type Config struct {
 	EmailSenderPassword  string        `mapstructure:"EMAIL_SENDER_PASSWORD"`
 	ImageBasePath        string        `mapstructure:"IMAGE_BASE_PATH"`
 	UseCDN               bool          `mapstructure:"USE_CDN"`
+	ImageBaseDir         string        `mapstructure:"IMAGE_BASE_DIR"`
+	MaxImageSizeMB       int64         `mapstructure:"MAX_IMAGE_SIZE_MB"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
@@ -69,11 +72,7 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.BindEnv("MIGRATION_URL")
 	viper.BindEnv("IMAGE_BASE_PATH")
 	viper.BindEnv("USE_CDN")
-
-	// Устанавливаем значения по умолчанию
-	viper.SetDefault("IMAGE_BASE_PATH", "/images")
-	viper.SetDefault("USE_CDN", false)
-
+	viper.BindEnv("APP_URL")
 	// 5. Распаковываем в структуру
 	err = viper.Unmarshal(&config)
 	return

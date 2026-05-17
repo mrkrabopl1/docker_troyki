@@ -145,6 +145,7 @@ SELECT id,
     hash,
     status,
     customerId,
+    OrderDate,
     unregistercustomerid
 FROM orders
 WHERE id = $1;
@@ -192,3 +193,41 @@ SELECT
     item->>'size',
     @preorder_id::int
 FROM jsonb_array_elements(@items::jsonb) AS item;
+
+
+
+-- name: CheckProductInOrders :one
+SELECT EXISTS(
+    SELECT 1 FROM orderitems WHERE ProductId = $1
+) as exists;
+
+-- name: CheckProductInPreorders :one
+SELECT EXISTS(
+    SELECT 1 FROM preorderitems WHERE ProductId = $1
+) as exists;
+
+-- name: GetOrdersWithPagination :many
+SELECT 
+    o.id,
+    o.OrderDate,
+    o.Status,
+    o.Hash,
+    o.DeliveryPrice,
+    o.DeliveryType,
+    o.DeliveryComment,
+    COALESCE(c.name, uc.name) as customer_name,
+    COALESCE(c.mail, uc.mail) as customer_email
+FROM orders o
+LEFT JOIN customers c ON o.CustomerID = c.id
+LEFT JOIN unregistercustomer uc ON o.UnregisterCustomerID = uc.id
+WHERE (@status = '' OR o.Status = @status)
+ORDER BY o.OrderDate DESC
+LIMIT $1 OFFSET $2;
+
+
+-- name: GetCustomerByID :one
+SELECT id, name, mail, phone FROM customers WHERE id = $1;
+
+-- name: GetUnregisterCustomerByID :one
+SELECT id, name, mail, phone FROM unregistercustomer WHERE id = $1;
+

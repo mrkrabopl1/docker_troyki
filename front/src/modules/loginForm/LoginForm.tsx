@@ -1,91 +1,200 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import s from "./style.module.css"
-import InputWithLabelWithValidation from 'src/components/input/InputWithLabelWithValidation'
-import PhoneInputWithValidation from 'src/components/input/PhoneInputWithValidation'
-import Button from 'src/components/Button'
-import PasswordInput from 'src/components/input/PasswordInput'
-import PasswordInputWithValidation from 'src/components/input/PasswordInputWithValidation'
-import MailInputWithValidation from 'src/components/input/MailInputWithValidation'
-import { registerUser, loginUser } from 'src/providers/userProvider'
+// modules/loginForm/LoginForm.tsx
+import React, { useState, useCallback } from 'react';
+import s from "./login.module.css";
+import Button from 'src/components/Button';
+import PasswordInputWithValidation from 'src/components/input/PasswordInputWithValidation';
+import MailInputWithValidation from 'src/components/input/MailInputWithValidation';
 
-interface loginFormModuleInterface {
-    className?: {
-        input?: string,
-        checkbox?: string,
-        combobox?: string
-    }
-    onChange: (data: any) => void
-    onLogin: (data: any) => void
-    forgetPass: (data: any) => void
+interface LoginFormData {
+  email: string;
+  password: string;
+  remember?: boolean;
 }
-const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
-    let validationObject = useRef<any>({})
-    let passCheck = useRef<any>("")
-    let formData = useRef<{
-        mail: string,
-        pass: string
 
-    }>({
-        mail: "",
-        pass: ""
-    })
+interface LoginFormModuleInterface {
+  className?: {
+    input?: string;
+    checkbox?: string;
+    container?: string;
+  };
+  title?: string;
+  subtitle?: string;
+  submitButtonText?: string;
+  showRemember?: boolean;
+  showForgotPassword?: boolean;
+  isLoading?: boolean;
+  error?: string | null;
+  onSubmit: (data: LoginFormData) => void | Promise<void>;
+  onForgotPassword?: () => void;
+  onChange?: (data: Partial<LoginFormData>) => void;
+  // Дополнительные правила валидации (поверх дефолтных)
+  customValidation?: {
+    email?: (value: string) => string | null;
+    password?: (value: string) => string | null;
+  };
+}
 
-    type loginDataType = {
-        mail: string,
-        pass: string
+const LoginForm: React.FC<LoginFormModuleInterface> = ({
+  className = {},
+  title = 'Вход',
+  subtitle,
+  submitButtonText = 'Войти',
+  showRemember = true,
+  showForgotPassword = true,
+  isLoading = false,
+  error = null,
+  onSubmit,
+  onForgotPassword,
+  onChange,
+  customValidation = {}
+}) => {
+  const [formData, setFormData] = useState<LoginFormData>({
+    email: '',
+    password: '',
+    remember: false
+  });
+  
+  // Состояния валидности полей
+  const [isEmailValid, setIsEmailValid] = useState(true);
+  const [isPasswordValid, setIsPasswordValid] = useState(true);
+  const [emailError, setEmailError] = useState<string>('');
+  const [passwordError, setPasswordError] = useState<string>('');
+
+  // Обработчик изменения email
+  const handleEmailChange = useCallback((value: string | null) => {
+    const newFormData = { ...formData, email: value || '' };
+    setFormData(newFormData);
+   
+    if (!value && customValidation.email) {
+      const error = customValidation.email('');
+      setEmailError(error || 'Некорректный email');
     }
-    let loginData = useRef<loginDataType>({
-        mail: "",
-        pass: ""
-    })
+    
+    onChange?.(newFormData);
+  }, [formData, onChange, customValidation]);
+
+  // Обработчик изменения пароля
+  const handlePasswordChange = useCallback((value: string) => {
+    const newFormData = { ...formData, password: value };
+    setFormData(newFormData);
+    setIsPasswordValid(true); // Сбрасываем до blur
+    onChange?.(newFormData);
+  }, [formData, onChange]);
+
+  // Обработчик blur пароля (для валидации)
+  const handlePasswordBlur = useCallback((value: string) => {
+    // Валидация уже произошла внутри компонента
+    // Здесь можно добавить дополнительную логику
+    console.debug('Password blurred:', value);
+  }, []);
 
 
-    let [validRegister, setValidRegister] = useState<string>("")
-    let [forgotPass, setForgotPass] = useState<boolean>(false)
-    let invalidPassText = useRef<string>("Пароли не совпадают")
-    let invalidMailText = useRef<string>("Пустое поле ввода")
-    let [invalidRequest,setInvalidRequest] = useState<boolean>(false)
-    let [refresh, setRefresh] = useState<boolean>(false)
-    let { onChange, onLogin, forgetPass } = { ...props }
-    const setFormData = (data: string, name: string) => {
-        formData.current[name] = data
+  // Обработчик чекбокса
+  const handleRememberChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setFormData(prev => ({ ...prev, remember: checked }));
+    onChange?.({ ...formData, remember: checked });
+  }, [formData, onChange]);
+
+  // Обработчик отправки формы
+  const handleSubmit = useCallback(async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    
+    // Проверяем что email валиден
+    if (!formData.email || !isEmailValid) {
+      setIsEmailValid(false);
+      setEmailError('Email обязателен');
+      return;
     }
-    const setLoginData = (data: string, name: string) => {
-        loginData.current[name] = data
+    
+    // Проверяем что пароль введен
+    if (!formData.password) {
+      setIsPasswordValid(false);
+      setPasswordError('Пароль обязателен');
+      return;
     }
-    const validRuleForPass = (data: string) => {
-        if (data.length < 6) {
-            return "Длина пароля должна быть больше 6 символов"
-        }
-    }
+    
+    // Отправляем форму
+    await onSubmit(formData);
+  }, [formData, isEmailValid, onSubmit]);
 
+  const isFormValid = isEmailValid && isPasswordValid && formData.email && formData.password;
 
-    return (
-        <div onClick={(e) => { e.stopPropagation() }} className={s.main}>
-
-            <div className={s.caption}>Login</div>
-            {invalidRequest?<div>Неверный mail или пароль</div>:null}
-            <MailInputWithValidation valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setLoginData(data, "mail") }} placeholder={"Электронный адрес"} />
-            <PasswordInputWithValidation showToggle={true} validRule={validRuleForPass} valid={!validationObject.current.pass} invalidText={invalidPassText.current} onChange={(data) => { setLoginData(data, "pass") }} className={s.loginInput} placeholder="Password" />
-            <Button className={s.loginButton} onClick={() => {
-                setInvalidRequest(false)
-                loginUser(loginData.current, (loged) => {
-                    if (loged) {
-                        onLogin(true)
-                    } else {
-                        setInvalidRequest(true)
-                        onLogin(false)
-                    }
-                })
-            }} text='Log in' />
-            <span className={s.forgetPass} onClick={forgetPass}>
-                Забыли пароль
-            </span>
-
+  return (
+    <div 
+      onClick={(e) => e.stopPropagation()} 
+      className={`${s.main} ${className.container || ''}`}
+    >
+      {title && <div className={s.caption}>{title}</div>}
+      {subtitle && <div className={s.subtitle}>{subtitle}</div>}
+      
+      {error && (
+        <div className={s.globalError}>
+          {error}
         </div>
+      )}
+      
+      <form onSubmit={handleSubmit} className={s.form}>
+        <MailInputWithValidation 
+          valid={isEmailValid}
+          invalidText={emailError || 'Некорректный email'}
+          value={formData.email}
+          onChange={handleEmailChange}
+          placeholder="Электронный адрес"
+          className={className.input}
+        />
+        
+        <PasswordInputWithValidation 
+          showToggle={true}
+          valid={isPasswordValid}
+          invalidText={passwordError || 'Некорректный пароль'}
+          value={formData.password}
+          onChange={handlePasswordChange}
+          onBlur={handlePasswordBlur}
+          validRule={customValidation.password}
+          className={`${s.loginInput} ${className.input || ''}`}
+          placeholder="Пароль"
+        />
+        
+        {showRemember && (
+          <label className={s.rememberLabel}>
+            <input
+              type="checkbox"
+              checked={formData.remember}
+              onChange={handleRememberChange}
+              className={className.checkbox}
+            />
+            <span>Запомнить меня</span>
+          </label>
+        )}
+        
+        <Button 
+          className={s.loginButton}
+          onClick={() => handleSubmit()}
+          text={isLoading ? 'Загрузка...' : submitButtonText}
+          disabled={isLoading || !isFormValid}
+          type="submit"
+        />
+        
+        {showForgotPassword && onForgotPassword && (
+          <span 
+            className={s.forgetPass} 
+            onClick={onForgotPassword}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onForgotPassword();
+              }
+            }}
+          >
+            Забыли пароль?
+          </span>
+        )}
+      </form>
+    </div>
+  );
+};
 
-    )
-}
-
-
-export default LoginForm
+export default LoginForm;

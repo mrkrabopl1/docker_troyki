@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
+	db "github.com/mrkrabopl1/go_db/db/sqlc"
 	"github.com/mrkrabopl1/go_db/token"
 )
 
@@ -17,9 +18,12 @@ const (
 	authorizationHeaderKey  = "authorization"
 	authorizationTypeBearer = "bearer"
 	authorizationPayloadKey = "authorization_payload"
+	adminPayloadKey         = "admin"
 )
 
-// AuthMiddleware creates a gin middleware for authorization
+// ========== ОБЫЧНАЯ AUTH MIDDLEWARE (ДЛЯ ПОЛЬЗОВАТЕЛЕЙ) ==========
+
+// AuthMiddleware creates a gin middleware for authorization (для пользователей)
 func authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authorizationHeader := ctx.GetHeader(authorizationHeaderKey)
@@ -51,23 +55,36 @@ func authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 			return
 		}
 
+		// Проверяем, что это не админ (админы не должны использовать этот middleware)
+		if payload.IsAdmin {
+			err := errors.New("admin cannot use user auth")
+			ctx.AbortWithStatusJSON(http.StatusForbidden, errorResponse(err))
+			return
+		}
+
 		ctx.Set(authorizationPayloadKey, payload)
 		ctx.Next()
 	}
 }
 
+// ========== SESSION MIDDLEWARE (ДЛЯ УНИКАЛЬНЫХ ПОСЕТИТЕЛЕЙ) ==========
+
 func createSession(ctx *gin.Context, s *Server) {
 	validDate := pgtype.Date{
 		Time:  time.Now(),
-		Valid: true, // This is crucial!
+		Valid: true,
 	}
 	id, err := s.store.CreateUniqueCustomer(ctx, validDate)
 	if err != nil {
-		//log.WithCaller().Err(err).Msg("")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	myCookie, err := s.tokenMaker.CreatePasetoCookie(id, "unique", 36000)
+	// Создаем cookie для уникального посетителя (не админ)
+	myCookie, err := s.tokenMaker.CreateUserCookie(id, 36000, true, true)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
 	ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
 }
 
@@ -76,20 +93,124 @@ func AuthMiddleware(s *Server) gin.HandlerFunc {
 		token, err := ctx.Cookie("unique")
 		if err != nil {
 			createSession(ctx, s)
-			ctx.Next() // Allow request to proceed after creating a session
+			ctx.Next()
 			return
 		}
 
 		cookie, err := s.tokenMaker.VerifyToken(token)
 		if err != nil || cookie.ExpiredAt.Before(time.Now()) {
 			createSession(ctx, s)
-			ctx.Next() // Allow request to proceed after refreshing the session
+			ctx.Next()
 			return
 		}
 
-		ctx.Next() // Proceed if the token is valid
+		ctx.Next()
 	}
 }
+
+// ========== ADMIN MIDDLEWARE (ДЛЯ АДМИНОВ) ==========
+
+// AdminAuthMiddleware проверяет авторизацию админа через заголовок Authorization
+func (s *Server) AdminAuthMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		authorizationHeader := ctx.GetHeader(authorizationHeaderKey)
+		fmt.Println(authorizationHeader, "AdminAuthMiddleware", "fndkjbfkjsdnfjsdbflsdfjhsbdfllsjbfs")
+
+		if len(authorizationHeader) == 0 {
+			// Пробуем взять из cookie
+			adminToken, err := ctx.Cookie("admin_token")
+			fmt.Println(adminToken, "adminToken", "111111111111111111111111111111111111", err)
+			if err != nil {
+				ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(errors.New("authorization required")))
+				return
+			}
+			authorizationHeader = "Bearer " + adminToken
+		}
+
+		fields := strings.Fields(authorizationHeader)
+		if len(fields) < 2 {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(errors.New("invalid authorization header format")))
+			return
+		}
+
+		authorizationType := strings.ToLower(fields[0])
+		if authorizationType != authorizationTypeBearer {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(fmt.Errorf("unsupported authorization type %s", authorizationType)))
+			return
+		}
+
+		accessToken := fields[1]
+		payload, err := s.tokenMaker.VerifyToken(accessToken)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(err))
+			return
+		}
+
+		// Проверяем, что это админ
+		if !payload.IsAdmin {
+			ctx.AbortWithStatusJSON(http.StatusForbidden, errorResponse(errors.New("admin access required")))
+			return
+		}
+		fmt.Println(payload, "payload", "2222222222222222222222222222222222111111111111111111111111111111111111")
+		// Проверяем, существует ли админ в БД и активен ли он
+		admin, err := s.store.GetAdminByID(ctx, payload.UserID)
+		if err != nil || !admin.IsActive.Bool {
+			ctx.AbortWithStatusJSON(http.StatusForbidden, errorResponse(errors.New("admin account not found or disabled")))
+			return
+		}
+		fmt.Println(admin, "admin", "33333333333333333333333333333333333", adminPayloadKey)
+		ctx.Set(adminPayloadKey, admin)
+		ctx.Next()
+	}
+}
+
+// AdminOnlyMiddleware проверяет, что админ имеет роль admin (не superadmin)
+func (s *Server) AdminOnlyMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		role, exists := ctx.Get("admin_role")
+		if !exists {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(errors.New("authentication required")))
+			return
+		}
+
+		if role != "admin" && role != "superadmin" {
+			ctx.AbortWithStatusJSON(http.StatusForbidden, errorResponse(errors.New("admin access required")))
+			return
+		}
+
+		ctx.Next()
+	}
+}
+
+// SuperAdminMiddleware проверяет, что админ имеет роль superadmin
+func (s *Server) SuperAdminMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		admin, exists := ctx.Get(adminPayloadKey)
+		if !exists {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(errors.New("authentication required")))
+			return
+		}
+
+		// Приводим к GetAdminByIDRow (не db.Admin!)
+		adminObj, ok := admin.(db.GetAdminByIDRow)
+		if !ok {
+			// Попробуем через рефлексию посмотреть реальный тип
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError,
+				gin.H{"error": fmt.Sprintf("invalid admin data type: %T", admin)})
+			return
+		}
+
+		// Проверяем роль - теперь это AdminRoleEnum
+		if adminObj.Role != db.AdminRoleEnumSuperadmin {
+			ctx.AbortWithStatusJSON(http.StatusForbidden, errorResponse(errors.New("superadmin access required")))
+			return
+		}
+
+		ctx.Next()
+	}
+}
+
+// ========== CACHED MIDDLEWARE ==========
 
 func CachedMiddleware(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
@@ -115,7 +236,7 @@ func CachedMiddleware(s *Server) gin.HandlerFunc {
 			} else {
 				numId, err := strconv.ParseInt(idStr, 10, 32)
 				if err == nil {
-					s.store.SetSnickersHistory(ctx, int32(numId), user.UserId)
+					s.store.SetSnickersHistory(ctx, int32(numId), user.UserID)
 				}
 			}
 			ctx.Abort()

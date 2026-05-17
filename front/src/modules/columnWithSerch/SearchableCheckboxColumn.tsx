@@ -84,7 +84,7 @@ const SearchableCheckboxColumn: React.FC<SearchableCheckboxColumnProps> = ({
                 />
             </div>
             <Scroller maxHeight={200}>
-                <div style={{ marginTop: '16px' }}>
+                <div>
                     <CheckBoxColumn
                         data={filteredData}
                         onChange={handleCheckboxChange}

@@ -77,6 +77,14 @@ type PostDataAndFiltersByCategoryAndType struct {
 	Filters  ProductsFilterStruct `json:"filters"`
 	SortType int32                `json:"sortType"`
 }
+type PostDataAndFiltersForAdminByCategoryAndType struct {
+	// Define your struct to represent the JSON data
+	Name     string                       `json:"name"`
+	Page     int                          `json:"page"`
+	Size     int                          `json:"size"`
+	Filters  ProductsForAdminFilterStruct `json:"filters"`
+	SortType int32                        `json:"sortType"`
+}
 type VerifyData struct {
 	Token string `json:"token"`
 }

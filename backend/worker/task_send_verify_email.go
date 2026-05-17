@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/hibiken/asynq"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
@@ -19,6 +18,27 @@ const TaskSendOrderEmail = "task:send_order_email"
 const TaskSendNewsletterVerification = "task:send_newsletter_verification"
 const TaskSendNewsletterWelcome = "task:send_newsletter_welcome"
 const TaskSendNewsletterBroadcast = "task:send_newsletter_broadcast"
+
+const TaskSendAdminWelcome = "task:send_admin_welcome"
+const TaskSendAdminPasswordReset = "task:send_admin_password_reset"
+const TaskSendAdminPasswordChanged = "task:send_admin_password_changed"
+
+// Структуры для административных email
+type PayloadSendAdminWelcome struct {
+	Email string `json:"email"`
+	Name  string `json:"name"`
+}
+
+type PayloadSendAdminPasswordReset struct {
+	Email     string `json:"email"`
+	Name      string `json:"name"`
+	ResetLink string `json:"reset_link"`
+}
+
+type PayloadSendAdminPasswordChanged struct {
+	Email string `json:"email"`
+	Name  string `json:"name"`
+}
 
 // Существующие структуры
 type PayloadSendVerifyEmail struct {
@@ -164,6 +184,71 @@ func (distributor *RedisTaskDistributor) DistributeTaskSendNewsletterBroadcast(
 
 	log.Info().Str("type", task.Type()).Int("recipients", len(payload.Emails)).
 		Str("queue", info.Queue).Int("max_retry", info.MaxRetry).Msg("enqueued newsletter broadcast task")
+	return nil
+}
+
+// worker/distributor.go
+
+func (distributor *RedisTaskDistributor) DistributeTaskSendAdminWelcome(
+	ctx context.Context,
+	payload *PayloadSendAdminWelcome,
+	opts ...asynq.Option,
+) error {
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	task := asynq.NewTask(TaskSendAdminWelcome, jsonPayload, opts...)
+	info, err := distributor.client.EnqueueContext(ctx, task)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task: %w", err)
+	}
+
+	log.Info().Str("type", task.Type()).Str("email", payload.Email).
+		Str("queue", info.Queue).Int("max_retry", info.MaxRetry).Msg("enqueued admin welcome task")
+	return nil
+}
+
+func (distributor *RedisTaskDistributor) DistributeTaskSendAdminPasswordReset(
+	ctx context.Context,
+	payload *PayloadSendAdminPasswordReset,
+	opts ...asynq.Option,
+) error {
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	task := asynq.NewTask(TaskSendAdminPasswordReset, jsonPayload, opts...)
+	info, err := distributor.client.EnqueueContext(ctx, task)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task: %w", err)
+	}
+
+	log.Info().Str("type", task.Type()).Str("email", payload.Email).
+		Str("queue", info.Queue).Int("max_retry", info.MaxRetry).Msg("enqueued admin password reset task")
+	return nil
+}
+
+func (distributor *RedisTaskDistributor) DistributeTaskSendAdminPasswordChanged(
+	ctx context.Context,
+	payload *PayloadSendAdminPasswordChanged,
+	opts ...asynq.Option,
+) error {
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	task := asynq.NewTask(TaskSendAdminPasswordChanged, jsonPayload, opts...)
+	info, err := distributor.client.EnqueueContext(ctx, task)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task: %w", err)
+	}
+
+	log.Info().Str("type", task.Type()).Str("email", payload.Email).
+		Str("queue", info.Queue).Int("max_retry", info.MaxRetry).Msg("enqueued admin password changed task")
 	return nil
 }
 
@@ -418,12 +503,138 @@ func (processor *RedisTaskProcessor) ProcessTaskSendNewsletterBroadcast(ctx cont
 	return nil
 }
 
-// Вспомогательная функция для генерации случайной строки (если нет util.RandomString)
-func generateRandomString(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
+// worker/processor.go
+
+func (processor *RedisTaskProcessor) ProcessTaskSendAdminWelcome(ctx context.Context, task *asynq.Task) error {
+	var payload PayloadSendAdminWelcome
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", asynq.SkipRetry)
 	}
-	return string(b)
+
+	subject := "Welcome to Troyki Sail Admin Panel"
+
+	content := fmt.Sprintf(`
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Welcome to the Admin Panel!</h2>
+            <p>Hello <strong>%s</strong>,</p>
+            <p>Your administrator account has been created successfully.</p>
+            
+            <h3>Account Details:</h3>
+            <table style="width: 100%%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Email:</strong></td>
+                    <td style="padding: 8px; border-bottom: 1px solid #ddd;">%s</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Role:</strong></td>
+                    <td style="padding: 8px; border-bottom: 1px solid #ddd;">Administrator</td>
+                </tr>
+            </table>
+            
+            <p>You can now log in to the admin panel and start managing the store.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="http://localhost:3000/admin/login" style="background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                    Go to Admin Panel
+                </a>
+            </div>
+            
+            <p>For security reasons, please change your password after your first login.</p>
+            
+            <p>Best regards,<br/>The Troyki Sail Team</p>
+        </div>
+    `, payload.Name, payload.Email)
+
+	to := []string{payload.Email}
+	err := processor.mailer.SendEmail(subject, content, to, nil, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to send admin welcome email: %w", err)
+	}
+
+	log.Info().Str("type", task.Type()).Str("email", payload.Email).Msg("sent admin welcome email")
+	return nil
+}
+
+func (processor *RedisTaskProcessor) ProcessTaskSendAdminPasswordReset(ctx context.Context, task *asynq.Task) error {
+	var payload PayloadSendAdminPasswordReset
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", asynq.SkipRetry)
+	}
+
+	subject := "Password Reset Request - Troyki Sail Admin Panel"
+
+	content := fmt.Sprintf(`
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Password Reset Request</h2>
+            <p>Hello <strong>%s</strong>,</p>
+            <p>We received a request to reset your password for the admin panel.</p>
+            
+            <p>If you made this request, please click the button below to reset your password:</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="%s" style="background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                    Reset Password
+                </a>
+            </div>
+            
+            <p><strong>Important:</strong> This link will expire in 1 hour.</p>
+            
+            <p>If you didn't request a password reset, please ignore this email. Your password will remain unchanged.</p>
+            
+            <p>For security reasons, never share this link with anyone.</p>
+            
+            <p>Best regards,<br/>The Troyki Sail Team</p>
+            
+            <hr />
+            <p style="font-size: 12px; color: #666;">
+                If the button doesn't work, copy and paste this link into your browser:<br/>
+                %s
+            </p>
+        </div>
+    `, payload.Name, payload.ResetLink, payload.ResetLink)
+
+	to := []string{payload.Email}
+	err := processor.mailer.SendEmail(subject, content, to, nil, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to send admin password reset email: %w", err)
+	}
+
+	log.Info().Str("type", task.Type()).Str("email", payload.Email).Msg("sent admin password reset email")
+	return nil
+}
+
+func (processor *RedisTaskProcessor) ProcessTaskSendAdminPasswordChanged(ctx context.Context, task *asynq.Task) error {
+	var payload PayloadSendAdminPasswordChanged
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", asynq.SkipRetry)
+	}
+
+	subject := "Password Changed - Troyki Sail Admin Panel"
+
+	content := fmt.Sprintf(`
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Password Changed</h2>
+            <p>Hello <strong>%s</strong>,</p>
+            <p>Your admin panel password has been successfully changed.</p>
+            
+            <p>If you made this change, no further action is needed.</p>
+            
+            <div style="background-color: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 4px; margin: 20px 0;">
+                <p style="margin: 0; color: #856404;">
+                    <strong>⚠️ Security Notice:</strong> If you did not change your password, please contact support immediately.
+                </p>
+            </div>
+            
+            <p>Best regards,<br/>The Troyki Sail Team</p>
+        </div>
+    `, payload.Name)
+
+	to := []string{payload.Email}
+	err := processor.mailer.SendEmail(subject, content, to, nil, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to send admin password changed email: %w", err)
+	}
+
+	log.Info().Str("type", task.Type()).Str("email", payload.Email).Msg("sent admin password changed email")
+	return nil
 }

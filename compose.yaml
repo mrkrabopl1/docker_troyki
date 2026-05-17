@@ -19,6 +19,8 @@ services:
   goapp1:
     container_name: goapp1
     image: goapp1:1.0.0
+    volumes:
+      - ./front/images:/app/front/images
     build:
       context: ./backend
       dockerfile: go.dockerfile

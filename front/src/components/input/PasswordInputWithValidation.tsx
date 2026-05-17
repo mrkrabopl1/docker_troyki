@@ -1,3 +1,4 @@
+// components/input/PasswordInputWithValidation.tsx
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import s from "./style.module.css";
 
@@ -10,9 +11,20 @@ type PasswordInputProps = {
     className?: string;
     placeholder?: string;
     value?: string;
-    invalidText: string;
+    invalidText?: string;
     showToggle?: boolean;
     checkValid?: boolean;
+};
+
+// Дефолтное правило валидации
+const DEFAULT_PASSWORD_VALIDATION = (value: string): string | null => {
+    if (!value || value.trim() === '') {
+        return 'Пароль обязателен';
+    }
+    if (value.length < 6) {
+        return 'Пароль должен быть не менее 6 символов';
+    }
+    return null;
 };
 
 const PasswordInputWithValidation: React.FC<PasswordInputProps> = ({
@@ -20,11 +32,11 @@ const PasswordInputWithValidation: React.FC<PasswordInputProps> = ({
     onChange,
     onFocus,
     onBlur,
-    validRule,
+    validRule = DEFAULT_PASSWORD_VALIDATION,
     className = '',
     placeholder = '',
     value = '',
-    invalidText,
+    invalidText = 'Некорректный пароль',
     showToggle = false,
     checkValid
 }) => {
@@ -32,7 +44,7 @@ const PasswordInputWithValidation: React.FC<PasswordInputProps> = ({
     const [inputValue, setInputValue] = useState(value);
     const [isValid, setIsValid] = useState(valid);
     const [isVisible, setIsVisible] = useState(false);
-    const errorMessageRef = useRef(invalidText);
+    const [errorMessage, setErrorMessage] = useState(invalidText);
     const hasChange = useRef<boolean>(false);
 
     // Синхронизация с внешними значениями
@@ -43,17 +55,29 @@ const PasswordInputWithValidation: React.FC<PasswordInputProps> = ({
     useEffect(() => {
         if (checkValid) {
             setIsValid(valid);
-            errorMessageRef.current = invalidText;
+            setErrorMessage(invalidText);
         }
+    }, [valid, invalidText, checkValid]);
 
-    }, [valid, invalidText,checkValid]);
+    // Валидация значения
+    const validateValue = useCallback((val: string): boolean => {
+        const error = validRule(val);
+        if (error) {
+            setErrorMessage(error);
+            return false;
+        }
+        return true;
+    }, [validRule]);
 
     // Обработчики с useCallback
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         hasChange.current = true;
         const newValue = e.target.value;
         setInputValue(newValue);
+        
+        // При изменении сбрасываем ошибку
         setIsValid(true);
+        
         onChange(newValue);
     }, [onChange]);
 
@@ -62,15 +86,11 @@ const PasswordInputWithValidation: React.FC<PasswordInputProps> = ({
     }, [onFocus]);
 
     const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
-        if (validRule) {
-            const error = validRule(inputValue);
-            if (error) {
-                errorMessageRef.current = error;
-                setIsValid(false);
-            }
-        }
-        onBlur?.(e.target.value);
-    }, [validRule, onBlur, inputValue]);
+        const val = e.target.value;
+        const isValidValue = validateValue(val);
+        setIsValid(isValidValue);
+        onBlur?.(val);
+    }, [validateValue, onBlur]);
 
     const toggleVisibility = useCallback((visible: boolean) => {
         setIsVisible(visible);
@@ -88,9 +108,10 @@ const PasswordInputWithValidation: React.FC<PasswordInputProps> = ({
                     backgroundImage: `url('/${isVisible ? 'visOn' : 'visOff'}.svg')`,
                     width: "24px",
                     height: "24px",
-                    backgroundSize: "contain"
+                    backgroundSize: "contain",
+                    cursor: "pointer"
                 }}
-                aria-label={isVisible ? "Hide password" : "Show password"}
+                aria-label={isVisible ? "Скрыть пароль" : "Показать пароль"}
                 role="button"
             />
         )
@@ -121,7 +142,7 @@ const PasswordInputWithValidation: React.FC<PasswordInputProps> = ({
             </div>
             {!isValid && (
                 <div className={s.errorMessage} style={{ color: "red" }}>
-                    {errorMessageRef.current}
+                    {errorMessage}
                 </div>
             )}
         </div>

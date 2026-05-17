@@ -73,6 +73,7 @@ type ProductsResponseD struct {
 	Id       int32       `json:"id"`
 	Image    []string    `json:"imgs"`
 	Discount interface{} `json:"discount"`
+	Status   string      `json:"status"`
 }
 type CartResponse struct {
 	Name     string `json:"name"`

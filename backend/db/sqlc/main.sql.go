@@ -7,38 +7,101 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const getMainPageBanners = `-- name: GetMainPageBanners :many
-SELECT 
-    id,
-    title,
-    subtitle,
-    description,
-    image_url,
-    button_text,
-    button_url
-FROM homepage_blocks
+const countActiveBanners = `-- name: CountActiveBanners :one
+SELECT COUNT(*) FROM banners WHERE is_active = true
+`
+
+func (q *Queries) CountActiveBanners(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveBanners)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createBanner = `-- name: CreateBanner :one
+INSERT INTO banners (title, image_url, link_url, is_active)
+VALUES ($1, $2, $3, $4)
+RETURNING id, title, image_url, link_url, is_active, created_at, updated_at
+`
+
+type CreateBannerParams struct {
+	Title    pgtype.Text `json:"title"`
+	ImageUrl string      `json:"image_url"`
+	LinkUrl  string      `json:"link_url"`
+	IsActive bool        `json:"is_active"`
+}
+
+type CreateBannerRow struct {
+	ID        int32              `json:"id"`
+	Title     pgtype.Text        `json:"title"`
+	ImageUrl  string             `json:"image_url"`
+	LinkUrl   string             `json:"link_url"`
+	IsActive  bool               `json:"is_active"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) CreateBanner(ctx context.Context, arg CreateBannerParams) (CreateBannerRow, error) {
+	row := q.db.QueryRow(ctx, createBanner,
+		arg.Title,
+		arg.ImageUrl,
+		arg.LinkUrl,
+		arg.IsActive,
+	)
+	var i CreateBannerRow
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.ImageUrl,
+		&i.LinkUrl,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteBanner = `-- name: DeleteBanner :exec
+DELETE FROM banners WHERE id = $1
+`
+
+func (q *Queries) DeleteBanner(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, deleteBanner, id)
+	return err
+}
+
+const getActiveBanners = `-- name: GetActiveBanners :many
+SELECT id, title, image_url, link_url
+FROM banners
+WHERE is_active = true
 ORDER BY id ASC
 `
 
-func (q *Queries) GetMainPageBanners(ctx context.Context) ([]HomepageBlock, error) {
-	rows, err := q.db.Query(ctx, getMainPageBanners)
+type GetActiveBannersRow struct {
+	ID       int32       `json:"id"`
+	Title    pgtype.Text `json:"title"`
+	ImageUrl string      `json:"image_url"`
+	LinkUrl  string      `json:"link_url"`
+}
+
+func (q *Queries) GetActiveBanners(ctx context.Context) ([]GetActiveBannersRow, error) {
+	rows, err := q.db.Query(ctx, getActiveBanners)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []HomepageBlock
+	var items []GetActiveBannersRow
 	for rows.Next() {
-		var i HomepageBlock
+		var i GetActiveBannersRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Title,
-			&i.Subtitle,
-			&i.Description,
 			&i.ImageUrl,
-			&i.ButtonText,
-			&i.ButtonUrl,
+			&i.LinkUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -48,4 +111,125 @@ func (q *Queries) GetMainPageBanners(ctx context.Context) ([]HomepageBlock, erro
 		return nil, err
 	}
 	return items, nil
+}
+
+const getAllBanners = `-- name: GetAllBanners :many
+SELECT id, title, image_url, link_url, is_active, created_at, updated_at
+FROM banners
+ORDER BY id DESC
+`
+
+type GetAllBannersRow struct {
+	ID        int32              `json:"id"`
+	Title     pgtype.Text        `json:"title"`
+	ImageUrl  string             `json:"image_url"`
+	LinkUrl   string             `json:"link_url"`
+	IsActive  bool               `json:"is_active"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetAllBanners(ctx context.Context) ([]GetAllBannersRow, error) {
+	rows, err := q.db.Query(ctx, getAllBanners)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllBannersRow
+	for rows.Next() {
+		var i GetAllBannersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.ImageUrl,
+			&i.LinkUrl,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getBannerByID = `-- name: GetBannerByID :one
+SELECT id, title, image_url, link_url, is_active, created_at, updated_at
+FROM banners
+WHERE id = $1
+`
+
+type GetBannerByIDRow struct {
+	ID        int32              `json:"id"`
+	Title     pgtype.Text        `json:"title"`
+	ImageUrl  string             `json:"image_url"`
+	LinkUrl   string             `json:"link_url"`
+	IsActive  bool               `json:"is_active"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetBannerByID(ctx context.Context, id int32) (GetBannerByIDRow, error) {
+	row := q.db.QueryRow(ctx, getBannerByID, id)
+	var i GetBannerByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.ImageUrl,
+		&i.LinkUrl,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateBanner = `-- name: UpdateBanner :exec
+UPDATE banners 
+SET 
+    title = COALESCE($2, title),
+    image_url = COALESCE($3, image_url),
+    link_url = COALESCE($4, link_url),
+    is_active = COALESCE($5, is_active),
+    updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateBannerParams struct {
+	ID       int32       `json:"id"`
+	Title    pgtype.Text `json:"title"`
+	ImageUrl string      `json:"image_url"`
+	LinkUrl  string      `json:"link_url"`
+	IsActive bool        `json:"is_active"`
+}
+
+func (q *Queries) UpdateBanner(ctx context.Context, arg UpdateBannerParams) error {
+	_, err := q.db.Exec(ctx, updateBanner,
+		arg.ID,
+		arg.Title,
+		arg.ImageUrl,
+		arg.LinkUrl,
+		arg.IsActive,
+	)
+	return err
+}
+
+const updateBannerImage = `-- name: UpdateBannerImage :exec
+UPDATE banners 
+SET image_url = $2, updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateBannerImageParams struct {
+	ID       int32  `json:"id"`
+	ImageUrl string `json:"image_url"`
+}
+
+func (q *Queries) UpdateBannerImage(ctx context.Context, arg UpdateBannerImageParams) error {
+	_, err := q.db.Exec(ctx, updateBannerImage, arg.ID, arg.ImageUrl)
+	return err
 }
