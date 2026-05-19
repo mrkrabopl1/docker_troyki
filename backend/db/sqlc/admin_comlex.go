@@ -75,8 +75,16 @@ func (store *SQLStore) GetAllProductsAndFilters(ctx context.Context, page int, s
 	}, nil
 }
 
+type ProductsAdminResponse struct {
+	Name     string      `json:"name"`
+	Id       int32       `json:"id"`
+	Image    string      `json:"image_path"`
+	Discount interface{} `json:"discount"`
+	Price    int         `json:"price"`
+	Status   string      `json:"status"`
+}
 type ProductsInfoAdminResponse struct {
-	ProductsResponseD
+	ProductsAdminResponse
 	Status    string             `json:"status"`
 	Firm      string             `json:"firm"`
 	Type      int32              `json:"type"`
@@ -89,12 +97,12 @@ func (store *SQLStore) buildAdminProductsResponse(rows []GetProductsForAdminByFi
 
 	for _, row := range rows {
 		products = append(products, ProductsInfoAdminResponse{
-			ProductsResponseD: ProductsResponseD{
+			ProductsAdminResponse: ProductsAdminResponse{
 				Id:       row.ID,
 				Name:     row.Name,
 				Discount: row.DiscountPercent,
 				Price:    int(row.Minprice),
-				Image:    store.getProductImages(row.ImagePath, 2),
+				Image:    store.getProductMainImage(row.ImagePath),
 			},
 			Status:    row.Status,
 			Firm:      row.Firm,

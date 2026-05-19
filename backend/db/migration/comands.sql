@@ -811,11 +811,49 @@
 -- ADD COLUMN image_path TEXT;
 
 -- линии удаляются вместе с брендом
-ALTER TABLE brand_lines
-  ADD CONSTRAINT fk_brand_lines_brand
-  FOREIGN KEY (brand_id) REFERENCES brands(id) ON DELETE CASCADE;
+-- ALTER TABLE brand_lines
+--   ADD CONSTRAINT fk_brand_lines_brand
+--   FOREIGN KEY (brand_id) REFERENCES brands(id) ON DELETE CASCADE;
 
--- товары НЕ удаляются – бренд удалить нельзя, пока есть товары
-ALTER TABLE products
-  ADD CONSTRAINT fk_products_brand
-  FOREIGN KEY (brand_id) REFERENCES brands(id) ON DELETE RESTRICT;
+-- -- товары НЕ удаляются – бренд удалить нельзя, пока есть товары
+-- ALTER TABLE products
+--   ADD CONSTRAINT fk_products_brand
+--   FOREIGN KEY (brand_id) REFERENCES brands(id) ON DELETE RESTRICT;
+
+
+
+
+CREATE TABLE IF NOT EXISTS public.admin_invites (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    role admin_role_enum NOT NULL DEFAULT 'admin',
+    token VARCHAR(64) UNIQUE NOT NULL,
+    invited_by INTEGER REFERENCES admins(id) ON DELETE SET NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    used_by INTEGER REFERENCES admins(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ✅ Главный индекс: только одно активное приглашение на email
+CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_invites_active_email 
+ON admin_invites (email) 
+WHERE used_at IS NULL AND expires_at > NOW();
+
+-- Индексы для быстрого поиска
+CREATE INDEX IF NOT EXISTS idx_admin_invites_token 
+ON admin_invites(token) 
+WHERE used_at IS NULL AND expires_at > NOW();
+
+CREATE INDEX IF NOT EXISTS idx_admin_invites_email 
+ON admin_invites(email) 
+WHERE used_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_admin_invites_expires 
+ON admin_invites(expires_at) 
+WHERE used_at IS NULL;
+
+-- Индекс для поиска приглашений конкретного админа
+CREATE INDEX IF NOT EXISTS idx_admin_invites_invited_by 
+ON admin_invites(invited_by);

@@ -9,6 +9,7 @@ services:
       - "80:80"
     volumes:
       - ./front/images:/usr/share/nginx/html/images:ro
+      - ./front/htpasswd:/etc/nginx/.htpasswd:ro
     depends_on:
       - goapp1
     environment:

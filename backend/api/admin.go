@@ -768,38 +768,49 @@ func (s *Server) handleAdminDeleteProductImage(c *gin.Context) {
 	}
 
 	var req struct {
-		ImageURL string `json:"image_url" binding:"required"`
+		ImagePath string `json:"imagePath" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	admin, _ := c.Get("admin_id")
+	admin, _ := c.Get("admin")
 	adminRow := admin.(db.GetAdminByIDRow)
 
-	// Удаляем файл через ImageService
-	if err := s.imageService.DeleteProductImage(req.ImageURL); err != nil {
+	// Получаем информацию о товаре до удаления
+	product, err := s.store.GetProductsInfoById(c.Request.Context(), int32(productID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get product info"})
+		return
+	}
+
+	// Формируем полный путь и удаляем файл
+	fullPath := req.ImagePath
+	fmt.Println(fullPath)
+	if err := s.imageService.DeleteProductImage(fullPath); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete image file"})
 		return
 	}
 
-	// Получаем текущее количество изображений товара
-	product, err := s.store.GetProductsInfoById(c.Request.Context(), int32(productID))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get product images"})
-		return
-	}
-	newCount := product.ImageCount - 1
+	// Получаем актуальное количество изображений после удаления
+	newCount := s.imageService.ImagePathBuilder.CountExistingProductImages(product.ImagePath)
+	fmt.Println(newCount, "ckkmmlxkcmlkxzclkzxc")
 	if newCount < 0 {
 		newCount = 0
 	}
 
 	// Обновляем счетчик в БД
-	err = s.store.UpdateProduct(c.Request.Context(), db.UpdateProductParams{
+	err = s.store.UpdateProductImageCount(c.Request.Context(), db.UpdateProductImageCountParams{
 		ID:         int32(productID),
 		ImageCount: newCount,
 	})
+
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update product"})
+		return
+	}
 
 	// Логируем действие
 	go func() {
@@ -817,7 +828,7 @@ func (s *Server) handleAdminDeleteProductImage(c *gin.Context) {
 			Action:     "delete",
 			EntityType: pgtype.Text{String: "product", Valid: true},
 			EntityID:   pgtype.Int4{Int32: int32(productID), Valid: true},
-			Details:    pgtype.Text{String: "Deleted image for product ID: " + c.Param("id"), Valid: true},
+			Details:    pgtype.Text{String: fmt.Sprintf("Deleted image %s for product ID: %d", req.ImagePath, productID), Valid: true},
 			IpAddress:  ipAddr,
 		}
 
@@ -826,6 +837,7 @@ func (s *Server) handleAdminDeleteProductImage(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Image deleted successfully"})
 }
+
 func (s *Server) handleAdminGetTempImages(c *gin.Context) {
 	// ========== 1. ПРОВЕРКА АДМИНА ==========
 	_, exists := c.Get("admin")
@@ -1002,7 +1014,7 @@ func (s *Server) handleAdminCreateAdmin(c *gin.Context) {
 		return
 	}
 
-	currentAdminID, _ := c.Get("admin_id")
+	currentAdminID, _ := c.Get("admin")
 
 	// Хешируем пароль
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -1074,7 +1086,7 @@ func (s *Server) handleAdminGetAdmins(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 
 	admins, err := s.store.ListAdmins(c.Request.Context(), db.ListAdminsParams{
-		Offset: int32(page),
+		Offset: int32((page - 1) * limit),
 		Limit:  int32(limit),
 	})
 	if err != nil {
@@ -2356,7 +2368,68 @@ func (s *Server) handleAdminDeleteBanner(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Banner deleted successfully"})
 }
+func (s *Server) handleAdminInviteAdmin(c *gin.Context) {
+	var req struct {
+		Email string `json:"email" binding:"required,email"`
+		Role  string `json:"role" binding:"required,oneof=admin superadmin"`
+	}
 
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	fmt.Println("Invite request for email:", req.Email, "with role:", req.Role)
+	adminRaw, _ := c.Get("admin")
+	currentAdminID := adminRaw.(db.GetAdminByIDRow).ID
+	// Проверяем, не существует ли уже активный админ с таким email
+	existingAdmin, _ := s.store.GetAdminByEmail(c.Request.Context(), req.Email)
+	fmt.Println("dddddddddddddddddddddddddddddddddddddddddddddddddddd")
+	if existingAdmin.ID != 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "Admin with this email already exists"})
+		return
+	}
+
+	// Генерируем уникальный токен приглашения
+	inviteToken, err := util.GenerateRandomToken(32)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate invite token"})
+		return
+	}
+	fmt.Println("111111111111111111111111111")
+	// Сохраняем приглашение в БД (отдельная таблица admin_invites)
+	_, err = s.store.CreateAdminInvite(c.Request.Context(), db.CreateAdminInviteParams{
+		Email:     req.Email,
+		Role:      db.AdminRoleEnum(req.Role),
+		Token:     inviteToken,
+		InvitedBy: pgtype.Int4{Int32: currentAdminID, Valid: true},
+		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(48 * time.Hour), Valid: true}, // действительно 48 часов
+	})
+	if err != nil {
+		fmt.Println(err, "rrrrrrrrrrrrrrrrr")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create invite"})
+		return
+	}
+	fmt.Println("122222222222222222222222222")
+	// Отправляем email с приглашением
+	inviteLink := fmt.Sprintf("%s/admin/accept-invite?token=%s", s.config.AppURL, inviteToken)
+
+	go func() {
+		s.taskDistributor.DistributeTaskSendAdminInvite(context.Background(), &worker.PayloadSendAdminInvite{
+			Email:      req.Email,
+			InviteLink: inviteLink,
+			Role:       req.Role,
+		})
+	}()
+	fmt.Println("dddddddddddddddddddddddddddddddddddddddddddddddddddd")
+	// Логируем
+	go s.logAdminAction(currentAdminID, "invite_admin", "admin_invite", 0,
+		fmt.Sprintf("Invited admin: %s with role: %s", req.Email, req.Role), c.ClientIP())
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Invitation sent successfully",
+		"expires_at": time.Now().Add(48 * time.Hour),
+	})
+}
 func (s *Server) handleAdminChangePass(ctx *gin.Context) {
 	var req struct {
 		OldPass string `json:"old_pass" binding:"required"`
@@ -2494,6 +2567,155 @@ func (s *Server) handleAdminVerifyForgetPass(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"valid": true,
 		"email": admin.Email,
+	})
+}
+func (s *Server) handleAdminAcceptInvite(c *gin.Context) {
+	var req struct {
+		Token    string `json:"token" binding:"required"`
+		Name     string `json:"name" binding:"required"`
+		Password string `json:"password" binding:"required,min=6"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Проверяем приглашение
+	invite, err := s.store.GetAdminInviteByToken(c.Request.Context(), req.Token)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid invitation"})
+		return
+	}
+
+	// Проверяем срок действия
+	if time.Now().After(invite.ExpiresAt.Time) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invitation has expired"})
+		return
+	}
+
+	// Проверяем, не использовано ли уже
+	if invite.UsedAt.Valid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invitation already used"})
+		return
+	}
+
+	// Хешируем пароль
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process password"})
+		return
+	}
+
+	// Конвертируем роль
+	var roleEnum db.AdminRoleEnum
+	switch invite.Role {
+	case db.AdminRoleEnumAdmin:
+		roleEnum = db.AdminRoleEnumAdmin
+	case db.AdminRoleEnumSuperadmin:
+		roleEnum = db.AdminRoleEnumSuperadmin
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role"})
+		return
+	}
+
+	// Создаем админа
+	admin, err := s.store.CreateAdmin(c.Request.Context(), db.CreateAdminParams{
+		Email:        invite.Email,
+		Name:         req.Name,
+		Role:         roleEnum,
+		PasswordHash: hashedPassword,
+		IsActive:     pgtype.Bool{Bool: true, Valid: true},
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create admin"})
+		return
+	}
+
+	// Помечаем приглашение как использованное
+	err = s.store.MarkInviteAsUsed(c.Request.Context(), db.MarkInviteAsUsedParams{
+		Token:  req.Token,
+		UsedBy: pgtype.Int4{Int32: admin.ID, Valid: true},
+	})
+	if err != nil {
+		// Логируем ошибку, но не откатываем создание админа
+		fmt.Printf("Failed to mark invite as used: %v\n", err)
+	}
+
+	// Логируем действие
+	go func() {
+		ctx := context.Background()
+		var ipAddr *netip.Addr
+		if ip := c.ClientIP(); ip != "" {
+			if parsed, parseErr := netip.ParseAddr(ip); parseErr == nil {
+				ipAddr = &parsed
+			}
+		}
+
+		params := db.CreateAdminLogParams{
+			AdminID:    admin.ID,
+			Action:     "accept_invite",
+			EntityType: pgtype.Text{String: "admin", Valid: true},
+			EntityID:   pgtype.Int4{Int32: admin.ID, Valid: true},
+			Details:    pgtype.Text{String: fmt.Sprintf("Accepted invitation. Created admin: %s with role: %s", invite.Email, invite.Role), Valid: true},
+			IpAddress:  ipAddr,
+		}
+		_ = s.store.CreateAdminLog(ctx, params)
+	}()
+
+	// Отправляем приветственное письмо
+	go func() {
+		s.taskDistributor.DistributeTaskSendAdminWelcome(
+			context.Background(),
+			&worker.PayloadSendAdminWelcome{
+				Email: admin.Email,
+				Name:  admin.Name,
+			},
+		)
+	}()
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Admin account created successfully",
+		"admin_id": admin.ID,
+	})
+}
+func (s *Server) handleAdminVerifyInvite(c *gin.Context) {
+	token := c.Query("token")
+	if token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Token is required"})
+		return
+	}
+
+	// Проверяем валидность токена приглашения
+	invite, err := s.store.GetAdminInviteByToken(c.Request.Context(), token)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or expired invitation"})
+		return
+	}
+
+	// Проверяем не истек ли срок
+	if time.Now().After(invite.ExpiresAt.Time) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invitation has expired"})
+		return
+	}
+
+	// Проверяем не использовано ли уже
+	if invite.UsedAt.Valid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invitation already used"})
+		return
+	}
+
+	// Проверяем, не зарегистрирован ли уже админ с таким email
+	existingAdmin, _ := s.store.GetAdminByEmail(c.Request.Context(), invite.Email)
+	if existingAdmin.ID != 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Admin with this email already exists"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"valid": true,
+		"email": invite.Email,
+		"role":  invite.Role,
 	})
 }
 func (s *Server) handleAdminGetMe(c *gin.Context) {

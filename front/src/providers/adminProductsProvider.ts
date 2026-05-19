@@ -174,11 +174,14 @@ const getProductDictionary = async (
 };
 const deleteProductImage = async (
   productId: number,
-  imageIndex: number,
+  imagePath: string,
   callback: (response: { message: string }) => void
 ): Promise<void> => {
   try {
-    const response = await adminApi.delete(`/admin/products/${productId}/image/${imageIndex}`);
+    const response = await adminApi.delete(
+      `/admin/products/${productId}/image`, 
+      { data: { imagePath } }
+    );
     callback(response.data);
   } catch (error) {
     console.error('Error deleting image:', error);

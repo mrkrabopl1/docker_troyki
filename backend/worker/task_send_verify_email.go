@@ -22,6 +22,15 @@ const TaskSendNewsletterBroadcast = "task:send_newsletter_broadcast"
 const TaskSendAdminWelcome = "task:send_admin_welcome"
 const TaskSendAdminPasswordReset = "task:send_admin_password_reset"
 const TaskSendAdminPasswordChanged = "task:send_admin_password_changed"
+const TaskSendAdminInvite = "task:send_admin_invite"
+
+// Добавь структуру для приглашения админа
+type PayloadSendAdminInvite struct {
+	Email       string `json:"email"`
+	InviteLink  string `json:"invite_link"`
+	Role        string `json:"role"`
+	InviterName string `json:"inviter_name"`
+}
 
 // Структуры для административных email
 type PayloadSendAdminWelcome struct {
@@ -165,7 +174,26 @@ func (distributor *RedisTaskDistributor) DistributeTaskSendNewsletterWelcome(
 		Str("queue", info.Queue).Int("max_retry", info.MaxRetry).Msg("enqueued newsletter welcome task")
 	return nil
 }
+func (distributor *RedisTaskDistributor) DistributeTaskSendAdminInvite(
+	ctx context.Context,
+	payload *PayloadSendAdminInvite,
+	opts ...asynq.Option,
+) error {
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
 
+	task := asynq.NewTask(TaskSendAdminInvite, jsonPayload, opts...)
+	info, err := distributor.client.EnqueueContext(ctx, task)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task: %w", err)
+	}
+
+	log.Info().Str("type", task.Type()).Str("email", payload.Email).
+		Str("queue", info.Queue).Int("max_retry", info.MaxRetry).Msg("enqueued admin invite task")
+	return nil
+}
 func (distributor *RedisTaskDistributor) DistributeTaskSendNewsletterBroadcast(
 	ctx context.Context,
 	payload *PayloadSendNewsletterBroadcast,
@@ -636,5 +664,96 @@ func (processor *RedisTaskProcessor) ProcessTaskSendAdminPasswordChanged(ctx con
 	}
 
 	log.Info().Str("type", task.Type()).Str("email", payload.Email).Msg("sent admin password changed email")
+	return nil
+}
+func (processor *RedisTaskProcessor) ProcessTaskSendAdminInvite(ctx context.Context, task *asynq.Task) error {
+	var payload PayloadSendAdminInvite
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", asynq.SkipRetry)
+	}
+
+	subject := "You've been invited to join Troyki Sail Admin Panel"
+
+	var roleText string
+	switch payload.Role {
+	case "superadmin":
+		roleText = "Super Administrator"
+	default:
+		roleText = "Administrator"
+	}
+
+	content := fmt.Sprintf(`
+		<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+			<div style="background-color: #4CAF50; padding: 20px; text-align: center;">
+				<h1 style="color: white; margin: 0;">You're Invited!</h1>
+			</div>
+			
+			<div style="padding: 20px; background-color: #f9f9f9;">
+				<p>Hello,</p>
+				
+				<p><strong>%s</strong> has invited you to join the <strong>Troyki Sail</strong> admin panel as a <strong>%s</strong>.</p>
+				
+				<div style="background-color: white; border: 1px solid #ddd; padding: 15px; border-radius: 4px; margin: 20px 0;">
+					<h3 style="margin-top: 0;">Your Invitation Details:</h3>
+					<table style="width: 100%%; border-collapse: collapse;">
+						<tr>
+							<td style="padding: 8px 0;"><strong>Email:</strong></td>
+							<td style="padding: 8px 0;">%s</td>
+						</tr>
+						<tr>
+							<td style="padding: 8px 0;"><strong>Role:</strong></td>
+							<td style="padding: 8px 0;">%s</td>
+						</tr>
+						<tr>
+							<td style="padding: 8px 0;"><strong>Invited by:</strong></td>
+							<td style="padding: 8px 0;">%s</td>
+						</tr>
+					</table>
+				</div>
+				
+				<p>To accept this invitation and set up your account, please click the button below:</p>
+				
+				<div style="text-align: center; margin: 30px 0;">
+					<a href="%s" style="background-color: #4CAF50; color: white; padding: 16px 32px; text-decoration: none; border-radius: 4px; font-size: 16px; display: inline-block;">
+						Accept Invitation
+					</a>
+				</div>
+				
+				<div style="background-color: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 4px; margin: 20px 0;">
+					<p style="margin: 0; color: #856404;">
+						<strong>⚠️ Important:</strong> This invitation link will expire in 48 hours for security reasons.
+					</p>
+				</div>
+				
+				<p>If you weren't expecting this invitation or believe it was sent by mistake, you can safely ignore this email.</p>
+				
+				<p>Best regards,<br/>The Troyki Sail Team</p>
+			</div>
+			
+			<hr />
+			<p style="font-size: 12px; color: #666; text-align: center;">
+				If the button doesn't work, copy and paste this link into your browser:<br/>
+				<small>%s</small>
+			</p>
+		</div>
+	`,
+		payload.InviterName,
+		roleText,
+		payload.Email,
+		roleText,
+		payload.InviterName,
+		payload.InviteLink,
+		payload.InviteLink,
+	)
+
+	to := []string{payload.Email}
+	err := processor.mailer.SendEmail(subject, content, to, nil, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to send admin invite email: %w", err)
+	}
+
+	log.Info().Str("type", task.Type()).Str("email", payload.Email).
+		Str("role", payload.Role).Str("inviter", payload.InviterName).
+		Msg("sent admin invite email")
 	return nil
 }

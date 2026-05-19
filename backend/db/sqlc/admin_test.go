@@ -31,9 +31,21 @@ func TestGetBrandImagePath(t *testing.T) {
 	fmt.Println(brand)
 	require.NotEmpty(t, brand)
 }
-
+func TestCountProductImages(t *testing.T) {
+	count := testImagePathBuilder.CountExistingProductImages("newFirms/361/clothes/other/551949354_4_c0e728")
+	fmt.Println(count)
+	require.NotEmpty(t, count)
+}
 func TestGetBanners(t *testing.T) {
 	banners, err := testStore.GetAdminBanners(context.Background())
+	fmt.Println(banners)
+	require.NoError(t, err)
+}
+func TestListAdmins(t *testing.T) {
+	banners, err := testStore.ListAdmins(context.Background(), ListAdminsParams{
+		Offset: int32(0),
+		Limit:  int32(20),
+	})
 	fmt.Println(banners)
 	require.NoError(t, err)
 }

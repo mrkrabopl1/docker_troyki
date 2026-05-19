@@ -393,9 +393,9 @@ const AdminProductForm: React.FC = () => {
         }
     };
 
-    const handleDeleteImage = async (index: number) => {
+    const handleDeleteImage = async (path: string, index: number) => {
         if (isEdit && formData.id) {
-            await deleteProductImage(formData.id, index + 1, () => {
+            await deleteProductImage(formData.id, path, () => {
                 setFormData(prev => ({
                     ...prev,
                     images: prev.images.filter((_, i) => i !== index)
@@ -554,7 +554,7 @@ const AdminProductForm: React.FC = () => {
                                             className={s.deleteImageBtn}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleDeleteImage(idx);
+                                                handleDeleteImage(img, idx);
                                             }}
                                         >
                                             <img src={deleteIconUrl} alt="delete" style={{ width: '18px', height: '18px' }} />

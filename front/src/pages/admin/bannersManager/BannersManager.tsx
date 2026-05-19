@@ -5,14 +5,8 @@ import Button from 'src/components/Button'
 import ProductsFilters from "src/modules/settingsPanels/ProductsFilters"
 import s from "./style.module.css"
 import { useAppSelector } from 'src/store/hooks/redux'
-import { ReactComponent as Filter } from '/public/filter.svg'
 import { getBannersAndFilters, getBanners, createAdminBanner, updateAdminBanner, deleteAdminBanner } from 'src/providers/adminBannersProvider'
-import {
-    getAdminProducts,
-    VisibilityFilters,
-} from 'src/providers/adminProductsProvider';
 import { types } from 'src/store/reducers/menuSlice';
-import Scroller from 'src/components/scroller/Scroller';
 
 interface Banner {
     id: number;
@@ -21,7 +15,7 @@ interface Banner {
     link_url: string;
     is_active: boolean;
     sort_order: number;
-    conditions: VisibilityFilters;
+    conditions: any;
     created_at: string;
 }
 
@@ -35,13 +29,11 @@ const BannersManager: React.FC = () => {
         product_types: [],
         bodytypes: [],
         firms: [],
-        types: [],
         store: false,
         discount: false,
         withPrice: true,
         is_active: undefined
     })
-
 
     const allFilters = useRef<any>({
         sizes: [],
@@ -49,7 +41,6 @@ const BannersManager: React.FC = () => {
         product_types: [],
         bodytypes: [],
         firms: [],
-        types: [],
         store: false,
         discount: false,
         withPrice: true,
@@ -64,6 +55,7 @@ const BannersManager: React.FC = () => {
     const [imageFile, setImageFile] = useState<File | null>(null)
     const [imagePreview, setImagePreview] = useState<string>('')
     const [uploading, setUploading] = useState(false)
+    const [errors, setErrors] = useState<{ image?: boolean; filters?: boolean }>({})
     const [filtersState, setFilters] = useState<any>({
         priceProps: { max: 0, min: 0 },
         checboxsProps: [],
@@ -103,7 +95,7 @@ const BannersManager: React.FC = () => {
             resData.product_types.forEach((typeId: number) => {
                 const typeDescr = typesVal[typeId];
                 if (!typeDescr) return;
-                const active = filtersInfo.current.types?.includes(typeId) || false
+                const active = filtersInfo.current.product_types?.includes(typeId) || false
                 checkBoxPropsProductsData.push({
                     enable: true,
                     activeData: active,
@@ -151,7 +143,6 @@ const BannersManager: React.FC = () => {
         }
     }, [typesVal])
 
-    // Загрузка баннеров
     const loadBanners = useCallback(async () => {
         setLoading(true)
         try {
@@ -182,10 +173,9 @@ const BannersManager: React.FC = () => {
             setLoading(false)
         }
     }, [convertFiltersData])
-    // Загрузка фильтров для конструктора
+
     const loadFilters = useCallback(async () => {
         try {
-            // Используем существующий провайдер для получения фильтров
             const response = await fetch('/api/admin/products/filters')
             const data = await response.json()
             if (data.filters) {
@@ -201,26 +191,14 @@ const BannersManager: React.FC = () => {
         loadFilters()
     }, [loadFilters])
 
-
-
-    // Обработка изменения фильтров
     const onFiltersChange = useCallback((filter: any) => {
         switch (filter.id) {
             case "sizes":
                 filter.data.forEach((data: boolean, index: number) => {
                     const size = activeSizes.current[index]
-                    // Обработка размеров одежды
                     const clothesIndex = filtersInfo.current.sizes.indexOf(size)
                     if (clothesIndex !== -1 && !data) {
                         filtersInfo.current.sizes.splice(clothesIndex, 1)
-                    } else if (data && activeSizes.current.includes(size)) {
-                        filtersInfo.current.sizes.push(size)
-                    }
-
-                    // Обработка размеров обуви
-                    const snickersIndex = filtersInfo.current.sizes.indexOf(size)
-                    if (snickersIndex !== -1 && !data) {
-                        filtersInfo.current.sizes.splice(snickersIndex, 1)
                     } else if (data && activeSizes.current.includes(size)) {
                         filtersInfo.current.sizes.push(size)
                     }
@@ -258,13 +236,14 @@ const BannersManager: React.FC = () => {
                 filtersInfo.current.discount = filter.data[2]
                 break
         }
+        
+        // Сбрасываем ошибку фильтров при изменении
+        setErrors(prev => ({ ...prev, filters: false }))
     }, [])
 
-    // Генерация URL из фильтров
     const generateUrlFromFilters = (filters: any): string => {
         const params = new URLSearchParams()
 
-        // Для типов - обычно только один (категория/подкатегория)
         if (filters.product_types && filters.product_types.length > 0) {
             filters.product_types.forEach(product_type => {
                 const type = typesVal[product_type]
@@ -272,40 +251,54 @@ const BannersManager: React.FC = () => {
             })
         }
 
-        // Множественные фирмы
         if (filters.firms && filters.firms.length > 0) {
             filters.firms.forEach(firm => params.append('firm', firm))
         }
 
-        // Множественные размеры
         if (filters.sizes && filters.sizes.length > 0) {
             filters.sizes.forEach(size => params.append('size', size))
         }
 
-        // Множественные типы кузова
         if (filters.bodytypes && filters.bodytypes.length > 0) {
             filters.bodytypes.forEach(bodytype => params.append('bodytype', bodytype))
         }
 
-        // Ценовой диапазон
         if (filters.price && filters.price.length === 2) {
             if (filters.price[0] > 0) params.set('min_price', String(filters.price[0]))
             if (filters.price[1] < 100000) params.set('max_price', String(filters.price[1]))
         }
 
-        // Скидка
         if (filters.discount) params.set('discount', 'true')
 
         const queryString = params.toString()
         return queryString ? `/search?${queryString}` : '/search'
     }
 
+    const validateForm = (): boolean => {
+        const newErrors: { image?: boolean; filters?: boolean } = {}
+
+        if (!imageFile && !editingBanner?.image_url) {
+            newErrors.image = true
+        }
+
+        const hasFilters = 
+            (filtersInfo.current.firms && filtersInfo.current.firms.length > 0) ||
+            (filtersInfo.current.types && filtersInfo.current.product_types.length > 0) ||
+            (filtersInfo.current.sizes && filtersInfo.current.sizes.length > 0) ||
+            (filtersInfo.current.bodytypes && filtersInfo.current.bodytypes.length > 0) ||
+            (filtersInfo.current.price && filtersInfo.current.price[0] > 0) ||
+            filtersInfo.current.discount
+
+        if (!hasFilters) {
+            newErrors.filters = true
+        }
+
+        setErrors(newErrors)
+        return Object.keys(newErrors).length === 0
+    }
 
     const handleSaveBanner = async () => {
-        if (!imageFile && !editingBanner?.image_url) {
-            alert('Выберите изображение')
-            return
-        }
+        if (!validateForm()) return
 
         setUploading(true)
         try {
@@ -319,7 +312,7 @@ const BannersManager: React.FC = () => {
             setShowModal(false)
             setImageFile(null)
             setImagePreview('')
-            // Сбрасываем фильтры
+            setErrors({})
             filtersInfo.current = {
                 sizes: [],
                 price: [],
@@ -353,8 +346,10 @@ const BannersManager: React.FC = () => {
         if (file) {
             setImageFile(file)
             setImagePreview(URL.createObjectURL(file))
+            setErrors(prev => ({ ...prev, image: false }))
         }
     }
+
     const parseUrlToFilters = (url: string): any => {
         const filters = {
             sizes: [] as string[],
@@ -369,23 +364,18 @@ const BannersManager: React.FC = () => {
         }
 
         try {
-            // Извлекаем query string из URL
             const urlObj = new URL(url, window.location.origin)
             const params = urlObj.searchParams
 
-            // Парсим размеры
             const sizes = params.getAll('size')
             if (sizes.length) filters.sizes = sizes
 
-            // Парсим фирмы
             const firms = params.getAll('firm')
             if (firms.length) filters.firms = firms
 
-            // Парсим типы кузова
             const bodytypes = params.getAll('bodytype')
             if (bodytypes.length) filters.bodytypes = bodytypes
 
-            // Парсим цену
             const minPrice = params.get('min_price')
             const maxPrice = params.get('max_price')
             if (minPrice || maxPrice) {
@@ -395,13 +385,10 @@ const BannersManager: React.FC = () => {
                 ]
             }
 
-            // Парсим скидку
             filters.discount = params.get('discount') === 'true'
 
-            // Парсим тип товара (нужно преобразовать type_key обратно в ID)
             const types = params.getAll('type')
             if (types.length) {
-                // Ищем ID типа по его ключу
                 const typeIds = types.map(typeKey => {
                     const found = Object.entries(typesVal).find(([_, t]) => t.type_key === typeKey)
                     return found ? Number(found[0]) : null
@@ -415,7 +402,9 @@ const BannersManager: React.FC = () => {
 
         return filters
     }
+
     const openModal = (banner?: Banner) => {
+        setErrors({})
         if (banner) {
             setEditingBanner(banner)
             filtersInfo.current = parseUrlToFilters(banner.link_url)
@@ -477,7 +466,6 @@ const BannersManager: React.FC = () => {
                 ))}
             </div>
 
-            {/* Модальное окно с конструктором фильтров */}
             {showModal && (
                 <div className={s.modalOverlay} onClick={() => setShowModal(false)}>
                     <div className={s.modalContent} onClick={e => e.stopPropagation()}>
@@ -497,8 +485,8 @@ const BannersManager: React.FC = () => {
                         </div>
 
                         <div className={s.formGroup}>
-                            <label>Изображение</label>
-                            <div className={s.imageUpload}>
+                            <label>Изображение <span className={s.required}>*</span></label>
+                            <div className={`${s.imageUpload} ${errors.image ? s.errorBorder : ''}`}>
                                 {imagePreview ? (
                                     <div className={s.imagePreview}>
                                         <img src={imagePreview} alt="Preview" />
@@ -514,14 +502,14 @@ const BannersManager: React.FC = () => {
                                     </div>
                                 )}
                             </div>
+                            {errors.image && <div className={s.errorText}>Изображение обязательно</div>}
                         </div>
 
                         <div className={s.formGroup}>
-                            <label>Условия показа (выберите фильтры)</label>
+                            <label>Условия показа <span className={s.required}>*</span></label>
 
-                            {/* Кликабельная ссылка для настройки фильтров */}
                             <div
-                                className={s.urlPreview}
+                                className={`${s.urlPreview} ${errors.filters ? s.errorBorder : ''}`}
                                 onClick={() => setShowFiltersPanel(true)}
                                 style={{ cursor: 'pointer' }}
                             >
@@ -529,11 +517,12 @@ const BannersManager: React.FC = () => {
                                 <code>{generateUrlFromFilters(filtersInfo.current)}</code>
                                 <span className={s.editHint}>✏️ нажмите чтобы настроить фильтры</span>
                             </div>
+                            
+                            {errors.filters && <div className={s.errorText}>Выберите хотя бы один фильтр</div>}
 
-                            {/* Превью выбранных фильтров */}
                             <div className={s.filtersPreview}>
-                                {filtersInfo.current.types?.length > 0 && (
-                                    <span>Тип: {typesVal[filtersInfo.current.types[0]]?.name}</span>
+                                {filtersInfo.current.product_types?.length > 0 && (
+                                    <span>Тип: {typesVal[filtersInfo.current.product_types[0]]?.name}</span>
                                 )}
                                 {filtersInfo.current.firms?.length > 0 && (
                                     <span>Фирмы: {filtersInfo.current.firms.join(', ')}</span>
@@ -542,24 +531,27 @@ const BannersManager: React.FC = () => {
                                     <span>Цена от {filtersInfo.current.price[0]}</span>
                                 )}
                                 {filtersInfo.current.discount && <span>Со скидкой</span>}
-                                {!filtersInfo.current.types?.length &&
+                                {!filtersInfo.current.product_types?.length &&
                                     !filtersInfo.current.firms?.length &&
                                     (!filtersInfo.current.price || filtersInfo.current.price[0] === 0) &&
                                     !filtersInfo.current.discount && (
-                                        <span className={s.emptyFilters}>❌ фильтры не выбраны (баннер будет показан всем)</span>
+                                        <span className={s.emptyFilters}>❌ фильтры не выбраны</span>
                                     )}
                             </div>
                         </div>
 
                         <div className={s.modalActions}>
                             <Button text="Отмена" onClick={() => setShowModal(false)} />
-                            <Button text={uploading ? 'Сохранение...' : 'Сохранить'} onClick={handleSaveBanner} disabled={uploading} />
+                            <Button 
+                                text={uploading ? 'Сохранение...' : 'Сохранить'} 
+                                onClick={handleSaveBanner} 
+                                disabled={uploading} 
+                            />
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Модальное окно фильтров - как в AdminProductVisibility */}
             {showFiltersPanel && (
                 <div className={s.modalOverlay} onClick={() => setShowFiltersPanel(false)}>
                     <div className={s.modalPanel} onClick={e => e.stopPropagation()}>
@@ -567,14 +559,11 @@ const BannersManager: React.FC = () => {
                             <h3>Выберите условия показа</h3>
                             <button onClick={() => setShowFiltersPanel(false)}>✕</button>
                         </div>
-                        <Scroller>
-                            <ProductsFilters
-                                memo={true}
-                                onChange={onFiltersChange}
-                                {...filtersState}
-                            />
-                        </Scroller>
-
+                        <ProductsFilters
+                            memo={true}
+                            onChange={onFiltersChange}
+                            {...filtersState}
+                        />
                         <div className={s.modalFooter}>
                             <Button text="Готово" onClick={() => setShowFiltersPanel(false)} />
                         </div>

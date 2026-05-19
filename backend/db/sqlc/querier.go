@@ -43,6 +43,7 @@ type Querier interface {
 	CountBrands(ctx context.Context, name string) (CountBrandsRow, error)
 	CountProductsByFilters(ctx context.Context, arg CountProductsByFiltersParams) (int64, error)
 	CreateAdmin(ctx context.Context, arg CreateAdminParams) (CreateAdminRow, error)
+	CreateAdminInvite(ctx context.Context, arg CreateAdminInviteParams) (AdminInvite, error)
 	CreateAdminLog(ctx context.Context, arg CreateAdminLogParams) error
 	CreateAdminPasswordResetToken(ctx context.Context, arg CreateAdminPasswordResetTokenParams) error
 	CreateBanner(ctx context.Context, arg CreateBannerParams) (CreateBannerRow, error)
@@ -83,6 +84,7 @@ type Querier interface {
 	GetAdminByID(ctx context.Context, id int32) (GetAdminByIDRow, error)
 	GetAdminByResetToken(ctx context.Context, token string) (GetAdminByResetTokenRow, error)
 	GetAdminDashboardStats(ctx context.Context) (GetAdminDashboardStatsRow, error)
+	GetAdminInviteByToken(ctx context.Context, token string) (AdminInvite, error)
 	GetAdminLogs(ctx context.Context, arg GetAdminLogsParams) ([]GetAdminLogsRow, error)
 	// ========== ЛОГИ АДМИНИСТРАТОРОВ ==========
 	GetAdminLogsCount(ctx context.Context, arg GetAdminLogsCountParams) (int64, error)
@@ -204,6 +206,7 @@ type Querier interface {
 	InsertPreorderItem(ctx context.Context, arg InsertPreorderItemParams) (int32, error)
 	InsertVerification(ctx context.Context, arg InsertVerificationParams) error
 	ListAdmins(ctx context.Context, arg ListAdminsParams) ([]ListAdminsRow, error)
+	MarkInviteAsUsed(ctx context.Context, arg MarkInviteAsUsedParams) error
 	RemoveRuleItem(ctx context.Context, arg RemoveRuleItemParams) error
 	RestoreBrand(ctx context.Context, id int32) error
 	RestoreBrandLine(ctx context.Context, id int32) error
@@ -232,6 +235,7 @@ type Querier interface {
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) error
 	UpdatePreorderItems(ctx context.Context, arg UpdatePreorderItemsParams) error
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) error
+	UpdateProductImageCount(ctx context.Context, arg UpdateProductImageCountParams) error
 	UpdateProductPrice(ctx context.Context, arg UpdateProductPriceParams) error
 	UpdateProductStatus(ctx context.Context, arg UpdateProductStatusParams) error
 	UpdateUniqueCustomerHistry(ctx context.Context, arg UpdateUniqueCustomerHistryParams) error

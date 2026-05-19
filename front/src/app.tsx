@@ -20,6 +20,7 @@ import { getCdekDeliveryData, chackPostalIndex } from './providers/cdek';
 import Refund from './pages/infoPages/Refund';
 import AdminBrandsManager from './pages/admin/brandsManager/BrandsManager';
 import AdminBrandDetails from './modules/admin/brandDetails/BrandsDetailsForm';
+import AcceptInvite from './pages/admin/invite/Invite';
 import {
   Link, Route, BrowserRouter as Router, Routes,
   createBrowserRouter,
@@ -298,7 +299,7 @@ const App: React.FC = memo(function App() {
             <Route path="login" element={<AdminLogin />} />
             <Route path="forgot-password" element={<ForgotPassword />} />
             <Route path="reset-password/:token" element={<ResetPassword />} />
-
+            <Route path="accept-invite" element={<AcceptInvite />} />
             {/* Защищенные админские маршруты */}
             <Route element={<ProtectedRoute />}>
               <Route path="" element={<AdminLayout />}>

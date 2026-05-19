@@ -161,9 +161,11 @@ func (s *ImageService) DeleteProductImage(imageURL string) error {
 	relativePath = strings.TrimPrefix(relativePath, "/")
 
 	fullPath := filepath.Join(s.BaseDir, relativePath)
+	fmt.Println(fullPath, "fffffffffffffffffffffffffffffffffffff")
 
 	// Удаляем файл
 	if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
+		fmt.Println("aaaaaaaaaaaaaaaaaaaaaaaaaa")
 		return fmt.Errorf("failed to delete file: %w", err)
 	}
 

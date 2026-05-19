@@ -85,7 +85,7 @@ export const updateUserRole = async (id: number, role: string) => {
 
 export const getAdmins = async (filters: AdminFilters) => {
     const response = await adminApi.get('/admins', { params: filters });
-     console.log('Full response:', response);  // Что здесь?
+    console.log('Full response:', response);  // Что здесь?
     console.log('Admins field:', response.data);
     return response.data;
 };
@@ -109,7 +109,10 @@ export const updateAdmin = async (id: number, data: {
     const response = await adminApi.put(`/admins/${id}`, data);
     return response.data;
 };
-
+export const inviteAdmin = async (data: { email: string; role: string }) => {
+    const response = await adminApi.post('/invites', data);
+    return response.data;
+};
 export const deleteAdmin = async (id: number) => {
     const response = await adminApi.delete(`/admins/${id}`);
     return response.data;
@@ -118,8 +121,12 @@ export const deleteAdmin = async (id: number) => {
 // ========== ЛОГИ (только superadmin) ==========
 
 export const getLogs = async (filters: LogFilters) => {
-    const response = await adminApi.get('/logs', { params: filters });
-    return response.data;
+    try {
+        const response = await adminApi.get('/logs', { params: filters });
+        return response.data;
+    } catch (error) {
+        return {}
+    }
 };
 
 // ========== ДАШБОРД ==========
@@ -229,22 +236,22 @@ export interface CreateDiscountRuleInput {
 
 // ========== СКИДКИ ==========
 
-interface dataUpdate { select_all?: boolean; search?: string; exclude_ids?: number[]; brand_ids?: number[];item_type: string; }
+interface dataUpdate { select_all?: boolean; search?: string; exclude_ids?: number[]; brand_ids?: number[]; item_type: string; }
 
 export const bulkAddRuleItems = async (ruleId: number, data: dataUpdate) => {
     const response = await adminApi.post(`/discount-rules/${ruleId}/items`, data);
     return response.data;
 };
 export const getDiscountRules = async (page = 1, limit = 20) => {
-    const response = await adminApi.get('/discount-rules', { 
-        params: { page, limit } 
+    const response = await adminApi.get('/discount-rules', {
+        params: { page, limit }
     });
     return response.data;
 };
 
 export const getActiveDiscountRules = async (page = 1, limit = 20) => {
-    const response = await adminApi.get('/discount-rules/active', { 
-        params: { page, limit } 
+    const response = await adminApi.get('/discount-rules/active', {
+        params: { page, limit }
     });
     return response.data;
 };
@@ -259,6 +266,20 @@ export const sqlExecute = async (data) => {
 };
 export const createDiscountRule = async (data: CreateDiscountRuleInput) => {
     const response = await adminApi.post('/discount-rules', data);
+    return response.data;
+};
+export const verifyInviteToken = async (token: string) => {
+    const response = await adminApi.get(`/verify-invite?token=${token}`);
+    return response.data;
+
+};
+
+export const acceptInvite = async (data: {
+    token: string;
+    name: string;
+    password: string;
+}) => {
+    const response = await adminApi.post('/accept-invite', data);
     return response.data;
 };
 

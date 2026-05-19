@@ -1339,6 +1339,11 @@ SELECT EXISTS(
 UPDATE products
 SET status = @status
 WHERE id = @id;
+
+-- name: UpdateProductImageCount :exec
+UPDATE products
+SET image_count = $1
+WHERE id = $2;
 -- name: BulkUpdateProductStatus :exec
 UPDATE products
 SET status = @status,

@@ -198,6 +198,19 @@ type Admin struct {
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
+type AdminInvite struct {
+	ID        int32              `json:"id"`
+	Email     string             `json:"email"`
+	Role      AdminRoleEnum      `json:"role"`
+	Token     string             `json:"token"`
+	InvitedBy pgtype.Int4        `json:"invited_by"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	UsedAt    pgtype.Timestamptz `json:"used_at"`
+	UsedBy    pgtype.Int4        `json:"used_by"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type AdminLog struct {
 	ID         int32              `json:"id"`
 	AdminID    int32              `json:"admin_id"`

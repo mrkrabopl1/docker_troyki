@@ -1207,3 +1207,26 @@ FROM banners;
 
 -- name: DeleteBrand :exec
 DELETE FROM brands WHERE id = $1;
+
+
+-- name: CreateAdminInvite :one
+INSERT INTO admin_invites (email, role, token, invited_by, expires_at)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
+
+-- name: GetAdminInviteByToken :one
+SELECT * FROM admin_invites
+WHERE token = $1 
+  AND used_at IS NULL 
+  AND expires_at > NOW()
+LIMIT 1;
+
+-- name: MarkInviteAsUsed :exec
+UPDATE admin_invites
+SET used_at = NOW(),
+    used_by = $2,
+    updated_at = NOW()
+WHERE token = $1 
+  AND used_at IS NULL 
+  AND expires_at > NOW();

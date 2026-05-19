@@ -4,6 +4,8 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -93,11 +95,45 @@ func (b *ImagePathBuilder) GetStructuredProductImagePath(params StructuredPathPa
 
 // GetPhysicalPath возвращает физический путь для сохранения файла
 func (b *ImagePathBuilder) GetPhysicalPath(relativePath string) string {
-	fmt.Println(b.imagesDir, "nnrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr")
-	if b.imagesDir == "" {
-		return relativePath
+	// Если imagesDir не задан - ищем относительно исполняемого файла
+	imagesDir := b.imagesDir
+	if imagesDir == "" {
+		// Получаем путь к исполняемому файлу
+		execPath, _ := os.Executable()
+		execDir := filepath.Dir(execPath)
+		// Ищем front/images: поднимаемся на 2 уровня вверх от backend/
+		imagesDir = filepath.Join(execDir, "..", "..", "front", "images")
 	}
-	return filepath.Join(b.imagesDir, relativePath)
+
+	// ВСЕГДА конвертируем в Linux-слеши для WSL/Docker
+	imagesDir = strings.ReplaceAll(imagesDir, "\\", "/")
+	relativePath = strings.ReplaceAll(relativePath, "\\", "/")
+
+	// Соединяем через path.Join (всегда /)
+	result := path.Join(imagesDir, relativePath)
+
+	return result
+}
+func (b *ImagePathBuilder) CountExistingProductImages(relativePath string) int32 {
+	physicalPath := b.GetPhysicalPath(relativePath)
+	fmt.Println("ssssssssssssssssssssssssssssssssss", physicalPath)
+
+	// Используем physicalPath вместо хардкода
+	entries, err := os.ReadDir(physicalPath)
+	if err != nil {
+		fmt.Println(err, "errrrrrrrrrror")
+		return 0
+	}
+
+	fmt.Println(entries, "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
+	count := int32(0)
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+			count++
+		}
+	}
+
+	return count
 }
 
 // GetPhysicalProductPath возвращает физический путь к папке товара

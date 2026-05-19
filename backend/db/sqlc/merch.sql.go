@@ -5847,6 +5847,22 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) er
 	return err
 }
 
+const updateProductImageCount = `-- name: UpdateProductImageCount :exec
+UPDATE products
+SET image_count = $1
+WHERE id = $2
+`
+
+type UpdateProductImageCountParams struct {
+	ImageCount int32 `json:"image_count"`
+	ID         int32 `json:"id"`
+}
+
+func (q *Queries) UpdateProductImageCount(ctx context.Context, arg UpdateProductImageCountParams) error {
+	_, err := q.db.Exec(ctx, updateProductImageCount, arg.ImageCount, arg.ID)
+	return err
+}
+
 const updateProductStatus = `-- name: UpdateProductStatus :exec
 UPDATE products
 SET status = $1

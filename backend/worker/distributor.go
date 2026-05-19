@@ -48,6 +48,11 @@ type TaskDistributor interface {
 		payload *PayloadSendAdminPasswordChanged,
 		opts ...asynq.Option,
 	) error
+	DistributeTaskSendAdminInvite(
+		ctx context.Context,
+		payload *PayloadSendAdminInvite,
+		opts ...asynq.Option,
+	) error
 }
 
 type RedisTaskDistributor struct {

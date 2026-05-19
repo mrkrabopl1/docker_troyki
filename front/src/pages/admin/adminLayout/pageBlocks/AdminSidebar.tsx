@@ -2,6 +2,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import s from './sidebar.style.module.css';
+import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux';
 interface AdminSidebarProps {
     isOpen: boolean;
     isMobile: boolean;
@@ -9,6 +10,7 @@ interface AdminSidebarProps {
 }
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, isMobile, onClose }) => {
+    const { user } = useAppSelector(state => state.adminReducer);
     return (
         <aside className={`
             ${s.sidebar} 
@@ -27,59 +29,78 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, isMobile, onClose }
                     to="/admin/dashboard"
                     className={({ isActive }) => isActive ? s.active : ''}
                 >
-                    📊 Дашборд
+                    <span className={s.icon}>📊</span>
+                    Дашборд
                 </NavLink>
 
                 <NavLink
                     to="/admin/products"
                     className={({ isActive }) => isActive ? s.active : ''}
                 >
-                    📦 Товары
+                    <span className={s.icon}>📦</span>
+                    Товары
                 </NavLink>
+
                 <NavLink
                     to="/admin/products/create"
                     className={({ isActive }) => isActive ? s.active : ''}
                 >
+                    <span className={s.icon}>➕</span>
                     Создать товар
                 </NavLink>
-                <NavLink
-                    to="/admin/orders"
-                    className={({ isActive }) => isActive ? s.active : ''}
-                >
-                    📋 Заказы
-                </NavLink>
+
+                {
+                    user?.role === 'superadmin' && <NavLink
+                        to="/admin/orders"
+                        className={({ isActive }) => isActive ? s.active : ''}
+                    >
+                        <span className={s.icon}>📋</span>
+                        Заказы
+                    </NavLink>
+                }
 
                 <NavLink
                     to="/admin/sales"
                     className={({ isActive }) => isActive ? s.active : ''}
                 >
-                    🏷️ Скидки
+                    <span className={s.icon}>💰</span>
+                    Скидки
                 </NavLink>
+
                 <NavLink
                     to="/admin/brands"
                     className={({ isActive }) => isActive ? s.active : ''}
                 >
-                    🏷️ Работа с брендами
+                    <span className={s.icon}>🏷️</span>
+                    Бренды
                 </NavLink>
+                {
+                    user?.role === 'superadmin' && <NavLink
+                        to="/admin/logs"
+                        className={({ isActive }) => isActive ? s.active : ''}
+                    >
+                        <span className={s.icon}>👥</span>
+                        Администраторы
+                    </NavLink>
+                }
 
-                <NavLink
-                    to="/admin/logs"
-                    className={({ isActive }) => isActive ? s.active : ''}
-                >
-                    🏷️ Работа с администраторами
-                </NavLink>
-                <NavLink
-                    to="/admin/sqlConsole"
-                    className={({ isActive }) => isActive ? s.active : ''}
-                >
-                    🏷️ Консоль управления
-                </NavLink>
+
+                {
+                    user?.role === 'superadmin' && <NavLink
+                        to="/admin/sqlConsole"
+                        className={({ isActive }) => isActive ? s.active : ''}
+                    >
+                        <span className={s.icon}>💻</span>
+                        SQL Консоль
+                    </NavLink>
+                }
 
                 <NavLink
                     to="/admin/banners"
                     className={({ isActive }) => isActive ? s.active : ''}
                 >
-                    🖼️ Баннеры
+                    <span className={s.icon}>🖼️</span>
+                    Баннеры
                 </NavLink>
             </nav>
         </aside>

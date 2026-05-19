@@ -136,6 +136,10 @@ func (s *Server) setupRouter() {
 	router.POST("/admin/auth/forgot-password", s.handleAdminForgotPass)
 	router.POST("/admin/auth/refresh", s.handleAdminRefreshToken)
 	router.POST("/admin/auth/change-forgot-password", s.handleAdminChangeForgetPass)
+
+	router.GET("/admin/verify-invite", s.handleAdminVerifyInvite)
+	router.POST("/admin/accept-invite", s.handleAdminAcceptInvite)
+
 	adminGroup := router.Group("/admin")
 
 	adminGroup.Use(s.AdminAuthMiddleware()) // Только админский middleware!
@@ -216,6 +220,11 @@ func (s *Server) setupRouter() {
 			superAdminGroup.POST("/admins", s.handleAdminCreateAdmin)
 			superAdminGroup.PUT("/admins/:id", s.handleAdminUpdateAdmin)
 			superAdminGroup.DELETE("/admins/:id", s.handleAdminDeleteAdmin)
+
+			superAdminGroup.POST("/invites", s.handleAdminInviteAdmin)
+			// superAdminGroup.GET("/invites", s.handleAdminGetInvites) // Список приглашений
+			// // Создать приглашение
+			// superAdminGroup.DELETE("/invites/:id", s.handleAdminCancelInvite)
 			superAdminGroup.GET("/logs", s.handleAdminGetLogs)
 		}
 	}

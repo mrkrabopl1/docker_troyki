@@ -295,6 +295,40 @@ CREATE TABLE IF NOT EXISTS public.password_resets (
     used_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+CREATE TABLE IF NOT EXISTS public.admin_invites (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    role admin_role_enum NOT NULL DEFAULT 'admin',
+    token VARCHAR(64) UNIQUE NOT NULL,
+    invited_by INTEGER REFERENCES admins(id) ON DELETE SET NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    used_by INTEGER REFERENCES admins(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ✅ Главный индекс: только одно активное приглашение на email
+CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_invites_active_email 
+ON admin_invites (email) 
+WHERE used_at IS NULL AND expires_at > NOW();
+
+-- Индексы для быстрого поиска
+CREATE INDEX IF NOT EXISTS idx_admin_invites_token 
+ON admin_invites(token) 
+WHERE used_at IS NULL AND expires_at > NOW();
+
+CREATE INDEX IF NOT EXISTS idx_admin_invites_email 
+ON admin_invites(email) 
+WHERE used_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_admin_invites_expires 
+ON admin_invites(expires_at) 
+WHERE used_at IS NULL;
+
+-- Индекс для поиска приглашений конкретного админа
+CREATE INDEX IF NOT EXISTS idx_admin_invites_invited_by 
+ON admin_invites(invited_by);
 -- Индексы
 CREATE INDEX IF NOT EXISTS idx_banners_active ON banners(is_active);
 CREATE INDEX IF NOT EXISTS idx_newsletter_email ON newsletter_subscribers(email);

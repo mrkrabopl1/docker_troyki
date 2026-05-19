@@ -94,6 +94,44 @@ func (q *Queries) CreateAdmin(ctx context.Context, arg CreateAdminParams) (Creat
 	return i, err
 }
 
+const createAdminInvite = `-- name: CreateAdminInvite :one
+INSERT INTO admin_invites (email, role, token, invited_by, expires_at)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, email, role, token, invited_by, expires_at, used_at, used_by, created_at, updated_at
+`
+
+type CreateAdminInviteParams struct {
+	Email     string             `json:"email"`
+	Role      AdminRoleEnum      `json:"role"`
+	Token     string             `json:"token"`
+	InvitedBy pgtype.Int4        `json:"invited_by"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+}
+
+func (q *Queries) CreateAdminInvite(ctx context.Context, arg CreateAdminInviteParams) (AdminInvite, error) {
+	row := q.db.QueryRow(ctx, createAdminInvite,
+		arg.Email,
+		arg.Role,
+		arg.Token,
+		arg.InvitedBy,
+		arg.ExpiresAt,
+	)
+	var i AdminInvite
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Role,
+		&i.Token,
+		&i.InvitedBy,
+		&i.ExpiresAt,
+		&i.UsedAt,
+		&i.UsedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createAdminLog = `-- name: CreateAdminLog :exec
 INSERT INTO admin_logs (
         admin_id,
@@ -518,6 +556,32 @@ func (q *Queries) GetAdminDashboardStats(ctx context.Context) (GetAdminDashboard
 		&i.ProductsOnDiscount,
 		&i.ActiveDiscounts,
 		&i.OrdersLast7Days,
+	)
+	return i, err
+}
+
+const getAdminInviteByToken = `-- name: GetAdminInviteByToken :one
+SELECT id, email, role, token, invited_by, expires_at, used_at, used_by, created_at, updated_at FROM admin_invites
+WHERE token = $1 
+  AND used_at IS NULL 
+  AND expires_at > NOW()
+LIMIT 1
+`
+
+func (q *Queries) GetAdminInviteByToken(ctx context.Context, token string) (AdminInvite, error) {
+	row := q.db.QueryRow(ctx, getAdminInviteByToken, token)
+	var i AdminInvite
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Role,
+		&i.Token,
+		&i.InvitedBy,
+		&i.ExpiresAt,
+		&i.UsedAt,
+		&i.UsedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -2501,6 +2565,26 @@ func (q *Queries) ListAdmins(ctx context.Context, arg ListAdminsParams) ([]ListA
 		return nil, err
 	}
 	return items, nil
+}
+
+const markInviteAsUsed = `-- name: MarkInviteAsUsed :exec
+UPDATE admin_invites
+SET used_at = NOW(),
+    used_by = $2,
+    updated_at = NOW()
+WHERE token = $1 
+  AND used_at IS NULL 
+  AND expires_at > NOW()
+`
+
+type MarkInviteAsUsedParams struct {
+	Token  string      `json:"token"`
+	UsedBy pgtype.Int4 `json:"used_by"`
+}
+
+func (q *Queries) MarkInviteAsUsed(ctx context.Context, arg MarkInviteAsUsedParams) error {
+	_, err := q.db.Exec(ctx, markInviteAsUsed, arg.Token, arg.UsedBy)
+	return err
 }
 
 const updateAdmin = `-- name: UpdateAdmin :exec

@@ -165,6 +165,7 @@ func (processor *RedisTaskProcessor) Start() error {
 	mux.HandleFunc(TaskSendAdminWelcome, processor.ProcessTaskSendAdminWelcome)
 	mux.HandleFunc(TaskSendAdminPasswordReset, processor.ProcessTaskSendAdminPasswordReset)
 	mux.HandleFunc(TaskSendAdminPasswordChanged, processor.ProcessTaskSendAdminPasswordChanged)
+	mux.HandleFunc(TaskSendAdminInvite, processor.ProcessTaskSendAdminInvite)
 	return processor.server.Start(mux)
 }
 
