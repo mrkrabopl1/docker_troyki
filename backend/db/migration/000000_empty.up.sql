@@ -255,7 +255,7 @@ CREATE TABLE customer_password_resets (
 -- Для админов
 CREATE TABLE admin_password_resets (
     id SERIAL PRIMARY KEY,
-    email VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
     token VARCHAR(64) NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     used_at TIMESTAMPTZ,

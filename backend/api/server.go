@@ -135,7 +135,7 @@ func (s *Server) setupRouter() {
 	router.POST("/admin/auth/login", s.handleAdminLogin)
 	router.POST("/admin/auth/forgot-password", s.handleAdminForgotPass)
 	router.POST("/admin/auth/refresh", s.handleAdminRefreshToken)
-	router.POST("/admin/auth/change-forgot-password", s.handleAdminChangeForgetPass)
+	router.POST("/admin/auth/reset-password", s.handleAdminResetPassword)
 
 	router.GET("/admin/verify-invite", s.handleAdminVerifyInvite)
 	router.POST("/admin/accept-invite", s.handleAdminAcceptInvite)

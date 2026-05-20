@@ -1,6 +1,7 @@
 package mail
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/mrkrabopl1/go_db/util"
@@ -14,8 +15,11 @@ func TestSendEmailWithGmail(t *testing.T) {
 
 	config, err := util.LoadConfig("..")
 	require.NoError(t, err)
-
-	sender := NewGmailSender(config.EmailSenderName, config.EmailSenderAddress, config.EmailSenderPassword)
+	fmt.Printf("SMTPAuthAddress: %s\n", config.SMTPAuthAddress)
+	fmt.Printf("SMTPServerAddress: %s\n", config.SMTPServerAddress)
+	fmt.Printf("EmailSenderAddress: %s\n", config.EmailSenderAddress)
+	fmt.Printf("EmailSenderPassword: %s\n", config.EmailSenderPassword)
+	sender := NewGmailSender(config.EmailSenderName, config.EmailSenderAddress, config.EmailSenderPassword, config.SMTPAuthAddress, config.SMTPServerAddress)
 
 	subject := "A test email"
 	content := `

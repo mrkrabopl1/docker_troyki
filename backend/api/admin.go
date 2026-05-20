@@ -2498,12 +2498,23 @@ func (s *Server) handleAdminChangePass(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "Password changed successfully"})
 }
 func (s *Server) handleAdminForgotPass(ctx *gin.Context) {
-	email := ctx.Query("mail")
+	// Для POST запроса читаем из body
+	var req struct {
+		Email string `json:"email" binding:"required,email"`
+	}
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: email required"})
+		return
+	}
+
+	email := req.Email
 
 	// 1. Проверяем существование (но не выдаем информацию)
 	admin, err := s.store.GetAdminByEmail(ctx.Request.Context(), email)
 	if err != nil {
 		// Всегда возвращаем одинаковый ответ
+		fmt.Println("Admin with email not found:", email)
 		ctx.JSON(http.StatusOK, gin.H{"message": "If email exists, reset link will be sent"})
 		return
 	}
@@ -2522,9 +2533,16 @@ func (s *Server) handleAdminForgotPass(ctx *gin.Context) {
 		Email: email,
 		Token: token,
 	})
+	if err != nil {
+		fmt.Println("Failed to create reset token:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create reset token"})
+		return
+	}
 
 	// 4. Отправляем email
-	resetLink := fmt.Sprintf("%s/admin/reset-password?token=%s", s.config.AppURL, token)
+	resetLink := fmt.Sprintf("%s/admin/reset-password/%s", s.config.AppURL, token)
+	fmt.Println("Send email to:", email)
+
 	s.taskDistributor.DistributeTaskSendAdminPasswordReset(ctx, &worker.PayloadSendAdminPasswordReset{
 		Email:     email,
 		Name:      admin.Name,
@@ -2773,53 +2791,65 @@ func (s *Server) handleAdminRefreshToken(c *gin.Context) {
 }
 
 // ChangeForgetPass - смена забытого пароля
-func (s *Server) handleAdminChangeForgetPass(c *gin.Context) {
+func (s *Server) handleAdminResetPassword(ctx *gin.Context) {
 	var req struct {
-		NewPass string `json:"new_pass" binding:"required,min=6"`
+		Token   string `json:"token" binding:"required"`
+		NewPass string `json:"new_pass" binding:"required,min=8"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Получаем токен из cookie
-	token, err := c.Cookie("admin_reset_token")
+	// 1. Проверяем токен сброса пароля
+	resetToken, err := s.store.GetAdminPasswordResetToken(ctx, req.Token)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Reset token not found"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or expired token"})
 		return
 	}
 
-	// Верифицируем токен
-	payload, err := s.tokenMaker.VerifyToken(token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+	// 2. Проверяем, не истек ли токен
+	if resetToken.ExpiresAt.Time.Before(time.Now()) {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Token has expired"})
 		return
 	}
 
-	// Хешируем новый пароль
+	// 3. Проверяем, не использован ли токен
+	if resetToken.UsedAt.Valid {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Token already used"})
+		return
+	}
+
+	// 4. Хешируем новый пароль
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPass), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
 		return
 	}
 
-	// Обновляем пароль
-	err = s.store.UpdateAdminPassword(c.Request.Context(), db.UpdateAdminPasswordParams{
-		ID:           payload.UserID,
+	// 5. Обновляем пароль админа
+	err = s.store.UpdateAdminPasswordByEmail(ctx, db.UpdateAdminPasswordByEmailParams{
+		Email:        resetToken.Email,
 		PasswordHash: hashedPassword,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
 		return
 	}
 
-	// Удаляем cookie
-	c.SetCookie("admin_reset_token", "", -1, "/admin", "", true, true)
+	// 6. Помечаем токен как использованный
+	err = s.store.MarkAdminPasswordResetTokenUsed(ctx, resetToken.ID)
+	if err != nil {
+		// Логируем, но не возвращаем ошибку пользователю
+		fmt.Println("Failed to mark token as used:", err)
+	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Password reset successfully"})
+	// 7. Удаляем все старые неиспользованные токены для этого email (опционально)
+	s.store.DeleteOldPasswordResetTokenByEmail(ctx, resetToken.Email)
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Password has been reset successfully"})
 }
-
 func (s *Server) handleAdminGetDashboardStats(ctx *gin.Context) {
 	stats, err := s.store.GetAdminDashboardStats(ctx)
 	if err != nil {

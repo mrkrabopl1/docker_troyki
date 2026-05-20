@@ -21,7 +21,7 @@ const AdminResetPassword: React.FC = () => {
         setError(null);
 
         confirmPasswordReset(
-            { token, new_password: data.password },
+            { token, new_pass: data.password },
             (result) => {
                 setIsLoading(false);
                 

@@ -136,6 +136,18 @@ UPDATE
 SET token = EXCLUDED.token,
     expires_at = NOW() + INTERVAL '1 hour',
     used_at = NULL;
+-- name: GetAdminPasswordResetToken :one
+SELECT * FROM admin_password_resets
+WHERE token = $1 AND used_at IS NULL AND expires_at > NOW()
+LIMIT 1;
+-- name: UpdateAdminPasswordByEmail :exec
+UPDATE admins
+SET password_hash = $2, updated_at = NOW()
+WHERE email = $1;
+-- name: MarkAdminPasswordResetTokenUsed :exec
+UPDATE admin_password_resets
+SET used_at = NOW()
+WHERE id = $1;
 -- name: GetAdminByResetToken :one
 SELECT a.id,
     a.email,

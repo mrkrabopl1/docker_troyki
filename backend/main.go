@@ -116,7 +116,11 @@ func runTaskProcessor(
 	redisOpt asynq.RedisClientOpt,
 	store db.Store,
 ) worker.TaskProcessor {
-	mailer := mail.NewGmailSender(config.EmailSenderName, config.EmailSenderAddress, config.EmailSenderPassword)
+	fmt.Printf("SMTPAuthAddress: %s\n", config.SMTPAuthAddress)
+	fmt.Printf("SMTPServerAddress: %s\n", config.SMTPServerAddress)
+	fmt.Printf("EmailSenderAddress: %s\n", config.EmailSenderAddress)
+	fmt.Printf("EmailSenderPassword: %s\n", config.EmailSenderPassword)
+	mailer := mail.NewGmailSender(config.EmailSenderName, config.EmailSenderAddress, config.EmailSenderPassword, config.SMTPAuthAddress, config.SMTPServerAddress)
 	taskProcessor := worker.NewRedisTaskProcessor(redisOpt, store, mailer)
 
 	//log.Info().Msg("start task processor")

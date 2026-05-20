@@ -88,6 +88,7 @@ type Querier interface {
 	GetAdminLogs(ctx context.Context, arg GetAdminLogsParams) ([]GetAdminLogsRow, error)
 	// ========== ЛОГИ АДМИНИСТРАТОРОВ ==========
 	GetAdminLogsCount(ctx context.Context, arg GetAdminLogsCountParams) (int64, error)
+	GetAdminPasswordResetToken(ctx context.Context, token string) (AdminPasswordReset, error)
 	GetAdminProductsInfoById(ctx context.Context, id int32) (GetAdminProductsInfoByIdRow, error)
 	GetAdminStats(ctx context.Context) (GetAdminStatsRow, error)
 	// ========== АДМИНИСТРАТОРЫ ==========
@@ -206,6 +207,7 @@ type Querier interface {
 	InsertPreorderItem(ctx context.Context, arg InsertPreorderItemParams) (int32, error)
 	InsertVerification(ctx context.Context, arg InsertVerificationParams) error
 	ListAdmins(ctx context.Context, arg ListAdminsParams) ([]ListAdminsRow, error)
+	MarkAdminPasswordResetTokenUsed(ctx context.Context, id int32) error
 	MarkInviteAsUsed(ctx context.Context, arg MarkInviteAsUsedParams) error
 	RemoveRuleItem(ctx context.Context, arg RemoveRuleItemParams) error
 	RestoreBrand(ctx context.Context, id int32) error
@@ -224,6 +226,7 @@ type Querier interface {
 	UpdateAdmin(ctx context.Context, arg UpdateAdminParams) error
 	UpdateAdminLastLogin(ctx context.Context, arg UpdateAdminLastLoginParams) error
 	UpdateAdminPassword(ctx context.Context, arg UpdateAdminPasswordParams) error
+	UpdateAdminPasswordByEmail(ctx context.Context, arg UpdateAdminPasswordByEmailParams) error
 	UpdateAdminRole(ctx context.Context, arg UpdateAdminRoleParams) error
 	UpdateAdminStatus(ctx context.Context, arg UpdateAdminStatusParams) error
 	UpdateBanner(ctx context.Context, arg UpdateBannerParams) error

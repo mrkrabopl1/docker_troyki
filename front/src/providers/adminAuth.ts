@@ -145,7 +145,7 @@ const requestPasswordReset = function(
 };
 
 const confirmPasswordReset = function(
-  data: { token: string; new_password: string },
+  data: { token: string; new_pass: string },
   callback: (val: any) => void
 ) {
   adminApi.post('/admin/auth/reset-password', data)

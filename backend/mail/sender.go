@@ -7,10 +7,10 @@ import (
 	"github.com/jordan-wright/email"
 )
 
-const (
-	smtpAuthAddress   = "smtp.gmail.com"
-	smtpServerAddress = "smtp.gmail.com:587"
-)
+// const (
+// 	smtpAuthAddress   = "smtp.gmail.com"
+// 	smtpServerAddress = "smtp.gmail.com:587"
+// )
 
 type EmailSender interface {
 	SendEmail(
@@ -27,13 +27,23 @@ type GmailSender struct {
 	name              string
 	fromEmailAddress  string
 	fromEmailPassword string
+	smtpAuthAddress   string // добавить
+	smtpServerAddress string // добавить
 }
 
-func NewGmailSender(name string, fromEmailAddress string, fromEmailPassword string) EmailSender {
+func NewGmailSender(
+	name string,
+	fromEmailAddress string,
+	fromEmailPassword string,
+	smtpAuthAddress string, // новый параметр
+	smtpServerAddress string, // новый параметр
+) EmailSender {
 	return &GmailSender{
 		name:              name,
 		fromEmailAddress:  fromEmailAddress,
 		fromEmailPassword: fromEmailPassword,
+		smtpAuthAddress:   smtpAuthAddress,
+		smtpServerAddress: smtpServerAddress,
 	}
 }
 
@@ -64,8 +74,8 @@ func (sender *GmailSender) SendEmail(
 		}
 	}
 	fmt.Println("test1")
-	smtpAuth := smtp.PlainAuth("", sender.fromEmailAddress, sender.fromEmailPassword, smtpAuthAddress)
+	smtpAuth := smtp.PlainAuth("", sender.fromEmailAddress, sender.fromEmailPassword, sender.smtpAuthAddress)
 	fmt.Println("test2")
-	fmt.Println("Sending email to:", smtpServerAddress, smtpAuth)
-	return e.Send(smtpServerAddress, smtpAuth)
+	fmt.Println("Sending email to:", sender.smtpServerAddress, smtpAuth)
+	return e.Send(sender.smtpServerAddress, smtpAuth)
 }

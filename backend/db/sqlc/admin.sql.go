@@ -710,6 +710,26 @@ func (q *Queries) GetAdminLogsCount(ctx context.Context, arg GetAdminLogsCountPa
 	return count, err
 }
 
+const getAdminPasswordResetToken = `-- name: GetAdminPasswordResetToken :one
+SELECT id, email, token, expires_at, used_at, created_at FROM admin_password_resets
+WHERE token = $1 AND used_at IS NULL AND expires_at > NOW()
+LIMIT 1
+`
+
+func (q *Queries) GetAdminPasswordResetToken(ctx context.Context, token string) (AdminPasswordReset, error) {
+	row := q.db.QueryRow(ctx, getAdminPasswordResetToken, token)
+	var i AdminPasswordReset
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Token,
+		&i.ExpiresAt,
+		&i.UsedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getAdminProductsInfoById = `-- name: GetAdminProductsInfoById :one
 SELECT p.sizes,
     p.id AS id,
@@ -2567,6 +2587,17 @@ func (q *Queries) ListAdmins(ctx context.Context, arg ListAdminsParams) ([]ListA
 	return items, nil
 }
 
+const markAdminPasswordResetTokenUsed = `-- name: MarkAdminPasswordResetTokenUsed :exec
+UPDATE admin_password_resets
+SET used_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) MarkAdminPasswordResetTokenUsed(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, markAdminPasswordResetTokenUsed, id)
+	return err
+}
+
 const markInviteAsUsed = `-- name: MarkInviteAsUsed :exec
 UPDATE admin_invites
 SET used_at = NOW(),
@@ -2644,6 +2675,22 @@ type UpdateAdminPasswordParams struct {
 
 func (q *Queries) UpdateAdminPassword(ctx context.Context, arg UpdateAdminPasswordParams) error {
 	_, err := q.db.Exec(ctx, updateAdminPassword, arg.ID, arg.PasswordHash)
+	return err
+}
+
+const updateAdminPasswordByEmail = `-- name: UpdateAdminPasswordByEmail :exec
+UPDATE admins
+SET password_hash = $2, updated_at = NOW()
+WHERE email = $1
+`
+
+type UpdateAdminPasswordByEmailParams struct {
+	Email        string `json:"email"`
+	PasswordHash []byte `json:"password_hash"`
+}
+
+func (q *Queries) UpdateAdminPasswordByEmail(ctx context.Context, arg UpdateAdminPasswordByEmailParams) error {
+	_, err := q.db.Exec(ctx, updateAdminPasswordByEmail, arg.Email, arg.PasswordHash)
 	return err
 }
 

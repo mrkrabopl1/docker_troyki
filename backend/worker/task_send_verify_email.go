@@ -588,7 +588,7 @@ func (processor *RedisTaskProcessor) ProcessTaskSendAdminPasswordReset(ctx conte
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		return fmt.Errorf("failed to unmarshal payload: %w", asynq.SkipRetry)
 	}
-
+	fmt.Print("Processing admin password reset email for: ", payload.Email)
 	subject := "Password Reset Request - Troyki Sail Admin Panel"
 
 	content := fmt.Sprintf(`
