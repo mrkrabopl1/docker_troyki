@@ -116,10 +116,23 @@ func (s *Server) AdminAuthMiddleware() gin.HandlerFunc {
 		authorizationHeader := ctx.GetHeader(authorizationHeaderKey)
 		fmt.Println(authorizationHeader, "AdminAuthMiddleware", "fndkjbfkjsdnfjsdbflsdfjhsbdfllsjbfs")
 
-		if len(authorizationHeader) == 0 {
-			// Пробуем взять из cookie
+		// Если это Basic Auth от nginx - игнорируем его и берём токен из cookie
+		if strings.HasPrefix(authorizationHeader, "Basic ") {
+			fmt.Println("Basic Auth detected, ignoring and using cookie instead")
+			// Берём токен из cookie
 			adminToken, err := ctx.Cookie("admin_token")
-			fmt.Println(adminToken, "adminToken", "111111111111111111111111111111111111", err)
+			fmt.Println(adminToken, "adminToken from cookie", err)
+			if err != nil {
+				ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(errors.New("authorization required")))
+				return
+			}
+			authorizationHeader = "Bearer " + adminToken
+		}
+
+		// Если заголовок пустой - тоже пробуем cookie
+		if len(authorizationHeader) == 0 {
+			adminToken, err := ctx.Cookie("admin_token")
+			fmt.Println(adminToken, "adminToken from cookie", err)
 			if err != nil {
 				ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(errors.New("authorization required")))
 				return
@@ -151,13 +164,16 @@ func (s *Server) AdminAuthMiddleware() gin.HandlerFunc {
 			ctx.AbortWithStatusJSON(http.StatusForbidden, errorResponse(errors.New("admin access required")))
 			return
 		}
+
 		fmt.Println(payload, "payload", "2222222222222222222222222222222222111111111111111111111111111111111111")
+
 		// Проверяем, существует ли админ в БД и активен ли он
 		admin, err := s.store.GetAdminByID(ctx, payload.UserID)
 		if err != nil || !admin.IsActive.Bool {
 			ctx.AbortWithStatusJSON(http.StatusForbidden, errorResponse(errors.New("admin account not found or disabled")))
 			return
 		}
+
 		fmt.Println(admin, "admin", "33333333333333333333333333333333333", adminPayloadKey)
 		ctx.Set(adminPayloadKey, admin)
 		ctx.Next()
