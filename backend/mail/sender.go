@@ -1,8 +1,10 @@
 package mail
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/smtp"
+	"strings"
 
 	"github.com/jordan-wright/email"
 )
@@ -76,6 +78,20 @@ func (sender *GmailSender) SendEmail(
 	fmt.Println("test1")
 	smtpAuth := smtp.PlainAuth("", sender.fromEmailAddress, sender.fromEmailPassword, sender.smtpAuthAddress)
 	fmt.Println("test2")
-	fmt.Println("Sending email to:", sender.smtpServerAddress, smtpAuth)
-	return e.Send(sender.smtpServerAddress, smtpAuth)
+	fmt.Println("Sending email to:", sender.smtpServerAddress)
+
+	// Определяем порт из адреса
+	addr := sender.smtpServerAddress
+
+	// Для порта 465 используем SendWithTLS
+	if strings.Contains(addr, ":465") {
+		fmt.Println("Using SSL/TLS for port 465")
+		return e.SendWithTLS(addr, smtpAuth, &tls.Config{
+			ServerName: sender.smtpAuthAddress, // используем из конфига
+		})
+	}
+
+	// Для порта 587 используем обычный Send
+	fmt.Println("Using STARTTLS for port 587")
+	return e.Send(addr, smtpAuth)
 }
