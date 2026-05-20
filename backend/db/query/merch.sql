@@ -1134,11 +1134,14 @@ SELECT EXISTS(
 SELECT pc.id as category_id,
     pc.enum_key as category_key,
     pt.id as type_id,
-    pt.enum_key as type_key
+    pt.enum_key as type_key,
+    b.slug as brand_key
 FROM product_categories pc
     CROSS JOIN product_types pt
+    CROSS JOIN brands b
 WHERE pc.id = @category_id
     AND pt.id = @type_id
+    AND b.id = @brand_id
 LIMIT 1;
 -- name: CheckTypeExistsByIds :one
 SELECT EXISTS(

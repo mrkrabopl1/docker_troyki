@@ -44,6 +44,23 @@ const AdminProductForm: React.FC = () => {
     const isEdit = !!id && id !== 'create';
     const { typesVal, categories, firms, firmMap, collections } = useAppSelector(state => state.menuReducer);
     const { user } = useAppSelector(state => state.adminReducer);
+
+    // Фильтруем доступные статусы в зависимости от роли
+    const availableStatuses = useMemo(() => {
+        const allStatuses = {
+            draft: 'Черновик',
+            active: 'Активен (на витрине)',
+            inactive: 'Архивирован'
+        };
+
+        // Admin не может перевести в active (на витрину)
+        if (user?.role !== 'superadmin') {
+            const { active, ...rest } = allStatuses;
+            return rest; // только draft и inactive
+        }
+
+        return allStatuses; // superadmin может всё
+    }, [user?.role])
     const sessionId = useMemo(() => {
         if (!isEdit) {
             return `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -697,11 +714,11 @@ const AdminProductForm: React.FC = () => {
                             <label>Статус</label>
                             <Combobox
                                 enumProp={true}
-                                data={{ draft: 'Черновик', active: 'Активен (на витрине)', "inactive": 'Архивирован' }}
+                                data={availableStatuses}
                                 placeholder="Выберите статус"
                                 onChangeIndex={(value) => setFormData(prev => ({ ...prev, status: value as any }))}
                                 width="100%"
-                                currentIndex={formData.type_id}
+                                currentIndex={formData.status}
                             />
                         </div>
                     </section>

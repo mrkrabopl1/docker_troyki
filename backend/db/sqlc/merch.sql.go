@@ -3171,17 +3171,21 @@ const getCategoryAndTypeByIDs = `-- name: GetCategoryAndTypeByIDs :one
 SELECT pc.id as category_id,
     pc.enum_key as category_key,
     pt.id as type_id,
-    pt.enum_key as type_key
+    pt.enum_key as type_key,
+    b.slug as brand_key
 FROM product_categories pc
     CROSS JOIN product_types pt
+    CROSS JOIN brands b
 WHERE pc.id = $1
     AND pt.id = $2
+    AND b.id = $3
 LIMIT 1
 `
 
 type GetCategoryAndTypeByIDsParams struct {
 	CategoryID int32 `json:"category_id"`
 	TypeID     int32 `json:"type_id"`
+	BrandID    int32 `json:"brand_id"`
 }
 
 type GetCategoryAndTypeByIDsRow struct {
@@ -3189,16 +3193,18 @@ type GetCategoryAndTypeByIDsRow struct {
 	CategoryKey string `json:"category_key"`
 	TypeID      int32  `json:"type_id"`
 	TypeKey     string `json:"type_key"`
+	BrandKey    string `json:"brand_key"`
 }
 
 func (q *Queries) GetCategoryAndTypeByIDs(ctx context.Context, arg GetCategoryAndTypeByIDsParams) (GetCategoryAndTypeByIDsRow, error) {
-	row := q.db.QueryRow(ctx, getCategoryAndTypeByIDs, arg.CategoryID, arg.TypeID)
+	row := q.db.QueryRow(ctx, getCategoryAndTypeByIDs, arg.CategoryID, arg.TypeID, arg.BrandID)
 	var i GetCategoryAndTypeByIDsRow
 	err := row.Scan(
 		&i.CategoryID,
 		&i.CategoryKey,
 		&i.TypeID,
 		&i.TypeKey,
+		&i.BrandKey,
 	)
 	return i, err
 }

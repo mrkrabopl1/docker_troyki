@@ -331,18 +331,19 @@ func (s *Server) handleAdminCreateProduct(c *gin.Context) {
 	data, err := s.store.GetCategoryAndTypeByIDs(c.Request.Context(), db.GetCategoryAndTypeByIDsParams{
 		CategoryID: req.CategoryID,
 		TypeID:     req.TypeID,
+		BrandID:    req.BrandID,
 	})
 	// СТРОИМ ПРАВИЛЬНЫЙ СТРУКТУРИРОВАННЫЙ ПУТЬ
 	pathParams := services.StructuredPathParams{
-		Firm:     req.Firm,
+		Firm:     data.BrandKey, // используем brand_key из запроса
 		Category: data.CategoryKey,
 		Type:     data.TypeKey,
 		Name:     req.Name,
 		Article:  req.Article,
 	}
-
+	fmt.Println(pathParams, "eeeeeeeeeeeeeeeeeeeeeeeee")
 	relativePath := s.imageService.BuildStructuredPath(pathParams)
-	imagePath := s.imageService.GetProductImageBasePath(relativePath)
+	fmt.Println(relativePath, "rrrrrrrrrrrrrrrrrrrrrrrrrr")
 	timestamp := time.Now().UnixMilli()
 	compositeID := fmt.Sprintf("%s_%s_%s_%s", req.Firm, data.TypeKey, timestamp)
 	params := db.CreateProductWithIdsParams{
@@ -355,7 +356,7 @@ func (s *Server) handleAdminCreateProduct(c *gin.Context) {
 			Int32: int32(req.LineID),
 			Valid: req.LineID != 0,
 		},
-		ImagePath:   imagePath, // ПРАВИЛЬНЫЙ ПУТЬ
+		ImagePath:   relativePath, // ПРАВИЛЬНЫЙ ПУТЬ
 		Minprice:    minPrice,
 		Maxprice:    maxPrice,
 		Article:     req.Article,
@@ -416,7 +417,7 @@ func (s *Server) handleAdminCreateProduct(c *gin.Context) {
 		}
 	}
 	// ========== 9. ПЕРЕНОСИМ ФАЙЛЫ ИЗ TEMP В ПРАВИЛЬНУЮ ПАПКУ ==========
-	permanentDir := filepath.Join(s.imageService.BaseDir, imagePath)
+	permanentDir := filepath.Join(s.imageService.BaseDir, relativePath)
 
 	if err := os.MkdirAll(permanentDir, 0755); err != nil {
 		s.store.DeleteHardProduct(c.Request.Context(), product.ID)
@@ -472,7 +473,7 @@ func (s *Server) handleAdminCreateProduct(c *gin.Context) {
 		"id":          product.ID,
 		"qId":         product.Qid,
 		"article":     product.Article,
-		"image_path":  imagePath,
+		"image_path":  relativePath,
 		"image_count": len(files),
 	})
 }
@@ -3280,6 +3281,11 @@ func (s *Server) handleAdminGetBanners(ctx *gin.Context) {
 		return
 	}
 
+	// Обновляем URL изображений для каждого баннера
+	for i := range banners {
+		banners[i].ImageUrl = s.imageService.ImagePathBuilder.GetImageURLFromPath(banners[i].ImageUrl)
+	}
+
 	ctx.JSON(http.StatusOK, banners)
 }
 
@@ -3484,7 +3490,9 @@ func (s *Server) handleAdminGetBannersAndFilters(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
+	for i := range banners {
+		banners[i].ImageUrl = s.imageService.ImagePathBuilder.GetImageURLFromPath(banners[i].ImageUrl)
+	}
 	ctx.JSON(http.StatusOK, gin.H{
 		"banners": banners,
 		"filters": filters,
