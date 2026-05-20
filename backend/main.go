@@ -48,6 +48,7 @@ func main() {
 	cfg1, _ := util.LoadConfig(".")
 	//cfg1.DBSource = os.Getenv("DATABASE_URL")
 	fmt.Println(cfg1)
+	fmt.Println(cfg1.ImageBasePath, "dddddddddddddddddddddddddd")
 	connPool, err := pgxpool.NewWithConfig(context.Background(), util.CreateConfig(cfg1.DBSource))
 	if err != nil {
 		log.Fatal("Error while creating connection to the database!!")
