@@ -2503,56 +2503,89 @@ func (s *Server) handleAdminForgotPass(ctx *gin.Context) {
 		Email string `json:"email" binding:"required,email"`
 	}
 
+	fmt.Println("🔵 [STEP 1] Forgot password handler called")
+
 	if err := ctx.ShouldBindJSON(&req); err != nil {
+		fmt.Printf("🔴 [STEP 2] Invalid email format: %v\n", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: email required"})
 		return
 	}
 
 	email := req.Email
+	fmt.Printf("🟢 [STEP 2] Email received: %s\n", email)
 
 	// 1. Проверяем существование (но не выдаем информацию)
+	fmt.Println("🔵 [STEP 3] Checking if admin exists...")
 	admin, err := s.store.GetAdminByEmail(ctx.Request.Context(), email)
 	if err != nil {
 		// Всегда возвращаем одинаковый ответ
-		fmt.Println("Admin with email not found:", email)
+		fmt.Printf("🟡 [STEP 3] Admin with email not found: %s, error: %v\n", email, err)
 		ctx.JSON(http.StatusOK, gin.H{"message": "If email exists, reset link will be sent"})
 		return
 	}
+	fmt.Printf("🟢 [STEP 3] Admin found: ID=%d, Name=%s, Email=%s, IsActive=%v\n", admin.ID, admin.Name, admin.Email, admin.IsActive)
 
 	// 2. Удаляем старые неиспользованные токены для этого email
-	s.store.DeleteOldPasswordResetTokenByEmail(ctx.Request.Context(), email)
+	fmt.Println("🔵 [STEP 4] Deleting old password reset tokens...")
+	err = s.store.DeleteOldPasswordResetTokenByEmail(ctx.Request.Context(), email)
+	if err != nil {
+		fmt.Printf("🟡 [STEP 4] Warning - error deleting old tokens: %v\n", err)
+	} else {
+		fmt.Println("🟢 [STEP 4] Old tokens deleted successfully")
+	}
 
 	// 3. Создаем новый токен
+	fmt.Println("🔵 [STEP 5] Generating new reset token...")
 	token, err := util.GenerateRandomToken(32)
 	if err != nil {
+		fmt.Printf("🔴 [STEP 5] Failed to generate token: %v\n", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate reset token"})
 		return
 	}
+	fmt.Printf("🟢 [STEP 5] Token generated: %s\n", token)
 
+	fmt.Println("🔵 [STEP 6] Saving token to database...")
 	err = s.store.CreateAdminPasswordResetToken(ctx.Request.Context(), db.CreateAdminPasswordResetTokenParams{
 		Email: email,
 		Token: token,
 	})
 	if err != nil {
-		fmt.Println("Failed to create reset token:", err)
+		fmt.Printf("🔴 [STEP 6] Failed to create reset token in DB: %v\n", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create reset token"})
 		return
 	}
+	fmt.Println("🟢 [STEP 6] Token saved to database successfully")
 
 	// 4. Отправляем email
 	resetLink := fmt.Sprintf("%s/admin/reset-password/%s", s.config.AppURL, token)
-	fmt.Println("Send email to:", email)
+	fmt.Printf("🟢 [STEP 7] Reset link generated: %s\n", resetLink)
+	fmt.Printf("🔵 [STEP 7] Attempting to send email to: %s\n", email)
 
-	s.taskDistributor.DistributeTaskSendAdminPasswordReset(ctx, &worker.PayloadSendAdminPasswordReset{
-		Email:     email,
-		Name:      admin.Name,
-		ResetLink: resetLink,
-	})
+	// Проверяем, что taskDistributor не nil
+	if s.taskDistributor == nil {
+		fmt.Printf("🔴 [STEP 7] CRITICAL: taskDistributor is nil!\n")
+	} else {
+		fmt.Println("🟢 [STEP 7] taskDistributor is available, sending task...")
+		err = s.taskDistributor.DistributeTaskSendAdminPasswordReset(ctx, &worker.PayloadSendAdminPasswordReset{
+			Email:     email,
+			Name:      admin.Name,
+			ResetLink: resetLink,
+		})
+		if err != nil {
+			fmt.Printf("🔴 [STEP 7] Failed to distribute task: %v\n", err)
+		} else {
+			fmt.Println("🟢 [STEP 7] Task distributed successfully to queue")
+		}
+	}
 
 	// 5. Логируем попытку (безопасность)
+	fmt.Printf("🔵 [STEP 8] Logging admin action for admin ID: %d\n", admin.ID)
 	s.logAdminAction(admin.ID, "password_reset_request", "admin", admin.ID, "Password reset requested", ctx.ClientIP())
+	fmt.Println("🟢 [STEP 8] Admin action logged")
 
+	fmt.Println("🟢 [STEP 9] Sending success response to client")
 	ctx.JSON(http.StatusOK, gin.H{"message": "If email exists, reset link will be sent"})
+	fmt.Println("🔵 [STEP 9] Response sent, handler finished")
 }
 
 // VerifyForgetPass - проверяем токен сброса

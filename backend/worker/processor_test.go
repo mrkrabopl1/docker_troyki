@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -225,6 +226,171 @@ func TestDistributeTaskSendOrderEmail(t *testing.T) {
 
 		fmt.Println("✅ Task SendOrderEmail distributed successfully")
 	})
+}
+func TestRedisConnectionErrors(t *testing.T) {
+	ctx := context.Background()
+
+	testCases := []struct {
+		name    string
+		addr    string
+		wantErr bool
+	}{
+		{
+			name:    "Wrong hostname - redis",
+			addr:    "redis:6379",
+			wantErr: true, // Ожидаем ошибку - не резолвится
+		},
+		{
+			name:    "Wrong hostname - fake",
+			addr:    "fake-redis:6379",
+			wantErr: true,
+		},
+		{
+			name:    "Wrong port",
+			addr:    "localhost:6380",
+			wantErr: true,
+		},
+		{
+			name:    "Correct localhost",
+			addr:    "localhost:6379",
+			wantErr: false,
+		},
+		{
+			name:    "Correct IP (если знаете IP)",
+			addr:    "172.18.0.3:6379", // Подставьте свой IP
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			fmt.Printf("\n🔍 Testing: %s\n", tc.name)
+
+			rdb := redis.NewClient(&redis.Options{
+				Addr: tc.addr,
+			})
+			defer rdb.Close()
+
+			pong, err := rdb.Ping(ctx).Result()
+
+			if tc.wantErr {
+				require.Error(t, err)
+				fmt.Printf("   ❌ Expected error: %v\n", err)
+
+				// Проверяем конкретную ошибку
+				if err.Error() == "dial tcp: lookup redis: no such host" {
+					fmt.Println("   ✅ Got expected 'no such host' error")
+				}
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, "PONG", pong)
+				fmt.Printf("   ✅ Connected! PONG: %s\n", pong)
+			}
+		})
+	}
+}
+
+// TestAsynqConnectionWithDifferentAddresses - тест asynq с разными адресами
+func TestAsynqConnectionWithDifferentAddresses(t *testing.T) {
+	testCases := []struct {
+		name    string
+		addr    string
+		wantErr bool
+	}{
+		{
+			name:    "Asynq with 'redis:6379' - FAIL",
+			addr:    "redis:6379",
+			wantErr: true,
+		},
+		{
+			name:    "Asynq with 'localhost:6379' - SUCCESS",
+			addr:    "localhost:6379",
+			wantErr: false,
+		},
+		{
+			name:    "Asynq with IP:6379 - SUCCESS",
+			addr:    "172.18.0.3:6379", // Подставьте свой IP
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			fmt.Printf("\n🔍 Testing asynq with: %s\n", tc.addr)
+
+			redisOpt := asynq.RedisClientOpt{
+				Addr: tc.addr,
+			}
+
+			client := asynq.NewClient(redisOpt)
+			defer client.Close()
+
+			// Пытаемся отправить задачу
+			task := asynq.NewTask("test:connection", []byte(`{"test":"data"}`))
+			info, err := client.Enqueue(task)
+
+			if tc.wantErr {
+				require.Error(t, err)
+				fmt.Printf("   ❌ Expected error: %v\n", err)
+
+				// Проверяем, что это ошибка подключения
+				if err.Error() == "redis: dial tcp: lookup redis: no such host" ||
+					err.Error() == "dial tcp: lookup redis: no such host" {
+					fmt.Println("   ✅ Got expected connection error")
+				}
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, info)
+				fmt.Printf("   ✅ Task sent successfully! ID: %s\n", info.ID)
+			}
+		})
+	}
+}
+
+// TestCurrentEnvRedisAddress - тест текущего REDIS_ADDRESS из окружения
+func TestCurrentEnvRedisAddress(t *testing.T) {
+	ctx := context.Background()
+
+	// Получаем REDIS_ADDRESS из переменных окружения
+	redisAddr := os.Getenv("REDIS_ADDRESS")
+	if redisAddr == "" {
+		redisAddr = "redis:6379" // default
+	}
+
+	fmt.Printf("\n🔍 Testing current REDIS_ADDRESS: %s\n", redisAddr)
+
+	// Тест 1: Прямое подключение к Redis
+	rdb := redis.NewClient(&redis.Options{
+		Addr: redisAddr,
+	})
+	defer rdb.Close()
+
+	pong, err := rdb.Ping(ctx).Result()
+	if err != nil {
+		fmt.Printf("   ❌ Redis ping failed: %v\n", err)
+		t.Logf("Current REDIS_ADDRESS '%s' is NOT reachable", redisAddr)
+
+		// Подсказка
+		fmt.Println("\n   💡 SUGGESTION: Update REDIS_ADDRESS in .env to 'localhost:6379' or '172.18.0.3:6379'")
+	} else {
+		fmt.Printf("   ✅ Redis ping successful: %s\n", pong)
+	}
+
+	// Тест 2: Asynq подключение
+	redisOpt := asynq.RedisClientOpt{
+		Addr: redisAddr,
+	}
+	client := asynq.NewClient(redisOpt)
+	defer client.Close()
+
+	task := asynq.NewTask("test:env", []byte(`{"test":"data"}`))
+	info, err := client.Enqueue(task)
+
+	if err != nil {
+		fmt.Printf("   ❌ Asynq enqueue failed: %v\n", err)
+	} else {
+		fmt.Printf("   ✅ Asynq task sent: %s\n", info.ID)
+	}
 }
 
 // TestNewsletterWithDifferentOptions - тест с разными опциями
