@@ -75,7 +75,8 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.BindEnv("IMAGE_BASE_PATH")
 	viper.BindEnv("USE_CDN")
 	viper.BindEnv("APP_URL")
-	viper.BindEnv("SMTP_AUTH_ADDRESS")
+	viper.BindEnv("MAX_IMAGE_SIZE_MB")
+	viper.BindEnv("SMTP_SERVER_ADDRESS")
 	viper.BindEnv("SMTP_SERVER_ADDRESS")
 	// 5. Распаковываем в структуру
 	err = viper.Unmarshal(&config)
