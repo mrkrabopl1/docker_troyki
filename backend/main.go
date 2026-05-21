@@ -48,12 +48,17 @@ func main() {
 	cfg1, _ := util.LoadConfig(".")
 	//cfg1.DBSource = os.Getenv("DATABASE_URL")
 	fmt.Println(cfg1)
-	fmt.Println(cfg1.ImageBasePath, "dddddddddddddddddddddddddd")
 	connPool, err := pgxpool.NewWithConfig(context.Background(), util.CreateConfig(cfg1.DBSource))
 	if err != nil {
 		log.Fatal("Error while creating connection to the database!!")
 		return
 	}
+	fmt.Printf("=== IMAGE SERVICE CONFIG ===\n")
+	fmt.Printf("ImageBaseDir: %s\n", cfg1.ImageBaseDir)
+	fmt.Printf("ImageBasePath: %s\n", cfg1.ImageBasePath)
+	fmt.Printf("UseCDN: %v\n", cfg1.UseCDN)
+	fmt.Printf("MaxImageSizeMB: %d\n", cfg1.MaxImageSizeMB)
+	fmt.Printf("===========================\n")
 	imageService := services.NewImageService(
 		cfg1.ImageBaseDir,
 		cfg1.ImageBasePath,
