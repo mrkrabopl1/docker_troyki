@@ -73,6 +73,7 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.BindEnv("ALLOWED_ORIGINS")
 	viper.BindEnv("MIGRATION_URL")
 	viper.BindEnv("IMAGE_BASE_PATH")
+	viper.BindEnv("IMAGE_BASE_DIR")
 	viper.BindEnv("USE_CDN")
 	viper.BindEnv("APP_URL")
 	viper.BindEnv("MAX_IMAGE_SIZE_MB")
