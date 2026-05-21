@@ -3348,7 +3348,7 @@ func (s *Server) handleAdminGetBrandById(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-
+	BrandInfo.ImagePath.String = s.imageService.ImagePathBuilder.GetImageURLFromPath(BrandInfo.ImagePath.String)
 	ctx.JSON(http.StatusOK, BrandInfo)
 }
 
