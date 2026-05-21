@@ -1115,10 +1115,11 @@ func (s *Server) handleAdminDeleteAdmin(c *gin.Context) {
 		return
 	}
 
-	currentAdminID, _ := c.Get("admin_id")
-
+	admin, _ := c.Get("admin")
+	adminDB := admin.(db.GetAdminByIDRow)
+	currentAdminID := adminDB.ID
 	// Не даем удалить самого себя
-	if currentAdminID.(int32) == int32(adminID) {
+	if currentAdminID == int32(adminID) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot delete your own account"})
 		return
 	}
@@ -1141,7 +1142,7 @@ func (s *Server) handleAdminDeleteAdmin(c *gin.Context) {
 		}
 
 		params := db.CreateAdminLogParams{
-			AdminID:    currentAdminID.(int32),
+			AdminID:    currentAdminID,
 			Action:     "delete",
 			EntityType: pgtype.Text{String: "admin", Valid: true},
 			EntityID:   pgtype.Int4{Int32: int32(adminID), Valid: true},
@@ -1162,14 +1163,16 @@ func (s *Server) handleAdminUpdateAdmin(c *gin.Context) {
 		return
 	}
 
-	currentAdminID, exists := c.Get("admin_id")
+	admin, exists := c.Get("admin")
+	adminDB := admin.(db.GetAdminByIDRow)
+	currentAdminID := adminDB.ID
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
 	// Не даем обновить самого себя (опционально, можно разрешить кроме роли)
-	if currentAdminID.(int32) == int32(adminID) {
+	if currentAdminID == int32(adminID) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot update your own account through this endpoint"})
 		return
 	}
@@ -1290,7 +1293,7 @@ func (s *Server) handleAdminUpdateAdmin(c *gin.Context) {
 		}
 
 		params := db.CreateAdminLogParams{
-			AdminID:    currentAdminID.(int32),
+			AdminID:    currentAdminID,
 			Action:     "update",
 			EntityType: pgtype.Text{String: "admin", Valid: true},
 			EntityID:   pgtype.Int4{Int32: int32(adminID), Valid: true},

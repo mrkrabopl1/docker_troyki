@@ -229,7 +229,7 @@ const AdminLogs: React.FC = () => {
                                         </td>
                                         <td>
                                             <div className={s.actions}>
-                                                {admin.id !== user?.id && (
+                                                {(admin.id !== user?.id && user?.role !== 'superadmin') && (
                                                     <>
                                                         <button className={s.toggleBtn} onClick={() => handleToggleActive(admin)}>
                                                             {admin.is_active ? '🔒' : '🔓'}
