@@ -53,8 +53,8 @@ const Main: React.FC = memo(() => {
   }, [categories]);
   const [merchHistoryFieldData, setMerchHistoryFieldData] = useState<any[]>([]);
 
-  const handleBannerClick = useCallback((e) => {
-    navigate(`/collections/${bannerData.id}`);
+  const handleBannerClick = useCallback((url) => {
+    navigate(url);
   }, [navigate]);
 
   useEffect(() => {
@@ -93,7 +93,7 @@ const Main: React.FC = memo(() => {
           contentHolder: s.contentHolder
         }}
         btnText={btnVal.button_text}
-        onChange={handleBannerClick}
+        onChange={()=>handleBannerClick(btnVal.link_url)}
         title={btnVal.title}
         img={btnVal.image_url}
       />

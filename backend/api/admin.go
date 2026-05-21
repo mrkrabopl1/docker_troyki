@@ -2145,13 +2145,13 @@ func (s *Server) handleAdminUpdateOrderStatus(c *gin.Context) {
 
 type CreateBannerRequest struct {
 	Title   string `json:"title"`
-	LinkURL string `json:"link_url"`
+	LinkURL string `json:"url"`
 }
 
 func (s *Server) handleAdminCreateBanner(c *gin.Context) {
 	// Получаем данные из form-data
 	title := c.PostForm("title")
-	linkURL := c.PostForm("link_url")
+	linkURL := c.PostForm("url")
 
 	// Получаем файл изображения
 	file, err := c.FormFile("image")
@@ -2162,14 +2162,16 @@ func (s *Server) handleAdminCreateBanner(c *gin.Context) {
 
 	admin, _ := c.Get("admin")
 	adminDB := admin.(db.GetAdminByIDRow)
+
 	// 1. Сначала сохраняем изображение (путь генерируется независимо от ID)
-	imageURL, err := s.imageService.SaveBannerImage(file) // без ID параметра
+	imageURL, err := s.imageService.SaveBannerImage(file)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	fmt.Println(imageURL)
-	// 2. Создаем баннер в БД с полученным путем
+
+	// 2. Создаем баннер в БД
 	banner, err := s.store.CreateBanner(c.Request.Context(), db.CreateBannerParams{
 		Title:    pgtype.Text{String: title, Valid: title != ""},
 		ImageUrl: imageURL,
@@ -2183,7 +2185,17 @@ func (s *Server) handleAdminCreateBanner(c *gin.Context) {
 		return
 	}
 
-	// Логируем
+	// 3. 🟢 ОЧИСТИТЬ КЭШ БАННЕРОВ В REDIS
+	go func() {
+		ctx := context.Background()
+		if err := s.taskProcessor.ClearBannersCache(ctx); err != nil {
+			fmt.Printf("[Redis] Failed to clear banners cache: %v\n", err)
+		} else {
+			fmt.Println("[Redis] Banners cache cleared after create")
+		}
+	}()
+
+	// 4. Логируем
 	go func() {
 		ctx := context.Background()
 		var ipAddr *netip.Addr

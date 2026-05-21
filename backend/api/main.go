@@ -20,9 +20,10 @@ func (s *Server) handleGetMainBanners(ctx *gin.Context) {
 	// Конвертируем в CreateBannerParams
 	params := make([]db.CreateBannerParams, len(resp))
 	for i, banner := range resp {
+		fmt.Println("Banner from DB:", s.imageService.ImagePathBuilder.GetImageURLFromPath(banner.ImageUrl))
 		params[i] = db.CreateBannerParams{
 			Title:    pgtype.Text{String: banner.Title.String, Valid: banner.Title.Valid},
-			ImageUrl: banner.ImageUrl,
+			ImageUrl: s.imageService.ImagePathBuilder.GetImageURLFromPath(banner.ImageUrl),
 			LinkUrl:  banner.LinkUrl,
 		}
 	}

@@ -31,6 +31,7 @@ type TaskProcessor interface {
 	SetProductsInfo(ctx context.Context, ID string, merchant db.ProductsInfoResponse) error
 	GetProductsInfo(ctx context.Context, ID string) (db.ProductsInfoResponse, error)
 	SetBanners(ctx context.Context, banners []db.CreateBannerParams) error
+	ClearBannersCache(ctx context.Context) error
 	GetBanners(ctx context.Context) ([]db.CreateBannerParams, error)
 }
 
@@ -148,6 +149,16 @@ func (p *RedisTaskProcessor) GetBanners(ctx context.Context) ([]db.CreateBannerP
 
 	fmt.Printf("[Redis] Получено %d баннеров из кэша\n", len(banners))
 	return banners, nil
+}
+
+func (p *RedisTaskProcessor) ClearBannersCache(ctx context.Context) error {
+	key := "mainpage:banners:v1"
+	err := p.redisClient.Del(ctx, key).Err()
+	if err != nil {
+		return fmt.Errorf("failed to clear banners cache: %w", err)
+	}
+	fmt.Printf("[Redis] Кэш баннеров очищен, ключ: %s\n", key)
+	return nil
 }
 
 func (processor *RedisTaskProcessor) Start() error {
