@@ -3315,6 +3315,9 @@ func (s *Server) handleAdminGetFirmsStats(ctx *gin.Context) {
 		return
 	}
 
+	for i := range brandsInfo {
+		brandsInfo[i].ImagePath.String = s.imageService.ImagePathBuilder.GetImageURLFromPath(brandsInfo[i].ImagePath.String)
+	}
 	counts, err := s.store.CountBrands(ctx, params.Name)
 	if err != nil {
 		fmt.Println(err)
