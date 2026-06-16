@@ -1,13 +1,23 @@
 // pages/admin/SQLConsole/SQLConsole.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Button from 'src/components/Button';
 import { sqlExecute } from 'src/providers/adminProvider';
+import { finishLoading } from 'src/store/reducers/loadingSlice'
+import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
 
 const SQLConsole: React.FC = () => {
     const [sql, setSql] = useState('');
     const [result, setResult] = useState<any>(null);
     const [loading, setLoading] = useState(false);
-
+    const dispatch = useAppDispatch();
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            dispatch(finishLoading());
+        }, 0);
+        return () => {
+            clearTimeout(timeout);
+        };  
+    }, [dispatch]);
     const executeSQL = async () => {
         if (!sql.trim()) return;
         setLoading(true);

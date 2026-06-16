@@ -1,4 +1,4 @@
-import React, { ReactElement, useEffect, useRef, useState, } from 'react'
+import React, { ReactElement, useEffect, useRef, useState } from 'react'
 import s from "./style.module.css"
 import InputWithLabelWithValidation from 'src/components/input/InputWithLabelWithValidation'
 import PhoneInputWithValidation from 'src/components/input/PhoneInputWithValidation'
@@ -7,10 +7,8 @@ import PasswordInput from 'src/components/input/PasswordInput'
 import PasswordInputWithValidation from 'src/components/input/PasswordInputWithValidation'
 import MailInputWithValidation from 'src/components/input/MailInputWithValidation'
 import { registerUser, loginUser } from 'src/providers/userProvider'
+import Link from 'next/link'
 
-import {
-    NavLink,
-} from "react-router-dom";
 interface loginFormModuleInterface {
     className?: {
         input?: string,
@@ -20,13 +18,13 @@ interface loginFormModuleInterface {
     onChange: (data: any) => void
     onRegister: (data: any) => void
 }
+
 const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
     let validationObject = useRef<any>({})
     let passCheck = useRef<any>("")
     let formData = useRef<{
         mail: string,
         pass: string
-
     }>({
         mail: "",
         pass: ""
@@ -36,7 +34,6 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
         pass: ""
     })
 
-
     let [validRegister, setValidRegister] = useState<string>("")
     let [forgotPass, setForgotPass] = useState<boolean>(false)
     let [validLogin, setValiLogin] = useState<string>("")
@@ -44,6 +41,7 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
     let invalidMailText = useRef<string>("Пустое поле ввода")
     let [refresh, setRefresh] = useState<boolean>(false)
     let { onChange, onRegister } = { ...props }
+    
     const setFormData = (data: string, name: string) => {
         formData.current[name] = data
     }
@@ -101,19 +99,18 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
     }
 
     let checkBox = useRef<HTMLInputElement>(null)
-
     let checked = useRef<boolean>(false)
 
     return (
-        <div  className={s.main} onClick={(e) => { e.stopPropagation() }}>
+        <div className={s.main} onClick={(e) => { e.stopPropagation() }}>
             <div className={s.caption}>
                 Регистрация
             </div>
             <div>
-                Продолжая, вы даете {<NavLink to={"/"}>согласие на обработку</NavLink>}
+                Продолжая, вы даете <Link href="/">согласие на обработку</Link>
                 персональных данных.
             </div>
-            <MailInputWithValidation  valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
+            <MailInputWithValidation valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
             <PasswordInputWithValidation showToggle={true} validRule={validRuleForPass} valid={!validationObject.current.pass} invalidText={invalidPassText.current} onChange={(data) => { setFormData(data, "pass") }} className={s.loginInput} placeholder="Password" />
             <PasswordInput check={true} onChange={(data) => { passCheck.current = data }} className={s.loginInput} placeholder="Repeat password" />
             <Button className={s.loginButton} onClick={() => {
@@ -136,6 +133,5 @@ const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
         </div>
     )
 }
-
 
 export default LoginForm

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import Button from 'src/components/Button';
 import Modal from 'src/components/modal/Modal';
 import BrandLinesManager from 'src/modules/admin/brandLinesManager/BrandLinesManager';
@@ -7,16 +7,18 @@ import { ReactComponent as EditIcon } from '/public/edit.svg';
 import { ReactComponent as SaveIcon } from '/public/save.svg';
 import { ReactComponent as CancelIcon } from '/public/cancel.svg';
 import s from './style.module.css';
+import { finishLoading } from 'src/store/reducers/loadingSlice';
+import { useAppDispatch } from 'src/store/hooks/redux';
 import {
     getBrandData,
     updateBrandData,
-    uploadTempImage          // <-- используется для загрузки логотипа
+    uploadTempImage
 } from 'src/providers/adminProductsProvider';
 
 const BrandDetails: React.FC = () => {
-    const { brandId } = useParams<{ brandId: string }>();
-    const navigate = useNavigate();
-
+    const router = useRouter();
+    const { brandId } = router.query;
+    const dispatch = useAppDispatch();
     const [brand, setBrand] = useState<any>(null);
     const [lines, setLines] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -25,7 +27,6 @@ const BrandDetails: React.FC = () => {
     const [formLoading, setFormLoading] = useState(false);
     const [imageUploading, setImageUploading] = useState(false);
 
-    // Режим инлайн-редактирования
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({
         name: '',
@@ -34,34 +35,27 @@ const BrandDetails: React.FC = () => {
         website: '',
         description: '',
         sort_order: 0,
-        image_path: ''       // путь к изображению (строка)
+        image_path: ''
     });
     const [editImagePreview, setEditImagePreview] = useState('');
 
-    // Временная сессия для загрузки файла (если бренд существует – можно и без неё,
-    // но для единообразия с AdminProductForm используем её)
     const sessionId = useMemo(() => {
         return `brand_${brandId}_${Date.now()}`;
     }, [brandId]);
 
     const categoryIcons: Record<string, string> = {
-        sneakers: '👟',
-        merch: '👕',
-        clothes: '🧥',
-        toys: '🧸'
+        sneakers: '👟', merch: '👕', clothes: '🧥', toys: '🧸'
     };
 
     const categoryNames: Record<string, string> = {
-        sneakers: 'Кроссовки',
-        merch: 'Мерч',
-        clothes: 'Одежда',
-        toys: 'Игрушки'
+        sneakers: 'Кроссовки', merch: 'Мерч', clothes: 'Одежда', toys: 'Игрушки'
     };
 
     const loadData = useCallback(async () => {
         if (!brandId) return;
         setLoading(true);
-        getBrandData(parseInt(brandId), (data: any) => {
+        getBrandData(parseInt(brandId as string), (data: any) => {
+            
             setBrand(data);
             setLines(data.lines || []);
             setEditForm({
@@ -75,21 +69,19 @@ const BrandDetails: React.FC = () => {
             });
             setEditImagePreview(data.image_path || '');
             setLoading(false);
+            dispatch(finishLoading());
         });
+
     }, [brandId]);
 
     useEffect(() => {
         loadData();
     }, [loadData]);
 
-    // ------------------- Обработчики редактирования -------------------
-    const handleEditClick = () => {
-        setIsEditing(true);
-    };
+    const handleEditClick = () => setIsEditing(true);
 
     const handleCancelEdit = () => {
         setIsEditing(false);
-        // Сбрасываем форму к исходным данным бренда
         setEditForm({
             name: brand?.name || '',
             country: brand?.country || '',
@@ -106,7 +98,6 @@ const BrandDetails: React.FC = () => {
     const handleSaveEdit = async () => {
         setFormLoading(true);
         try {
-            // Отправляем данные БЕЗ файла – JSON с image_path
             const payload = {
                 id: brand.id,
                 name: editForm.name,
@@ -116,11 +107,8 @@ const BrandDetails: React.FC = () => {
                 description: editForm.description || undefined,
                 sort_order: editForm.sort_order,
                 image_path: editForm.image_path || undefined,
-                // Если сервер ожидает session_id для перемещения временного файла, добавьте:
                 session_id: sessionId
             };
-
-            // Вызов API – предполагается, что updateBrandData может принимать JSON
             await updateBrandData(brand.id, payload);
             await loadData();
             setIsEditing(false);
@@ -136,48 +124,35 @@ const BrandDetails: React.FC = () => {
         setEditForm(prev => ({ ...prev, [field]: value }));
     };
 
-    // ----------- Загрузка логотипа (сразу при выборе файла) -----------
     const handleEditImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
-        // Локальное превью для мгновенного отображения
         const previewUrl = URL.createObjectURL(file);
         setEditImagePreview(previewUrl);
         setImageUploading(true);
-
         try {
-            // Загружаем через временный эндпоинт (как в AdminProductForm)
             await uploadTempImage(sessionId, file, (response: any) => {
                 const uploadedPath = response.images[0];
                 setEditForm(prev => ({ ...prev, image_path: uploadedPath }));
-                // Заменяем превью на реальный URL
                 setEditImagePreview(uploadedPath);
             });
         } catch (error) {
             console.error('Image upload failed', error);
-            // В случае ошибки возвращаем предыдущий путь
             setEditImagePreview(editForm.image_path || brand?.image_path || '');
         } finally {
             setImageUploading(false);
-            // Сбрасываем input, чтобы тот же файл можно было выбрать повторно
             e.target.value = '';
         }
     };
 
     const getSeasonName = (season: string): string => {
         const seasons: Record<string, string> = {
-            'spring': 'Весна',
-            'summer': 'Лето',
-            'autumn': 'Осень',
-            'winter': 'Зима',
-            'spring-summer': 'Весна-Лето',
-            'autumn-winter': 'Осень-Зима'
+            'spring': 'Весна', 'summer': 'Лето', 'autumn': 'Осень', 'winter': 'Зима',
+            'spring-summer': 'Весна-Лето', 'autumn-winter': 'Осень-Зима'
         };
         return seasons[season] || season;
     };
 
-    // ------------------- Рендер -------------------
     if (loading) {
         return (
             <div className={s.container}>
@@ -190,23 +165,21 @@ const BrandDetails: React.FC = () => {
         return (
             <div className={s.container}>
                 <div className={s.error}>Бренд не найден</div>
-                <Button text="← Назад к списку" onClick={() => navigate('/admin/brands')} />
+                <Button text="← Назад к списку" onClick={() => router.push('/admin/brands')} />
             </div>
         );
     }
 
     return (
         <div className={s.container}>
-            {/* Хлебные крошки */}
             <div className={s.breadcrumbs}>
-                <span onClick={() => navigate('/admin')}>Админ</span>
+                <span onClick={() => router.push('/admin')}>Админ</span>
                 <span className={s.separator}>/</span>
-                <span onClick={() => navigate('/admin/brands')}>Бренды</span>
+                <span onClick={() => router.push('/admin/brands')}>Бренды</span>
                 <span className={s.separator}>/</span>
                 <span className={s.current}>{brand.name}</span>
             </div>
 
-            {/* Заголовок */}
             <div className={s.header}>
                 <div className={s.titleSection}>
                     <h2>{brand.name}</h2>
@@ -217,30 +190,18 @@ const BrandDetails: React.FC = () => {
                 <div className={s.headerActions}>
                     {!isEditing ? (
                         <>
-                            <Button
-                                text="Редактировать бренд"
-                                onClick={handleEditClick}
-                            />
-                            <Button text="← Назад к списку" onClick={() => navigate('/admin/brands')} />
+                            <Button text="Редактировать бренд" onClick={handleEditClick} />
+                            <Button text="← Назад к списку" onClick={() => router.push('/admin/brands')} />
                         </>
                     ) : (
                         <>
-                            <Button
-                                text="Сохранить"
-                                onClick={handleSaveEdit}
-                                disabled={formLoading || imageUploading}
-                            />
-                            <Button
-                                text="Отмена"
-                                onClick={handleCancelEdit}
-                                disabled={formLoading || imageUploading}
-                            />
+                            <Button text="Сохранить" onClick={handleSaveEdit} disabled={formLoading || imageUploading} />
+                            <Button text="Отмена" onClick={handleCancelEdit} disabled={formLoading || imageUploading} />
                         </>
                     )}
                 </div>
             </div>
 
-            {/* Основная информация о бренде */}
             {!isEditing ? (
                 <div className={s.brandInfoCard}>
                     <div className={s.brandMainInfo}>
@@ -249,7 +210,6 @@ const BrandDetails: React.FC = () => {
                         ) : (
                             <div className={s.noLogo}>Нет логотипа</div>
                         )}
-
                         <div className={s.brandDetails}>
                             <div className={s.detailRow}>
                                 <span className={s.detailLabel}>Страна:</span>
@@ -262,12 +222,7 @@ const BrandDetails: React.FC = () => {
                             <div className={s.detailRow}>
                                 <span className={s.detailLabel}>Веб-сайт:</span>
                                 {brand.website ? (
-                                    <a
-                                        href={brand.website}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={s.websiteLink}
-                                    >
+                                    <a href={brand.website} target="_blank" rel="noopener noreferrer" className={s.websiteLink}>
                                         {brand.website.replace(/^https?:\/\//, '')}
                                     </a>
                                 ) : (
@@ -280,7 +235,6 @@ const BrandDetails: React.FC = () => {
                             </div>
                         </div>
                     </div>
-
                     {brand.description && (
                         <div className={s.brandDescription}>
                             <h4>Описание</h4>
@@ -319,72 +273,38 @@ const BrandDetails: React.FC = () => {
                                 </label>
                             )}
                         </div>
-
                         <div className={s.brandDetails}>
                             <div className={s.detailRow}>
                                 <span className={s.detailLabel}>Название бренда:</span>
-                                <input
-                                    type="text"
-                                    value={editForm.name}
-                                    onChange={(e) => handleEditFieldChange('name', e.target.value)}
-                                    placeholder="Название бренда"
-                                />
+                                <input type="text" value={editForm.name} onChange={(e) => handleEditFieldChange('name', e.target.value)} placeholder="Название бренда" />
                             </div>
                             <div className={s.detailRow}>
                                 <span className={s.detailLabel}>Страна:</span>
-                                <input
-                                    type="text"
-                                    value={editForm.country}
-                                    onChange={(e) => handleEditFieldChange('country', e.target.value)}
-                                    placeholder="Страна"
-                                />
+                                <input type="text" value={editForm.country} onChange={(e) => handleEditFieldChange('country', e.target.value)} placeholder="Страна" />
                             </div>
                             <div className={s.detailRow}>
                                 <span className={s.detailLabel}>Год основания:</span>
-                                <input
-                                    type="number"
-                                    value={editForm.founded_year}
-                                    onChange={(e) => handleEditFieldChange('founded_year', e.target.value)}
-                                    placeholder="Год"
-                                />
+                                <input type="number" value={editForm.founded_year} onChange={(e) => handleEditFieldChange('founded_year', e.target.value)} placeholder="Год" />
                             </div>
                             <div className={s.detailRow}>
                                 <span className={s.detailLabel}>Веб-сайт:</span>
-                                <input
-                                    type="url"
-                                    value={editForm.website}
-                                    onChange={(e) => handleEditFieldChange('website', e.target.value)}
-                                    placeholder="https://"
-                                />
+                                <input type="url" value={editForm.website} onChange={(e) => handleEditFieldChange('website', e.target.value)} placeholder="https://" />
                             </div>
                             <div className={s.detailRow}>
                                 <span className={s.detailLabel}>Порядок сортировки:</span>
-                                <input
-                                    type="number"
-                                    value={editForm.sort_order}
-                                    onChange={(e) => handleEditFieldChange('sort_order', parseInt(e.target.value))}
-                                    placeholder="Порядок"
-                                />
+                                <input type="number" value={editForm.sort_order} onChange={(e) => handleEditFieldChange('sort_order', parseInt(e.target.value))} placeholder="Порядок" />
                             </div>
                         </div>
                     </div>
-
                     <div className={s.brandDescription}>
                         <h4>Описание</h4>
-                        <textarea
-                            value={editForm.description}
-                            onChange={(e) => handleEditFieldChange('description', e.target.value)}
-                            placeholder="Описание бренда"
-                            rows={4}
-                        />
+                        <textarea value={editForm.description} onChange={(e) => handleEditFieldChange('description', e.target.value)} placeholder="Описание бренда" rows={4} />
                     </div>
                 </div>
             )}
 
-            {/* Статистика бренда */}
             <div className={s.statsSection}>
                 <h3>Статистика товаров</h3>
-
                 <div className={s.statsGrid}>
                     <div className={s.statCard}>
                         <span className={s.statValue}>{brand.total_products}</span>
@@ -403,15 +323,12 @@ const BrandDetails: React.FC = () => {
                         <span className={s.statLabel}>Линеек</span>
                     </div>
                 </div>
-
-                {/* Статистика по категориям */}
                 <div className={s.categoryStats}>
                     <h4>По категориям</h4>
                     <div className={s.categoryGrid}>
                         {(['sneakers', 'merch', 'clothes', 'toys'] as const).map(cat => {
                             const total = brand[`${cat}_count`] || 0;
                             const active = brand[`${cat}_active`] || 0;
-
                             return (
                                 <div key={cat} className={s.categoryCard}>
                                     <div className={s.categoryHeader}>
@@ -419,10 +336,7 @@ const BrandDetails: React.FC = () => {
                                         <span className={s.categoryName}>{categoryNames[cat]}</span>
                                     </div>
                                     <div className={s.categoryProgress}>
-                                        <div
-                                            className={s.progressBar}
-                                            style={{ width: total > 0 ? `${(active / total) * 100}%` : '0%' }}
-                                        />
+                                        <div className={s.progressBar} style={{ width: total > 0 ? `${(active / total) * 100}%` : '0%' }} />
                                     </div>
                                     <div className={s.categoryNumbers}>
                                         <span className={s.activeCount}>{active}</span>
@@ -436,16 +350,9 @@ const BrandDetails: React.FC = () => {
                 </div>
             </div>
 
-            {/* Линейки бренда */}
             <div className={s.linesSection}>
                 <h3>Линейки и коллекции</h3>
-
-                <BrandLinesManager
-                    lines={lines}
-                    mode="manage"
-                    loading={loading}
-                    showStats={true}
-                />
+                <BrandLinesManager lines={lines} mode="manage" loading={loading} showStats={true} />
             </div>
         </div>
     );

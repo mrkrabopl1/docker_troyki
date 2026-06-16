@@ -1,22 +1,24 @@
 services:
   front:
-    image: front-dev3-i
+    image: front-dev3-i          # ← оставь как было
     build:
       context: ./front
       dockerfile: Dockerfile.prod
-    container_name: front-dev3-c
+      args:
+        API_URL: ${API_URL}
+    container_name: front-dev3-c  # ← оставь как было
     ports:
       - "80:80"
     volumes:
-      - ./front/images:/usr/share/nginx/html/images:ro
+      - ./front/images:/app/public/images:ro
       - ./front/htpasswd:/etc/nginx/.htpasswd:ro
+    environment:
+      - API_URL=${API_URL}
     depends_on:
       - goapp1
-    environment:
-      - CHOKIDAR_USEPOLLING=true
     networks:
       - front_networks
-
+    restart: unless-stopped
   goapp1:
     container_name: goapp1
     image: goapp1:1.0.0

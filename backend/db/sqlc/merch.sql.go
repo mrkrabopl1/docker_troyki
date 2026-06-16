@@ -505,6 +505,386 @@ func (q *Queries) CountProductsByFilters(ctx context.Context, arg CountProductsB
 	return count, err
 }
 
+const countProductsByFiltersBase = `-- name: CountProductsByFiltersBase :one
+
+SELECT COUNT(*)
+FROM products p
+WHERE (
+        COALESCE(array_length($1::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($1::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        $2::text IS NULL OR $2::text = '' OR p.status = $2::text
+    )
+    AND (
+        $3::text IS NULL OR $3::text = ''
+        OR p.name ILIKE '%' || $3::text || '%'
+        OR p.article ILIKE '%' || $3::text || '%'
+    )
+    AND (
+        COALESCE(array_length($4::int[], 1), 0) = 0
+        OR p.category = ANY($4::int[])
+    )
+    AND (
+        COALESCE(array_length($5::int[], 1), 0) = 0
+        OR p.type = ANY($5::int[])
+    )
+    AND (
+        COALESCE(array_length($6::int[], 1), 0) = 0
+        OR p.brand_id = ANY($6::int[])
+    )
+    AND (
+        COALESCE(array_length($7::int[], 1), 0) = 0
+        OR p.line_id = ANY($7::int[])
+    )
+    AND (
+        COALESCE(array_length($8::text[], 1), 0) = 0
+        OR p.bodytype = ANY($8::body_enum[])
+    )
+    AND (
+        $9::int IS NULL OR p.maxprice >= $9::int
+    )
+    AND (
+        $10::int IS NULL OR p.minprice <= $10::int
+    )
+    AND (
+        $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
+    )
+`
+
+type CountProductsByFiltersBaseParams struct {
+	Sizes        []string    `json:"sizes"`
+	Status       string      `json:"status"`
+	Name         string      `json:"name"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	WithPrice    bool        `json:"with_price"`
+}
+
+// ============================================================
+// COUNT (варианты)
+// ============================================================
+func (q *Queries) CountProductsByFiltersBase(ctx context.Context, arg CountProductsByFiltersBaseParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countProductsByFiltersBase,
+		arg.Sizes,
+		arg.Status,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.WithPrice,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countProductsByFiltersFull = `-- name: CountProductsByFiltersFull :one
+SELECT COUNT(*)
+FROM products p
+WHERE (
+        COALESCE(array_length($1::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($1::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        $2::text IS NULL OR $2::text = '' OR p.status = $2::text
+    )
+    AND (
+        $3::text IS NULL OR $3::text = ''
+        OR p.name ILIKE '%' || $3::text || '%'
+        OR p.article ILIKE '%' || $3::text || '%'
+    )
+    AND (
+        COALESCE(array_length($4::int[], 1), 0) = 0
+        OR p.category = ANY($4::int[])
+    )
+    AND (
+        COALESCE(array_length($5::int[], 1), 0) = 0
+        OR p.type = ANY($5::int[])
+    )
+    AND (
+        COALESCE(array_length($6::int[], 1), 0) = 0
+        OR p.brand_id = ANY($6::int[])
+    )
+    AND (
+        COALESCE(array_length($7::int[], 1), 0) = 0
+        OR p.line_id = ANY($7::int[])
+    )
+    AND (
+        COALESCE(array_length($8::text[], 1), 0) = 0
+        OR p.bodytype = ANY($8::body_enum[])
+    )
+    AND (
+        $9::int IS NULL OR p.maxprice >= $9::int
+    )
+    AND (
+        $10::int IS NULL OR p.minprice <= $10::int
+    )
+    AND (
+        $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
+    )
+    AND (
+        EXISTS (
+            SELECT 1 FROM discount d WHERE d.productid = p.id
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM discount_rule_items dri
+            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+               OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+               OR (dri.item_type = 'product' AND dri.item_id = p.id)
+        )
+    )
+    AND EXISTS (
+        SELECT 1 FROM store_house sh
+        WHERE sh.productid = p.id AND sh.quantity > 0
+    )
+`
+
+type CountProductsByFiltersFullParams struct {
+	Sizes        []string    `json:"sizes"`
+	Status       string      `json:"status"`
+	Name         string      `json:"name"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	WithPrice    bool        `json:"with_price"`
+}
+
+func (q *Queries) CountProductsByFiltersFull(ctx context.Context, arg CountProductsByFiltersFullParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countProductsByFiltersFull,
+		arg.Sizes,
+		arg.Status,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.WithPrice,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countProductsByFiltersWithDiscount = `-- name: CountProductsByFiltersWithDiscount :one
+SELECT COUNT(*)
+FROM products p
+WHERE (
+        COALESCE(array_length($1::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($1::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        $2::text IS NULL OR $2::text = '' OR p.status = $2::text
+    )
+    AND (
+        $3::text IS NULL OR $3::text = ''
+        OR p.name ILIKE '%' || $3::text || '%'
+        OR p.article ILIKE '%' || $3::text || '%'
+    )
+    AND (
+        COALESCE(array_length($4::int[], 1), 0) = 0
+        OR p.category = ANY($4::int[])
+    )
+    AND (
+        COALESCE(array_length($5::int[], 1), 0) = 0
+        OR p.type = ANY($5::int[])
+    )
+    AND (
+        COALESCE(array_length($6::int[], 1), 0) = 0
+        OR p.brand_id = ANY($6::int[])
+    )
+    AND (
+        COALESCE(array_length($7::int[], 1), 0) = 0
+        OR p.line_id = ANY($7::int[])
+    )
+    AND (
+        COALESCE(array_length($8::text[], 1), 0) = 0
+        OR p.bodytype = ANY($8::body_enum[])
+    )
+    AND (
+        $9::int IS NULL OR p.maxprice >= $9::int
+    )
+    AND (
+        $10::int IS NULL OR p.minprice <= $10::int
+    )
+    AND (
+        $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
+    )
+    AND (
+        EXISTS (
+            SELECT 1 FROM discount d WHERE d.productid = p.id
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM discount_rule_items dri
+            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+               OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+               OR (dri.item_type = 'product' AND dri.item_id = p.id)
+        )
+    )
+`
+
+type CountProductsByFiltersWithDiscountParams struct {
+	Sizes        []string    `json:"sizes"`
+	Status       string      `json:"status"`
+	Name         string      `json:"name"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	WithPrice    bool        `json:"with_price"`
+}
+
+func (q *Queries) CountProductsByFiltersWithDiscount(ctx context.Context, arg CountProductsByFiltersWithDiscountParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countProductsByFiltersWithDiscount,
+		arg.Sizes,
+		arg.Status,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.WithPrice,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countProductsByFiltersWithStore = `-- name: CountProductsByFiltersWithStore :one
+SELECT COUNT(*)
+FROM products p
+WHERE (
+        COALESCE(array_length($1::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($1::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        $2::text IS NULL OR $2::text = '' OR p.status = $2::text
+    )
+    AND (
+        $3::text IS NULL OR $3::text = ''
+        OR p.name ILIKE '%' || $3::text || '%'
+        OR p.article ILIKE '%' || $3::text || '%'
+    )
+    AND (
+        COALESCE(array_length($4::int[], 1), 0) = 0
+        OR p.category = ANY($4::int[])
+    )
+    AND (
+        COALESCE(array_length($5::int[], 1), 0) = 0
+        OR p.type = ANY($5::int[])
+    )
+    AND (
+        COALESCE(array_length($6::int[], 1), 0) = 0
+        OR p.brand_id = ANY($6::int[])
+    )
+    AND (
+        COALESCE(array_length($7::int[], 1), 0) = 0
+        OR p.line_id = ANY($7::int[])
+    )
+    AND (
+        COALESCE(array_length($8::text[], 1), 0) = 0
+        OR p.bodytype = ANY($8::body_enum[])
+    )
+    AND (
+        $9::int IS NULL OR p.maxprice >= $9::int
+    )
+    AND (
+        $10::int IS NULL OR p.minprice <= $10::int
+    )
+    AND (
+        $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
+    )
+    AND EXISTS (
+        SELECT 1 FROM store_house sh
+        WHERE sh.productid = p.id AND sh.quantity > 0
+    )
+`
+
+type CountProductsByFiltersWithStoreParams struct {
+	Sizes        []string    `json:"sizes"`
+	Status       string      `json:"status"`
+	Name         string      `json:"name"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	WithPrice    bool        `json:"with_price"`
+}
+
+func (q *Queries) CountProductsByFiltersWithStore(ctx context.Context, arg CountProductsByFiltersWithStoreParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countProductsByFiltersWithStore,
+		arg.Sizes,
+		arg.Status,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.WithPrice,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createBrand = `-- name: CreateBrand :one
 INSERT INTO brands (
         name,
@@ -4817,6 +5197,605 @@ func (q *Queries) GetProductsByFiltersPaginate(ctx context.Context, arg GetProdu
 			&i.Status,
 			&i.Maxdiscprice,
 			&i.DiscountPercent,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProductsByFiltersPaginateBase = `-- name: GetProductsByFiltersPaginateBase :many
+
+SELECT p.id, p.name, p.image_path,
+       b.name as firm,
+       p.minprice, p.maxprice, p.status
+FROM products p
+JOIN brands b ON p.brand_id = b.id
+WHERE (
+        COALESCE(array_length($1::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($1::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        $2::text IS NULL OR $2::text = '' OR p.status = $2::text
+    )
+    AND (
+        $3::text IS NULL OR $3::text = ''
+        OR p.name ILIKE '%' || $3::text || '%'
+        OR p.article ILIKE '%' || $3::text || '%'
+    )
+    AND (
+        COALESCE(array_length($4::int[], 1), 0) = 0
+        OR p.category = ANY($4::int[])
+    )
+    AND (
+        COALESCE(array_length($5::int[], 1), 0) = 0
+        OR p.type = ANY($5::int[])
+    )
+    AND (
+        COALESCE(array_length($6::int[], 1), 0) = 0
+        OR p.brand_id = ANY($6::int[])
+    )
+    AND (
+        COALESCE(array_length($7::int[], 1), 0) = 0
+        OR p.line_id = ANY($7::int[])
+    )
+    AND (
+        COALESCE(array_length($8::text[], 1), 0) = 0
+        OR p.bodytype = ANY($8::body_enum[])
+    )
+    AND (
+        $9::int IS NULL OR p.maxprice >= $9::int
+    )
+    AND (
+        $10::int IS NULL OR p.minprice <= $10::int
+    )
+    AND (
+        $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
+    )
+ORDER BY
+    CASE WHEN $12::int = 1 THEN p.name END ASC,
+    CASE WHEN $12::int = 2 THEN p.name END DESC,
+    CASE WHEN $12::int = 3 THEN p.minprice END ASC,
+    CASE WHEN $12::int = 4 THEN p.minprice END DESC,
+    CASE WHEN $12::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    p.id ASC
+LIMIT CASE WHEN $14::integer > 0 THEN $14::integer ELSE 50 END
+OFFSET CASE WHEN $13::integer > 0 THEN $13::integer ELSE 0 END
+`
+
+type GetProductsByFiltersPaginateBaseParams struct {
+	Sizes        []string    `json:"sizes"`
+	Status       string      `json:"status"`
+	Name         string      `json:"name"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	WithPrice    bool        `json:"with_price"`
+	SortType     int32       `json:"sort_type"`
+	Offsetval    int32       `json:"offsetval"`
+	Limitval     int32       `json:"limitval"`
+}
+
+type GetProductsByFiltersPaginateBaseRow struct {
+	ID        int32  `json:"id"`
+	Name      string `json:"name"`
+	ImagePath string `json:"image_path"`
+	Firm      string `json:"firm"`
+	Minprice  int32  `json:"minprice"`
+	Maxprice  int32  `json:"maxprice"`
+	Status    string `json:"status"`
+}
+
+// ============================================================
+// ПАГИНАЦИЯ (варианты)
+// ============================================================
+// Самый лёгкий – без скидок, без склада
+func (q *Queries) GetProductsByFiltersPaginateBase(ctx context.Context, arg GetProductsByFiltersPaginateBaseParams) ([]GetProductsByFiltersPaginateBaseRow, error) {
+	rows, err := q.db.Query(ctx, getProductsByFiltersPaginateBase,
+		arg.Sizes,
+		arg.Status,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.WithPrice,
+		arg.SortType,
+		arg.Offsetval,
+		arg.Limitval,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductsByFiltersPaginateBaseRow
+	for rows.Next() {
+		var i GetProductsByFiltersPaginateBaseRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ImagePath,
+			&i.Firm,
+			&i.Minprice,
+			&i.Maxprice,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProductsByFiltersPaginateFull = `-- name: GetProductsByFiltersPaginateFull :many
+SELECT p.id, p.name, p.image_path,
+       b.name as firm,
+       p.minprice, p.maxprice, p.status,
+       COALESCE(d.maxdiscprice, 0) as maxdiscprice,
+       COALESCE(dr.discount_value, 0) as discount_percent,
+       (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
+FROM products p
+JOIN brands b ON p.brand_id = b.id
+LEFT JOIN discount d ON p.id = d.productid
+LEFT JOIN store_house sh ON p.id = sh.productid
+LEFT JOIN LATERAL (
+    SELECT dr2.discount_value, dr2.name
+    FROM discount_rule_items dri
+    JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+        AND dr2.is_active = true
+        AND dr2.starts_at <= NOW()
+        AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+    WHERE (
+            (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+         OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+         OR (dri.item_type = 'product' AND dri.item_id = p.id)
+        )
+        AND d.id IS NULL
+    ORDER BY dr2.priority DESC
+    LIMIT 1
+) dr ON true
+WHERE (
+        COALESCE(array_length($1::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($1::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        $2::text IS NULL OR $2::text = '' OR p.status = $2::text
+    )
+    AND (
+        $3::text IS NULL OR $3::text = ''
+        OR p.name ILIKE '%' || $3::text || '%'
+        OR p.article ILIKE '%' || $3::text || '%'
+    )
+    AND (
+        COALESCE(array_length($4::int[], 1), 0) = 0
+        OR p.category = ANY($4::int[])
+    )
+    AND (
+        COALESCE(array_length($5::int[], 1), 0) = 0
+        OR p.type = ANY($5::int[])
+    )
+    AND (
+        COALESCE(array_length($6::int[], 1), 0) = 0
+        OR p.brand_id = ANY($6::int[])
+    )
+    AND (
+        COALESCE(array_length($7::int[], 1), 0) = 0
+        OR p.line_id = ANY($7::int[])
+    )
+    AND (
+        COALESCE(array_length($8::text[], 1), 0) = 0
+        OR p.bodytype = ANY($8::body_enum[])
+    )
+    AND (
+        $9::int IS NULL OR p.maxprice >= $9::int
+    )
+    AND (
+        $10::int IS NULL OR p.minprice <= $10::int
+    )
+    AND (
+        $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
+    )
+    AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL)  -- скидка
+    AND (sh.id IS NOT NULL AND sh.quantity > 0)              -- склад
+ORDER BY
+    CASE WHEN $12::int = 1 THEN p.name END ASC,
+    CASE WHEN $12::int = 2 THEN p.name END DESC,
+    CASE WHEN $12::int = 3 THEN p.minprice END ASC,
+    CASE WHEN $12::int = 4 THEN p.minprice END DESC,
+    CASE WHEN $12::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    p.id ASC
+LIMIT CASE WHEN $14::integer > 0 THEN $14::integer ELSE 50 END
+OFFSET CASE WHEN $13::integer > 0 THEN $13::integer ELSE 0 END
+`
+
+type GetProductsByFiltersPaginateFullParams struct {
+	Sizes        []string    `json:"sizes"`
+	Status       string      `json:"status"`
+	Name         string      `json:"name"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	WithPrice    bool        `json:"with_price"`
+	SortType     int32       `json:"sort_type"`
+	Offsetval    int32       `json:"offsetval"`
+	Limitval     int32       `json:"limitval"`
+}
+
+type GetProductsByFiltersPaginateFullRow struct {
+	ID              int32       `json:"id"`
+	Name            string      `json:"name"`
+	ImagePath       string      `json:"image_path"`
+	Firm            string      `json:"firm"`
+	Minprice        int32       `json:"minprice"`
+	Maxprice        int32       `json:"maxprice"`
+	Status          string      `json:"status"`
+	Maxdiscprice    int32       `json:"maxdiscprice"`
+	DiscountPercent int32       `json:"discount_percent"`
+	InStore         pgtype.Bool `json:"in_store"`
+}
+
+// Всё вместе: и скидки, и склад
+func (q *Queries) GetProductsByFiltersPaginateFull(ctx context.Context, arg GetProductsByFiltersPaginateFullParams) ([]GetProductsByFiltersPaginateFullRow, error) {
+	rows, err := q.db.Query(ctx, getProductsByFiltersPaginateFull,
+		arg.Sizes,
+		arg.Status,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.WithPrice,
+		arg.SortType,
+		arg.Offsetval,
+		arg.Limitval,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductsByFiltersPaginateFullRow
+	for rows.Next() {
+		var i GetProductsByFiltersPaginateFullRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ImagePath,
+			&i.Firm,
+			&i.Minprice,
+			&i.Maxprice,
+			&i.Status,
+			&i.Maxdiscprice,
+			&i.DiscountPercent,
+			&i.InStore,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProductsByFiltersPaginateWithDiscount = `-- name: GetProductsByFiltersPaginateWithDiscount :many
+SELECT p.id, p.name, p.image_path,
+       b.name as firm,
+       p.minprice, p.maxprice, p.status,
+       COALESCE(d.maxdiscprice, 0) as maxdiscprice,
+       COALESCE(dr.discount_value, 0) as discount_percent
+FROM products p
+JOIN brands b ON p.brand_id = b.id
+LEFT JOIN discount d ON p.id = d.productid
+LEFT JOIN LATERAL (
+    SELECT dr2.discount_value, dr2.name
+    FROM discount_rule_items dri
+    JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+        AND dr2.is_active = true
+        AND dr2.starts_at <= NOW()
+        AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+    WHERE (
+            (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+         OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+         OR (dri.item_type = 'product' AND dri.item_id = p.id)
+        )
+        AND d.id IS NULL
+    ORDER BY dr2.priority DESC
+    LIMIT 1
+) dr ON true
+WHERE (
+        COALESCE(array_length($1::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($1::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        $2::text IS NULL OR $2::text = '' OR p.status = $2::text
+    )
+    AND (
+        $3::text IS NULL OR $3::text = ''
+        OR p.name ILIKE '%' || $3::text || '%'
+        OR p.article ILIKE '%' || $3::text || '%'
+    )
+    AND (
+        COALESCE(array_length($4::int[], 1), 0) = 0
+        OR p.category = ANY($4::int[])
+    )
+    AND (
+        COALESCE(array_length($5::int[], 1), 0) = 0
+        OR p.type = ANY($5::int[])
+    )
+    AND (
+        COALESCE(array_length($6::int[], 1), 0) = 0
+        OR p.brand_id = ANY($6::int[])
+    )
+    AND (
+        COALESCE(array_length($7::int[], 1), 0) = 0
+        OR p.line_id = ANY($7::int[])
+    )
+    AND (
+        COALESCE(array_length($8::text[], 1), 0) = 0
+        OR p.bodytype = ANY($8::body_enum[])
+    )
+    AND (
+        $9::int IS NULL OR p.maxprice >= $9::int
+    )
+    AND (
+        $10::int IS NULL OR p.minprice <= $10::int
+    )
+    AND (
+        $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
+    )
+    -- фильтр по скидкам всегда активен, поэтому проверяем наличие
+    AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL)
+ORDER BY
+    CASE WHEN $12::int = 1 THEN p.name END ASC,
+    CASE WHEN $12::int = 2 THEN p.name END DESC,
+    CASE WHEN $12::int = 3 THEN p.minprice END ASC,
+    CASE WHEN $12::int = 4 THEN p.minprice END DESC,
+    CASE WHEN $12::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    p.id ASC
+LIMIT CASE WHEN $14::integer > 0 THEN $14::integer ELSE 50 END
+OFFSET CASE WHEN $13::integer > 0 THEN $13::integer ELSE 0 END
+`
+
+type GetProductsByFiltersPaginateWithDiscountParams struct {
+	Sizes        []string    `json:"sizes"`
+	Status       string      `json:"status"`
+	Name         string      `json:"name"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	WithPrice    bool        `json:"with_price"`
+	SortType     int32       `json:"sort_type"`
+	Offsetval    int32       `json:"offsetval"`
+	Limitval     int32       `json:"limitval"`
+}
+
+type GetProductsByFiltersPaginateWithDiscountRow struct {
+	ID              int32  `json:"id"`
+	Name            string `json:"name"`
+	ImagePath       string `json:"image_path"`
+	Firm            string `json:"firm"`
+	Minprice        int32  `json:"minprice"`
+	Maxprice        int32  `json:"maxprice"`
+	Status          string `json:"status"`
+	Maxdiscprice    int32  `json:"maxdiscprice"`
+	DiscountPercent int32  `json:"discount_percent"`
+}
+
+// Только со скидками (LATERAL + discount)
+func (q *Queries) GetProductsByFiltersPaginateWithDiscount(ctx context.Context, arg GetProductsByFiltersPaginateWithDiscountParams) ([]GetProductsByFiltersPaginateWithDiscountRow, error) {
+	rows, err := q.db.Query(ctx, getProductsByFiltersPaginateWithDiscount,
+		arg.Sizes,
+		arg.Status,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.WithPrice,
+		arg.SortType,
+		arg.Offsetval,
+		arg.Limitval,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductsByFiltersPaginateWithDiscountRow
+	for rows.Next() {
+		var i GetProductsByFiltersPaginateWithDiscountRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ImagePath,
+			&i.Firm,
+			&i.Minprice,
+			&i.Maxprice,
+			&i.Status,
+			&i.Maxdiscprice,
+			&i.DiscountPercent,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProductsByFiltersPaginateWithStore = `-- name: GetProductsByFiltersPaginateWithStore :many
+SELECT p.id, p.name, p.image_path,
+       b.name as firm,
+       p.minprice, p.maxprice, p.status,
+       (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
+FROM products p
+JOIN brands b ON p.brand_id = b.id
+LEFT JOIN store_house sh ON p.id = sh.productid
+WHERE (
+        COALESCE(array_length($1::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($1::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        $2::text IS NULL OR $2::text = '' OR p.status = $2::text
+    )
+    AND (
+        $3::text IS NULL OR $3::text = ''
+        OR p.name ILIKE '%' || $3::text || '%'
+        OR p.article ILIKE '%' || $3::text || '%'
+    )
+    AND (
+        COALESCE(array_length($4::int[], 1), 0) = 0
+        OR p.category = ANY($4::int[])
+    )
+    AND (
+        COALESCE(array_length($5::int[], 1), 0) = 0
+        OR p.type = ANY($5::int[])
+    )
+    AND (
+        COALESCE(array_length($6::int[], 1), 0) = 0
+        OR p.brand_id = ANY($6::int[])
+    )
+    AND (
+        COALESCE(array_length($7::int[], 1), 0) = 0
+        OR p.line_id = ANY($7::int[])
+    )
+    AND (
+        COALESCE(array_length($8::text[], 1), 0) = 0
+        OR p.bodytype = ANY($8::body_enum[])
+    )
+    AND (
+        $9::int IS NULL OR p.maxprice >= $9::int
+    )
+    AND (
+        $10::int IS NULL OR p.minprice <= $10::int
+    )
+    AND (
+        $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
+    )
+    AND (sh.id IS NOT NULL AND sh.quantity > 0)
+ORDER BY
+    CASE WHEN $12::int = 1 THEN p.name END ASC,
+    CASE WHEN $12::int = 2 THEN p.name END DESC,
+    CASE WHEN $12::int = 3 THEN p.minprice END ASC,
+    CASE WHEN $12::int = 4 THEN p.minprice END DESC,
+    CASE WHEN $12::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    p.id ASC
+LIMIT CASE WHEN $14::integer > 0 THEN $14::integer ELSE 50 END
+OFFSET CASE WHEN $13::integer > 0 THEN $13::integer ELSE 0 END
+`
+
+type GetProductsByFiltersPaginateWithStoreParams struct {
+	Sizes        []string    `json:"sizes"`
+	Status       string      `json:"status"`
+	Name         string      `json:"name"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	WithPrice    bool        `json:"with_price"`
+	SortType     int32       `json:"sort_type"`
+	Offsetval    int32       `json:"offsetval"`
+	Limitval     int32       `json:"limitval"`
+}
+
+type GetProductsByFiltersPaginateWithStoreRow struct {
+	ID        int32       `json:"id"`
+	Name      string      `json:"name"`
+	ImagePath string      `json:"image_path"`
+	Firm      string      `json:"firm"`
+	Minprice  int32       `json:"minprice"`
+	Maxprice  int32       `json:"maxprice"`
+	Status    string      `json:"status"`
+	InStore   pgtype.Bool `json:"in_store"`
+}
+
+// Только со складом
+func (q *Queries) GetProductsByFiltersPaginateWithStore(ctx context.Context, arg GetProductsByFiltersPaginateWithStoreParams) ([]GetProductsByFiltersPaginateWithStoreRow, error) {
+	rows, err := q.db.Query(ctx, getProductsByFiltersPaginateWithStore,
+		arg.Sizes,
+		arg.Status,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.WithPrice,
+		arg.SortType,
+		arg.Offsetval,
+		arg.Limitval,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductsByFiltersPaginateWithStoreRow
+	for rows.Next() {
+		var i GetProductsByFiltersPaginateWithStoreRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ImagePath,
+			&i.Firm,
+			&i.Minprice,
+			&i.Maxprice,
+			&i.Status,
+			&i.InStore,
 		); err != nil {
 			return nil, err
 		}

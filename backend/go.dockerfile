@@ -1,5 +1,5 @@
 FROM golang:1.25
-
+RUN apt-get update && apt-get install -y libwebp-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 COPY . .

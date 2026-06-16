@@ -375,6 +375,21 @@ type Order struct {
 	CreatedAt            pgtype.Timestamptz `json:"created_at"`
 }
 
+type OrderEvent struct {
+	ID             int64              `json:"id"`
+	OrderID        int32              `json:"order_id"`
+	EventType      string             `json:"event_type"`
+	OldStatus      pgtype.Text        `json:"old_status"`
+	NewStatus      pgtype.Text        `json:"new_status"`
+	Reason         pgtype.Text        `json:"reason"`
+	ReasonCode     pgtype.Text        `json:"reason_code"`
+	ChangedByAdmin pgtype.Int4        `json:"changed_by_admin"`
+	ChangedByType  string             `json:"changed_by_type"`
+	IpAddress      *netip.Addr        `json:"ip_address"`
+	Metadata       []byte             `json:"metadata"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type Orderaddress struct {
 	ID              int32       `json:"id"`
 	Orderid         int32       `json:"orderid"`

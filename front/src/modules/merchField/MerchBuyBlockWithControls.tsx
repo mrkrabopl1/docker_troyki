@@ -1,6 +1,6 @@
 import React, { memo } from 'react'
 import s from "./style.module.css"
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import CloseButton from 'src/components/button/CloseButton';
 import NumStepInput from 'src/components/input/NumStepInput';
 
@@ -23,7 +23,7 @@ const MerchBuyBlockWithControls: React.FC<{
     quantity = 1,
     onDelete
 }) => {
-    const navigate = useNavigate();
+    const router = useRouter();
 
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -38,7 +38,7 @@ const MerchBuyBlockWithControls: React.FC<{
         <div>
             <div
                 className={`${s.merchBuyLine} ${s.merchBuyBlock}`}
-                onClick={() => navigate('/product/' + data.id)}
+                onClick={() => router.push('/product/' + data.id)}
             >
                 {/* Изображение товара */}
                 <img

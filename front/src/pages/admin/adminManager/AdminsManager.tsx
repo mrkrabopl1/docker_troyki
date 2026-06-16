@@ -1,8 +1,9 @@
-import React, { useEffect, useState,useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { getLogs, getAdmins, inviteAdmin, deleteAdmin, updateAdmin } from 'src/providers/adminProvider';
 import DatePicker from 'src/components/input/DatePicker';
 import s from './style.module.css';
-import { useAppSelector,useMediaQuery } from 'src/store/hooks/redux'
+import { useAppDispatch, useAppSelector, useMediaQuery } from 'src/store/hooks/redux'
+import { finishLoading } from 'src/store/reducers/loadingSlice';
 
 
 interface Admin {
@@ -16,6 +17,7 @@ interface Admin {
 }
 
 const AdminLogs: React.FC = () => {
+    const dispatch = useAppDispatch();
     const [logs, setLogs] = useState([]);
     const [admins, setAdmins] = useState<Admin[]>([]);
     const [loading, setLoading] = useState(true);
@@ -57,6 +59,7 @@ const AdminLogs: React.FC = () => {
         setLoading(true);
         try {
             const data = await getLogs(filters);
+            dispatch(finishLoading());
             setLogs(data.logs || []);
         } finally {
             setLoading(false);

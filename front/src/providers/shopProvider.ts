@@ -1,18 +1,19 @@
 import axios from "axios";
 
-const getMainBanners = function ( callback: (val: any) => void) {
-    axios({
-        withCredentials: true,
-        method: 'get',
-        url: `${API_URL}/getMainBanners`,
-        headers: {}
-    }
-    ).then((res:any)=>{
-        callback(res.data)
-    },(error)=>{
-        console.warn(error)
-    })
-}
+const getMainBanners = async function (): Promise<any> {
+  try {
+    const res = await axios({
+      withCredentials: true,
+      method: 'get',
+      url: `${API_URL}/getMainBanners`,
+      headers: {}
+    });
+    return res.data;
+  } catch (error) {
+    console.warn(error);
+    throw error;
+  }
+};
 
 const getCartData = function ( hash, callback: (val: any) => void) {
     axios({
@@ -43,7 +44,20 @@ const getCartCount = function ( callback: (val: any) => void) {
         console.warn(error)
     })
 }
-
+const getMainInfo = async () => {
+  try {
+    const res = await axios({
+      withCredentials: true,
+      method: 'get',
+      url: `${API_URL}/getMainInfo`,
+      headers: {},
+    });
+    return res.data;
+  } catch (error) {
+    console.warn(error);
+    throw error;
+  }
+}
 
 const getOrderCartData = function (cartHash:any, callback: (val: any) => void) {
     const data = new FormData();
@@ -81,4 +95,4 @@ const deleteCartData = function (preorderId, callback: (val: any) => void) {
 
 
 
-export { getCartData, deleteCartData ,getOrderCartData, getCartCount,getMainBanners}
+export { getCartData, deleteCartData ,getOrderCartData, getCartCount,getMainBanners,getMainInfo}

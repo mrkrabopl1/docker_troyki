@@ -1,6 +1,6 @@
 // pages/admin/ProductForm/AdminProductForm.tsx
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { useAppSelector } from 'src/store/hooks/redux';
 import { toPrice } from 'src/global';
 import Button from 'src/components/Button';
@@ -39,8 +39,8 @@ interface SizePrice {
 }
 
 const AdminProductForm: React.FC = () => {
-    const navigate = useNavigate();
-    const { id } = useParams<{ id: string }>();
+    const router = useRouter();
+    const { id } = router.query;
     const isEdit = !!id && id !== 'create';
     const { typesVal, categories, firms } = useAppSelector(state => state.menuReducer);
     const sessionId = useMemo(() => {
@@ -368,12 +368,12 @@ const AdminProductForm: React.FC = () => {
             if (isEdit && formData.id) {
                 await updateAdminProduct(formData.id, submitData, (response) => {
                     console.log('Product updated:', response);
-                    navigate('/admin/products');
+                    router.push('/admin/products');
                 });
             } else {
                 await createAdminProduct(submitData as any, (response) => {
                     console.log('Product created:', response);
-                    navigate('/admin/products');
+                    router.push('/admin/products');
                 });
             }
         } catch (error) {
@@ -388,7 +388,7 @@ const AdminProductForm: React.FC = () => {
             <div className={s.header}>
                 <h2>{isEdit ? 'Редактирование товара' : 'Создание товара'}</h2>
                 <div className={s.headerActions}>
-                    <Button text="Назад" onClick={() => navigate('/admin/products')} />
+                    <Button text="Назад" onClick={() => router.push('/admin/products')} />
                     <Button
                         text={isEdit ? 'Сохранить' : 'Создать'}
                         onClick={handleSubmit}

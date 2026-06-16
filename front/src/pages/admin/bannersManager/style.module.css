@@ -269,6 +269,7 @@ input:checked + .slider:before {
   border-radius: 12px;
   width: 90%;
   max-width: 500px;
+  margin: auto;
   max-height: 90vh;
   overflow-y: auto;
   padding: 20px;
@@ -422,6 +423,7 @@ input:checked + .slider:before {
   flex-direction: column;
   padding:20px;
   animation: slideIn 0.3s ease;
+   overflow-y: auto;
 }
 
 @keyframes slideIn {

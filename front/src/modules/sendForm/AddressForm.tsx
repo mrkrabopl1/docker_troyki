@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import InputWithLabelWithValidation from "src/components/input/InputWithLabelWithValidation";
 import InputWithLabel from "src/components/input/InputWithLabel";
-import 'src/global.css';
+// import 'src/global.css';
 
 interface AddressFormValues {
     town: string;

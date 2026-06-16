@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { getOrderCartData } from 'src/providers/shopProvider';
 import { getOrderDataByHash, getOrderDataByMail } from 'src/providers/orderProvider';
 import OrderInfo from 'src/components/orderInfo/orderInfo';
@@ -8,6 +8,8 @@ import BuyMerchField from 'src/modules/buyMerchField/BuyMerchField';
 import MapComponent from 'src/modules/map/Map';
 import { getCookie } from 'src/global';
 import s from "./style.module.css";
+import { finishLoading } from 'src/store/reducers/loadingSlice';
+import { useAppDispatch } from 'src/store/hooks/redux';
 
 interface OrderData {
     name: string;
@@ -35,7 +37,9 @@ interface OrderState {
 }
 
 const OrderPage: React.FC = () => {
-    const { hash = '' } = useParams<{ hash?: string }>();
+    const router = useRouter();
+    const hash = (router.query.hash as string) || '';
+    const dispatch = useAppDispatch();
     const [products, setProducts] = useState([]);
     const [order, setOrder] = useState<OrderState>({
         orderData: {
@@ -62,8 +66,11 @@ const OrderPage: React.FC = () => {
     const fullPrice = useRef(0);
 
     useEffect(() => {
+        if (!hash) return;
+        
         if (cookie.current) {
             getOrderDataByHash(hash, (data) => {
+                dispatch(finishLoading());
                 setProducts(data.cartData);
                 setOrder({
                     address: data.address,
@@ -73,6 +80,7 @@ const OrderPage: React.FC = () => {
             });
         } else {
             getOrderCartData(hash, (data) => {
+                dispatch(finishLoading());
                 fullPrice.current = data.fullPrice;
                 setProducts(data);
             });
@@ -92,14 +100,6 @@ const OrderPage: React.FC = () => {
 
     return (
         <div className={s.orderContainer}>
-            {/* <div className={s.orderInfoSection}>
-                <MapComponent location={order.address.coordinates} />
-                <OrderInfo
-                    address={order.address}
-                    orderData={order.orderData}
-                    orderId={order.orderId}
-                />
-            </div> */}
             <div className={s.orderInfoSection}>
                 {cookie.current ? (
                     <>
@@ -111,7 +111,6 @@ const OrderPage: React.FC = () => {
                         />
                     </>
                 ) : (
-
                     <OrderForm onChange={handleOrderFormSubmit} />
                 )}
             </div>

@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useCallback, useState,useRef } from 'react';
+import React, { memo, useEffect, useCallback, useState, useRef } from 'react';
 import InputWithLabel from "src/components/input/InputWithLabel";
 import InputWithLabelWithValidation from "src/components/input/InputWithLabelWithValidation";
 import PhoneInputWithValidation from "src/components/input/PhoneInputWithValidation";
@@ -28,8 +28,8 @@ interface FormData {
     address: Address | null;
     phone: string;
     deliveryComment?: string;
-    save?:boolean,
-    sendInfo?:boolean
+    save?: boolean,
+    sendInfo?: boolean
 }
 
 interface SendFormProps {
@@ -63,7 +63,7 @@ const SendForm: React.FC<SendFormProps> = memo(({
         ...formValue
     });
 
-    const unvalidFormData = useRef(["save", "sendInfo","secondName","deliveryComment"]);
+    const unvalidFormData = useRef(["save", "sendInfo", "secondName", "deliveryComment"]);
 
     const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
 
@@ -97,7 +97,7 @@ const SendForm: React.FC<SendFormProps> = memo(({
     }, [onChange]);
 
     const handleUnvalidChange = useCallback((value: string) => {
-       onChange({ ...formData, secondName: value });
+        onChange({ ...formData, secondName: value });
     }, []);
 
     const handleSaveDataChange = useCallback((value: boolean) => {
@@ -112,64 +112,71 @@ const SendForm: React.FC<SendFormProps> = memo(({
         <div className={s.sendFormWrapper}>
             <div className={s.formSection}>
                 <h3 className={s.sectionTitle}>Контактная информация</h3>
-                
+
                 <div className={s.formGrid}>
                     <div className={s.formField}>
-                        <MailInputWithValidation 
-                            value={formData.mail} 
-                            valid={!checkValid || !validationErrors.mail} 
-                            invalidText="Введите корректный email" 
-                            onChange={(data) => handleChange('mail', data)} 
-                            placeholder="Электронная почта" 
+                        <MailInputWithValidation
+                            value={formData.mail}
+                            valid={!checkValid || !validationErrors.mail}
+                            invalidText="Введите корректный email"
+                            onChange={(data) => handleChange('mail', data)}
+                            placeholder="Электронная почта"
                         />
                     </div>
-                    
+
                     <div className={s.formField}>
-                        <PhoneInputWithValidation 
-                            val={formData.phone||"+7"} 
-                            invalidIncorrect="Неверный формат телефона" 
-                            invalidEmpty="Введите номер телефона" 
-                            valid={!checkValid || !validationErrors.phone} 
-                            className={className?.input} 
-                            onChange={(data) => handleChange('phone', data)} 
-                            placeholder="Телефон" 
+                        <PhoneInputWithValidation
+                            val={formData.phone || "+7"}
+                            invalidIncorrect="Неверный формат телефона"
+                            invalidEmpty="Введите номер телефона"
+                            valid={!checkValid || !validationErrors.phone}
+                            className={className?.input}
+                            onChange={(data) => handleChange('phone', data)}
+                            placeholder="Телефон"
                         />
                     </div>
                 </div>
-                
+
                 <div className={s.checkboxRow}>
-                    <Checkbox activeData={formData.sendInfo} enable={true}   onChange={(data) => handleChange('sendInfo', data)}  />
-                    <span className={s.checkboxLabel}>Отправляйте мне новости и предложения</span>
+                    <Checkbox
+                        activeData={formData.sendInfo}
+                        enable={true}
+                        onChange={(data) => handleChange('sendInfo', data)}
+                    />
+                    <span className={s.checkboxLabel}>
+                        Отправляйте мне новости и предложения.
+                        Я согласен на <a href="/privacy-policy" target="_blank">обработку персональных данных</a>
+                    </span>
                 </div>
-                
+
                 <div className={s.formGrid}>
                     <div className={s.formField}>
-                        <InputWithLabelWithValidation 
-                            val={formData.name} 
-                            valid={!checkValid || !validationErrors.name} 
-                            invalidText="Введите имя" 
-                            className={className?.input} 
-                            onChange={(data) => handleChange('name', data)} 
-                            placeholder="Имя" 
+                        <InputWithLabelWithValidation
+                            val={formData.name}
+                            valid={!checkValid || !validationErrors.name}
+                            invalidText="Введите имя"
+                            className={className?.input}
+                            onChange={(data) => handleChange('name', data)}
+                            placeholder="Имя"
                         />
                     </div>
                     <div className={s.formField}>
-                        <InputWithLabel 
-                            val={formData.secondName} 
-                            onChange={handleUnvalidChange} 
-                            placeholder="Фамилия (необязательно)" 
+                        <InputWithLabel
+                            val={formData.secondName}
+                            onChange={handleUnvalidChange}
+                            placeholder="Фамилия (необязательно)"
                         />
                     </div>
                 </div>
 
                 <div className={s.formField}>
-                    <AddressInput  
+                    <AddressInput
                         val={formData.address?.value || ""}
-                        valid={!checkValid || !validationErrors.address} 
-                        onChange={(data) => handleChange('address', data)}   
+                        valid={!checkValid || !validationErrors.address}
+                        onChange={(data) => handleChange('address', data)}
                     />
                 </div>
-                
+
                 <div className={s.formField}>
                     <InputArea
                         val={formData.deliveryComment}
@@ -179,15 +186,18 @@ const SendForm: React.FC<SendFormProps> = memo(({
                         maxLength={500}
                     />
                 </div>
-                
+
                 {verified && (
                     <div className={s.checkboxRow}>
-                        <Checkbox 
-                            activeData={formData.save} 
-                            enable={true} 
-                            onChange={(data) => handleChange('save', data)} 
+                        <Checkbox
+                            activeData={formData.save}
+                            enable={true}
+                            onChange={(data) => handleChange('save', data)}
                         />
-                        <span className={s.checkboxLabel}>Сохранить эту информацию на будущее</span>
+                        <span className={s.checkboxLabel}>
+                            Сохранить эту информацию на будущее в соответствии с
+                            <a href="/privacy-policy" target="_blank"> политикой конфиденциальности</a>
+                        </span>
                     </div>
                 )}
             </div>

@@ -137,12 +137,16 @@ SET token = EXCLUDED.token,
     expires_at = NOW() + INTERVAL '1 hour',
     used_at = NULL;
 -- name: GetAdminPasswordResetToken :one
-SELECT * FROM admin_password_resets
-WHERE token = $1 AND used_at IS NULL AND expires_at > NOW()
+SELECT *
+FROM admin_password_resets
+WHERE token = $1
+    AND used_at IS NULL
+    AND expires_at > NOW()
 LIMIT 1;
 -- name: UpdateAdminPasswordByEmail :exec
 UPDATE admins
-SET password_hash = $2, updated_at = NOW()
+SET password_hash = $2,
+    updated_at = NOW()
 WHERE email = $1;
 -- name: MarkAdminPasswordResetTokenUsed :exec
 UPDATE admin_password_resets
@@ -450,7 +454,8 @@ SELECT -- Все размеры
             FROM type_data
         ),
         '[]'::jsonb
-    ) AS product_types, -- Категории товаров
+    ) AS product_types,
+    -- Категории товаров
     COALESCE(
         (
             SELECT jsonb_agg(
@@ -817,67 +822,72 @@ GROUP BY p.id,
     b.name,
     bl.name;
 -- name: GetOrdersWithFilters :many
-SELECT o.id,
-    o.customerid,
-    o.unregistercustomerid,
-    o.orderdate,
-    o.status,
-    o.hash,
-    o.deliveryprice,
-    o.deliverytype,
-    o.created_at,
-    COALESCE(c.name, uc.name)::text as customer_name,
-    COALESCE(c.secondname, uc.secondname)::text as customer_secondname,
-    COALESCE(c.mail, uc.mail)::text as customer_email,
-    COALESCE(c.phone, uc.phone)::text as customer_phone,
-    oa.town,
-    oa.street,
-    oa.house,
-    oa.flat,
-    COUNT(oi.id) as items_count,
-    COALESCE(SUM(oi.quantity * oi.price), 0) as total_amount
-FROM orders o
-    LEFT JOIN customers c ON o.customerid = c.id
-    LEFT JOIN unregistercustomer uc ON o.unregistercustomerid = uc.id
-    LEFT JOIN orderaddress oa ON o.id = oa.orderid
-    LEFT JOIN orderitems oi ON o.id = oi.orderid
-WHERE (
-        sqlc.narg('status')::status_enum IS NULL
-        OR o.status = sqlc.narg('status')
-    )
-    AND (
-        sqlc.narg('delivery_type')::delivery_enum IS NULL
-        OR o.deliverytype = sqlc.narg('delivery_type')
-    )
-    AND (
-        sqlc.narg('date_from')::date IS NULL
-        OR o.orderdate >= sqlc.narg('date_from')
-    )
-    AND (
-        sqlc.narg('date_to')::date IS NULL
-        OR o.orderdate <= sqlc.narg('date_to')
-    )
-    AND (
-        sqlc.narg('customer_id')::int IS NULL
-        OR o.customerid = sqlc.narg('customer_id')
-    )
-    AND (
-        sqlc.narg('search')::text IS NULL
-        OR o.id::text LIKE '%' || sqlc.narg('search') || '%'
-        OR c.name ILIKE '%' || sqlc.narg('search') || '%'
-        OR c.mail ILIKE '%' || sqlc.narg('search') || '%'
-        OR uc.name ILIKE '%' || sqlc.narg('search') || '%'
-        OR uc.mail ILIKE '%' || sqlc.narg('search') || '%'
-    )
-GROUP BY o.id,
-    c.id,
-    uc.id,
-    oa.id
+SELECT *
+FROM (
+        SELECT o.id,
+            o.customerid,
+            o.unregistercustomerid,
+            o.orderdate,
+            o.status,
+            o.hash,
+            o.deliveryprice,
+            o.deliverytype,
+            -- Оставляем как есть, без COALESCE
+            o.created_at,
+            COALESCE(c.name, uc.name, '')::text as customer_name,
+            COALESCE(c.secondname, uc.secondname, '')::text as customer_secondname,
+            COALESCE(c.mail, uc.mail, '')::text as customer_email,
+            COALESCE(c.phone, uc.phone, '')::text as customer_phone,
+            COALESCE(oa.town, '') as town,
+            COALESCE(oa.street, '') as street,
+            COALESCE(oa.house, '') as house,
+            COALESCE(oa.flat, '') as flat,
+            COUNT(oi.id) as items_count,
+            COALESCE(SUM(oi.quantity * oi.price), 0) as total_amount
+        FROM orders o
+            LEFT JOIN customers c ON o.customerid = c.id
+            LEFT JOIN unregistercustomer uc ON o.unregistercustomerid = uc.id
+            LEFT JOIN orderaddress oa ON o.id = oa.orderid
+            LEFT JOIN orderitems oi ON o.id = oi.orderid
+        WHERE (
+                sqlc.narg('status')::status_enum IS NULL
+                OR o.status = sqlc.narg('status')
+            )
+            AND (
+                sqlc.narg('delivery_type')::text = ''
+                OR sqlc.narg('delivery_type') IS NULL
+                OR o.deliverytype = sqlc.narg('delivery_type')::delivery_enum
+            )
+            AND (
+                sqlc.narg('date_from')::date IS NULL
+                OR o.orderdate >= sqlc.narg('date_from')
+            )
+            AND (
+                sqlc.narg('date_to')::date IS NULL
+                OR o.orderdate <= sqlc.narg('date_to')
+            )
+            AND (
+                sqlc.narg('customer_id')::int IS NULL
+                OR o.customerid = sqlc.narg('customer_id')
+            )
+            AND (
+                sqlc.narg('search')::text IS NULL
+                OR o.id::text LIKE '%' || sqlc.narg('search') || '%'
+                OR c.name ILIKE '%' || sqlc.narg('search') || '%'
+                OR c.mail ILIKE '%' || sqlc.narg('search') || '%'
+                OR uc.name ILIKE '%' || sqlc.narg('search') || '%'
+                OR uc.mail ILIKE '%' || sqlc.narg('search') || '%'
+            )
+        GROUP BY o.id,
+            c.id,
+            uc.id,
+            oa.id
+    ) AS filtered_orders
 ORDER BY CASE
-        WHEN @sort_by::text = 'date_desc' THEN o.orderdate
+        WHEN @sort_by::text = 'date_desc' THEN orderdate
     END DESC,
     CASE
-        WHEN @sort_by::text = 'date_asc' THEN o.orderdate
+        WHEN @sort_by::text = 'date_asc' THEN orderdate
     END ASC,
     CASE
         WHEN @sort_by::text = 'amount_desc' THEN total_amount
@@ -885,8 +895,7 @@ ORDER BY CASE
     CASE
         WHEN @sort_by::text = 'amount_asc' THEN total_amount
     END ASC,
-    o.orderdate DESC
-LIMIT @limit_val OFFSET @offset_val;
+    orderdate DESC;
 -- name: GetOrderDetails :one
 SELECT o.id,
     o.customerid,
@@ -1216,29 +1225,83 @@ SELECT id,
     is_active,
     created_at
 FROM banners;
-
 -- name: DeleteBrand :exec
-DELETE FROM brands WHERE id = $1;
-
-
+DELETE FROM brands
+WHERE id = $1;
 -- name: CreateAdminInvite :one
 INSERT INTO admin_invites (email, role, token, invited_by, expires_at)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
-
-
 -- name: GetAdminInviteByToken :one
-SELECT * FROM admin_invites
-WHERE token = $1 
-  AND used_at IS NULL 
-  AND expires_at > NOW()
+SELECT *
+FROM admin_invites
+WHERE token = $1
+    AND used_at IS NULL
+    AND expires_at > NOW()
 LIMIT 1;
-
 -- name: MarkInviteAsUsed :exec
 UPDATE admin_invites
 SET used_at = NOW(),
     used_by = $2,
     updated_at = NOW()
-WHERE token = $1 
-  AND used_at IS NULL 
-  AND expires_at > NOW();
+WHERE token = $1
+    AND used_at IS NULL
+    AND expires_at > NOW();
+
+
+
+-- name: CreateOrderEvent :exec
+INSERT INTO order_events (
+    order_id,
+    event_type,
+    old_status,
+    new_status,
+    reason,
+    reason_code,
+    changed_by_admin,
+    changed_by_type,
+    ip_address
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
+);
+
+-- name: GetOrderEvents :many
+SELECT 
+    oe.*,
+    a.name as admin_name,
+    a.email as admin_email
+FROM order_events oe
+LEFT JOIN admins a ON oe.changed_by_admin = a.id
+WHERE oe.order_id = $1
+ORDER BY oe.created_at DESC;
+
+-- name: GetOrderStatusHistory :many
+SELECT * FROM order_events 
+WHERE order_id = $1 AND event_type = 'status_change'
+ORDER BY created_at DESC;
+
+-- name: MarkProductsAsDeleted :exec
+UPDATE products 
+SET status = 'deleted', 
+    deleted_at = NOW() 
+WHERE id = ANY($1::int[]);
+
+-- queries/products.sql
+
+-- name: GetProductsWithoutImages :many
+SELECT 
+    p.id,
+    p.name,
+    p.article,
+    p.image_path,
+    p.status,
+    p.image_count,
+    b.name as firm,
+    b.slug as brand_slug
+FROM products p
+LEFT JOIN brands b ON p.brand_id = b.id
+WHERE p.image_path IS NOT NULL 
+  AND p.image_path != ''
+  AND p.status != 'deleted'
+ORDER BY p.id;
+    

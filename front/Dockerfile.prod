@@ -1,21 +1,45 @@
-FROM node:19-bullseye AS build
-WORKDIR /front
-COPY package.json .
-COPY yarn.lock .
-ARG ID
-RUN yarn install
+# Stage 1: Сборка
+FROM node:19-bullseye AS builder
+WORKDIR /app
+
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
+
 COPY . .
+
+ARG API_URL
+ENV API_URL=${API_URL}
+
 RUN yarn build
 
-FROM nginx:stable-alpine
-COPY --from=build /front/dist /usr/share/nginx/html
-COPY --from=build /front/nginx/nginx.conf /etc/nginx/conf.d/default.conf
+# Stage 2: Продакшн
+FROM node:19-bullseye-slim AS runner
+WORKDIR /app
 
-# Простое решение: создаем симлинк из images в fonts
-# Если шрифты лежат в images, создаем ссылку fonts -> images
-RUN if [ -d "/usr/share/nginx/html/images" ]; then \
-        ln -sf /usr/share/nginx/html/images /usr/share/nginx/html/fonts; \
+RUN apt-get update && \
+    apt-get install -y nginx supervisor procps curl && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV NODE_ENV production
+
+# ← Добавь это:
+ARG API_URL
+ENV API_URL=${API_URL}
+
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+COPY nginx/nginx.conf /etc/nginx/sites-enabled/default
+COPY supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+RUN if [ -d "/app/public/images" ]; then \
+        ln -sf /app/public/images /app/public/fonts; \
     fi
 
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:80/ || exit 1
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

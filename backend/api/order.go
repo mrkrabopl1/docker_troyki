@@ -1,11 +1,13 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
 	"github.com/mrkrabopl1/go_db/types"
 	"github.com/mrkrabopl1/go_db/worker"
@@ -67,59 +69,82 @@ func (s *Server) handleCreateOrder(ctx *gin.Context) {
 		return
 	}
 
-	_, unregUserId, hash, err := s.store.CreateOrder(ctx, &orderData)
+	orderID, unregUserId, hash, err := s.store.CreateOrder(ctx, &orderData)
 
 	if err != nil {
 		fmt.Println(err, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-		//log.WithCaller().Err(err)
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
-	} else {
-		ctx.SetCookie("cart", "", -1, "/", "", false, true)
-		myCookie, _ := s.tokenMaker.CreateCookie(hash, hash, 36000, false, true)
-		ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
-		if orderData.Save {
-			myCookie, _, err := s.tokenMaker.CreateCookieWithPasetoToken(unregUserId, "saved", 2*time.Hour, true, true)
-			if err != nil {
-				//log.WithCaller().Err(err)
-				ctx.JSON(http.StatusBadRequest, errorResponse(err))
-				return
-			}
-			fmt.Println("set cccccccccccccccccccccccccccccooooooooooooooooockie")
-			ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
+	}
+
+	// Создаем запись в order_events о создании заказа
+	go func() {
+		ctxBg := context.Background()
+
+		eventParams := db.CreateOrderEventParams{
+			OrderID:       orderID,
+			EventType:     "status_change",
+			OldStatus:     pgtype.Text{Valid: false}, // Первый статус - не было предыдущего
+			NewStatus:     pgtype.Text{String: "pending", Valid: true},
+			ChangedByType: "system", // Создан системой автоматически
+			Reason:        pgtype.Text{String: "Order created", Valid: true},
 		}
-		data := map[string]interface{}{
-			"hash": hash,
+
+		if err := s.store.CreateOrderEvent(ctxBg, eventParams); err != nil {
+			fmt.Printf("Failed to create order event for order %d: %v\n", orderID, err)
 		}
-		fmt.Println("maybe good")
-		fmt.Println("orderData: %v", orderData)
-		fmt.Println("Sending task with email: %s", orderData.PersonalData.Mail)
-		fmt.Println("Delivery price: %v", orderData.Address.Flat)
-		fmt.Println("DeliveryType", orderData.Delivery.Type)
-		data1 := worker.PayloadSendOrderEmail{
-			Email:        orderData.PersonalData.Mail,
-			Name:         orderData.PersonalData.Name,
-			Phone:        orderData.PersonalData.Phone,
-			Town:         orderData.Address.Town,
-			Street:       orderData.Address.Street,
-			Index:        orderData.Address.Index,
-			House:        orderData.Address.House,
-			Flat:         orderData.Address.Flat,
-			OrderPrice:   orderData.Delivery.DeliveryPrice,
-			DeliveryType: orderData.Delivery.Type,
-			SecondName:   orderData.PersonalData.SecondName,
-		}
-		fmt.Println("Deliveryww price: ", data1)
-		err = s.taskDistributor.DistributeTaskSendOrderEmail(ctx, &data1)
+	}()
+
+	// Устанавливаем куки
+	ctx.SetCookie("cart", "", -1, "/", "", false, true)
+	myCookie, _ := s.tokenMaker.CreateCookie(hash, hash, 36000, false, true)
+	ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
+
+	if orderData.Save {
+		myCookie, _, err := s.tokenMaker.CreateCookieWithPasetoToken(unregUserId, "saved", 2*time.Hour, true, true)
 		if err != nil {
-			fmt.Println(err, "error in taskDistributor")
-			ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+			ctx.JSON(http.StatusBadRequest, errorResponse(err))
 			return
 		}
-		ctx.JSON(http.StatusOK, data)
+		fmt.Println("set cccccccccccccccccccccccccccccooooooooooooooooockie")
+		ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
 	}
-	// Print the result and the time taken
 
+	// Подготавливаем данные для email
+	data := map[string]interface{}{
+		"hash": hash,
+	}
+
+	fmt.Println("maybe good")
+	fmt.Printf("orderData: %v\n", orderData)
+	fmt.Printf("Sending task with email: %s\n", orderData.PersonalData.Mail)
+	fmt.Printf("Delivery price: %v\n", orderData.Address.Flat)
+	fmt.Printf("DeliveryType: %v\n", orderData.Delivery.Type)
+
+	data1 := worker.PayloadSendOrderEmail{
+		Email:        orderData.PersonalData.Mail,
+		Name:         orderData.PersonalData.Name,
+		Phone:        orderData.PersonalData.Phone,
+		Town:         orderData.Address.Town,
+		Street:       orderData.Address.Street,
+		Index:        orderData.Address.Index,
+		House:        orderData.Address.House,
+		Flat:         orderData.Address.Flat,
+		OrderPrice:   orderData.Delivery.DeliveryPrice,
+		DeliveryType: orderData.Delivery.Type,
+		SecondName:   orderData.PersonalData.SecondName,
+	}
+
+	fmt.Printf("Deliveryww price: %v\n", data1)
+
+	err = s.taskDistributor.DistributeTaskSendOrderEmail(ctx, &data1)
+	if err != nil {
+		fmt.Println(err, "error in taskDistributor")
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, data)
 }
 
 func (s *Server) handleUpdatePreorder(ctx *gin.Context) {

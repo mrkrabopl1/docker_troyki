@@ -1,47 +1,35 @@
-import React, { useEffect, ReactElement, useState, useRef, memo } from 'react'
-
-import MerchSliderField from '../../modules/merchField/MerchSliderField'
-import { getMainInfo } from "src/providers/merchProvider"
-import { useAppSelector } from 'src/store/hooks/redux'
-import { useNavigate } from 'react-router-dom';
-import { useParams } from 'react-router-dom';
-import {verifyEmail} from 'src/providers/userProvider'
-import BuyMerchField from 'src/modules/buyMerchField/BuyMerchField';
+import React, { useEffect, useState, memo } from 'react'
+import { useRouter } from 'next/router';
+import { verifyEmail } from 'src/providers/userProvider'
 import { useAppDispatch } from 'src/store/hooks/redux';
 import { verified } from 'src/store/reducers/menuSlice'
-type urlParamsType = {
-    verHash: string;
-};
+
 const Verification: React.FC<any> = () => { 
-    let { verHash } = useParams<urlParamsType>();
-    const navigate = useNavigate();
+    const router = useRouter();
+    const verHash = router.query.verHash as string;
     let dispatch = useAppDispatch()
-
     let [info, setInfo] = useState("")
+
     useEffect(() => {
-       verifyEmail(verHash,(data)=>{
-        if(data){
-            dispatch(verified(true))
-            navigate("/");
-        }
-        else{
-            setInfo("Ваш код верификации истек повторите попытку еще раз.")
-        }
-       })
+        if (!verHash) return;
+        verifyEmail(verHash, (data) => {
+            if (data) {
+                dispatch(verified(true))
+                router.push("/");
+            } else {
+                setInfo("Ваш код верификации истек повторите попытку еще раз.")
+            }
+        })
+    }, [verHash])
 
-
-    }, [])
     return (
         <div>
             {info}
         </div>
-
     )
 }
 
-
 function arePropsEqual(oldProps: any, newProps: any) {
-
     return (oldProps.memo == newProps.memo)
 }
 

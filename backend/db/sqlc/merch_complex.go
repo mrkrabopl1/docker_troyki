@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -101,7 +100,7 @@ func (store *SQLStore) getProductImages(imagePath string, count int) []string {
 		return []string{}
 	}
 
-	imageBasePath := store.ImagePathBuilder.GetProductImageBasePath(imagePath)
+	imageBasePath := store.ImagePathBuilder.GetProductMainImage(imagePath)
 	images := make([]string, 0, count)
 	for i := 1; i <= count; i++ {
 		images = append(images, fmt.Sprintf("%s%d.png", imageBasePath, i))
@@ -211,7 +210,7 @@ func (store *SQLStore) buildProductsInfoResponse(snInfo GetProductsInfoByIdRow) 
 		Category:    snInfo.Category,
 		Article:     snInfo.Article,
 		Store:       snInfo.StoreInfo,
-		ImagePath:   store.ImagePathBuilder.GetProductImageBasePath(snInfo.ImagePath),
+		ImagePath:   store.ImagePathBuilder.GetProductMainImage(snInfo.ImagePath),
 		Id:          snInfo.ID,
 	}
 }
@@ -223,8 +222,8 @@ func (store *SQLStore) GetProductsByString(ctx context.Context, name string, pag
 	}
 
 	return RespSearchProductsByString{
-		Products:   store.buildProductsResponseD(data),
-		TotalCount: int(math.Ceil(float64(data[0].TotalCount))),
+		Products:   store.buildProductsResponseD(data.Products),
+		TotalCount: int(math.Ceil(float64(data.TotalCount))),
 	}, nil
 }
 
@@ -235,8 +234,8 @@ func (store *SQLStore) GetProductsByFiltersComplex(ctx context.Context, name str
 	}
 
 	return RespProductsByStringStruct{
-		Merch:      store.buildProductsResponseD(data),
-		TotalCount: int(math.Ceil(float64(data[0].TotalCount))),
+		Merch:      store.buildProductsResponseD(data.Products),
+		TotalCount: int(math.Ceil(float64(data.TotalCount))),
 	}, nil
 }
 
@@ -256,14 +255,14 @@ func (store *SQLStore) GetProductsAndFiltersByNameCategoryAndType(ctx context.Co
 
 	// Проверяем, есть ли данные
 	var totalCount float64
-	if len(data) > 0 {
-		totalCount = float64(data[0].TotalCount)
+	if len(data.Products) > 0 {
+		totalCount = float64(data.TotalCount)
 	} else {
 		totalCount = 0
 	}
 
 	return RespSearchProductsAndFiltersByString{
-		Products:   store.buildProductsResponseD(data),
+		Products:   store.buildProductsResponseD(data.Products),
 		TotalCount: totalCount,
 		Filters: FiltersSearchResponse{
 			Price:      [2]int32{filter.MinPrice.(int32), filter.MaxPrice.(int32)},
@@ -275,56 +274,56 @@ func (store *SQLStore) GetProductsAndFiltersByNameCategoryAndType(ctx context.Co
 }
 
 // getProductsByFilters - обобщенная функция для получения продуктов с фильтрами
-func (store *SQLStore) getProductsByFilters(ctx context.Context, mainFilter GetFiltersByNameCategoryAndTypeParams, filters types.ProductsFilterStruct, page, size, orderedType int, usePriceFilter bool) ([]GetProductsByFiltersRow, error) {
-	offset := (page - 1) * size
+// func (store *SQLStore) getProductsByFilters(ctx context.Context, mainFilter GetFiltersByNameCategoryAndTypeParams, filters types.ProductsFilterStruct, page, size, orderedType int, usePriceFilter bool) ([]GetProductsByFiltersRow, error) {
+// 	offset := (page - 1) * size
 
-	params := GetProductsByFiltersParams{
-		Limitval:     int32(size),
-		Offsetval:    int32(offset),
-		Sizes:        filters.Sizes,
-		Firms:        filters.Firms,
-		Bodytypes:    filters.Bodytypes,
-		ProductTypes: filters.Types,
-		SortType:     int32(orderedType),
-		HasDiscount:  filters.HasDiscount,
-		InStore:      filters.InStore,
-		WithPrice:    filters.WithPrice,
-		Lines:        filters.Lines,
-		Status:       filters.Status,
-	}
+// 	params := GetProductsByFiltersParams{
+// 		Limitval:     int32(size),
+// 		Offsetval:    int32(offset),
+// 		Sizes:        filters.Sizes,
+// 		Firms:        filters.Firms,
+// 		Bodytypes:    filters.Bodytypes,
+// 		ProductTypes: filters.Types,
+// 		SortType:     int32(orderedType),
+// 		HasDiscount:  filters.HasDiscount,
+// 		InStore:      filters.InStore,
+// 		WithPrice:    filters.WithPrice,
+// 		Lines:        filters.Lines,
+// 		Status:       filters.Status,
+// 	}
 
-	// Используем указатели для nullable полей
-	if mainFilter.Name.Valid {
-		params.Name = mainFilter.Name.String
-	} else {
-		params.Name = "" // или оставляем как есть, если в SQL есть проверка на NULL
-	}
+// 	// Используем указатели для nullable полей
+// 	if mainFilter.Name.Valid {
+// 		params.Name = mainFilter.Name.String
+// 	} else {
+// 		params.Name = "" // или оставляем как есть, если в SQL есть проверка на NULL
+// 	}
 
-	// Категории: передаем nil если не валидно
-	if mainFilter.Category.Valid {
-		params.Categories = []int32{mainFilter.Category.Int32}
-	} else {
-		params.Categories = nil // или []int32{}
-	}
+// 	// Категории: передаем nil если не валидно
+// 	if mainFilter.Category.Valid {
+// 		params.Categories = []int32{mainFilter.Category.Int32}
+// 	} else {
+// 		params.Categories = nil // или []int32{}
+// 	}
 
-	// Аналогично для Type, если нужно
-	if mainFilter.Type.Valid {
-		params.ProductTypes = append(params.ProductTypes, mainFilter.Type.Int32)
-	}
+// 	// Аналогично для Type, если нужно
+// 	if mainFilter.Type.Valid {
+// 		params.ProductTypes = append(params.ProductTypes, mainFilter.Type.Int32)
+// 	}
 
-	if usePriceFilter && filters.Price != nil && len(filters.Price) == 2 {
-		params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
-		params.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
-	}
+// 	if usePriceFilter && filters.Price != nil && len(filters.Price) == 2 {
+// 		params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
+// 		params.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
+// 	}
 
-	// Отладка
-	log.Printf("Query params: sizes=%v, firms=%v, categories=%v, name=%q",
-		params.Sizes, params.Firms, params.Categories, params.Name)
+// 	// Отладка
+// 	log.Printf("Query params: sizes=%v, firms=%v, categories=%v, name=%q",
+// 		params.Sizes, params.Firms, params.Categories, params.Name)
 
-	return store.GetProductsByFilters(ctx, params)
-}
+// 	return store.GetProductsByFilters(ctx, params)
+// }
 
-func (store *SQLStore) buildProductsResponseD(data []GetProductsByFiltersRow) []ProductsResponseD {
+func (store *SQLStore) buildProductsResponseD(data []ProductRow) []ProductsResponseD {
 	if len(data) == 0 {
 		return []ProductsResponseD{}
 	}
@@ -336,8 +335,8 @@ func (store *SQLStore) buildProductsResponseD(data []GetProductsByFiltersRow) []
 			Id:       row.ID,
 			Status:   row.Status,
 			Image:    store.getProductImages(row.ImagePath, 2), // 2 изображения
-			Price:    int(row.Minprice),
-			Discount: getDiscountValue(pgtype.Int4{Valid: row.Maxdiscprice != 0, Int32: row.Maxdiscprice}),
+			Price:    int(row.MinPrice),
+			Discount: getDiscountValue(pgtype.Int4{Valid: row.MaxDiscPrice != 0, Int32: getInt32Value(row.MaxDiscPrice)}),
 		})
 	}
 	return result
@@ -553,4 +552,328 @@ func (store *SQLStore) CreateDiscounts(ctx context.Context, discountData map[int
 	}
 
 	return nil
+}
+
+type productsWithCount struct {
+	Products   []ProductRow // замени ProductRow на тип, который у тебя используется для построения ответа
+	TotalCount int
+}
+
+type ProductRow struct {
+	ID              int32
+	Name            string
+	ImagePath       string
+	Firm            string
+	MinPrice        int32
+	MaxPrice        int32
+	Status          string
+	MaxDiscPrice    float64
+	DiscountPercent float64
+	InStore         bool
+}
+
+// Конвертеры из специфичных sqlc-строк в общую ProductRow
+func baseRowToProductRow(r GetProductsByFiltersPaginateBaseRow) ProductRow {
+	return ProductRow{
+		ID:        r.ID,
+		Name:      r.Name,
+		ImagePath: r.ImagePath,
+		Firm:      r.Firm,
+		MinPrice:  r.Minprice,
+		MaxPrice:  r.Maxprice,
+		Status:    r.Status,
+	}
+}
+
+func discountRowToProductRow(r GetProductsByFiltersPaginateWithDiscountRow) ProductRow {
+	return ProductRow{
+		ID:              r.ID,
+		Name:            r.Name,
+		ImagePath:       r.ImagePath,
+		Firm:            r.Firm,
+		MinPrice:        r.Minprice,
+		MaxPrice:        r.Maxprice,
+		Status:          r.Status,
+		MaxDiscPrice:    float64(r.Maxdiscprice),
+		DiscountPercent: float64(r.DiscountPercent),
+	}
+}
+
+func storeRowToProductRow(r GetProductsByFiltersPaginateWithStoreRow) ProductRow {
+	return ProductRow{
+		ID:        r.ID,
+		Name:      r.Name,
+		ImagePath: r.ImagePath,
+		Firm:      r.Firm,
+		MinPrice:  r.Minprice,
+		MaxPrice:  r.Maxprice,
+		Status:    r.Status,
+		InStore:   r.InStore.Bool,
+	}
+}
+
+func fullRowToProductRow(r GetProductsByFiltersPaginateFullRow) ProductRow {
+	return ProductRow{
+		ID:              r.ID,
+		Name:            r.Name,
+		ImagePath:       r.ImagePath,
+		Firm:            r.Firm,
+		MinPrice:        r.Minprice,
+		MaxPrice:        r.Maxprice,
+		Status:          r.Status,
+		MaxDiscPrice:    float64(r.Maxdiscprice),
+		DiscountPercent: float64(r.DiscountPercent),
+		InStore:         r.InStore.Bool,
+	}
+}
+
+// Основная функция getProductsByFilters – теперь выбирает лёгкий запрос
+func (store *SQLStore) getProductsByFilters(
+	ctx context.Context,
+	mainFilter GetFiltersByNameCategoryAndTypeParams,
+	filters types.ProductsFilterStruct,
+	page, size, orderedType int,
+	usePriceFilter bool,
+) (productsWithCount, error) {
+	offset := (page - 1) * size
+
+	// Определяем необходимость фильтров
+	needDiscount := filters.HasDiscount
+	needStore := filters.InStore
+
+	var total int64
+	var err error
+	var products []ProductRow
+
+	switch {
+	case !needDiscount && !needStore:
+		// Базовая пагинация и count
+		params := GetProductsByFiltersPaginateBaseParams{
+			Limitval:     int32(size),
+			Offsetval:    int32(offset),
+			Sizes:        filters.Sizes,
+			Firms:        filters.Firms,
+			Bodytypes:    filters.Bodytypes,
+			ProductTypes: nil,
+			SortType:     int32(orderedType),
+			Lines:        filters.Lines,
+			Status:       filters.Status,
+			WithPrice:    filters.WithPrice,
+			// Название и категории
+			Name:       mainFilter.Name.String,
+			Categories: nil,
+		}
+		if mainFilter.Category.Valid {
+			params.Categories = []int32{mainFilter.Category.Int32}
+		}
+		if mainFilter.Type.Valid {
+			params.ProductTypes = []int32{mainFilter.Type.Int32}
+		}
+		if mainFilter.Name.Valid {
+			params.Name = mainFilter.Name.String
+		} else {
+			params.Name = ""
+		}
+		if usePriceFilter && len(filters.Price) == 2 {
+			params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
+			params.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
+		}
+		fmt.Println("%v", params.Categories, "ddddddddddddddddddddddddddddddaaaaaaaaaaa", params.ProductTypes)
+		fmt.Println("%v", mainFilter.Category, "ddddddddddddddddddddddddddddddaaaaaaaaaaa", mainFilter.Type)
+		rows, err := store.GetProductsByFiltersPaginateBase(ctx, params)
+		if err != nil {
+			return productsWithCount{}, err
+		}
+		for _, r := range rows {
+			products = append(products, baseRowToProductRow(r))
+		}
+
+		countParams := CountProductsByFiltersBaseParams{
+			Sizes:        filters.Sizes,
+			Firms:        filters.Firms,
+			Bodytypes:    filters.Bodytypes,
+			ProductTypes: params.ProductTypes,
+			Lines:        filters.Lines,
+			Status:       filters.Status,
+			WithPrice:    filters.WithPrice,
+			Name:         params.Name,
+			Categories:   params.Categories,
+		}
+		if usePriceFilter && len(filters.Price) == 2 {
+			countParams.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
+			countParams.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
+		}
+		total, err = store.CountProductsByFiltersBase(ctx, countParams)
+
+	case needDiscount && !needStore:
+		params := GetProductsByFiltersPaginateWithDiscountParams{
+			Limitval:     int32(size),
+			Offsetval:    int32(offset),
+			Sizes:        filters.Sizes,
+			Firms:        filters.Firms,
+			Bodytypes:    filters.Bodytypes,
+			ProductTypes: nil,
+			SortType:     int32(orderedType),
+			Lines:        filters.Lines,
+			Status:       filters.Status,
+			WithPrice:    filters.WithPrice,
+			Name:         "",
+			Categories:   nil,
+		}
+		if mainFilter.Category.Valid {
+			params.Categories = []int32{mainFilter.Category.Int32}
+		}
+		if mainFilter.Name.Valid {
+			params.Name = mainFilter.Name.String
+		}
+		if mainFilter.Type.Valid {
+			params.ProductTypes = []int32{mainFilter.Type.Int32}
+		}
+		if usePriceFilter && len(filters.Price) == 2 {
+			params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
+			params.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
+		}
+
+		rows, err := store.GetProductsByFiltersPaginateWithDiscount(ctx, params)
+		if err != nil {
+			return productsWithCount{}, err
+		}
+		for _, r := range rows {
+			products = append(products, discountRowToProductRow(r))
+		}
+
+		countParams := CountProductsByFiltersWithDiscountParams{
+			Sizes:        filters.Sizes,
+			Firms:        filters.Firms,
+			Bodytypes:    filters.Bodytypes,
+			ProductTypes: params.ProductTypes,
+			Lines:        filters.Lines,
+			Status:       filters.Status,
+			WithPrice:    filters.WithPrice,
+			Name:         params.Name,
+			Categories:   params.Categories,
+		}
+		if usePriceFilter && len(filters.Price) == 2 {
+			countParams.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
+			countParams.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
+		}
+		total, err = store.CountProductsByFiltersWithDiscount(ctx, countParams)
+
+	case !needDiscount && needStore:
+		params := GetProductsByFiltersPaginateWithStoreParams{
+			Limitval:     int32(size),
+			Offsetval:    int32(offset),
+			Sizes:        filters.Sizes,
+			Firms:        filters.Firms,
+			Bodytypes:    filters.Bodytypes,
+			ProductTypes: nil,
+			SortType:     int32(orderedType),
+			Lines:        filters.Lines,
+			Status:       filters.Status,
+			WithPrice:    filters.WithPrice,
+			Name:         "",
+			Categories:   nil,
+		}
+		if mainFilter.Category.Valid {
+			params.Categories = []int32{mainFilter.Category.Int32}
+		}
+		if mainFilter.Name.Valid {
+			params.Name = mainFilter.Name.String
+		}
+		if mainFilter.Type.Valid {
+			params.ProductTypes = []int32{mainFilter.Type.Int32}
+		}
+		if usePriceFilter && len(filters.Price) == 2 {
+			params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
+			params.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
+		}
+
+		rows, err := store.GetProductsByFiltersPaginateWithStore(ctx, params)
+		if err != nil {
+			return productsWithCount{}, err
+		}
+		for _, r := range rows {
+			products = append(products, storeRowToProductRow(r))
+		}
+
+		countParams := CountProductsByFiltersWithStoreParams{
+			Sizes:        filters.Sizes,
+			Firms:        filters.Firms,
+			Bodytypes:    filters.Bodytypes,
+			ProductTypes: params.ProductTypes,
+			Lines:        filters.Lines,
+			Status:       filters.Status,
+			WithPrice:    filters.WithPrice,
+			Name:         params.Name,
+			Categories:   params.Categories,
+		}
+		if usePriceFilter && len(filters.Price) == 2 {
+			countParams.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
+			countParams.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
+		}
+		total, err = store.CountProductsByFiltersWithStore(ctx, countParams)
+
+	case needDiscount && needStore:
+		params := GetProductsByFiltersPaginateFullParams{
+			Limitval:     int32(size),
+			Offsetval:    int32(offset),
+			Sizes:        filters.Sizes,
+			Firms:        filters.Firms,
+			Bodytypes:    filters.Bodytypes,
+			ProductTypes: nil,
+			SortType:     int32(orderedType),
+			Lines:        filters.Lines,
+			Status:       filters.Status,
+			WithPrice:    filters.WithPrice,
+			Name:         "",
+			Categories:   nil,
+		}
+		if mainFilter.Category.Valid {
+			params.Categories = []int32{mainFilter.Category.Int32}
+		}
+		if mainFilter.Name.Valid {
+			params.Name = mainFilter.Name.String
+		}
+		if mainFilter.Type.Valid {
+			params.ProductTypes = []int32{mainFilter.Type.Int32}
+		}
+		if usePriceFilter && len(filters.Price) == 2 {
+			params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
+			params.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
+		}
+		fmt.Println("%v", params, "ddddddddddddddddddddddddddddddaaaaaaaaaaa")
+		rows, err := store.GetProductsByFiltersPaginateFull(ctx, params)
+		if err != nil {
+			return productsWithCount{}, err
+		}
+		for _, r := range rows {
+			products = append(products, fullRowToProductRow(r))
+		}
+
+		countParams := CountProductsByFiltersFullParams{
+			Sizes:        filters.Sizes,
+			Firms:        filters.Firms,
+			Bodytypes:    filters.Bodytypes,
+			ProductTypes: params.ProductTypes,
+			Lines:        filters.Lines,
+			Status:       filters.Status,
+			WithPrice:    filters.WithPrice,
+			Name:         params.Name,
+			Categories:   params.Categories,
+		}
+		if usePriceFilter && len(filters.Price) == 2 {
+			countParams.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
+			countParams.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
+		}
+		total, err = store.CountProductsByFiltersFull(ctx, countParams)
+	}
+
+	if err != nil {
+		return productsWithCount{}, err
+	}
+
+	return productsWithCount{
+		Products:   products,
+		TotalCount: int(total),
+	}, nil
 }

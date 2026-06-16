@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/mrkrabopl1/go_db/services"
 	"github.com/mrkrabopl1/go_db/types"
 )
 
@@ -223,8 +226,7 @@ func (store *SQLStore) buildAdminProductsInfoResponse(snInfo GetAdminProductsInf
 	if snInfo.Value != nil {
 		json.Unmarshal(snInfo.Value, &discount)
 	}
-
-	fmt.Println(snInfo, "teaaaaaaaaaaast")
+	fmt.Println(snInfo.ImagePath, "sssssssssssssssssssssssssssssssssssssssss")
 	return ProductsAdminInfoResponse{
 		ProductsInfoResponse: ProductsInfoResponse{
 			Name:        snInfo.Name,
@@ -237,7 +239,7 @@ func (store *SQLStore) buildAdminProductsInfoResponse(snInfo GetAdminProductsInf
 			Category:    snInfo.Category,
 			Article:     snInfo.Article,
 			Store:       snInfo.StoreInfo,
-			ImagePath:   store.ImagePathBuilder.GetProductImageBasePath(snInfo.ImagePath),
+			ImagePath:   store.ImagePathBuilder.GetProductMainImage(snInfo.ImagePath), // ✅ главное фото
 			Id:          snInfo.ID,
 		},
 		Status: snInfo.Status,
@@ -394,4 +396,192 @@ func getInt32Value(v interface{}) int32 {
 	default:
 		return 0
 	}
+}
+
+// store/admin_products.go
+
+// MissingImageInfo - информация о продукте без изображений
+type MissingImageInfo struct {
+	ID         int32  `json:"id"`
+	Name       string `json:"name"`
+	Article    string `json:"article"`
+	ImagePath  string `json:"image_path"`
+	Status     string `json:"status"`
+	ImageCount int32  `json:"image_count"`
+	Firm       string `json:"firm"`
+	Reason     string `json:"reason"` // причина отсутствия
+}
+
+// FindProductsWithMissingImages находит продукты без физических файлов
+func (store *SQLStore) FindProductsWithMissingImages(
+	ctx context.Context,
+	imageService *services.ImageService,
+) ([]MissingImageInfo, error) {
+
+	// 1. Получаем все продукты с image_path
+	products, err := store.GetProductsWithoutImages(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка получения продуктов: %w", err)
+	}
+
+	var missingProducts []MissingImageInfo
+
+	for _, product := range products {
+		physicalPath := store.ImagePathBuilder.GetPhysicalPath(product.ImagePath)
+
+		// Проверяем существование директории
+		dirInfo, err := os.Stat(physicalPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// Папка не существует - нет ни одного изображения
+				missingProducts = append(missingProducts, MissingImageInfo{
+					ID:         product.ID,
+					Name:       product.Name,
+					Article:    product.Article,
+					ImagePath:  product.ImagePath,
+					Status:     product.Status,
+					ImageCount: product.ImageCount,
+					Firm:       product.Firm.String,
+					Reason:     "папка не существует",
+				})
+				continue
+			}
+			return nil, fmt.Errorf("ошибка проверки папки %s: %w", physicalPath, err)
+		}
+
+		if !dirInfo.IsDir() {
+			missingProducts = append(missingProducts, MissingImageInfo{
+				ID:         product.ID,
+				Name:       product.Name,
+				Article:    product.Article,
+				ImagePath:  product.ImagePath,
+				Status:     product.Status,
+				ImageCount: product.ImageCount,
+				Firm:       product.Firm.String,
+				Reason:     "путь не является директорией",
+			})
+			continue
+		}
+
+		// Проверяем наличие файлов изображений
+		entries, err := os.ReadDir(physicalPath)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка чтения директории %s: %w", physicalPath, err)
+		}
+
+		hasImages := false
+		webpCount := 0
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				name := strings.ToLower(entry.Name())
+				// Считаем только WebP оригиналы (не _thumb)
+				if strings.HasSuffix(name, ".webp") && !strings.Contains(name, "_thumb") {
+					hasImages = true
+					webpCount++
+				}
+			}
+		}
+
+		if !hasImages {
+			missingProducts = append(missingProducts, MissingImageInfo{
+				ID:         product.ID,
+				Name:       product.Name,
+				Article:    product.Article,
+				ImagePath:  product.ImagePath,
+				Status:     product.Status,
+				ImageCount: product.ImageCount,
+				Firm:       product.Firm.String,
+				Reason:     fmt.Sprintf("директория существует, но нет WebP файлов (файлов в папке: %d)", len(entries)),
+			})
+		} else if int32(webpCount) != product.ImageCount {
+			// Частично не хватает изображений
+			missingProducts = append(missingProducts, MissingImageInfo{
+				ID:         product.ID,
+				Name:       product.Name,
+				Article:    product.Article,
+				ImagePath:  product.ImagePath,
+				Status:     product.Status,
+				ImageCount: product.ImageCount,
+				Firm:       product.Firm.String,
+				Reason:     fmt.Sprintf("неполные изображения: ожидалось %d, найдено %d", product.ImageCount, webpCount),
+			})
+		}
+	}
+
+	return missingProducts, nil
+}
+
+// CleanProductsWithoutImages удаляет/архивирует продукты без изображений
+func (store *SQLStore) CleanProductsWithoutImages(
+	ctx context.Context,
+	imageService *services.ImageService,
+	dryRun bool, // если true - только возвращает список, не удаляет
+) (*CleanProductsResult, error) {
+
+	missingProducts, err := store.FindProductsWithMissingImages(ctx, imageService)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &CleanProductsResult{
+		TotalMissing: len(missingProducts),
+		Products:     missingProducts,
+		DeletedIDs:   []int32{},
+		ArchivedIDs:  []int32{},
+		EmptyDirs:    []string{},
+	}
+
+	if dryRun {
+		return result, nil
+	}
+
+	// Разделяем на полностью отсутствующие и частичные
+	var deleteIDs []int32
+	var archiveIDs []int32
+
+	for _, p := range missingProducts {
+		if strings.Contains(p.Reason, "папка не существует") ||
+			strings.Contains(p.Reason, "нет WebP файлов") {
+			// Полностью отсутствуют - можно удалять
+			deleteIDs = append(deleteIDs, p.ID)
+		} else {
+			// Частичные - архивируем
+			archiveIDs = append(archiveIDs, p.ID)
+		}
+	}
+
+	// Помечаем как удалённые (полностью без картинок)
+	if len(deleteIDs) > 0 {
+		err = store.MarkProductsAsDeleted(ctx, deleteIDs)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка удаления продуктов: %w", err)
+		}
+		result.DeletedIDs = deleteIDs
+
+		// Удаляем пустые директории
+		for _, p := range missingProducts {
+			physicalPath := store.ImagePathBuilder.GetPhysicalPath(p.ImagePath)
+			// Пробуем удалить папку если она пустая
+			if err := os.Remove(physicalPath); err == nil {
+				result.EmptyDirs = append(result.EmptyDirs, p.ImagePath)
+			}
+		}
+	}
+
+	// Архивируем частичные (если нужно)
+	if len(archiveIDs) > 0 {
+		// Можно добавить статус 'archived' или просто пометить
+		result.ArchivedIDs = archiveIDs
+	}
+
+	return result, nil
+}
+
+// CleanProductsResult - результат очистки
+type CleanProductsResult struct {
+	TotalMissing int                `json:"total_missing"`
+	Products     []MissingImageInfo `json:"products"`
+	DeletedIDs   []int32            `json:"deleted_ids"`
+	ArchivedIDs  []int32            `json:"archived_ids"`
+	EmptyDirs    []string           `json:"empty_dirs"`
 }

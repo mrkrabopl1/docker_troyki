@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, memo,useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { useAppSelector } from 'src/store/hooks/redux';
 import { getCollections, getHistoryInfo, getDiscontInfo, } from 'src/providers/merchProvider';
 import { shuffle } from 'src/global';
@@ -20,7 +20,7 @@ const MAX_COLLECTIONS = 4;
 const DISCOUNT_SIZE = 10;
 
 const MerchComplexSliderFieldComponent: React.FC = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { collections } = useAppSelector(state => state.menuReducer);
   
   const [slidersData, setSlidersData] = useState<SliderData>({});
@@ -28,8 +28,8 @@ const MerchComplexSliderFieldComponent: React.FC = () => {
   const [merchDiscountFieldData, setDiscountFieldData] = useState<any[]>([]);
 
   const handleBannerClick = useCallback((id: string) => {
-    navigate(`/collections/${id}`);
-  }, [navigate]);
+    router.push(`/collections/${id}`);
+  }, [router]);
 
   // Загрузка данных
   useEffect(() => {

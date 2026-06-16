@@ -1,0 +1,324 @@
+/* style.module.css */
+.container {
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.loading,
+.error,
+.empty {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+    font-size: 16px;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.backButton {
+    padding: 8px 16px;
+    border: 1px solid #ddd;
+    background: #f5f5f5;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.backButton:hover {
+    background: #e0e0e0;
+}
+
+.statusBadge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+/* Табы */
+.tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.tab {
+    padding: 12px 24px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    color: #666;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+}
+
+.tab:hover {
+    color: #333;
+}
+
+.activeTab {
+    color: #1976d2;
+    border-bottom-color: #1976d2;
+    font-weight: 500;
+}
+
+.tabContent {
+    min-height: 400px;
+}
+
+/* Информация */
+.infoGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+.card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.card h3 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.infoRow {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 14px;
+}
+
+.infoRow:last-child {
+    border-bottom: none;
+}
+
+.label {
+    color: #666;
+    font-weight: 500;
+}
+
+.value {
+    color: #333;
+    text-align: right;
+    max-width: 60%;
+    word-break: break-word;
+}
+
+.totalAmount {
+    color: #333;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.hashValue {
+    font-family: monospace;
+    font-size: 12px;
+    color: #666;
+    background: #f5f5f5;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+/* Таблица товаров */
+.itemsSection {
+    margin-top: 20px;
+}
+
+.itemsTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.itemsTable th {
+    background: #f5f5f5;
+    padding: 12px;
+    text-align: left;
+    font-weight: 500;
+    color: #333;
+    font-size: 14px;
+}
+
+.itemsTable td {
+    padding: 12px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 14px;
+}
+
+.itemImage {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.itemTotal {
+    font-weight: 500;
+    color: #1976d2;
+}
+
+.itemsTable tfoot td {
+    font-weight: bold;
+    background: #fafafa;
+}
+
+.totalLabel {
+    text-align: right;
+    color: #666;
+}
+
+.totalValue {
+    color: #333;
+    font-size: 16px;
+}
+
+/* История */
+.historySection {
+    margin-top: 20px;
+}
+
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timelineItem {
+    position: relative;
+    padding-bottom: 30px;
+}
+
+.timelineDot {
+    position: absolute;
+    left: -26px;
+    top: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #1976d2;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #1976d2;
+}
+
+.timelineLine {
+    position: absolute;
+    left: -21px;
+    top: 16px;
+    width: 2px;
+    height: calc(100% - 8px);
+    background: #e0e0e0;
+}
+
+.timelineContent {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.timelineHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.timelineDate {
+    font-size: 12px;
+    color: #666;
+}
+
+.eventType {
+    font-size: 12px;
+    color: #1976d2;
+    font-weight: 500;
+}
+
+.statusChange {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.arrow {
+    color: #666;
+    font-size: 18px;
+}
+
+.reasonBlock {
+    background: #f5f5f5;
+    padding: 12px;
+    border-radius: 4px;
+    margin: 8px 0;
+}
+
+.reasonBlock strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #333;
+}
+
+.reasonCode {
+    display: inline-block;
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.reasonBlock p {
+    margin: 4px 0 0 0;
+    color: #666;
+}
+
+.eventMeta {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: #999;
+    margin-top: 8px;
+}
+
+@media (max-width: 768px) {
+    .infoGrid {
+        grid-template-columns: 1fr;
+    }
+    
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .itemsTable {
+        font-size: 12px;
+    }
+}

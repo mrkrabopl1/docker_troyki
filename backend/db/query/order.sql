@@ -146,7 +146,11 @@ SELECT id,
     status,
     customerId,
     OrderDate,
-    unregistercustomerid
+    deliveryprice,
+    deliverytype,
+    deliverycomment,
+    unregistercustomerid,
+    created_at
 FROM orders
 WHERE id = $1;
 -- name: InsertOrderItems :exec
@@ -225,9 +229,36 @@ ORDER BY o.OrderDate DESC
 LIMIT $1 OFFSET $2;
 
 
--- name: GetCustomerByID :one
-SELECT id, name, mail, phone FROM customers WHERE id = $1;
-
+-- name: GetCustomerById :one
+SELECT 
+    id,
+    name,
+    secondname,
+    mail,
+    phone,
+    town,
+    street,
+    region,
+    index,
+    home,
+    flat
+FROM customers 
+WHERE id = $1;
 -- name: GetUnregisterCustomerByID :one
-SELECT id, name, mail, phone FROM unregistercustomer WHERE id = $1;
+SELECT 
+    id,
+    name,
+    secondname,
+    mail,
+    phone,
+    town,
+    street,
+    settlement,
+    region,
+    index,
+    house,
+    flat,
+    deliverycomment
+FROM unregistercustomer 
+WHERE id = $1;
 

@@ -49,12 +49,6 @@ const toPrice = (num) => {
   formatedStringArr.reverse();
   return formatedStringArr.join(".") + " ₽"
 };
-function getCookie(name) {
-  let matches = document.cookie.match(new RegExp(
-    "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
-  ));
-  return matches ? decodeURIComponent(matches[1]) : undefined;
-}
 
 function extend(obj1: Object, obj2: Object) {
   let keys = Object.keys(obj1)
@@ -65,13 +59,7 @@ function extend(obj1: Object, obj2: Object) {
   }
 }
 
-function setGlobalScroller(active) {
-  if (active) {
-    document.body.style.overflow = 'hidden';
-  } else {
-    document.body.style.overflow = 'unset';
-  }
-}
+
 
 function shuffle(array) {
   for (let i = array.length - 1; i >= 0; i--) {
@@ -80,20 +68,30 @@ function shuffle(array) {
   }
 }
 
-function setCookie(name, value, options: { [key: string]: any } = {}) {
+function getCookie(name: string): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  let matches = document.cookie.match(new RegExp(
+    "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
+  ));
+  return matches ? decodeURIComponent(matches[1]) : undefined;
+}
 
-  options = {
-    path: '/',
-    // при необходимости добавьте другие значения по умолчанию
-    ...options
-  };
+function setGlobalScroller(active: boolean) {
+  if (typeof document === 'undefined') return;
+  if (active) {
+    document.body.style.overflow = 'hidden';
+  } else {
+    document.body.style.overflow = 'unset';
+  }
+}
 
+function setCookie(name: string, value: string, options: { [key: string]: any } = {}) {
+  if (typeof document === 'undefined') return;
+  options = { path: '/', ...options };
   if (options.expires instanceof Date) {
     options.expires = options.expires.toUTCString();
   }
-
   let updatedCookie = encodeURIComponent(name) + "=" + encodeURIComponent(value);
-
   for (let optionKey in options) {
     updatedCookie += "; " + optionKey;
     let optionValue = options[optionKey];
@@ -101,9 +99,7 @@ function setCookie(name, value, options: { [key: string]: any } = {}) {
       updatedCookie += "=" + optionValue;
     }
   }
-
   document.cookie = updatedCookie;
 }
-
 
 export { isDeepEqual, getCookie, setCookie, toPrice, extend, setGlobalScroller, shuffle,clamp }

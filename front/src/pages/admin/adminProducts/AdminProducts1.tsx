@@ -1,6 +1,6 @@
 // pages/admin/ProductVisibility/AdminProductVisibility.tsx
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import SearchWithList from 'src/modules/searchWithList/SearchWithList'
 import ProductsFilters from "src/modules/settingsPanels/ProductsFilters"
 import Button from 'src/components/Button'
@@ -23,7 +23,7 @@ import {
 } from 'src/providers/adminProductsProvider';
 
 const AdminProducts: React.FC = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { typesVal, categories } = useAppSelector(state => state.menuReducer);
 
   const filtersInfo = useRef({
@@ -363,7 +363,7 @@ const AdminProducts: React.FC = () => {
     <div className={s.container}>
       <div className={s.header}>
         <h2>Управление видимостью товаров</h2>
-        <Button text="Назад" onClick={() => navigate('/admin')} />
+        <Button text="Назад" onClick={() => router.push('/admin')} />
       </div>
 
       {/* Статистика */}
@@ -423,7 +423,7 @@ const AdminProducts: React.FC = () => {
           <SearchWithList
             val={searchWord.current}
             searchCallback={searchCallback}
-            selectList={(data) => navigate('/product/' + data)}
+            selectList={(data) => router.push('/product/' + data)}
           />
         </div>
 

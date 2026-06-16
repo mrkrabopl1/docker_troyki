@@ -16,6 +16,14 @@ CREATE TABLE IF NOT EXISTS public.product_categories (
     enum_key VARCHAR(50) NOT NULL UNIQUE,
     image_path TEXT
 );
+CREATE TABLE page_widgets (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,          -- "Новинки"
+    type VARCHAR(100) NOT NULL,          -- "products_slider", "banner_slider", "brands_scroller"
+    sort_order INT NOT NULL DEFAULT 0,   -- порядок на странице
+    is_active BOOLEAN DEFAULT true,
+    settings JSONB                       -- произвольные настройки (тайтл, стили, лимит товаров и т.д.)
+);
 -- Типы товаров
 CREATE TABLE IF NOT EXISTS public.product_types (
     id SERIAL PRIMARY KEY,
@@ -161,6 +169,26 @@ CREATE TABLE IF NOT EXISTS public.orders (
     DeliveryComment TEXT,
     DeliveryType public.delivery_enum NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE order_events (
+    id BIGSERIAL PRIMARY KEY,
+    order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    event_type VARCHAR(50) NOT NULL,
+    
+    -- Для status_change
+    old_status VARCHAR(50),
+    new_status VARCHAR(50),
+    reason TEXT,
+    reason_code VARCHAR(50),
+    
+    -- Кто изменил (может быть админ или система)
+    changed_by_admin INTEGER REFERENCES admins(id) ON DELETE SET NULL,
+    changed_by_type VARCHAR(20) NOT NULL DEFAULT 'admin', -- 'admin', 'system', 'customer'
+    
+    -- Общие
+    ip_address INET,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS public.orderitems (
     id SERIAL PRIMARY KEY,

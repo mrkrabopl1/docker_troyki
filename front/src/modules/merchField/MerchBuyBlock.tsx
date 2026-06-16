@@ -1,17 +1,16 @@
 import React, { ReactElement, useEffect, useRef, useState,memo } from 'react'
 import MerchBlock from "./MerchBlock"
 import s from "./style.module.css"
-import { useNavigate } from 'react-router-dom';
-import { NavLink } from 'react-router-dom';
+import { useRouter } from 'next/router';
 
 
 interface merchInterface { name: string, imgs: string, id: string, firm: string, price: string }
 
 const MerchBuyBlock: React.FC<{ data: merchInterface, onChange: () => void }> = (props) => {
+    const router = useRouter();
     let { data, onChange } = { ...props }
-    const navigate = useNavigate();
     return (
-        <div style={{ width: "100%" }} onClick={() => navigate('/product/' + data.id)} className={s.merchBuyLine + " flex"}>
+        <div style={{ width: "100%" }} onClick={() => router.push('/product/' + data.id)} className={s.merchBuyLine + " flex"}>
             <img className={s.buyImg} style={{ height: "", width: "30%", flexShrink: 0 }} src={data.imgs} alt="" />
             <div className='vrtCntr'>
                 <p>

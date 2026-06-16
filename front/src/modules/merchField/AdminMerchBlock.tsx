@@ -1,6 +1,6 @@
 // pages/admin/ProductVisibility/AdminMerchBlock.tsx
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { toPrice } from 'src/global';
 import s from './adminMerchBlock.module.css'
 
@@ -17,7 +17,7 @@ const AdminMerchBlock: React.FC<AdminMerchBlockProps> = ({
     onSelect, 
     onStatusToggle 
 }) => {
-    const navigate = useNavigate();
+    const router = useRouter();
     const [isHovered, setIsHovered] = useState(false)
 
     return (
@@ -35,7 +35,7 @@ const AdminMerchBlock: React.FC<AdminMerchBlockProps> = ({
                 />
             </div>
             
-            <div className={s.imageBlock} onClick={() => navigate('/products/edit/' + data.id)}>
+            <div className={s.imageBlock} onClick={() => router.push('/products/edit/' + data.id)}>
                 <img src={data.imgs?.[0] || data.image_path} alt={data.name} />
                 {data.discount && (
                     <div className={s.discountBadge}>

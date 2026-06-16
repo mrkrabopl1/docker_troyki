@@ -1,6 +1,6 @@
 import React, { ReactElement, useRef, useState, memo, useCallback } from 'react';
 import s from "./style.module.css";
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 
 interface MerchInterface {
   price: number;
@@ -11,7 +11,7 @@ interface MerchInterface {
 }
 
 const MerchShopLine: React.FC<{ width: string, data: MerchInterface }> = memo(({ width, data }) => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [compOpacity, setOpacity] = useState(1);
   const showAnimation = useRef(false);
   const currentImgIndex = useRef(0);
@@ -64,8 +64,8 @@ const MerchShopLine: React.FC<{ width: string, data: MerchInterface }> = memo(({
   }, [animateTransition, data.imgs.length]);
 
   const handleClick = useCallback(() => {
-    navigate('/product/' + data.id);
-  }, [data.id, navigate]);
+    router.push('/product/' + data.id);
+  }, [data.id, router]);
 
   const secondImgStyle: React.CSSProperties = {
     top: 0,

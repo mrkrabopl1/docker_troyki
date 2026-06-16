@@ -47,25 +47,52 @@ func (q *Queries) DeleteCartData(ctx context.Context, id int32) error {
 	return err
 }
 
-const getCustomerByID = `-- name: GetCustomerByID :one
-SELECT id, name, mail, phone FROM customers WHERE id = $1
+const getCustomerById = `-- name: GetCustomerById :one
+SELECT 
+    id,
+    name,
+    secondname,
+    mail,
+    phone,
+    town,
+    street,
+    region,
+    index,
+    home,
+    flat
+FROM customers 
+WHERE id = $1
 `
 
-type GetCustomerByIDRow struct {
-	ID    int32       `json:"id"`
-	Name  pgtype.Text `json:"name"`
-	Mail  string      `json:"mail"`
-	Phone pgtype.Text `json:"phone"`
+type GetCustomerByIdRow struct {
+	ID         int32       `json:"id"`
+	Name       pgtype.Text `json:"name"`
+	Secondname pgtype.Text `json:"secondname"`
+	Mail       string      `json:"mail"`
+	Phone      pgtype.Text `json:"phone"`
+	Town       pgtype.Text `json:"town"`
+	Street     pgtype.Text `json:"street"`
+	Region     pgtype.Text `json:"region"`
+	Index      pgtype.Text `json:"index"`
+	Home       pgtype.Text `json:"home"`
+	Flat       pgtype.Text `json:"flat"`
 }
 
-func (q *Queries) GetCustomerByID(ctx context.Context, id int32) (GetCustomerByIDRow, error) {
-	row := q.db.QueryRow(ctx, getCustomerByID, id)
-	var i GetCustomerByIDRow
+func (q *Queries) GetCustomerById(ctx context.Context, id int32) (GetCustomerByIdRow, error) {
+	row := q.db.QueryRow(ctx, getCustomerById, id)
+	var i GetCustomerByIdRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.Secondname,
 		&i.Mail,
 		&i.Phone,
+		&i.Town,
+		&i.Street,
+		&i.Region,
+		&i.Index,
+		&i.Home,
+		&i.Flat,
 	)
 	return i, err
 }
@@ -166,18 +193,26 @@ SELECT id,
     status,
     customerId,
     OrderDate,
-    unregistercustomerid
+    deliveryprice,
+    deliverytype,
+    deliverycomment,
+    unregistercustomerid,
+    created_at
 FROM orders
 WHERE id = $1
 `
 
 type GetOrderByIdRow struct {
-	ID                   int32       `json:"id"`
-	Hash                 string      `json:"hash"`
-	Status               StatusEnum  `json:"status"`
-	Customerid           pgtype.Int4 `json:"customerid"`
-	Orderdate            pgtype.Date `json:"orderdate"`
-	Unregistercustomerid pgtype.Int4 `json:"unregistercustomerid"`
+	ID                   int32              `json:"id"`
+	Hash                 string             `json:"hash"`
+	Status               StatusEnum         `json:"status"`
+	Customerid           pgtype.Int4        `json:"customerid"`
+	Orderdate            pgtype.Date        `json:"orderdate"`
+	Deliveryprice        int32              `json:"deliveryprice"`
+	Deliverytype         DeliveryEnum       `json:"deliverytype"`
+	Deliverycomment      pgtype.Text        `json:"deliverycomment"`
+	Unregistercustomerid pgtype.Int4        `json:"unregistercustomerid"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) GetOrderById(ctx context.Context, id int32) (GetOrderByIdRow, error) {
@@ -189,7 +224,11 @@ func (q *Queries) GetOrderById(ctx context.Context, id int32) (GetOrderByIdRow, 
 		&i.Status,
 		&i.Customerid,
 		&i.Orderdate,
+		&i.Deliveryprice,
+		&i.Deliverytype,
+		&i.Deliverycomment,
 		&i.Unregistercustomerid,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -489,14 +528,38 @@ func (q *Queries) GetPreorderInfo(ctx context.Context, orderid int32) ([]GetPreo
 }
 
 const getUnregisterCustomerByID = `-- name: GetUnregisterCustomerByID :one
-SELECT id, name, mail, phone FROM unregistercustomer WHERE id = $1
+SELECT 
+    id,
+    name,
+    secondname,
+    mail,
+    phone,
+    town,
+    street,
+    settlement,
+    region,
+    index,
+    house,
+    flat,
+    deliverycomment
+FROM unregistercustomer 
+WHERE id = $1
 `
 
 type GetUnregisterCustomerByIDRow struct {
-	ID    int32  `json:"id"`
-	Name  string `json:"name"`
-	Mail  string `json:"mail"`
-	Phone string `json:"phone"`
+	ID              int32       `json:"id"`
+	Name            string      `json:"name"`
+	Secondname      pgtype.Text `json:"secondname"`
+	Mail            string      `json:"mail"`
+	Phone           string      `json:"phone"`
+	Town            string      `json:"town"`
+	Street          pgtype.Text `json:"street"`
+	Settlement      pgtype.Text `json:"settlement"`
+	Region          pgtype.Text `json:"region"`
+	Index           string      `json:"index"`
+	House           pgtype.Text `json:"house"`
+	Flat            pgtype.Text `json:"flat"`
+	Deliverycomment pgtype.Text `json:"deliverycomment"`
 }
 
 func (q *Queries) GetUnregisterCustomerByID(ctx context.Context, id int32) (GetUnregisterCustomerByIDRow, error) {
@@ -505,8 +568,17 @@ func (q *Queries) GetUnregisterCustomerByID(ctx context.Context, id int32) (GetU
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.Secondname,
 		&i.Mail,
 		&i.Phone,
+		&i.Town,
+		&i.Street,
+		&i.Settlement,
+		&i.Region,
+		&i.Index,
+		&i.House,
+		&i.Flat,
+		&i.Deliverycomment,
 	)
 	return i, err
 }

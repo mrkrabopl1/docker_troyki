@@ -1,27 +1,29 @@
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { useAppSelector } from 'src/store/hooks/redux';
 import s from "./style.module.css";
 import ContentSliderWithSwitcher from 'src/components/contentSlider/ContentSliderWithSwitcher';
 import CarouselSlider from 'src/components/contentSlider/CarouselSlider';
 
-const FirmsScroller: React.FC = ({
-
-}) => {
-    const navigate = useNavigate();
+const FirmsScroller: React.FC = () => {
+    const router = useRouter();
     const { firms } = useAppSelector(state => state.menuReducer);
+    
     const firmsLines = useMemo(() => {
-        // Add a safety check
         if (!Array.isArray(firms) || firms.length === 0) {
-            return []; // or return a placeholder
+            return [];
         }
 
         return firms.map(value => {
-            return <img onClick={() => {
-                navigate(`/collections/${value}`);
-            }} style={{ "height": "100%", cursor: "pointer" }} src={`/images/brandLogos/${value}/image.png`} alt="" key={value} />
+            return <img 
+                onClick={() => router.push(`/collections/${value}`)} 
+                style={{ "height": "100%", cursor: "pointer" }} 
+                src={`/images/brandLogos/${value}/image.png`} 
+                alt="" 
+                key={value} 
+            />
         });
-    }, [firms]);
+    }, [firms, router]);
 
     return (
         <div className={s.wrap}>

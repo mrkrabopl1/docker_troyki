@@ -1,29 +1,28 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react'
+import { useRouter } from 'next/router';
 import { getOrderDataByHash } from 'src/providers/orderProvider';
 import BuyMerchField from 'src/modules/buyMerchField/BuyMerchField'
 import DataField from 'src/components/dataField/DataField';
 
-
 interface merchInterface { name: string, img: string, id: string, firm: string, price: string, count: number }
-type urlParamsType = {
-    hash: string;
-};
 
 const FinalPage: React.FC = () => {
-    let { hash } = useParams<urlParamsType>();
-    let [snickers,setSnickers] = useState<any>([])
+    const router = useRouter();
+    const hash = router.query.hash as string;
+    const [snickers, setSnickers] = useState<any>([]);
+
     useEffect(() => {
-        getOrderDataByHash(hash,setSnickers)
-    }, [])
+        if (hash) {
+            getOrderDataByHash(hash, setSnickers);
+        }
+    }, [hash]);
+
     return (
         <div style={{ display: "flex" }}>
             <DataField data={[]} header={"данные заказа"}/>
             <BuyMerchField data={snickers} />
         </div>
-
-    )
+    );
 }
 
-
-export default FinalPage
+export default FinalPage;

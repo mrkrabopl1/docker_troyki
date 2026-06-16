@@ -40,6 +40,7 @@ const Modal: React.FC<ModalProps> = ({ active, onChange, children }) => {
             className={s.modalBack}
             onClick={handleBackdropClick}
             onWheel={handleWheel}
+            onScroll={e=>e.stopPropagation()}
             role="dialog"
             aria-modal="true"
         >

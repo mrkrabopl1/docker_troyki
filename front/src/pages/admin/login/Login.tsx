@@ -1,18 +1,27 @@
-// pages/admin/Login/Login.tsx
-import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+// pages/admin/login.tsx
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { loginAdmin } from 'src/providers/adminAuth';
 import LoginForm from 'src/modules/loginForm/LoginForm';
 import s from './style.module.css';
+import { useAppDispatch } from 'src/store/hooks/redux';
+import { finishLoading } from 'src/store/reducers/loadingSlice';
 
 const AdminLogin: React.FC = () => {
-    const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
-
+    const router = useRouter();
+    const dispatch = useAppDispatch();
+    
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            dispatch(finishLoading());
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [dispatch]);
+    
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const redirectTo = searchParams.get('redirect') || '/admin/dashboard';
+    const redirectTo = (router.query.redirect as string) || '/admin/dashboard';
 
     const handleSubmit = async (data: { email: string; password: string; remember?: boolean }) => {
         setIsLoading(true);
@@ -25,17 +34,16 @@ const AdminLogin: React.FC = () => {
         }, (result) => {
             if (result) {
                 console.log('User logged in:', result);
-                navigate(redirectTo, { replace: true });
+                router.replace(redirectTo);
             }
         });
     }
 
     const handleForgotPassword = () => {
-        navigate('/admin/forgot-password');
+        router.push('/admin/forgot-password');
     };
 
     const handleChange = (data: Partial<{ email: string; password: string }>) => {
-        // Сбрасываем ошибку при изменении полей
         if (error) setError(null);
         console.debug('Form changed:', data);
     };
@@ -55,14 +63,10 @@ const AdminLogin: React.FC = () => {
                     onForgotPassword={handleForgotPassword}
                     onChange={handleChange}
                 />
-
                 <div className={s.footer}>
-                    <a href="/" className={s.backLink}>
-                        ← Вернуться на сайт
-                    </a>
+                    <a href="/" className={s.backLink}>← Вернуться на сайт</a>
                 </div>
             </div>
-
             <div className={s.background}>
                 <div className={s.gradientOverlay} />
             </div>

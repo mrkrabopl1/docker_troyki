@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, memo, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux';
 import { cartCountAction } from 'src/store/reducers/menuSlice';
 import { getMerchInfo, getSizeTable } from "src/providers/merchProvider";
@@ -21,7 +21,7 @@ import { ReactComponent as CopySvg } from "/public/copy.svg";
 import SVGIcon from 'src/components/svgIcon/SvgIcon';
 import AbstractInfo from './pageBlocks/AbstractInfo';
 import merchType from 'src/types/merchType';
-
+import { finishLoading, startLoading } from 'src/store/reducers/loadingSlice';
 type ProductType = "snickers" | "clothes" | "solomerch";
 
 interface ProductInfo {
@@ -30,7 +30,7 @@ interface ProductInfo {
     name: string;
     line?: string,
     info: merchType;
-    discount?: Record<string, number>;
+    discount?: Record<string, {value:number}>;
     store?: Record<string, number>;
     firm?: string;
     id?: string;
@@ -48,11 +48,12 @@ interface SizeTable {
 
 const ProductsInfo: React.FC = () => {
     const { show, sticky, typesVal, categories } = useAppSelector(state => state.menuReducer);
-    const { snickers } = useParams<{ snickers: string }>();
+     const router = useRouter();
+    const product = router.query.product as string;
     const { widthProps } = useAppSelector(state => state.resizeReducer);
     const { cartCount } = useAppSelector(state => state.menuReducer);
     const dispatch = useAppDispatch();
-    const navigate = useNavigate();
+ 
 
     const [merchInfo, setMerchInfo] = useState<ProductInfo>({ article: "", image_path: "", image_count: 0, name: "", info: {}, producttype: "snickers" });
     console.log("render ProductsInfo", merchInfo);
@@ -90,17 +91,17 @@ const ProductsInfo: React.FC = () => {
             // ВСЕ обновления для случая "есть данные"
             pricesArr.current = val.info;
             val.discount && Object.entries(val.discount).forEach(data => {
-                pricesArr.current[data[0]].discount = data[1]
+                pricesArr.current[data[0]].discount = data[1].value
             })
 
             currentSize.current = Object.keys(val.info)[0] || "";
-            const discount = val.discount?.[currentSize.current] || 0;
+            const discount = val.discount?.[currentSize.current].value || 0;
             const price = Number(Object.values(val.info)[0]?.price) || 0;
 
             setEmptyPage(false);
             currentDiscount.current = discount;
             currentPriceDiscount.current = price;
-            setCurrentPrice(discount||price);
+            setCurrentPrice(price - price*discount/100 || price);
             setMerchInfo(val);
         }
     }, [typesVal, categories]);
@@ -109,7 +110,7 @@ const ProductsInfo: React.FC = () => {
     const priceChangeHandler = useCallback((index: string) => {
         const priceBlock = pricesArr.current[index];
         setCurrentPrice(priceBlock.price - (priceBlock.discount ?? 0));
-        currentDiscount.current = pricesArr.current[index].discount ?? 0;
+        currentDiscount.current = pricesArr.current[index].discount?? 0;
         currentSize.current = index;
         // if (local === "ru") {
         //     currentSize.current = String(
@@ -122,7 +123,7 @@ const ProductsInfo: React.FC = () => {
 
     const handleBuyClick = useCallback(() => {
         const data = {
-            id: Number(snickers),
+            id: Number(product),
             size: String(currentSize.current),
             price: currentPrice,
             name: merchInfo.name,
@@ -130,15 +131,15 @@ const ProductsInfo: React.FC = () => {
         };
 
         createPreorder(data, (hash) => {
-            navigate(`/form/${hash}`);
+            router.push(`/form/${hash}`);
             dispatch(cartCountAction(1));
         });
-    }, [snickers, navigate, merchInfo, currentPrice]);
+    }, [product, router, merchInfo, currentPrice]);
 
     const handleAddToCart = useCallback(() => {
         const cart = getCookie("cart");
         const data = {
-            id: Number(snickers),
+            id: Number(product),
             size: currentSize.current,
             price: currentPrice,
             name: merchInfo.name,
@@ -154,7 +155,7 @@ const ProductsInfo: React.FC = () => {
                 dispatch(cartCountAction(cartCount + 1));
             });
         }
-    }, [snickers, cartCount, dispatch, merchInfo, currentPrice]);
+    }, [product, cartCount, dispatch, merchInfo, currentPrice]);
 
     const imageContent = useMemo(() => {
         let count = 1;
@@ -178,7 +179,7 @@ const ProductsInfo: React.FC = () => {
                     elements.push(
                         <img
                             onClick={() => {
-                                navigate('/product/' + el.id);
+                                router.push('/product/' + el.id);
                             }}
                             key={index}
                             className={s.lineImage}
@@ -212,10 +213,13 @@ const ProductsInfo: React.FC = () => {
     }, [merchInfo.image_path, widthProps]);
 
     useEffect(() => {
-        if (snickers) {
-            getMerchInfo(snickers, setMerchInfoHandler);
+        if (product) {
+            getMerchInfo(product, (data) => {
+                dispatch(finishLoading());
+                setMerchInfoHandler(data);
+            });
         }
-    }, [snickers, setMerchInfoHandler]);
+    }, [product, setMerchInfoHandler]);
 
     useEffect(() => {
         getSizeTable(merchType.current, setTableInfo);
@@ -248,7 +252,7 @@ const ProductsInfo: React.FC = () => {
                 <div className={widthProps ? s.topPart : s.leftPart} style={widthProps ? { width: "100%" } : {}}>
                     {renderImagePresentation()}
                     {widthProps ? null : <div onClick={() => {
-                        navigate(`/search?firm=${merchInfo.firm}`);
+                        router.push(`/search?firm=${merchInfo.firm}`);
                     }} className={s.firmInfoHolder}>
                         <img className={s.firmImage} src={"/images/brandLogos/" + merchInfo.firm + "/image.png"} alt="" />
                         <span className={s.firmName}>{merchInfo.firm}</span>
@@ -266,7 +270,7 @@ const ProductsInfo: React.FC = () => {
                                     {toPrice(currentPriceDiscount.current)}
                                 </span>
                                 <span className={s.discountPerce}>
-                                    -{Math.round(((currentPriceDiscount.current - currentDiscount.current) / currentPriceDiscount.current) * 100)}%
+                                    -{currentDiscount.current}%
                                 </span>
                             </>
                         )}
@@ -295,7 +299,7 @@ const ProductsInfo: React.FC = () => {
                             </div>
                             <div style={{ display: "flex" }}>
                                 {widthProps ? <div onClick={() => {
-                                    navigate(`/search?firm=${merchInfo.firm}`);
+                                    router.push(`/search?firm=${merchInfo.firm}`);
                                 }} className={s.firmInfoHolder}>
                                     <img className={s.firmImage} src={"/images/brandLogos/" + merchInfo.firm + "/image.png"} alt="" />
                                     <span className={s.firmName}>{merchInfo.firm}</span>

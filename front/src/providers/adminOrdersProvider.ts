@@ -1,7 +1,7 @@
 import axios from 'axios';
-
+import { UpdateOrderStatusRequest, UpdateOrderStatusResponse } from 'src/types/adminOrders';
 const adminApi = axios.create({
-    baseURL: '/admin',
+    baseURL: `${API_URL}/admin`,
     withCredentials: true,
     headers: { 'Content-Type': 'application/json' }
 });
@@ -21,7 +21,8 @@ export interface OrderFilters {
 }
 
 export const getOrders = async (filters: OrderFilters) => {
-    const response = await adminApi.get('/orders', { params: filters });
+    console.debug('Fetching orders with filters:', filters);
+    const response = await adminApi.get('/orders',{params:filters});
     return response.data;
 };
 
@@ -30,11 +31,27 @@ export const getOrderDetails = async (id: number) => {
     return response.data;
 };
 
-export const updateOrderStatus = async (id: number, status: string) => {
-    const response = await adminApi.put(`/orders/${id}/status`, { status });
-    return response.data;
-};
 
+
+// providers/adminOrdersProvider.ts
+export const updateOrderStatus = async (
+    id: number, 
+    data: UpdateOrderStatusRequest
+): Promise<UpdateOrderStatusResponse> => {
+    try {
+        const response = await adminApi.put<UpdateOrderStatusResponse>(
+            `/orders/${id}/status`, 
+            data
+        );
+        return response.data;
+    } catch (error: any) {
+        // Пробрасываем понятную ошибку
+        if (error.response?.data?.error) {
+            throw new Error(error.response.data.error);
+        }
+        throw new Error('Failed to update order status');
+    }
+};
 // ========== ПОЛЬЗОВАТЕЛИ ==========
 
 export const getCustomers = async (params: {
@@ -61,38 +78,6 @@ export const getUnregisteredCustomers = async (params: {
     return response.data;
 };
 
-// ========== АДМИНИСТРАТОРЫ ==========
-
-export const getAdmins = async (params: {
-    page?: number;
-    page_size?: number;
-    search?: string;
-    role?: string;
-    is_active?: boolean;
-}) => {
-    const response = await adminApi.get('/admins', { params });
-    return response.data;
-};
-
-export const createAdmin = async (data: {
-    email: string;
-    password: string;
-    name: string;
-    role: string;
-}) => {
-    const response = await adminApi.post('/admins', data);
-    return response.data;
-};
-
-export const updateAdmin = async (id: number, data: any) => {
-    const response = await adminApi.put(`/admins/${id}`, data);
-    return response.data;
-};
-
-export const deleteAdmin = async (id: number) => {
-    const response = await adminApi.delete(`/admins/${id}`);
-    return response.data;
-};
 
 // ========== ЛОГИ ==========
 

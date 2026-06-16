@@ -27,10 +27,11 @@ func TestGetBrandById(t *testing.T) {
 	require.NotEmpty(t, brand)
 }
 func TestGetBrandImagePath(t *testing.T) {
-	brand := testImagePathBuilder.GetBrandImagePath("")
+	brand := testImagePathBuilder.GetBrandImageURL("")
 	fmt.Println(brand)
 	require.NotEmpty(t, brand)
 }
+
 func TestCountProductImages(t *testing.T) {
 	count := testImagePathBuilder.CountExistingProductImages("newFirms/361/clothes/other/551949354_4_c0e728")
 	fmt.Println(count)
@@ -47,5 +48,12 @@ func TestListAdmins(t *testing.T) {
 		Limit:  int32(20),
 	})
 	fmt.Println(banners)
+	require.NoError(t, err)
+}
+func TestGetOrdersWithFilters(t *testing.T) {
+	brand, err := testStore.GetOrdersWithFilters(context.Background(), GetOrdersWithFiltersParams{})
+	fmt.Println(brand)
+	require.NotEmpty(t, brand)
+	fmt.Println(err)
 	require.NoError(t, err)
 }

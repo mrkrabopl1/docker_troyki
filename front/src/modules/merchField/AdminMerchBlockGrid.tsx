@@ -1,6 +1,6 @@
 // modules/merchField/AdminMerchBlockGrid.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { toPrice } from 'src/global';
 import Checkbox from 'src/components/checkbox/Checkbox'; // ваш компонент
 import s from './adminMerchBlockGrid.module.css';
@@ -18,7 +18,7 @@ const AdminMerchBlockGrid: React.FC<AdminMerchBlockGridProps> = ({
     onSelect,
     onStatusToggle 
 }) => {
-    const navigate = useNavigate();
+    const router = useRouter();
     const [isHovered, setIsHovered] = useState(false);
     const [internalSelected, setInternalSelected] = useState(false);
     
@@ -48,7 +48,7 @@ const AdminMerchBlockGrid: React.FC<AdminMerchBlockGridProps> = ({
                 />
             </div>
             
-            <div className={s.imageBlock} onClick={() => navigate('/admin/products/edit/' + data.id)}>
+            <div className={s.imageBlock} onClick={() => router.push('/admin/products/edit/' + data.id)}>
                 <img src={data.imgs?.[0] || data.image_path} alt={data.name} />
                 {data.discount && (
                     <div className={s.discountBadge}>

@@ -184,6 +184,49 @@ func (q *Queries) CreateAdminPasswordResetToken(ctx context.Context, arg CreateA
 	return err
 }
 
+const createOrderEvent = `-- name: CreateOrderEvent :exec
+INSERT INTO order_events (
+    order_id,
+    event_type,
+    old_status,
+    new_status,
+    reason,
+    reason_code,
+    changed_by_admin,
+    changed_by_type,
+    ip_address
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
+)
+`
+
+type CreateOrderEventParams struct {
+	OrderID        int32       `json:"order_id"`
+	EventType      string      `json:"event_type"`
+	OldStatus      pgtype.Text `json:"old_status"`
+	NewStatus      pgtype.Text `json:"new_status"`
+	Reason         pgtype.Text `json:"reason"`
+	ReasonCode     pgtype.Text `json:"reason_code"`
+	ChangedByAdmin pgtype.Int4 `json:"changed_by_admin"`
+	ChangedByType  string      `json:"changed_by_type"`
+	IpAddress      *netip.Addr `json:"ip_address"`
+}
+
+func (q *Queries) CreateOrderEvent(ctx context.Context, arg CreateOrderEventParams) error {
+	_, err := q.db.Exec(ctx, createOrderEvent,
+		arg.OrderID,
+		arg.EventType,
+		arg.OldStatus,
+		arg.NewStatus,
+		arg.Reason,
+		arg.ReasonCode,
+		arg.ChangedByAdmin,
+		arg.ChangedByType,
+		arg.IpAddress,
+	)
+	return err
+}
+
 const deleteAdmin = `-- name: DeleteAdmin :exec
 DELETE FROM admins
 WHERE id = $1
@@ -205,7 +248,8 @@ func (q *Queries) DeleteAdminByEmail(ctx context.Context, email string) error {
 }
 
 const deleteBrand = `-- name: DeleteBrand :exec
-DELETE FROM brands WHERE id = $1
+DELETE FROM brands
+WHERE id = $1
 `
 
 func (q *Queries) DeleteBrand(ctx context.Context, id int32) error {
@@ -561,10 +605,11 @@ func (q *Queries) GetAdminDashboardStats(ctx context.Context) (GetAdminDashboard
 }
 
 const getAdminInviteByToken = `-- name: GetAdminInviteByToken :one
-SELECT id, email, role, token, invited_by, expires_at, used_at, used_by, created_at, updated_at FROM admin_invites
-WHERE token = $1 
-  AND used_at IS NULL 
-  AND expires_at > NOW()
+SELECT id, email, role, token, invited_by, expires_at, used_at, used_by, created_at, updated_at
+FROM admin_invites
+WHERE token = $1
+    AND used_at IS NULL
+    AND expires_at > NOW()
 LIMIT 1
 `
 
@@ -711,8 +756,11 @@ func (q *Queries) GetAdminLogsCount(ctx context.Context, arg GetAdminLogsCountPa
 }
 
 const getAdminPasswordResetToken = `-- name: GetAdminPasswordResetToken :one
-SELECT id, email, token, expires_at, used_at, created_at FROM admin_password_resets
-WHERE token = $1 AND used_at IS NULL AND expires_at > NOW()
+SELECT id, email, token, expires_at, used_at, created_at
+FROM admin_password_resets
+WHERE token = $1
+    AND used_at IS NULL
+    AND expires_at > NOW()
 LIMIT 1
 `
 
@@ -1050,7 +1098,8 @@ SELECT -- Все размеры
             FROM type_data
         ),
         '[]'::jsonb
-    ) AS product_types, -- Категории товаров
+    ) AS product_types,
+    -- Категории товаров
     COALESCE(
         (
             SELECT jsonb_agg(
@@ -1651,6 +1700,108 @@ func (q *Queries) GetOrderDetails(ctx context.Context, orderID int32) (GetOrderD
 	return i, err
 }
 
+const getOrderEvents = `-- name: GetOrderEvents :many
+SELECT 
+    oe.id, oe.order_id, oe.event_type, oe.old_status, oe.new_status, oe.reason, oe.reason_code, oe.changed_by_admin, oe.changed_by_type, oe.ip_address, oe.metadata, oe.created_at,
+    a.name as admin_name,
+    a.email as admin_email
+FROM order_events oe
+LEFT JOIN admins a ON oe.changed_by_admin = a.id
+WHERE oe.order_id = $1
+ORDER BY oe.created_at DESC
+`
+
+type GetOrderEventsRow struct {
+	ID             int64              `json:"id"`
+	OrderID        int32              `json:"order_id"`
+	EventType      string             `json:"event_type"`
+	OldStatus      pgtype.Text        `json:"old_status"`
+	NewStatus      pgtype.Text        `json:"new_status"`
+	Reason         pgtype.Text        `json:"reason"`
+	ReasonCode     pgtype.Text        `json:"reason_code"`
+	ChangedByAdmin pgtype.Int4        `json:"changed_by_admin"`
+	ChangedByType  string             `json:"changed_by_type"`
+	IpAddress      *netip.Addr        `json:"ip_address"`
+	Metadata       []byte             `json:"metadata"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	AdminName      pgtype.Text        `json:"admin_name"`
+	AdminEmail     pgtype.Text        `json:"admin_email"`
+}
+
+func (q *Queries) GetOrderEvents(ctx context.Context, orderID int32) ([]GetOrderEventsRow, error) {
+	rows, err := q.db.Query(ctx, getOrderEvents, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetOrderEventsRow
+	for rows.Next() {
+		var i GetOrderEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.EventType,
+			&i.OldStatus,
+			&i.NewStatus,
+			&i.Reason,
+			&i.ReasonCode,
+			&i.ChangedByAdmin,
+			&i.ChangedByType,
+			&i.IpAddress,
+			&i.Metadata,
+			&i.CreatedAt,
+			&i.AdminName,
+			&i.AdminEmail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getOrderStatusHistory = `-- name: GetOrderStatusHistory :many
+SELECT id, order_id, event_type, old_status, new_status, reason, reason_code, changed_by_admin, changed_by_type, ip_address, metadata, created_at FROM order_events 
+WHERE order_id = $1 AND event_type = 'status_change'
+ORDER BY created_at DESC
+`
+
+func (q *Queries) GetOrderStatusHistory(ctx context.Context, orderID int32) ([]OrderEvent, error) {
+	rows, err := q.db.Query(ctx, getOrderStatusHistory, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OrderEvent
+	for rows.Next() {
+		var i OrderEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.EventType,
+			&i.OldStatus,
+			&i.NewStatus,
+			&i.Reason,
+			&i.ReasonCode,
+			&i.ChangedByAdmin,
+			&i.ChangedByType,
+			&i.IpAddress,
+			&i.Metadata,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getOrdersCount = `-- name: GetOrdersCount :one
 SELECT COUNT(*) as total
 FROM orders o
@@ -1692,67 +1843,72 @@ func (q *Queries) GetOrdersCount(ctx context.Context, arg GetOrdersCountParams) 
 }
 
 const getOrdersWithFilters = `-- name: GetOrdersWithFilters :many
-SELECT o.id,
-    o.customerid,
-    o.unregistercustomerid,
-    o.orderdate,
-    o.status,
-    o.hash,
-    o.deliveryprice,
-    o.deliverytype,
-    o.created_at,
-    COALESCE(c.name, uc.name)::text as customer_name,
-    COALESCE(c.secondname, uc.secondname)::text as customer_secondname,
-    COALESCE(c.mail, uc.mail)::text as customer_email,
-    COALESCE(c.phone, uc.phone)::text as customer_phone,
-    oa.town,
-    oa.street,
-    oa.house,
-    oa.flat,
-    COUNT(oi.id) as items_count,
-    COALESCE(SUM(oi.quantity * oi.price), 0) as total_amount
-FROM orders o
-    LEFT JOIN customers c ON o.customerid = c.id
-    LEFT JOIN unregistercustomer uc ON o.unregistercustomerid = uc.id
-    LEFT JOIN orderaddress oa ON o.id = oa.orderid
-    LEFT JOIN orderitems oi ON o.id = oi.orderid
-WHERE (
-        $1::status_enum IS NULL
-        OR o.status = $1
-    )
-    AND (
-        $2::delivery_enum IS NULL
-        OR o.deliverytype = $2
-    )
-    AND (
-        $3::date IS NULL
-        OR o.orderdate >= $3
-    )
-    AND (
-        $4::date IS NULL
-        OR o.orderdate <= $4
-    )
-    AND (
-        $5::int IS NULL
-        OR o.customerid = $5
-    )
-    AND (
-        $6::text IS NULL
-        OR o.id::text LIKE '%' || $6 || '%'
-        OR c.name ILIKE '%' || $6 || '%'
-        OR c.mail ILIKE '%' || $6 || '%'
-        OR uc.name ILIKE '%' || $6 || '%'
-        OR uc.mail ILIKE '%' || $6 || '%'
-    )
-GROUP BY o.id,
-    c.id,
-    uc.id,
-    oa.id
+SELECT id, customerid, unregistercustomerid, orderdate, status, hash, deliveryprice, deliverytype, created_at, customer_name, customer_secondname, customer_email, customer_phone, town, street, house, flat, items_count, total_amount
+FROM (
+        SELECT o.id,
+            o.customerid,
+            o.unregistercustomerid,
+            o.orderdate,
+            o.status,
+            o.hash,
+            o.deliveryprice,
+            o.deliverytype,
+            -- Оставляем как есть, без COALESCE
+            o.created_at,
+            COALESCE(c.name, uc.name, '')::text as customer_name,
+            COALESCE(c.secondname, uc.secondname, '')::text as customer_secondname,
+            COALESCE(c.mail, uc.mail, '')::text as customer_email,
+            COALESCE(c.phone, uc.phone, '')::text as customer_phone,
+            COALESCE(oa.town, '') as town,
+            COALESCE(oa.street, '') as street,
+            COALESCE(oa.house, '') as house,
+            COALESCE(oa.flat, '') as flat,
+            COUNT(oi.id) as items_count,
+            COALESCE(SUM(oi.quantity * oi.price), 0) as total_amount
+        FROM orders o
+            LEFT JOIN customers c ON o.customerid = c.id
+            LEFT JOIN unregistercustomer uc ON o.unregistercustomerid = uc.id
+            LEFT JOIN orderaddress oa ON o.id = oa.orderid
+            LEFT JOIN orderitems oi ON o.id = oi.orderid
+        WHERE (
+                $1::status_enum IS NULL
+                OR o.status = $1
+            )
+            AND (
+                $2::text = ''
+                OR $2 IS NULL
+                OR o.deliverytype = $2::delivery_enum
+            )
+            AND (
+                $3::date IS NULL
+                OR o.orderdate >= $3
+            )
+            AND (
+                $4::date IS NULL
+                OR o.orderdate <= $4
+            )
+            AND (
+                $5::int IS NULL
+                OR o.customerid = $5
+            )
+            AND (
+                $6::text IS NULL
+                OR o.id::text LIKE '%' || $6 || '%'
+                OR c.name ILIKE '%' || $6 || '%'
+                OR c.mail ILIKE '%' || $6 || '%'
+                OR uc.name ILIKE '%' || $6 || '%'
+                OR uc.mail ILIKE '%' || $6 || '%'
+            )
+        GROUP BY o.id,
+            c.id,
+            uc.id,
+            oa.id
+    ) AS filtered_orders
 ORDER BY CASE
-        WHEN $7::text = 'date_desc' THEN o.orderdate
+        WHEN $7::text = 'date_desc' THEN orderdate
     END DESC,
     CASE
-        WHEN $7::text = 'date_asc' THEN o.orderdate
+        WHEN $7::text = 'date_asc' THEN orderdate
     END ASC,
     CASE
         WHEN $7::text = 'amount_desc' THEN total_amount
@@ -1760,20 +1916,17 @@ ORDER BY CASE
     CASE
         WHEN $7::text = 'amount_asc' THEN total_amount
     END ASC,
-    o.orderdate DESC
-LIMIT $9 OFFSET $8
+    orderdate DESC
 `
 
 type GetOrdersWithFiltersParams struct {
-	Status       NullStatusEnum   `json:"status"`
-	DeliveryType NullDeliveryEnum `json:"delivery_type"`
-	DateFrom     pgtype.Date      `json:"date_from"`
-	DateTo       pgtype.Date      `json:"date_to"`
-	CustomerID   pgtype.Int4      `json:"customer_id"`
-	Search       pgtype.Text      `json:"search"`
-	SortBy       string           `json:"sort_by"`
-	OffsetVal    int32            `json:"offset_val"`
-	LimitVal     int32            `json:"limit_val"`
+	Status       NullStatusEnum `json:"status"`
+	DeliveryType pgtype.Text    `json:"delivery_type"`
+	DateFrom     pgtype.Date    `json:"date_from"`
+	DateTo       pgtype.Date    `json:"date_to"`
+	CustomerID   pgtype.Int4    `json:"customer_id"`
+	Search       pgtype.Text    `json:"search"`
+	SortBy       string         `json:"sort_by"`
 }
 
 type GetOrdersWithFiltersRow struct {
@@ -1790,10 +1943,10 @@ type GetOrdersWithFiltersRow struct {
 	CustomerSecondname   string             `json:"customer_secondname"`
 	CustomerEmail        string             `json:"customer_email"`
 	CustomerPhone        string             `json:"customer_phone"`
-	Town                 pgtype.Text        `json:"town"`
-	Street               pgtype.Text        `json:"street"`
-	House                pgtype.Text        `json:"house"`
-	Flat                 pgtype.Text        `json:"flat"`
+	Town                 string             `json:"town"`
+	Street               string             `json:"street"`
+	House                string             `json:"house"`
+	Flat                 string             `json:"flat"`
 	ItemsCount           int64              `json:"items_count"`
 	TotalAmount          interface{}        `json:"total_amount"`
 }
@@ -1807,8 +1960,6 @@ func (q *Queries) GetOrdersWithFilters(ctx context.Context, arg GetOrdersWithFil
 		arg.CustomerID,
 		arg.Search,
 		arg.SortBy,
-		arg.OffsetVal,
-		arg.LimitVal,
 	)
 	if err != nil {
 		return nil, err
@@ -2328,6 +2479,66 @@ func (q *Queries) GetProductsWithSizesByIDs(ctx context.Context, productIds []in
 	return items, nil
 }
 
+const getProductsWithoutImages = `-- name: GetProductsWithoutImages :many
+
+SELECT 
+    p.id,
+    p.name,
+    p.article,
+    p.image_path,
+    p.status,
+    p.image_count,
+    b.name as firm,
+    b.slug as brand_slug
+FROM products p
+LEFT JOIN brands b ON p.brand_id = b.id
+WHERE p.image_path IS NOT NULL 
+  AND p.image_path != ''
+  AND p.status != 'deleted'
+ORDER BY p.id
+`
+
+type GetProductsWithoutImagesRow struct {
+	ID         int32       `json:"id"`
+	Name       string      `json:"name"`
+	Article    string      `json:"article"`
+	ImagePath  string      `json:"image_path"`
+	Status     string      `json:"status"`
+	ImageCount int32       `json:"image_count"`
+	Firm       pgtype.Text `json:"firm"`
+	BrandSlug  pgtype.Text `json:"brand_slug"`
+}
+
+// queries/products.sql
+func (q *Queries) GetProductsWithoutImages(ctx context.Context) ([]GetProductsWithoutImagesRow, error) {
+	rows, err := q.db.Query(ctx, getProductsWithoutImages)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductsWithoutImagesRow
+	for rows.Next() {
+		var i GetProductsWithoutImagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Article,
+			&i.ImagePath,
+			&i.Status,
+			&i.ImageCount,
+			&i.Firm,
+			&i.BrandSlug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRecentActivity = `-- name: GetRecentActivity :many
 SELECT al.id,
     al.action,
@@ -2603,9 +2814,9 @@ UPDATE admin_invites
 SET used_at = NOW(),
     used_by = $2,
     updated_at = NOW()
-WHERE token = $1 
-  AND used_at IS NULL 
-  AND expires_at > NOW()
+WHERE token = $1
+    AND used_at IS NULL
+    AND expires_at > NOW()
 `
 
 type MarkInviteAsUsedParams struct {
@@ -2615,6 +2826,18 @@ type MarkInviteAsUsedParams struct {
 
 func (q *Queries) MarkInviteAsUsed(ctx context.Context, arg MarkInviteAsUsedParams) error {
 	_, err := q.db.Exec(ctx, markInviteAsUsed, arg.Token, arg.UsedBy)
+	return err
+}
+
+const markProductsAsDeleted = `-- name: MarkProductsAsDeleted :exec
+UPDATE products 
+SET status = 'deleted', 
+    deleted_at = NOW() 
+WHERE id = ANY($1::int[])
+`
+
+func (q *Queries) MarkProductsAsDeleted(ctx context.Context, dollar_1 []int32) error {
+	_, err := q.db.Exec(ctx, markProductsAsDeleted, dollar_1)
 	return err
 }
 
@@ -2680,7 +2903,8 @@ func (q *Queries) UpdateAdminPassword(ctx context.Context, arg UpdateAdminPasswo
 
 const updateAdminPasswordByEmail = `-- name: UpdateAdminPasswordByEmail :exec
 UPDATE admins
-SET password_hash = $2, updated_at = NOW()
+SET password_hash = $2,
+    updated_at = NOW()
 WHERE email = $1
 `
 

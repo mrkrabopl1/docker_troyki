@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { getCollection } from "src/providers/merchProvider";
-import MerchField from 'src/modules/merchField/MerchField'; // Предполагаю, что у вас есть базовый компонент без пагинации
+import MerchField from 'src/modules/merchField/MerchField';
 
 interface MerchItem {
     name: string;
@@ -14,7 +14,6 @@ interface MerchItem {
 
 const PAGE_SIZE = 9;
 
-// Стили для индикатора загрузки
 const loadingStyles: React.CSSProperties = {
     display: 'flex',
     justifyContent: 'center',
@@ -39,7 +38,6 @@ const messageStyles: React.CSSProperties = {
     fontSize: '14px'
 };
 
-// Добавляем CSS анимацию через style tag
 const SpinAnimation: React.FC = () => (
     <style>
         {`
@@ -52,8 +50,8 @@ const SpinAnimation: React.FC = () => (
 );
 
 const CollectionPage: React.FC = () => {
-    const params = useParams<{ collection: string }>();
-    const collection = params.collection || '';
+    const router = useRouter();
+    const collection = router.query.collection as string || '';
     
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -101,16 +99,16 @@ const CollectionPage: React.FC = () => {
         }
     }, [collection, isLoading]);
 
-    // Инициализация и сброс при смене коллекции
     useEffect(() => {
         setCollectionData([]);
         setCurrentPage(1);
         setHasMore(true);
         setIsLoading(false);
-        fetchCollection(1);
+        if (collection) {
+            fetchCollection(1);
+        }
     }, [collection]);
 
-    // Настройка Intersection Observer для бесконечного скролла
     useEffect(() => {
         if (isLoading || !hasMore) return;
 
@@ -141,27 +139,23 @@ const CollectionPage: React.FC = () => {
         <div>
             <SpinAnimation />
             
-            {/* Используем базовый компонент MerchField вместо MerchFieldWithPageSwitcher */}
             <MerchField 
                 size={gridView ? 2 : 3} 
                 data={collectionData} 
             />
             
-            {/* Элемент для наблюдения за скроллом */}
             {hasMore && (
                 <div ref={lastItemRef} style={loadingStyles}>
                     {isLoading && <div style={spinnerStyles}></div>}
                 </div>
             )}
             
-            {/* Сообщение, когда больше нет товаров */}
             {!hasMore && collectionData.length > 0 && (
                 <div style={messageStyles}>
                     Все товары загружены
                 </div>
             )}
             
-            {/* Сообщение, если коллекция пуста */}
             {!hasMore && collectionData.length === 0 && !isLoading && (
                 <div style={messageStyles}>
                     В этой коллекции пока нет товаров

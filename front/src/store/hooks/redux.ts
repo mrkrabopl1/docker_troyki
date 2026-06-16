@@ -1,10 +1,27 @@
 import {TypedUseSelectorHook, useDispatch, useSelector} from "react-redux";
 import {AppDispatch, RootState} from "../store";
 import { useState, useEffect, useRef } from 'react';
-
+import { useRouter } from 'next/router';
+import { resetLoading } from 'src/store/reducers/loadingSlice';
 export const useAppDispatch = () => useDispatch<AppDispatch>();
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+const useRouteChange = () => {
+    const router = useRouter();
+    const dispatch = useAppDispatch();
 
+    useEffect(() => {
+        // Сбрасываем состояние загрузки при каждом переходе
+        dispatch(resetLoading());
+        
+        // Прокручиваем страницу вверх
+        window.scrollTo(0, 0);
+        
+        // Опционально: очистка при размонтировании
+        return () => {
+            // Можно добавить очистку если нужно
+        };
+    }, [router.pathname, dispatch]);
+};
 const useMediaQuery = (query: string): boolean => {
     const [matches, setMatches] = useState(false);
 
@@ -60,4 +77,4 @@ const useContentHeight = () => {
     };
   };
   
-  export { useContentHeight, useMediaQuery };
+  export { useContentHeight, useMediaQuery,useRouteChange };

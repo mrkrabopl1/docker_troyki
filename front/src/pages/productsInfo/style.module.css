@@ -124,13 +124,13 @@
 .leftPart{
     width:65%;
     flex-shrink: 0;
-    height: 950px;
+    height: 650px;
     padding-right: 10px;
 }
 .topPart{
    height:500px;
 }
-th{
+.modalTable th {
     padding: 5px;
     width: 30%;
 }

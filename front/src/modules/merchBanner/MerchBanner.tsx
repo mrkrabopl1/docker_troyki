@@ -1,11 +1,6 @@
 import React, { useEffect, ReactElement, useState, useRef,memo } from 'react'
-
-import ComplexDrop from "src/components/complexDrop/ComplexDrop"
-import { getMainInfo } from "src/providers/merchProvider"
-import { useAppSelector } from 'src/store/hooks/redux'
 import s from "./style.module.css"
-import Button from 'src/components/Button'
-import { useNavigate } from 'react-router-dom';
+
 
 
 interface   MerchBannerInterface  {

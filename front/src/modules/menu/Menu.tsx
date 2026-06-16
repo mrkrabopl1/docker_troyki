@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useMemo, memo, CSSProperties } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import {useRouter } from 'next/router';
 import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux';
 import { searchSlice } from 'src/store/reducers/searchSlice';
 import { setGlobalScroller } from 'src/global';
@@ -11,7 +11,6 @@ import { ReactComponent as Loupe } from "/public/loupe.svg";
 import s from "./style.module.css";
 import ss from "src/pages/search/style.module.css";
 import logo from "/public/troyki_logo.svg";
-import global from 'src/global.css';
 import ComplexDropVertical from 'src/components/complexDrop/ComplexDropVertical';
 import AlphabetNavigation from 'src/components/alphabetNavigation/AlphabetNavigation';
 import MerchBuyField from '../merchField/MerchBuyField';
@@ -26,7 +25,7 @@ interface MenuProps {
 
 const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
     const dispatch = useAppDispatch();
-    const navigate = useNavigate();
+    const router = useRouter();
     const { isLog } = useAppSelector(state => state.userReducer);
     const { show, sticky, typesVal, categories } = useAppSelector(state => state.menuReducer);
     const { isVerified } = useAppSelector(state => state.menuReducer);
@@ -45,17 +44,17 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
 
     const searchCallback = useCallback((text: string) => {
         turnActive(false);
-        navigate(`/search?key_word=${text}`);
-    }, [navigate, turnActive]);
+        router.push(`/search?key_word=${text}`);
+    }, [router, turnActive]);
 
     const selectListHandler = useCallback((id: number) => {
         setActive(false);
-        navigate('/product/' + id);
-    }, [navigate]);
+        router.push('/product/' + id);
+    }, [router]);
 
     const handleLogoClick = useCallback(() => {
-        navigate("/");
-    }, [navigate]);
+        router.push("/");
+    }, [router]);
 
     const handleLoupeClick = useCallback(() => {
         setActive(true);
@@ -74,12 +73,12 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
     }, [categories, typesVal]);
     const handleComplexDrop = useCallback((data: { main?: string; sub?: string }) => {
         if (!data.sub) {
-            navigate(`/search?category=${data.main}&type=""`);
+            router.push(`/search?category=${data.main}&type=""`);
         } else {
             let type_key = Object.values(typesVal).filter(cat => cat.category_key === data.main && data.sub === cat.name).map(cat => cat.type_key)[0]
-            navigate(`/search?type=${type_key}&category=${data.main}`);
+            router.push(`/search?type=${type_key}&category=${data.main}`);
         }
-    }, [navigate, typesVal]);
+    }, [router, typesVal]);
     const handleBurgerChange = useCallback((data: boolean) => {
         onChange(data);
     }, [onChange,typesVal]);
@@ -110,12 +109,12 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                     Фирмы
                 </div>
                 <div onClick={() => {
-                    navigate('/search?discount=true');
+                    router.push('/search?discount=true');
                 }} className={s.link}>
                     Скидки
                 </div>
                 <div onClick={() => {
-                    navigate('/about');
+                    router.push('/about');
                 }} className={s.link}>
                     О нас
                 </div>
@@ -142,19 +141,19 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                     </div>
                     <div onClick={() => {
                         actibeBurger.current = false;
-                        navigate('/search?discount=true');
+                        router.push('/search?discount=true');
                     }} className={s.link}>
                         Скидки
                     </div>
                     <div onClick={() => {
                         actibeBurger.current = false;
-                        navigate('/about');
+                        router.push('/about');
                     }} className={s.link}>
                         О нас
                     </div>
                     <div onClick={() => {
                         actibeBurger.current = false;
-                        navigate('/reviews');
+                        router.push('/reviews');
                     }} className={s.link}>
                         Отзывы
                     </div>
@@ -163,7 +162,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
 
 
             <div className={s.rightMenuStyle}>
-                <Loupe onClick={handleLoupeClick} className={global.link} />
+                <Loupe className={s.loupe}  onClick={handleLoupeClick}  />
                 <BuyButton onClick={() => {
                     setActiveCart(true)
                 }} />
@@ -186,7 +185,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                         names={firms}
                         onChange={(name) => {
                             setActiveAlphabet(false);
-                            navigate(`/collections/${name}`);
+                            router.push(`/collections/${name}`);
                         }}
                     />
                 </div>

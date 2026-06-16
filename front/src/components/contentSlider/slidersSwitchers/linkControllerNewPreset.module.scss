@@ -7,11 +7,11 @@ $angleActive: 25deg;
 
 @mixin arrowTransform($angle, $x: 0, $y: 0) {
   i:first-child {
-    transform: translate($x, $y ) rotate($angle );
+    transform: translate($x, $y) rotate($angle);
   }
 
   i:last-child {
-    transform: translate($x, -$y ) rotate(-$angle );
+    transform: translate($x, -$y) rotate(-$angle);
   }
 }
 
@@ -23,13 +23,6 @@ $angleActive: 25deg;
   background-color: bisque;
 }
 
-button {
-  -webkit-appearance: none;
-  background: transparent;
-  border: none;
-  outline: 0;
-}
-
 .paginate {
   position: absolute;
   -webkit-appearance: none;
@@ -37,14 +30,13 @@ button {
   border: none;
   outline: 0;
   cursor: pointer;
-  transform: translate3d(0, 0, 0); // fixes flicker in webkit
+  transform: translate3d(0, 0, 0);
   top: 0;
   bottom: 0;
   margin: auto;
 }
 
 .buttonStyle {
-
   width: 30px;
   height: 30px;
   margin: 0 5px;
@@ -55,13 +47,13 @@ button {
 }
 
 .leftArrowHolder {
-  left:5px;
+  left: 5px;
   z-index: 200;
 }
 
 .rightArrowHolder {
   right: 5px;
-   z-index: 200;
+  z-index: 200;
 }
 
 .spanStyle {
@@ -69,34 +61,34 @@ button {
   left: 50%;
   transform: translate(-50%, -50%);
   position: absolute;
-  margin: auto
+  margin: auto;
 }
 
 .left {
-  left:0 i {
-    transform-origin: 0% 50%
-  }
+  left: 0;
+  @include arrowTransform($angle, 0, 0px);
+}
 
+.left i {
+  transform-origin: 0% 50%;
 }
 
 .left:hover {
   @include arrowTransform($angleHover, 0, 0px);
 }
 
-.letft:active {
+.left:active {
   @include arrowTransform($angleHover, 0px, 0px);
 }
 
 .right {
   right: 0;
-
-  i {
-    transform-origin: 100% 50%
-  }
+  @include arrowTransform($angle, 0, 0px);
 }
 
-
-@include arrowTransform($angle, 0, 0px);
+.right i {
+  transform-origin: 100% 50%;
+}
 
 .right:hover {
   @include arrowTransform($angleHover, 0, 0px);
@@ -106,18 +98,14 @@ button {
   @include arrowTransform($angleActive, 0px, 0px);
 }
 
-
-
 .right1 {
   left: 0;
-
-  i {
-    transform-origin: 0% 50%
-  }
+  @include arrowTransform($angle, 0, 0px);
 }
 
-
-@include arrowTransform($angle, 0, 0px);
+.right1 i {
+  transform-origin: 0% 50%;
+}
 
 .right1:hover {
   @include arrowTransform($angleHover, 0, 0px);
@@ -137,7 +125,6 @@ button {
   transition: all 0.15s ease;
 }
 
-
 .controllerHolder {
   position: absolute;
   top: 50%;
@@ -149,17 +136,19 @@ button {
   width: 100%;
 }
 
+.paginationContainer {
+  justify-content: center;
+  display: flex;
+}
 
+.paginationArrow {
+  width: 30px;
+  position: relative;
+}
 
-//   [data-state=disabled] {
-//     @include arrowTransform( 0deg, -5px, 0 );
-
-//     .left:hover {
-//       @include arrowTransform( 0deg, -5px, 0 );
-//     }
-//   }
-.paginationContainer{ justify-content: center; display: flex; }
-
-.paginationArrow{ width: 30px; position: relative }
-
-.paginationPages{ cursor: pointer; margin: auto 0; justify-content: center; display: flex; }
+.paginationPages {
+  cursor: pointer;
+  margin: auto 0;
+  justify-content: center;
+  display: flex;
+}

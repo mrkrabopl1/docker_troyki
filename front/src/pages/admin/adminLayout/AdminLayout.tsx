@@ -1,15 +1,19 @@
 // components/admin/AdminLayout/AdminLayout.tsx
 import React, { useState, useCallback, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
 import AdminSidebar from './pageBlocks/AdminSidebar';
 import AdminHeader from './pageBlocks/AdminHeader';
 import s from './style.module.css';
 
-const AdminLayout: React.FC = () => {
+interface AdminLayoutProps {
+    children: React.ReactNode;
+}
+
+const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [isMobile, setIsMobile] = useState(window.innerWidth <= 1200);
+    const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
+        setIsMobile(window.innerWidth <= 1200);
         const checkMobile = () => {
             setIsMobile(window.innerWidth <= 1200);
         };
@@ -42,7 +46,7 @@ const AdminLayout: React.FC = () => {
             <div className={`${s.mainWrapper} ${!isMobile ? s.withSidebar : ''}`}>
                 <AdminHeader onMenuClick={handleOpen} isMobile={isMobile} />
                 <main className={s.content}>
-                    <Outlet />
+                    {children}
                 </main>
             </div>
         </div>

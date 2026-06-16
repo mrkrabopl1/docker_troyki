@@ -66,7 +66,6 @@
     justify-content: center;
     transition: all 0.2s ease;
     border-radius: 4px;
-    /* color: #666666; */
 }
 
 .searchButton:hover {
@@ -84,7 +83,6 @@
     transition: inherit;
 }
 
-/* Адаптивность */
 @media (max-width: 768px) {
     .baseSearch {
         max-width: 100%;
@@ -102,11 +100,10 @@
     }
     
     .input {
-        font-size: 16px; /* Предотвращает zoom на iOS */
+        font-size: 16px;
     }
 }
 
-/* Анимация загрузки */
 .loading {
     position: relative;
 }
@@ -129,21 +126,6 @@
     100% { transform: translateY(-50%) rotate(360deg); }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 .container {
   position: absolute;
   transform: translate(-50%);
@@ -151,88 +133,85 @@
 
 .searchBox {
   position: relative;
-  
-  input[type="text"] {
-    border: none;
-    background: none;
-    z-index: 1;
-    width: 25px;
-    height: 25px;
-    transition: all .25s ease-in .25s;
-    color: transparent;
-    font-size: .75rem;
-    line-height: 25px;
-    
-    &:hover {
-      cursor: pointer;
-      
-      &:focus {
-        cursor: text;
-      }
-      
-      + span {
-        background: rgba(0, 0, 0, 0.1);
-      }
-    }
-    
-    &:focus {
-      width: 200px;
-      padding: 0 10px;
-      outline: none;
-      color: black;
-      background: none;
-      
-      + span {
-        width: 200px;
-        
-        &::before {
-          width: 2px;
-          opacity: 0;
-          transition: all .25s ease-in;
-        }
-      }
-    }
-    
-    + span {
-      z-index: -1;
-      position: absolute;
-      border: 2px solid black;
-      top: 0;
-      width: 25px;
-      height: 25px;
-      transition: all .25s ease-in .25s;
-      border-radius: 25px;
-      left: 0;
-      
-      &::before {
-        transition: all .25s ease-in .5s;
-        transform-origin: left top;
-        content: '';
-        position: absolute;
-        width: 10px;
-        height: 5px;
-        border-radius: 5px;
-        background: black;
-        transform: rotate(45deg) translate(26px, -2px);
-      }
-    }
-  }
 }
 
-/* Optional: Add focus state class for when the component is focused programmatically */
-.searchBox.focused {
-  input[type="text"] {
-    width: 200px;
-    padding: 0 10px;
-    color: black;
-    
-    + span {
-      width: 200px;
-      
-      &::before {
-        width: 2px;
-        opacity: 0;
-      }
-    }
-  }
+.searchBox input[type="text"] {
+  border: none;
+  background: none;
+  z-index: 1;
+  width: 25px;
+  height: 25px;
+  transition: all .25s ease-in .25s;
+  color: transparent;
+  font-size: .75rem;
+  line-height: 25px;
+}
+
+.searchBox input[type="text"]:hover {
+  cursor: pointer;
+}
+
+.searchBox input[type="text"]:focus {
+  cursor: text;
+}
+
+.searchBox input[type="text"]:hover + span {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.searchBox input[type="text"]:focus {
+  width: 200px;
+  padding: 0 10px;
+  outline: none;
+  color: black;
+  background: none;
+}
+
+.searchBox input[type="text"]:focus + span {
+  width: 200px;
+}
+
+.searchBox input[type="text"]:focus + span::before {
+  width: 2px;
+  opacity: 0;
+  transition: all .25s ease-in;
+}
+
+.searchBox span {
+  z-index: -1;
+  position: absolute;
+  border: 2px solid black;
+  top: 0;
+  width: 25px;
+  height: 25px;
+  transition: all .25s ease-in .25s;
+  border-radius: 25px;
+  left: 0;
+}
+
+.searchBox span::before {
+  transition: all .25s ease-in .5s;
+  transform-origin: left top;
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 5px;
+  border-radius: 5px;
+  background: black;
+  transform: rotate(45deg) translate(26px, -2px);
+}
+
+.searchBox.focused input[type="text"] {
+  width: 200px;
+  padding: 0 10px;
+  color: black;
+}
+
+.searchBox.focused input[type="text"] + span {
+  width: 200px;
+}
+
+.searchBox.focused input[type="text"] + span::before {
+  width: 2px;
+  opacity: 0;
 }

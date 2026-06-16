@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { useAppSelector } from 'src/store/hooks/redux';
 import { isDeepEqual } from 'src/global';
 import Menu from './Menu';
@@ -23,8 +23,8 @@ const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
     className,
     complexDropData,
 }) => {
-    const navigate = useNavigate();
-    const { show, sticky, typesVal, categories,firms } = useAppSelector(state => state.menuReducer);
+    const router = useRouter();
+    const { show, sticky, typesVal, categories, firms } = useAppSelector(state => state.menuReducer);
     const [showMenu, setShowMenu] = useState(false);
 
 
@@ -38,13 +38,13 @@ const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
 
     const handleCategoriesSelect = useCallback((data: { main?: string; sub?: string }) => {
         if (!data.sub) {
-            navigate(`/search?category=${data.main}&type=""`);
+            router.push(`/search?category=${data.main}&type=""`);
         } else {
             let type_key = Object.values(typesVal).filter(cat => cat.category_key === data.main && data.sub === cat.name).map(cat => cat.type_key)[0]
-            navigate(`/search?type=${type_key}&category=${data.main}`);
+            router.push(`/search?type=${type_key}&category=${data.main}`);
         }
 
-    }, [navigate, typesVal]);
+    }, [router, typesVal]);
 
 
 
@@ -54,7 +54,7 @@ const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
             position: sticky ? "sticky" : "relative"
         };
 
-        if (window.scrollY !== 0) {
+        if (typeof window !== 'undefined' && window.scrollY !== 0) {
             style.transition = "transform 0.3s ease-out";
         }
 
@@ -67,10 +67,10 @@ const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
             convertedData[key] = {
                 main: (<div
                     onClick={() => {
-                        navigate(`/search?category=${key}&type=""`);
+                        router.push(`/search?category=${key}&type=""`);
                     }}
                     className={s.categoryLine} key={key}>
-                    <img src={"/public/"+value.image_path} alt={key} />
+                    <img src={"/" + value.image_path} alt={key} />
                     <span className={s.categoryText}>{value.category_name}</span>
                 </div>),
                 subs: Object.values(typesVal).filter(cat => cat.category_key === key).map(cat => cat.name)

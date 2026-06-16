@@ -1,6 +1,6 @@
 // pages/admin/ProductVisibility/AdminProductVisibility.tsx
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/router'
 import Button from 'src/components/Button'
 import Modal from 'src/components/modal/Modal'
 import SearchWithList from 'src/modules/searchWithList/SearchWithList'
@@ -10,7 +10,7 @@ import NumInput from 'src/components/input/NumInput'
 import { ReactComponent as Filter } from '/public/filter.svg'
 import { ReactComponent as SortIcon } from '/public/sort.svg'
 import RadioGroup from 'src/components/radio/RadioGroup'
-import { useAppSelector } from 'src/store/hooks/redux'
+import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
 import { ProductInfo } from 'src/types/adminProduct'
 import {
   getAdminProducts,
@@ -29,13 +29,14 @@ import {
 } from 'src/providers/adminProvider'
 import s from "./style.module.css"
 import DiscountManager from 'src/modules/admin/discountManager/DiscountManager';
+import { finishLoading } from 'src/store/reducers/loadingSlice'
 
 type BulkAction = 'none' | 'discount' | 'price' | 'active'
 type SelectMode = 'none' | 'page' | 'all'
 
 const AdminProducts: React.FC = () => {
-  const navigate = useNavigate()
-  const { typesVal,firmMap } = useAppSelector(state => state.menuReducer)
+  const router = useRouter()
+  const { typesVal, firmMap } = useAppSelector(state => state.menuReducer)
 
   // Данные
   const [products, setProducts] = useState<ProductInfo[]>([])
@@ -82,7 +83,7 @@ const AdminProducts: React.FC = () => {
     soloDataProps: [],
     timeProps: []
   })
-
+  const dispatch = useAppDispatch();
   const activeSizes = useRef<string[]>([])
   const firms = useRef<string[]>([])
   const typesIds = useRef<number[]>([])
@@ -247,6 +248,7 @@ const AdminProducts: React.FC = () => {
         pageSize,
         0,
       )
+      dispatch(finishLoading());
     } catch (error) {
       console.error('Error loading products:', error)
       setLoading(false)
@@ -611,7 +613,7 @@ const AdminProducts: React.FC = () => {
           <SearchWithList
             val={searchQuery}
             searchCallback={handleSearch}
-            selectList={(data) => navigate('/product/' + data)}
+            selectList={(data) => router.push('/product/' + data)}
           />
         </div>
       </div>
@@ -800,7 +802,7 @@ const AdminProducts: React.FC = () => {
                 <tr
                   key={product.id}
                   className={`${s.productRow} ${!product.is_active ? s.inactive : ''}`}
-                  onClick={() => !bulkMode && navigate(`/admin/products/edit/${product.id}`)}
+                  onClick={() => !bulkMode && router.push(`/admin/products/${product.id}`)}
                   style={{ cursor: bulkMode ? 'default' : 'pointer' }}
                 >
                   {bulkMode && (

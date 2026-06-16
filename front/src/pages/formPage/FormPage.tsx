@@ -1,7 +1,6 @@
-import React, { ReactElement, useEffect, useRef, useState, memo } from 'react'
+import React, { ReactElement, useEffect, useRef, useState, memo,useCallback } from 'react'
 import SendForm from "src/modules/sendForm/SendForm"
 import { getCartData } from 'src/providers/shopProvider'
-import { useParams } from 'react-router-dom';
 import s from "./style.module.css"
 import { cartCountAction } from 'src/store/reducers/menuSlice'
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
@@ -10,7 +9,7 @@ import { createOrder, getOrderDataByHash } from 'src/providers/orderProvider';
 import { checkCustomerData } from 'src/providers/userProvider';
 import OrderInfo from 'src/components/orderInfo/orderInfo';
 import MailInputWithValidation from 'src/components/input/MailInputWithValidation';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import DeliveryRadioGroup from './pageElements/DeliveryRadio';
 import Button from 'src/components/Button';
 import DeliveryTypeRadioGroup from './pageElements/DeliveryTypeRadio';
@@ -19,6 +18,7 @@ import PayBlock from './pageElements/PayBlock';
 import LinkButton from 'src/components/LinkButton';
 import ContactForm from 'src/modules/sendForm/ContactForm';
 import MapComponent from 'src/modules/map/Map';
+import { finishLoading } from 'src/store/reducers/loadingSlice';
 
 interface merchInterface { name: string, img: string, id: string, firm: string, price: string, count: number }
 type urlParamsType = {
@@ -65,8 +65,8 @@ function formatAddress(address) {
 }
 const FormPage: React.FC = () => {
     const dispatch = useAppDispatch();
-    const navigate = useNavigate();
-    const { hash } = useParams<urlParamsType>();
+    const router = useRouter();
+    const { hash } = router.query;
     const [products, setProducts] = useState<any[]>([]);
     const delivery = useRef(0);
     const contactInfo = useRef<Record<string, string>>({
@@ -99,12 +99,13 @@ const FormPage: React.FC = () => {
         secondName: "",
         address: null,
         phone: "",
-        deliveryType: delivery.current === 0 ? "curier":"own",
+        deliveryType: delivery.current === 0 ? "curier" : "own",
         deliveryComment: ""
     });
 
     useEffect(() => {
         getCartData(hash, (data) => {
+            dispatch(finishLoading());
             fullPrice.current = data.fullPrice;
             setProducts(data);
             checkCustomerData((customerData) => {
@@ -119,7 +120,7 @@ const FormPage: React.FC = () => {
         });
     }, [hash]);
 
-    const contactInfoChange = (data: any) => {
+    const contactInfoChange = useCallback((data: any) => {
         contactInfo.current.Имя = data.name;
         formData.current.name = data.name;
         if (data.mail) {
@@ -149,7 +150,7 @@ const FormPage: React.FC = () => {
             },
             preorderHash: hash
         };
-    };
+    },[hash]);
 
     const getForm = () => {
         switch (formId.current) {
@@ -187,11 +188,11 @@ const FormPage: React.FC = () => {
                                 },
                                 address: { ...data.address },
                                 save: data.save,
-                                sendMail:data.save,
+                                sendMail: data.save,
                                 delivery: {
                                     deliveryPrice: 0,
                                     deliveryComment: formData.current.deliveryComment,
-                                    type: delivery.current === 0 ? "curier":"own"
+                                    type: delivery.current === 0 ? "curier" : "own"
                                 },
                                 preorderHash: hash
                             };
@@ -201,7 +202,7 @@ const FormPage: React.FC = () => {
                 } else {
                     return <div>
                         <ContactForm
-                            checkValid={checkValid.current}    
+                            checkValid={checkValid.current}
                             memo={memoSendForm.current}
                             valid={true}
                             formValue={formData.current}
@@ -368,26 +369,37 @@ const FormPage: React.FC = () => {
                             }}
                         />
                     ) : null}
-                    <Button
-                        className={"btnStyle dark " + s.mainButton}
-                        text={BUY_ROUTE[delivery.current][formId.current]}
-                        onClick={() => {
-                            if (formId.current === BUY_ROUTE[delivery.current].length - 1) {
-                                createOrder(respData.current, (data) => {
-                                    dispatch(cartCountAction(0))
-                                    navigate('/order/' + data.hash);
-                                });
-                            } else {
-                                if (validSendForm.current) {
-                                    formId.current = formId.current + 1;
-                                } else {
-                                    memoSendForm.current = !memoSendForm.current;
-                                }
-                            }
-                            checkValid.current = true;
-                            setRefresh(prev => !prev);
-                        }}
-                    />
+                   
+
+                        <div className={s.buttonWithPrivacy}>
+                            <Button
+                                className={"btnStyle dark " + s.mainButton}
+                                text={BUY_ROUTE[delivery.current][formId.current]}
+                                onClick={() => {
+                                    if (formId.current === BUY_ROUTE[delivery.current].length - 1) {
+                                        createOrder(respData.current, (data) => {
+                                            dispatch(cartCountAction(0))
+                                            router.push('/order/' + data.hash);
+                                        });
+                                    } else {
+                                        if (validSendForm.current) {
+                                            formId.current = formId.current + 1;
+                                        } else {
+                                            memoSendForm.current = !memoSendForm.current;
+                                        }
+                                    }
+                                    checkValid.current = true;
+                                    setRefresh(prev => !prev);
+                                }}
+                            />
+                            <p className={s.privacyText}>
+                                Нажимая кнопку, вы соглашаетесь с{' '}
+                                <a href="/privacy-policy" target="_blank" className={s.privacyLink}>
+                                    политикой обработки персональных данных
+                                </a>
+                            </p>
+                        </div>
+                  
                 </div>
             </div>
             <div className={s.buyMerchFieldHolder} >

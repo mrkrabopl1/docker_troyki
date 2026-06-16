@@ -11,7 +11,6 @@ import { getProductsAndFiltersByCategoryAndType, getProductsAndFiltersByString, 
 import { categories, show, sticky, types } from 'src/store/reducers/menuSlice'
 import { ReactComponent as FoureGrid } from 'src/../public/foureGrid.svg'
 import { ReactComponent as SixGrid } from 'src/../public/sixGrid.svg'
-import { useLocation } from 'react-router-dom'
 import RadioGroup from 'src/components/radio/RadioGroup'
 import { useSearchParams } from 'react-router-dom';
 import { ReactComponent as Filter } from 'src/../public/filter.svg'

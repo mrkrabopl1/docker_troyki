@@ -1,7 +1,7 @@
 import React from 'react';
 import s from "./style.module.css";
 import DoubleInfoDrop from 'src/components/doubleInfoDrop/DoubleInfoDrop';
-import { Link } from 'react-router-dom'; // если используете React Router
+import Link from 'next/link';
 
 const PRICE_MATCH_TEXT = "Если вы нашли эту модель в другом магазине дешевле — пришлите ссылку. Сделаем скидку до цены конкурента.";
 const DELIVERY_TEXT = "Бесплатная доставка от 5000 ₽. Срок доставки 1-3 рабочих дня. Возможна экспресс-доставка.";
@@ -9,7 +9,6 @@ const DELIVERY_TEXT = "Бесплатная доставка от 5000 ₽. Ср
 const AbstractInfo: React.FC = () => {
     return (
         <div className={s.abstractInfo}>
-            {/* Гарантия лучшей цены */}
             <DoubleInfoDrop
                 className={{ main: s.doubleInfoDropFirst, second: s.doubleInfoDropSecond }}
                 info="ГАРАНТИЯ ЛУЧШЕЙ ЦЕНЫ"
@@ -24,7 +23,6 @@ const AbstractInfo: React.FC = () => {
                 </div>
             </DoubleInfoDrop>
 
-            {/* Доставка */}
             <DoubleInfoDrop
                 className={{ main: s.doubleInfoDropFirst, second: s.doubleInfoDropSecond }}
                 info="ДОСТАВКА"
@@ -54,12 +52,11 @@ const AbstractInfo: React.FC = () => {
                     </div>
 
                     <div className={s.dropFooter}>
-                        <Link to="/delivery" className={s.dropLink}>Подробные условия доставки →</Link>
+                        <Link href="/delivery" className={s.dropLink}>Подробные условия доставки →</Link>
                     </div>
                 </div>
             </DoubleInfoDrop>
 
-            {/* Оплата */}
             <DoubleInfoDrop
                 className={{ main: s.doubleInfoDropFirst, second: s.doubleInfoDropSecond }}
                 info="ОПЛАТА"
@@ -72,7 +69,7 @@ const AbstractInfo: React.FC = () => {
                     </ul>
                     
                     <div className={s.dropFooter}>
-                        <Link to="/payment" className={s.dropLink}>Все способы оплаты →</Link>
+                        <Link href="/payment" className={s.dropLink}>Все способы оплаты →</Link>
                     </div>
                 </div>
             </DoubleInfoDrop>

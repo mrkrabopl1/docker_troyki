@@ -42,6 +42,13 @@ type Querier interface {
 	CountActiveBanners(ctx context.Context) (int64, error)
 	CountBrands(ctx context.Context, name string) (CountBrandsRow, error)
 	CountProductsByFilters(ctx context.Context, arg CountProductsByFiltersParams) (int64, error)
+	// ============================================================
+	// COUNT (варианты)
+	// ============================================================
+	CountProductsByFiltersBase(ctx context.Context, arg CountProductsByFiltersBaseParams) (int64, error)
+	CountProductsByFiltersFull(ctx context.Context, arg CountProductsByFiltersFullParams) (int64, error)
+	CountProductsByFiltersWithDiscount(ctx context.Context, arg CountProductsByFiltersWithDiscountParams) (int64, error)
+	CountProductsByFiltersWithStore(ctx context.Context, arg CountProductsByFiltersWithStoreParams) (int64, error)
 	CreateAdmin(ctx context.Context, arg CreateAdminParams) (CreateAdminRow, error)
 	CreateAdminInvite(ctx context.Context, arg CreateAdminInviteParams) (AdminInvite, error)
 	CreateAdminLog(ctx context.Context, arg CreateAdminLogParams) error
@@ -53,6 +60,7 @@ type Querier interface {
 	CreateDiscountRule(ctx context.Context, arg CreateDiscountRuleParams) (DiscountRule, error)
 	// query/newsletter.sql
 	CreateNewsletterSubscriber(ctx context.Context, arg CreateNewsletterSubscriberParams) (NewsletterSubscriber, error)
+	CreateOrderEvent(ctx context.Context, arg CreateOrderEventParams) error
 	CreateProduct(ctx context.Context, arg CreateProductParams) (CreateProductRow, error)
 	CreateProductWithIds(ctx context.Context, arg CreateProductWithIdsParams) (CreateProductWithIdsRow, error)
 	CreateUniqueCustomer(ctx context.Context, creationtime pgtype.Date) (int32, error)
@@ -122,7 +130,7 @@ type Querier interface {
 	GetCombinedFiltersByString(ctx context.Context, dollar_1 string) (GetCombinedFiltersByStringRow, error)
 	GetCountIdByName(ctx context.Context, dollar_1 string) ([]GetCountIdByNameRow, error)
 	GetCountOfCollectionsOrFirms(ctx context.Context, arg GetCountOfCollectionsOrFirmsParams) (int64, error)
-	GetCustomerByID(ctx context.Context, id int32) (GetCustomerByIDRow, error)
+	GetCustomerById(ctx context.Context, id int32) (GetCustomerByIdRow, error)
 	GetCustomerData(ctx context.Context, id int32) (GetCustomerDataRow, error)
 	GetCustomerDetails(ctx context.Context, customerID int32) (GetCustomerDetailsRow, error)
 	GetCustomerId(ctx context.Context, mail string) (int32, error)
@@ -161,8 +169,10 @@ type Querier interface {
 	GetOrderById(ctx context.Context, id int32) (GetOrderByIdRow, error)
 	GetOrderDataById(ctx context.Context, orderid int32) ([]GetOrderDataByIdRow, error)
 	GetOrderDetails(ctx context.Context, orderID int32) (GetOrderDetailsRow, error)
+	GetOrderEvents(ctx context.Context, orderID int32) ([]GetOrderEventsRow, error)
 	GetOrderIdByHashUrl(ctx context.Context, hash string) (int32, error)
 	GetOrderInfo(ctx context.Context, orderid int32) ([]GetOrderInfoRow, error)
+	GetOrderStatusHistory(ctx context.Context, orderID int32) ([]OrderEvent, error)
 	GetOrdersCount(ctx context.Context, arg GetOrdersCountParams) (int64, error)
 	GetOrdersWithFilters(ctx context.Context, arg GetOrdersWithFiltersParams) ([]GetOrdersWithFiltersRow, error)
 	GetOrdersWithPagination(ctx context.Context, arg GetOrdersWithPaginationParams) ([]GetOrdersWithPaginationRow, error)
@@ -177,6 +187,17 @@ type Querier interface {
 	GetProductsByFilters(ctx context.Context, arg GetProductsByFiltersParams) ([]GetProductsByFiltersRow, error)
 	GetProductsByFiltersNewTest(ctx context.Context, arg GetProductsByFiltersNewTestParams) ([]GetProductsByFiltersNewTestRow, error)
 	GetProductsByFiltersPaginate(ctx context.Context, arg GetProductsByFiltersPaginateParams) ([]GetProductsByFiltersPaginateRow, error)
+	// ============================================================
+	// ПАГИНАЦИЯ (варианты)
+	// ============================================================
+	// Самый лёгкий – без скидок, без склада
+	GetProductsByFiltersPaginateBase(ctx context.Context, arg GetProductsByFiltersPaginateBaseParams) ([]GetProductsByFiltersPaginateBaseRow, error)
+	// Всё вместе: и скидки, и склад
+	GetProductsByFiltersPaginateFull(ctx context.Context, arg GetProductsByFiltersPaginateFullParams) ([]GetProductsByFiltersPaginateFullRow, error)
+	// Только со скидками (LATERAL + discount)
+	GetProductsByFiltersPaginateWithDiscount(ctx context.Context, arg GetProductsByFiltersPaginateWithDiscountParams) ([]GetProductsByFiltersPaginateWithDiscountRow, error)
+	// Только со складом
+	GetProductsByFiltersPaginateWithStore(ctx context.Context, arg GetProductsByFiltersPaginateWithStoreParams) ([]GetProductsByFiltersPaginateWithStoreRow, error)
 	GetProductsByIds(ctx context.Context, dollar_1 []int32) ([]GetProductsByIdsRow, error)
 	GetProductsByLineName(ctx context.Context, name string) ([]GetProductsByLineNameRow, error)
 	GetProductsByName(ctx context.Context, arg GetProductsByNameParams) ([]GetProductsByNameRow, error)
@@ -185,6 +206,8 @@ type Querier interface {
 	GetProductsInfoById(ctx context.Context, id int32) (GetProductsInfoByIdRow, error)
 	GetProductsWithDiscount(ctx context.Context) ([]GetProductsWithDiscountRow, error)
 	GetProductsWithSizesByIDs(ctx context.Context, productIds []int32) ([]GetProductsWithSizesByIDsRow, error)
+	// queries/products.sql
+	GetProductsWithoutImages(ctx context.Context) ([]GetProductsWithoutImagesRow, error)
 	GetRecentActivity(ctx context.Context) ([]GetRecentActivityRow, error)
 	GetRecentOrders(ctx context.Context) ([]GetRecentOrdersRow, error)
 	GetRuleItems(ctx context.Context, ruleID int32) ([]GetRuleItemsRow, error)
@@ -209,6 +232,7 @@ type Querier interface {
 	ListAdmins(ctx context.Context, arg ListAdminsParams) ([]ListAdminsRow, error)
 	MarkAdminPasswordResetTokenUsed(ctx context.Context, id int32) error
 	MarkInviteAsUsed(ctx context.Context, arg MarkInviteAsUsedParams) error
+	MarkProductsAsDeleted(ctx context.Context, dollar_1 []int32) error
 	RemoveRuleItem(ctx context.Context, arg RemoveRuleItemParams) error
 	RestoreBrand(ctx context.Context, id int32) error
 	RestoreBrandLine(ctx context.Context, id int32) error

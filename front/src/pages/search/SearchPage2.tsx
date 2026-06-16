@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import SearchWithList from 'src/modules/searchWithList/SearchWithList'
 import ProductsFilters from "src/modules/settingsPanels/ProductsFilters"
 import Button from 'src/components/Button'
@@ -10,7 +10,6 @@ import { getProductsAndFiltersByCategoryAndType, getProductsAndFiltersByString, 
 import { categories, show, sticky, types } from 'src/store/reducers/menuSlice'
 import { ReactComponent as FoureGrid } from '/public/foureGrid.svg'
 import { ReactComponent as SixGrid } from '/public/sixGrid.svg'
-import { useLocation } from 'react-router-dom'
 import RadioGroup from 'src/components/radio/RadioGroup'
 import { useSearchParams } from 'react-router-dom';
 import { ReactComponent as Filter } from '/public/filter.svg'
@@ -128,7 +127,7 @@ const SearchPage: React.FC = () => {
     searchWord.current = name
     searchData()
   }, [updatMerch])
-  const navigate = useNavigate();
+  const router = useRouter();
   const searchCallback = useCallback((searchData: string) => {
     searchWord.current = searchData
     let params = {};
@@ -437,7 +436,7 @@ const SearchPage: React.FC = () => {
             val={searchWord.current}
             className={styleData}
             searchCallback={searchNameCallback}
-            selectList={(data) => { navigate('/product/' + data); }}
+            selectList={(data) => { router.push('/product/' + data); }}
           />
         </div>
 

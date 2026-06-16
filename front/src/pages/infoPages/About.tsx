@@ -1,54 +1,65 @@
 import React, { useEffect, useRef, useState } from 'react';
 import s from "./about.module.css";
+import { finishLoading } from 'src/store/reducers/loadingSlice';
+import { useAppDispatch } from 'src/store/hooks/redux';
 
 // Компонент для анимированного появления
-const RevealText: React.FC<{ children: React.ReactNode; delay?: number }> = ({ 
-  children, 
-  delay = 0 
+const RevealText: React.FC<{ children: React.ReactNode; delay?: number }> = ({
+    children,
+    delay = 0
 }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const elementRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setIsVisible(true);
-            if (elementRef.current) {
-              observer.unobserve(elementRef.current);
+    const [isVisible, setIsVisible] = useState(false);
+    const elementRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        setIsVisible(true);
+                        if (elementRef.current) {
+                            observer.unobserve(elementRef.current);
+                        }
+                    }
+                });
+            },
+            {
+                threshold: 0.2,
             }
-          }
-        });
-      },
-      {
-        threshold: 0.2,
-      }
+        );
+
+        if (elementRef.current) {
+            observer.observe(elementRef.current);
+        }
+
+        return () => {
+            if (elementRef.current) {
+                observer.unobserve(elementRef.current);
+            }
+        };
+    }, []);
+
+    return (
+        <div
+            ref={elementRef}
+            className={`${s.fxReveal} ${isVisible ? s.fxRevealVisible : ''}`}
+            style={{ transitionDelay: `${delay}ms` }}
+        >
+            {children}
+        </div>
     );
-
-    if (elementRef.current) {
-      observer.observe(elementRef.current);
-    }
-
-    return () => {
-      if (elementRef.current) {
-        observer.unobserve(elementRef.current);
-      }
-    };
-  }, []);
-
-  return (
-    <div
-      ref={elementRef}
-      className={`${s.fxReveal} ${isVisible ? s.fxRevealVisible : ''}`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
-      {children}
-    </div>
-  );
 };
 
-const Delivery: React.FC = () => {
+const About: React.FC = () => {
+    const dispatch = useAppDispatch();
+    useEffect(() => {
+        // Небольшая задержка для гарантии что resetLoading уже отработал
+        const timer = setTimeout(() => {
+            dispatch(finishLoading());
+        }, 0);
+
+        return () => clearTimeout(timer);
+    }, [dispatch]);
     return (
         <div>
             {/* Параллакс блок */}
@@ -62,12 +73,12 @@ const Delivery: React.FC = () => {
                 <div className={s.contentInner}>
                     <RevealText delay={20}>
                         <p className={s.lead}>
-                            Мы ворвались в культуру еще в десятых, когда каждый уважающий себя сникерхэд 
-                            гонялся за ретро AJ1 и стоял в очередях за лимитированными Yeezy 350. 
+                            Мы ворвались в культуру еще в десятых, когда каждый уважающий себя сникерхэд
+                            гонялся за ретро AJ1 и стоял в очередях за лимитированными Yeezy 350.
                             А те, кто ценил свое время, шли к нам за эксклюзивными моделями.
                         </p>
                     </RevealText>
-                    
+
                     <RevealText delay={40}>
                         <div className={s.imageGrid}>
                             <div className={s.imageCard}>
@@ -83,12 +94,12 @@ const Delivery: React.FC = () => {
 
                     <RevealText delay={60}>
                         <p>
-                            Сейчас пришло время обновлений: теперь мы интернет-магазин "Тройки.Бенч". 
-                            Но за новым названием скрывается проверенная годами работа. У нас вы можете 
+                            Сейчас пришло время обновлений: теперь мы интернет-магазин "Тройки.Бенч".
+                            Но за новым названием скрывается проверенная годами работа. У нас вы можете
                             просто и быстро приобрести редкие позиции любимых брендов.
                         </p>
                     </RevealText>
-                    
+
                     <RevealText delay={80}>
                         <div className={s.imageGrid}>
                             <div className={s.imageCard}>
@@ -140,4 +151,4 @@ const Delivery: React.FC = () => {
     );
 };
 
-export default Delivery;
+export default About;

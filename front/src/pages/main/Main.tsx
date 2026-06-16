@@ -1,12 +1,12 @@
 import React, { memo, useEffect, useState, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAppSelector } from 'src/store/hooks/redux';
+import { useRouter } from 'next/router';
+import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux';
 import { getHistoryInfo } from 'src/providers/merchProvider';
 import MerchBanner from 'src/modules/merchBanner/MerchBanner';
 import ContentSliderWithSwitcher from 'src/components/contentSlider/ContentSliderWithSwitcher';
 import MerchComplexSliderField from 'src/modules/merchField/MerchComplexSliderField';
 import s from "./s.module.css";
-import {categories } from 'src/store/reducers/menuSlice';
+import { categories } from 'src/store/reducers/menuSlice';
 
 import MerchSliderField from 'src/modules/merchField/MerchSliderField';
 import { getMainPage } from 'src/providers/merchProvider';
@@ -16,6 +16,7 @@ import VideoWallpaper from 'src/components/styledWalpapers/videoWalpaper/VideoWa
 import InfiniteRecursionViewport from 'src/components/styledWalpapers/doubleBacground/InfiniteRecursionViewport';
 import BlobBackground from 'src/components/styledWalpapers/blobBackground/BlobBackground';
 import ImageSlider from 'src/modules/imageSlider/ImageSlider';
+import { finishLoading, startLoading } from 'src/store/reducers/loadingSlice';
 
 import FirmsScroller from 'src/modules/firmsScroller/FirmsScroller';
 interface BannerData {
@@ -25,80 +26,76 @@ interface BannerData {
   id: string;
 }
 
-const BANNER_TEXT = {
-  text: ["Мы открылись", "Мероприятия"],
-  subText: ["", ""],
-  btnText: ["К коллекции", "К мероприятию"]
-};
 
 const Main: React.FC = memo(() => {
-  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const router = useRouter();
   const { chousenName } = useAppSelector(state => state.complexDropReducer);
   const { categories } = useAppSelector(state => state.menuReducer);
-  const [pageInfoData, setPageInfoData] = useState<any>({});
-   const [pageBanners, setPageBanners] = useState<any>([]);
-  const [bannerData, setBannerData] = useState<BannerData>({ 
-    btnText: "", 
-    image: "", 
-    name: "", 
-    id: "" 
-  });
-  let categoriesVal: any = useCallback(()=>{
+  const [mainData, setMainData] = useState({
+  pageInfo: {},
+  banners: []
+});
+  let categoriesVal: any = useCallback(() => {
     let val = {}
-    Object.entries(categories).forEach(([id, data])=>{
-      val[data.id] = {name:data.category_name, enum:id}
+    Object.entries(categories).forEach(([id, data]) => {
+      val[data.id] = { name: data.category_name, enum: id }
     })
     return val
-    
+
   }, [categories]);
   const [merchHistoryFieldData, setMerchHistoryFieldData] = useState<any[]>([]);
 
   const handleBannerClick = useCallback((url) => {
-    navigate(url);
-  }, [navigate]);
+    router.push(url);
+  }, [router]);
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      const [pageInfo, banners] = await Promise.all([
+        getMainPage(),
+        getMainBanners()
+      ]);
+      setMainData({ pageInfo, banners });
+      dispatch(finishLoading());
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    }
+  };
+  fetchData();
 
-  useEffect(() => {
-    getMainPage(setPageInfoData);
-  }, []);
+  return ()=>{
+    console.debug("destroy")
+  }
+}, []);
 
 
-  useEffect(() => {
-    getMainBanners(setPageBanners);
-  }, []);
 
+const handleMainPageInfo = useMemo(() => {
+  const val = categoriesVal();
+  if (Object.keys(val).length === 0) return [];
+  return Object.entries(mainData.pageInfo).map(([key, value]: [string, any]) => (
+    <MerchSliderField
+      key={key}
+      name={val[key].name}
+      merchInfo={value.products}
+      onClick={() => router.push(`/search?category=${val[key].enum}&type=""`)}
+    />
+  ));
+}, [mainData.pageInfo, categories, router]);  
 
-  const handleMainPageInfo = useMemo (() => {
-    let val = categoriesVal();
-    if(Object.keys(val).length === 0) return [];
-    return Object.entries(pageInfoData).map(([key, value]: [string, any]) => {
-      return (
-        <MerchSliderField 
-          name= {val[key].name}
-          merchInfo={value.products} 
-          onClick={()=>{
-           navigate(`/search?category=${val[key].enum}&type=""`);
-          }}
-        />
-      );
-    })
-  }, [pageInfoData, categories]);
-
-  const createBanners = useCallback(() => {
-    return pageBanners.map((btnVal, i) => (
-      <MerchBanner
-        key={i}
-        className={{
-          main: s.mainBanner,
-          button: s.buttonBanner,
-          contentHolder: s.contentHolder
-        }}
-        btnText={btnVal.button_text}
-        onChange={()=>handleBannerClick(btnVal.link_url)}
-        title={btnVal.title}
-        img={btnVal.image_url}
-      />
-    ));
-  }, [handleBannerClick,pageBanners]);
+const createBanners = useCallback(() => {
+  return mainData.banners.map((btnVal, i) => (
+    <MerchBanner
+      key={i}
+      className={{ main: s.mainBanner, button: s.buttonBanner, contentHolder: s.contentHolder }}
+      btnText={btnVal.button_text}
+      onChange={() => handleBannerClick(btnVal.link_url)}
+      title={btnVal.title}
+      img={btnVal.image_url}
+    />
+  ));
+}, [mainData.banners, handleBannerClick]);
 
   // useEffect(() => {
   //   getHistoryInfo(setMerchHistoryFieldData);
@@ -111,10 +108,10 @@ const Main: React.FC = memo(() => {
       <InfiniteRecursionViewport/> */}
       {/* <VideoWallpaper  src={"1.mp4"} /> */}
       <ContentSliderWithLinks
-        
-        content={createBanners()} 
+
+        content={createBanners()}
       />
-       <FirmsScroller/>
+      <FirmsScroller />
       <div>
         {handleMainPageInfo}
       </div>

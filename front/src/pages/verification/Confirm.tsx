@@ -1,20 +1,19 @@
 import React, { useEffect, memo } from 'react'
-import { useNavigate } from 'react-router-dom';
-import { useParams } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { verifyChangePass } from 'src/providers/userProvider'
 type urlParamsType = {
     verHash: string;
 };
 const Confirm: React.FC<any> = () => {
-    let { verHash } = useParams<urlParamsType>();
-    const navigate = useNavigate();
+     const router = useRouter();
+    let  verHash = router.query.verHash as string;
     useEffect(() => {
         verifyChangePass(verHash, (data) => {
             if (data) {
-                navigate("/changePass");
+                router.push("/changePass");
             }
             else {
-                //navigate("/");
+                //router.push("/");
             }
         })
 

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { confirmPasswordReset } from 'src/providers/adminAuth';
 import ResetPasswordForm from 'src/modules/loginForm/ResetPasswordForm';
 import s from './style.module.css';
 
 const AdminResetPassword: React.FC = () => {
-    const navigate = useNavigate();
-    const { token } = useParams<{ token: string }>();
+    const router = useRouter();
+    const token = router.query.token as string;
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isSuccess, setIsSuccess] = useState(false);
@@ -24,11 +24,11 @@ const AdminResetPassword: React.FC = () => {
             { token, new_pass: data.password },
             (result) => {
                 setIsLoading(false);
-                
+
                 if (result) {
                     setIsSuccess(true);
                     setTimeout(() => {
-                        navigate('/admin/login');
+                        router.push('/admin/login');
                     }, 3000);
                 } else {
                     setError('Ошибка смены пароля. Возможно, токен истек.');
@@ -72,7 +72,7 @@ const AdminResetPassword: React.FC = () => {
                     }}
                 />
             </div>
-            
+
             <div className={s.background}>
                 <div className={s.gradientOverlay} />
             </div>

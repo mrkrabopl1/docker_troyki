@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import SearchWithList from 'src/modules/searchWithList/SearchWithList'
 import ProductsFilters from "src/modules/settingsPanels/ProductsFilters"
 import Button from 'src/components/Button'
@@ -9,12 +9,11 @@ import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
 import { getProductsAndFiltersByCategoryAndType, getProductsAndFiltersByString, getProductsByString, getProductsByCategoriesAndFilters } from "src/providers/searchProvider"
 import { ReactComponent as FoureGrid } from '/public/foureGrid.svg'
 import { ReactComponent as SixGrid } from '/public/sixGrid.svg'
-import { useLocation } from 'react-router-dom'
 import RadioGroup from 'src/components/radio/RadioGroup'
-import { useSearchParams } from 'react-router-dom';
 import { ReactComponent as Filter } from '/public/filter.svg'
 import { set } from 'ol/transform';
 import Combobox from 'src/components/combobox/Combobox';
+import { finishLoading } from 'src/store/reducers/loadingSlice';
 
 interface FiltersInfoRequest {
   sizes: string[]
@@ -50,7 +49,9 @@ interface FiltersState {
 
 const SearchPage: React.FC = () => {
   const dispatch = useAppDispatch()
-  const [searchParams, setSearchParams] = useSearchParams();
+
+  const router = useRouter();
+  const searchParams = router.query;
   const { typesVal, categories } = useAppSelector(state => state.menuReducer);
   // Refs для хранения изменяемых данных без перерисовки
   const filtersInfo = useRef<FiltersInfoRequest>({
@@ -93,6 +94,7 @@ const SearchPage: React.FC = () => {
 
   // Мемоизированные колбэки
   const updatePage = useCallback((respData: any) => {
+    dispatch(finishLoading());
     if (respData.products.length === 0) {
       emptyData.current = true
       emtyText.current = "По запросу ничего не найдено. Проверьте правописание или выберите другие слова либо фразу."
@@ -132,7 +134,7 @@ const SearchPage: React.FC = () => {
     searchWord.current = name
     searchData()
   }, [updatMerch])
-  const navigate = useNavigate();
+
   const searchCallback = useCallback((searchData: string) => {
     searchWord.current = searchData
     let params = {};
@@ -371,7 +373,7 @@ const SearchPage: React.FC = () => {
     typeRef.current = 0;
     categoryRef.current = 0;
     currentPage.current = 1;
-    const category = searchParams.get('category') || "";
+    const category = searchParams.category || "";
     let categoryId;
     let typeId
 
@@ -383,7 +385,7 @@ const SearchPage: React.FC = () => {
         }
       }
     }
-    const type = searchParams.get('type');
+    const type = searchParams.type || "";
     if (type) {
       for (let key in typesVal) {
         if (typesVal[key].type_key === type && typesVal[key].category_key === category) {
@@ -393,22 +395,22 @@ const SearchPage: React.FC = () => {
       }
     }
 
-    let firm = searchParams.get('firm') || "";
+    let firm = searchParams.firm as string || "";
 
     if (firm) {
       filtersInfo.current.firms.push(firm)
     }
-    let bodytype = searchParams.get('bodytype') || "";
+    let bodytype = searchParams.bodytype as string || "";
     if (bodytype) {
       filtersInfo.current.bodytypes.push(bodytype)
     }
-    let line = searchParams.get('line') || "";
+    let line = searchParams.line as string || "";
     if (line) {
       filtersInfo.current.lines.push(line)
     }
 
-    const name = searchParams.get('key_word') || "";
-    filtersInfo.current.discount = Boolean(searchParams.get('discount') || "");
+    const name = searchParams.key_word as string || "";
+    filtersInfo.current.discount = Boolean(searchParams.discount as string || "");
     if (categoryId) {
       categoryRef.current = categoryId
     }
@@ -598,7 +600,7 @@ const SearchPage: React.FC = () => {
           <SearchWithList
             val={searchWord.current}
             searchCallback={searchNameCallback}
-            selectList={(data) => { navigate('/product/' + data); }}
+            selectList={(data) => { router.push('/product/' + data); }}
           // style={{ flex: 1, maxWidth: "300px", margin: "0 auto" }} // Центрирование поиска
           />
           {widthProps ? <div style={{ margin: "auto", width: "30%" }}>

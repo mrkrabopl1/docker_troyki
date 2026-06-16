@@ -49,7 +49,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ location, path }) => {
     // Стиль для логотипа
     const logoSVGStyle = useMemo(() => new Style({
         image: new Icon({
-            src: '/public/troyki_logo.svg',
+            src: '/troyki_logo.svg',
             anchor: [0.5, 1.9],
             anchorXUnits: 'fraction',
             anchorYUnits: 'fraction',

@@ -20,7 +20,7 @@ const DeliveryRadioGroup: React.FC<propsRadioGroupType> = (props) => {
     return (
         <div>
             <IconLamp 
-                icon='/public/sort.svg'  
+                icon='/sort.svg'  
                 key={"delivery1"} 
                 checked={selected === 0} 
                 name={"test1"} 
@@ -28,7 +28,7 @@ const DeliveryRadioGroup: React.FC<propsRadioGroupType> = (props) => {
                 text={"Доставка"} 
             />
             <IconLamp 
-                icon='/public/sort.svg' 
+                icon='/sort.svg' 
                 key={"delivery2"} 
                 checked={selected === 1} 
                 name={"test1"} 

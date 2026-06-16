@@ -1,27 +1,29 @@
 // components/admin/ProtectedRoute.tsx
 import React, { useEffect } from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux';
 import { checkAdminAuth } from 'src/providers/adminAuth';
 import { setAuthenticated, setInitialized } from 'src/store/reducers/adminSlice';
 
 interface ProtectedRouteProps {
+    children: React.ReactNode;
     requiredRole?: 'admin' | 'superadmin';
     requiredPermissions?: string[];
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
+    children,
     requiredRole,
     requiredPermissions = [] 
 }) => {
-    const location = useLocation();
+    const router = useRouter();
     const dispatch = useAppDispatch();
     const { isAuthenticated, user, isLoading, isInitialized } = useAppSelector(state => state.adminReducer);
     
     useEffect(() => {
         if (!isInitialized) {
             checkAdminAuth((result) => {
-                if (result.admin) {
+                if (result) {
                     dispatch(setAuthenticated(result.admin));
                 } else {
                     dispatch(setInitialized());
@@ -45,11 +47,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
     
     if (!isAuthenticated || !user) {
-        return <Navigate to={`/admin/login?redirect=${location.pathname}`} replace />;
+        router.replace(`/admin/login?redirect=${router.asPath}`);
+        return null;
     }
     
-    if (requiredRole && requiredRole === 'superadmin' && user.role !== 'superadmin') {
-        return <Navigate to="/admin/unauthorized" replace />;
+    if (requiredRole === 'superadmin' && user.role !== 'superadmin') {
+        router.replace('/admin/unauthorized');
+        return null;
     }
     
     if (requiredPermissions.length > 0) {
@@ -58,11 +62,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         );
         
         if (!hasAllPermissions) {
-            return <Navigate to="/admin/unauthorized" replace />;
+            router.replace('/admin/unauthorized');
+            return null;
         }
     }
     
-    return <Outlet />;
+    return <>{children}</>;
 };
 
 export default ProtectedRoute;

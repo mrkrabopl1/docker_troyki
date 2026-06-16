@@ -1,6 +1,6 @@
 import React, { ReactElement, useRef, useState, memo } from 'react'
 import s from "./style.module.css"
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { toPrice } from 'src/global';
 
 
@@ -11,7 +11,7 @@ interface MerchInterface { name: string, imgs: string[], image_path?: string, id
 
 
 const MerchBlock: React.FC<{ className?: string, width?: string, data: MerchInterface }> = (props) => {
-    const navigate = useNavigate();
+    const router = useRouter();
     let { data, className, width } = { ...props }
     let [compOpacity, setOpacity] = useState(0)
 
@@ -88,7 +88,7 @@ const MerchBlock: React.FC<{ className?: string, width?: string, data: MerchInte
             style={width && { width: width }}
             onClick={(e) => {
                 e.stopPropagation();
-                navigate('/product/' + data.id)
+                router.push('/product/' + data.id)
             }}
             onMouseEnter={() => {
                 // if (data.imgs.length > 1) {

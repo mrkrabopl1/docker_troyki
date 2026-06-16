@@ -14,6 +14,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/mrkrabopl1/go_db/api"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
+	"github.com/mrkrabopl1/go_db/internal/size"
 	"github.com/mrkrabopl1/go_db/mail"
 	"github.com/mrkrabopl1/go_db/services"
 	"github.com/mrkrabopl1/go_db/util"
@@ -46,6 +47,9 @@ func main() {
 	//mailer := mail.NewGmailSender("config.EmailSenderName", "config.EmailSenderAddress", "config.EmailSenderPassword")
 	fmt.Println("Hello")
 	cfg1, _ := util.LoadConfig(".")
+	if err := size.Load("json/sizeTable.json"); err != nil {
+		log.Fatal(err)
+	}
 	//cfg1.DBSource = os.Getenv("DATABASE_URL")
 	fmt.Println(cfg1)
 	connPool, err := pgxpool.NewWithConfig(context.Background(), util.CreateConfig(cfg1.DBSource))

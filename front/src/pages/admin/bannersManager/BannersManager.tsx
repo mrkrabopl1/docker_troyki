@@ -1,12 +1,14 @@
 // pages/admin/Banners/BannersManager.tsx
 import React, { useEffect, useState, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import Button from 'src/components/Button'
 import ProductsFilters from "src/modules/settingsPanels/ProductsFilters"
 import s from "./style.module.css"
-import { useAppSelector } from 'src/store/hooks/redux'
+import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
 import { getBannersAndFilters, getBanners, createAdminBanner, updateAdminBanner, deleteAdminBanner } from 'src/providers/adminBannersProvider'
 import { types } from 'src/store/reducers/menuSlice';
+import { finishLoading } from 'src/store/reducers/loadingSlice'
+import Modal from 'src/components/modal/Modal';
 
 interface Banner {
     id: number;
@@ -20,9 +22,9 @@ interface Banner {
 }
 
 const BannersManager: React.FC = () => {
-    const navigate = useNavigate();
+    const router = useRouter();
     const { typesVal, categories } = useAppSelector(state => state.menuReducer);
-
+    const dispatch = useAppDispatch();
     const filtersInfo = useRef<any>({
         sizes: [],
         price: [],
@@ -46,7 +48,6 @@ const BannersManager: React.FC = () => {
         withPrice: true,
         is_active: undefined
     })
-
     const [banners, setBanners] = useState<Banner[]>([])
     const [loading, setLoading] = useState(false)
     const [showFiltersPanel, setShowFiltersPanel] = useState(false)
@@ -117,7 +118,7 @@ const BannersManager: React.FC = () => {
         }
 
         const checkBoxPropsFirmData: any[] = []
-        Object.entries(resData.firmsCount || {}).forEach(([firm]) => {
+        Object.entries(resData.firms || {}).forEach(([firm]) => {
             firms.current.push(firm)
             const active = filtersInfo.current.firms?.includes(firm) || false
             checkBoxPropsFirmData.push({
@@ -165,6 +166,7 @@ const BannersManager: React.FC = () => {
         setLoading(true)
         try {
             const data = await getBannersAndFilters()
+            dispatch(finishLoading());
             setFilters(convertFiltersData(data.filters))
             setBanners(data.banners)
         } catch (error) {
@@ -210,7 +212,7 @@ const BannersManager: React.FC = () => {
             case "firms":
                 filter.data.forEach((data: boolean, index: number) => {
                     const firm = firms.current[index]
-                    const firmIndex = filtersInfo.current.firms?.indexOf(firm) || -1
+                    const firmIndex = filtersInfo.current.firms?.indexOf(firm)
                     if (firmIndex !== -1 && !data) {
                         filtersInfo.current.firms = filtersInfo.current.firms?.filter(f => f !== firm) || []
                     } else if (firmIndex === -1 && data) {
@@ -221,7 +223,7 @@ const BannersManager: React.FC = () => {
             case "type":
                 filter.data.forEach((data: boolean, index: number) => {
                     const product_type = allFilters.current.product_types[index]
-                    const productTypeIndex = filtersInfo.current.product_types?.indexOf(product_type) || -1
+                    const productTypeIndex = filtersInfo.current.product_types?.indexOf(product_type)
                     if (productTypeIndex !== -1 && !data) {
                         filtersInfo.current.product_types = filtersInfo.current.product_types?.filter(pt => pt !== product_type) || []
                     } else if (productTypeIndex === -1 && data) {
@@ -236,7 +238,7 @@ const BannersManager: React.FC = () => {
                 filtersInfo.current.discount = filter.data[2]
                 break
         }
-        
+
         // Сбрасываем ошибку фильтров при изменении
         setErrors(prev => ({ ...prev, filters: false }))
     }, [])
@@ -281,9 +283,9 @@ const BannersManager: React.FC = () => {
             newErrors.image = true
         }
 
-        const hasFilters = 
+        const hasFilters =
             (filtersInfo.current.firms && filtersInfo.current.firms.length > 0) ||
-            (filtersInfo.current.types && filtersInfo.current.product_types.length > 0) ||
+            (filtersInfo.current.product_types && filtersInfo.current.product_types.length > 0) ||
             (filtersInfo.current.sizes && filtersInfo.current.sizes.length > 0) ||
             (filtersInfo.current.bodytypes && filtersInfo.current.bodytypes.length > 0) ||
             (filtersInfo.current.price && filtersInfo.current.price[0] > 0) ||
@@ -317,7 +319,7 @@ const BannersManager: React.FC = () => {
                 sizes: [],
                 price: [],
                 firms: [],
-                types: [],
+                product_types: [],
                 store: false,
                 discount: false,
                 withPrice: true,
@@ -355,7 +357,7 @@ const BannersManager: React.FC = () => {
             sizes: [] as string[],
             price: [] as number[],
             firms: [] as string[],
-            types: [] as number[],
+            product_types: [] as number[],
             bodytypes: [] as string[],
             store: false,
             discount: false,
@@ -393,7 +395,7 @@ const BannersManager: React.FC = () => {
                     const found = Object.entries(typesVal).find(([_, t]) => t.type_key === typeKey)
                     return found ? Number(found[0]) : null
                 }).filter((id): id is number => !!id)
-                filters.types = typeIds as number[]
+                filters.product_types = typeIds as number[]
             }
 
         } catch (error) {
@@ -415,7 +417,7 @@ const BannersManager: React.FC = () => {
                 sizes: [],
                 price: [],
                 firms: [],
-                types: [],
+                product_types: [],
                 store: false,
                 discount: false,
                 withPrice: true,
@@ -435,7 +437,7 @@ const BannersManager: React.FC = () => {
             <div className={s.header}>
                 <h2>Управление баннерами</h2>
                 <div className={s.headerButtons}>
-                    <Button text="Назад" onClick={() => navigate('/admin')} />
+                    <Button text="Назад" onClick={() => router.push('/admin')} />
                     {canAddMore && (
                         <Button text="+ Добавить баннер" onClick={() => openModal()} />
                     )}
@@ -465,111 +467,112 @@ const BannersManager: React.FC = () => {
                     </div>
                 ))}
             </div>
+            <Modal active={showModal} onChange={setShowModal}>
 
-            {showModal && (
-                <div className={s.modalOverlay} onClick={() => setShowModal(false)}>
-                    <div className={s.modalContent} onClick={e => e.stopPropagation()}>
-                        <div className={s.modalHeader}>
-                            <h3>{editingBanner ? 'Редактировать баннер' : 'Новый баннер'}</h3>
-                            <button onClick={() => setShowModal(false)}>✕</button>
-                        </div>
-
-                        <div className={s.formGroup}>
-                            <label>Заголовок</label>
-                            <input
-                                type="text"
-                                value={editingBanner?.title || ''}
-                                onChange={e => setEditingBanner(prev => prev ? { ...prev, title: e.target.value } : { title: e.target.value } as Banner)}
-                                placeholder="Например: Летняя распродажа"
-                            />
-                        </div>
-
-                        <div className={s.formGroup}>
-                            <label>Изображение <span className={s.required}>*</span></label>
-                            <div className={`${s.imageUpload} ${errors.image ? s.errorBorder : ''}`}>
-                                {imagePreview ? (
-                                    <div className={s.imagePreview}>
-                                        <img src={imagePreview} alt="Preview" />
-                                        <button onClick={() => {
-                                            setImagePreview('')
-                                            setImageFile(null)
-                                        }}>✕</button>
-                                    </div>
-                                ) : (
-                                    <div>
-                                        <input type="file" accept="image/*" onChange={handleImageSelect} id="imageUpload" />
-                                        <label htmlFor="imageUpload">Выбрать изображение</label>
-                                    </div>
-                                )}
-                            </div>
-                            {errors.image && <div className={s.errorText}>Изображение обязательно</div>}
-                        </div>
-
-                        <div className={s.formGroup}>
-                            <label>Условия показа <span className={s.required}>*</span></label>
-
-                            <div
-                                className={`${s.urlPreview} ${errors.filters ? s.errorBorder : ''}`}
-                                onClick={() => setShowFiltersPanel(true)}
-                                style={{ cursor: 'pointer' }}
-                            >
-                                <strong>Ссылка для баннера:</strong>
-                                <code>{generateUrlFromFilters(filtersInfo.current)}</code>
-                                <span className={s.editHint}>✏️ нажмите чтобы настроить фильтры</span>
-                            </div>
-                            
-                            {errors.filters && <div className={s.errorText}>Выберите хотя бы один фильтр</div>}
-
-                            <div className={s.filtersPreview}>
-                                {filtersInfo.current.product_types?.length > 0 && (
-                                    <span>Тип: {typesVal[filtersInfo.current.product_types[0]]?.name}</span>
-                                )}
-                                {filtersInfo.current.firms?.length > 0 && (
-                                    <span>Фирмы: {filtersInfo.current.firms.join(', ')}</span>
-                                )}
-                                {filtersInfo.current.price && filtersInfo.current.price[0] > 0 && (
-                                    <span>Цена от {filtersInfo.current.price[0]}</span>
-                                )}
-                                {filtersInfo.current.discount && <span>Со скидкой</span>}
-                                {!filtersInfo.current.product_types?.length &&
-                                    !filtersInfo.current.firms?.length &&
-                                    (!filtersInfo.current.price || filtersInfo.current.price[0] === 0) &&
-                                    !filtersInfo.current.discount && (
-                                        <span className={s.emptyFilters}>❌ фильтры не выбраны</span>
-                                    )}
-                            </div>
-                        </div>
-
-                        <div className={s.modalActions}>
-                            <Button text="Отмена" onClick={() => setShowModal(false)} />
-                            <Button 
-                                text={uploading ? 'Сохранение...' : 'Сохранить'} 
-                                onClick={handleSaveBanner} 
-                                disabled={uploading} 
-                            />
-                        </div>
+                <div className={s.modalContent} onClick={e => e.stopPropagation()}>
+                    <div className={s.modalHeader}>
+                        <h3>{editingBanner ? 'Редактировать баннер' : 'Новый баннер'}</h3>
+                        <button onClick={() => setShowModal(false)}>✕</button>
                     </div>
-                </div>
-            )}
 
-            {showFiltersPanel && (
-                <div className={s.modalOverlay} onClick={() => setShowFiltersPanel(false)}>
-                    <div className={s.modalPanel} onClick={e => e.stopPropagation()}>
-                        <div className={s.modalHeader}>
-                            <h3>Выберите условия показа</h3>
-                            <button onClick={() => setShowFiltersPanel(false)}>✕</button>
-                        </div>
-                        <ProductsFilters
-                            memo={true}
-                            onChange={onFiltersChange}
-                            {...filtersState}
+                    <div className={s.formGroup}>
+                        <label>Заголовок</label>
+                        <input
+                            type="text"
+                            value={editingBanner?.title || ''}
+                            onChange={e => setEditingBanner(prev => prev ? { ...prev, title: e.target.value } : { title: e.target.value } as Banner)}
+                            placeholder="Например: Летняя распродажа"
                         />
-                        <div className={s.modalFooter}>
-                            <Button text="Готово" onClick={() => setShowFiltersPanel(false)} />
+                    </div>
+
+                    <div className={s.formGroup}>
+                        <label>Изображение <span className={s.required}>*</span></label>
+                        <div className={`${s.imageUpload} ${errors.image ? s.errorBorder : ''}`}>
+                            {imagePreview ? (
+                                <div className={s.imagePreview}>
+                                    <img src={imagePreview} alt="Preview" />
+                                    <button onClick={() => {
+                                        setImagePreview('')
+                                        setImageFile(null)
+                                    }}>✕</button>
+                                </div>
+                            ) : (
+                                <div>
+                                    <input type="file" accept="image/*" onChange={handleImageSelect} id="imageUpload" />
+                                    <label htmlFor="imageUpload">Выбрать изображение</label>
+                                </div>
+                            )}
+                        </div>
+                        {errors.image && <div className={s.errorText}>Изображение обязательно</div>}
+                    </div>
+
+                    <div className={s.formGroup}>
+                        <label>Условия показа <span className={s.required}>*</span></label>
+
+                        <div
+                            className={`${s.urlPreview} ${errors.filters ? s.errorBorder : ''}`}
+                            onClick={() => setShowFiltersPanel(true)}
+                            style={{ cursor: 'pointer' }}
+                        >
+                            <strong>Ссылка для баннера:</strong>
+                            <code>{generateUrlFromFilters(filtersInfo.current)}</code>
+                            <span className={s.editHint}>✏️ нажмите чтобы настроить фильтры</span>
+                        </div>
+
+                        {errors.filters && <div className={s.errorText}>Выберите хотя бы один фильтр</div>}
+
+                        <div className={s.filtersPreview}>
+                            {filtersInfo.current.product_types?.length > 0 && (
+                                <span>Тип: {filtersInfo.current.product_types
+                                    .map(type => typesVal[type]?.name)
+                                    .filter(Boolean)
+                                    .join(', ')}
+                                </span>
+                            )}
+                            {filtersInfo.current.firms?.length > 0 && (
+                                <span>Фирмы: {filtersInfo.current.firms.join(', ')}</span>
+                            )}
+                            {filtersInfo.current.price && filtersInfo.current.price[0] > 0 && (
+                                <span>Цена от {filtersInfo.current.price[0]}</span>
+                            )}
+                            {filtersInfo.current.discount && <span>Со скидкой</span>}
+                            {!filtersInfo.current.product_types?.length &&
+                                !filtersInfo.current.firms?.length &&
+                                (!filtersInfo.current.price || filtersInfo.current.price[0] === 0) &&
+                                !filtersInfo.current.discount && (
+                                    <span className={s.emptyFilters}>❌ фильтры не выбраны</span>
+                                )}
                         </div>
                     </div>
+
+                    <div className={s.modalActions}>
+                        <Button text="Отмена" onClick={() => setShowModal(false)} />
+                        <Button
+                            text={uploading ? 'Сохранение...' : 'Сохранить'}
+                            onClick={handleSaveBanner}
+                            disabled={uploading}
+                        />
+                    </div>
                 </div>
-            )}
+                {showFiltersPanel && (
+                    <div className={s.modalOverlay} onClick={() => setShowFiltersPanel(false)}>
+                        <div className={s.modalPanel} onClick={e => e.stopPropagation()}>
+                            <div className={s.modalHeader}>
+                                <h3>Выберите условия показа</h3>
+                                <button onClick={() => setShowFiltersPanel(false)}>✕</button>
+                            </div>
+                            <ProductsFilters
+                                memo={true}
+                                onChange={onFiltersChange}
+                                {...filtersState}
+                            />
+                            <div className={s.modalFooter}>
+                                <Button text="Готово" onClick={() => setShowFiltersPanel(false)} />
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     )
 }

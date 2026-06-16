@@ -92,7 +92,9 @@
     transition: all 0.2s ease;
     flex-shrink: 0;
 }
-
+.imageContainer{
+    height:500px
+}
 @media (max-width:1290px) {
     .thumbnailWrapper {
         width: 100px;

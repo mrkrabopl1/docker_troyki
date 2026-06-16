@@ -1,10 +1,8 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -40,25 +38,14 @@ func (s *Server) handleGetSnickersByFirmName(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, snickers)
 }
 
-func (s *Server) handleGetSizes(ctx *gin.Context) {
-	category := ctx.Query("category")
-	file, err := os.ReadFile("json/sizeTable.json")
-	if err != nil {
-		//log.WithCaller().Err(err)
-		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
-		return
-	}
-	var data interface{}
-	json.Unmarshal(file, &data)
-	var resp interface{}
-	if category == "snickers" {
-		resp = data.(map[string]interface{})["snickers"]
-	}
-	if category == "clothes" {
-		resp = data.(map[string]interface{})["clothes"]
-	}
-	ctx.JSON(http.StatusOK, resp)
-}
+// func (s *Server) handleGetSizes(ctx *gin.Context) {
+// 	category := ctx.Query("category")
+// 	if val, ok := size.Get(category); ok {
+// 		ctx.JSON(http.StatusOK, val)
+// 	} else {
+// 		ctx.JSON(http.StatusNotFound, gin.H{"error": "category not found"})
+// 	}
+// }
 
 func (s *Server) handleGetCollectionCount(ctx *gin.Context) {
 	name := ctx.Query("name")

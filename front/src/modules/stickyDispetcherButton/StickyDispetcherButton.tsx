@@ -1,6 +1,5 @@
 import React, { useState, memo,CSSProperties } from 'react';
 import { useAppSelector } from 'src/store/hooks/redux';
-import { NavLink } from 'react-router-dom';
 import s from './style.module.css';
 import { ReactComponent as Telegram } from "/public/telegram.svg";
 import { ReactComponent as Whatsapp } from "/public/whatsapp.svg";
@@ -32,7 +31,7 @@ const StickyDispatcherButton: React.FC<StickyDispatcherButtonProps> = memo(({
             className={s.stickyDispetcherBlock}
             style={{
                 ...positionStyle,
-                background: "url('/public/chat.svg') no-repeat center white",
+                background: "url('/chat.svg') no-repeat center white",
                 backgroundSize: "80%",
             }}
             aria-label="Contact dispatcher"

@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import s from "./refund.module.css";
+import { finishLoading } from 'src/store/reducers/loadingSlice';
+import { useAppDispatch } from 'src/store/hooks/redux';
 
 // Компонент для анимированного появления текста
 const RevealText: React.FC<{ children: React.ReactNode; delay?: number }> = ({ 
@@ -8,7 +10,8 @@ const RevealText: React.FC<{ children: React.ReactNode; delay?: number }> = ({
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const elementRef = useRef<HTMLDivElement>(null);
-
+ const dispatch = useAppDispatch();
+    dispatch(finishLoading());
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {

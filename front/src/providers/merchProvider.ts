@@ -142,16 +142,17 @@ const getSizeTable = function (category: string, callback: (val: any) => void) {
 }
 
 
-const getMainPage = function (callback: (val: any) => void) {
-    axios({
-        method: 'get',
-        url: `${API_URL}/getMainPage`,
-        headers: {}
-    }
-    ).then((res: any) => {
-        callback(res.data)
-    },  (error: any) => {
-        console.warn(error)
-    })
-}
+const getMainPage = async function (): Promise<any> {
+  try {
+    const res = await axios({
+      method: 'get',
+      url: `${API_URL}/getMainPage`,
+      headers: {}
+    });
+    return res.data;
+  } catch (error) {
+    console.warn(error);
+    throw error; // Пробрасываем ошибку для обработки в fetchData
+  }
+};
 export { getMerchInfo, getSizeTable, getMainInfo, getCollections, getFirms, getHistoryInfo, getDiscontInfo, getCollection,getCategoriesAndTypes, getMainPage }

@@ -1,6 +1,6 @@
 // pages/admin/ProductForm/AdminProductForm.tsx
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { useAppSelector } from 'src/store/hooks/redux';
 import Button from 'src/components/Button';
 import Modal from 'src/components/modal/Modal';
@@ -10,6 +10,8 @@ import Combobox from 'src/components/combobox/Combobox';
 import ComboboxWithSearch from 'src/components/combobox/ComboboxWithSearch';
 import { getSizeTable } from "src/providers/merchProvider";
 import { ProductFormData } from 'src/types/adminProduct';
+import { useAppDispatch } from 'src/store/hooks/redux';
+import { finishLoading } from 'src/store/reducers/loadingSlice'
 import FirmForm from 'src/modules/admin/firmForm/FirmForm';
 import {
     getAdminProductById,
@@ -39,12 +41,12 @@ interface SizePrice {
 }
 
 const AdminProductForm: React.FC = () => {
-    const navigate = useNavigate();
-    const { id } = useParams<{ id: string }>();
+   const router = useRouter();
+    const { id } = router.query;
     const isEdit = !!id && id !== 'create';
     const { typesVal, categories, firms, firmMap, collections } = useAppSelector(state => state.menuReducer);
     const { user } = useAppSelector(state => state.adminReducer);
-
+    const dispatch = useAppDispatch();
     // Фильтруем доступные статусы в зависимости от роли
     const availableStatuses = useMemo(() => {
         const allStatuses = {
@@ -153,6 +155,12 @@ const AdminProductForm: React.FC = () => {
         loadSizeTable();
         if (isEdit && id) {
             loadProductData(Number(id));
+        } else {
+            const timer = setTimeout(() => {
+                dispatch(finishLoading());
+            }, 0);
+
+            return () => clearTimeout(timer);
         }
     }, [id, isEdit]);
 
@@ -169,7 +177,7 @@ const AdminProductForm: React.FC = () => {
         setLoading(true);
         try {
             await deleteAdminProduct(formData.id, () => {
-                navigate('/admin/products');
+                router.push('/admin/products');
             });
         } catch (error) {
             console.error('Ошибка удаления товара:', error);
@@ -202,6 +210,7 @@ const AdminProductForm: React.FC = () => {
                     images: parseImagesFromData(data),
                     status: data.status || 'draft'
                 });
+                dispatch(finishLoading());
             });
         } catch (error) {
             console.error('Error loading product:', error);
@@ -235,7 +244,7 @@ const AdminProductForm: React.FC = () => {
     const parseImagesFromData = (data: any): string[] => {
         if (!data.image_count) return [];
         return Array.from({ length: data.image_count }, (_, i) =>
-            `${data.image_path}${i + 1}.png`
+            `${data.image_path}`
         );
     };
 
@@ -322,12 +331,12 @@ const AdminProductForm: React.FC = () => {
             if (isEdit && formData.id) {
                 await updateAdminProduct(formData.id, payload as any, (response) => {
                     console.log('Product updated:', response);
-                    navigate('/admin/products');
+                    router.push('/admin/products');
                 });
             } else {
                 await createAdminProduct(payload as any, (response) => {
                     console.log('Product created:', response);
-                    navigate('/admin/products');
+                    router.push('/admin/products');
                 });
             }
         } catch (error: any) {

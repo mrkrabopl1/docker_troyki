@@ -77,8 +77,8 @@ func (s *Server) setupRouter() {
 	// s.router.With(querySelectionMiddleware("name")).Get("/snickersByLine", s.handleGetSnickersByLineName)
 
 	// s.router.With(querySelectionMiddleware("id")).Get("/ProductsInfo", s.handleGetProductsInfoById)
-	router.GET("/sizeTable", s.handleGetSizes)
-	router.GET("/firms", s.handleGetFirms)
+	// router.GET("/sizeTable", s.handleGetSizes)
+	// router.GET("/firms", s.handleGetFirms)
 	//s.router.Get("/mainPage", s.handleGetMainPage)
 
 	//s.router.Get("/faq", s.handleFAQ)
@@ -130,6 +130,7 @@ func (s *Server) setupRouter() {
 	router.POST("/changeForgetPass", s.handleChangeForgetPass)
 	router.POST("/getDataByCategoriesAndFilters", s.handleSearchProductByCategoriesAndFilters)
 	router.GET("/getMainPage", s.handleGetMainPageInfo)
+	router.GET("/getMainInfo", s.handleGetMainInfo)
 	router.GET("/checkCustomerData", s.handleCheckCustomerData)
 
 	router.POST("/admin/auth/login", s.handleAdminLogin)
@@ -147,7 +148,6 @@ func (s *Server) setupRouter() {
 		adminGroup.GET("/dashboard/stats", s.handleAdminGetDashboardStats)
 		// Управление товарами (доступно admin и superadmin)
 		adminGroup.POST("/products", s.handleAdminCreateProduct)
-
 		adminGroup.GET("/productsAndFilters", s.handleAdminGetProductsAndFilters)
 		adminGroup.POST("/products/search", s.handleAdminGetProducts)
 		adminGroup.PUT("/products/:id", s.handleAdminUpdateProduct)

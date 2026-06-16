@@ -1,14 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import s from "./delivery.module.css";
+import { useAppDispatch } from 'src/store/hooks/redux';
+import { finishLoading } from 'src/store/reducers/loadingSlice';
 
 // Компонент для анимированного появления текста
-const RevealText: React.FC<{ children: React.ReactNode; delay?: number }> = ({ 
-  children, 
-  delay = 0 
+const RevealText: React.FC<{ children: React.ReactNode; delay?: number }> = ({
+  children,
+  delay = 0
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const elementRef = useRef<HTMLDivElement>(null);
-
+  const dispatch = useAppDispatch();
+  dispatch(finishLoading());
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -73,14 +76,14 @@ const Delivery: React.FC = () => {
       <RevealText delay={60}>
         <h2 className={s.middleHeader}>Обработка заказа</h2>
       </RevealText>
-      
+
       <RevealText delay={80}>
         <div className={s.textBlock}>
           <p>
-            Обратите внимание, что после размещения ваш заказ поступает в обработку. 
-            Обработка заказа занимает в среднем 3 часа и не может занимать более 24 часов 
-            с момента размещения заказа. Дополнительное время может потребоваться в период 
-            распродаж и нерабочих/праздничных дней. В процессе обработки заказа с вами 
+            Обратите внимание, что после размещения ваш заказ поступает в обработку.
+            Обработка заказа занимает в среднем 3 часа и не может занимать более 24 часов
+            с момента размещения заказа. Дополнительное время может потребоваться в период
+            распродаж и нерабочих/праздничных дней. В процессе обработки заказа с вами
             свяжется наш менеджер для уточнения деталей заказа.
           </p>
         </div>
@@ -90,19 +93,19 @@ const Delivery: React.FC = () => {
       <RevealText delay={100}>
         <h2 className={s.middleHeader}>Доставка по Москве и Московской области</h2>
       </RevealText>
-      
+
       <RevealText delay={120}>
         <div className={s.textBlock}>
           <p>
-            По Москве и Московской Области осуществляется адресная доставка курьерской службой. 
+            По Москве и Московской Области осуществляется адресная доставка курьерской службой.
             Сроки и стоимость доставки рассчитываются автоматически на этапе оформления заказа.
           </p>
-          
+
           <div className={s.highlight}>
             <strong>📞 Согласование доставки:</strong>
             <p>
-              Предпочтительное время доставки можно согласовать с нашим менеджером, 
-              позвонив нам по телефону 
+              Предпочтительное время доставки можно согласовать с нашим менеджером,
+              позвонив нам по телефону
               <a href="tel:+79957880058" className={s.phone}>+7(995)788-00-58</a>
             </p>
           </div>
@@ -123,12 +126,12 @@ const Delivery: React.FC = () => {
       <RevealText delay={140}>
         <h2 className={s.middleHeader}>Доставка по России</h2>
       </RevealText>
-      
+
       <RevealText delay={160}>
         <div className={s.textBlock}>
           <p>
-            Доставка по России производится по 100% предоплате и осуществляется 
-            курьерской службой СДЭК до указанного адреса. Сроки и стоимость доставки 
+            Доставка по России производится по 100% предоплате и осуществляется
+            курьерской службой СДЭК до указанного адреса. Сроки и стоимость доставки
             рассчитываются индивидуально и автоматически на этапе оформления заказа.
           </p>
           <p style={{ marginTop: '15px' }}>
@@ -141,11 +144,11 @@ const Delivery: React.FC = () => {
       <RevealText delay={180}>
         <h2 className={s.middleHeader}>Самовывоз</h2>
       </RevealText>
-      
+
       <RevealText delay={200}>
         <div className={s.textBlock}>
           <p>Самовывоз доступен в наших магазинах:</p>
-          
+
           <div className={s.shopAddress}>
             <strong>1. ТЦ Галереи Времена Года</strong>
             <p className={s.iconLocation}>Москва, Кутузовский проспект 48, 3 этаж, бутик Sortage</p>

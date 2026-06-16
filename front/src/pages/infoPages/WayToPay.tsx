@@ -1,14 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import s from "./waytopay.module.css";
+import { finishLoading } from 'src/store/reducers/loadingSlice';
+import { useAppDispatch } from 'src/store/hooks/redux';
 
 // Компонент для анимированного появления текста
-const RevealText: React.FC<{ children: React.ReactNode; delay?: number }> = ({ 
-  children, 
-  delay = 0 
+const RevealText: React.FC<{ children: React.ReactNode; delay?: number }> = ({
+  children,
+  delay = 0
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const elementRef = useRef<HTMLDivElement>(null);
-
+  const dispatch = useAppDispatch();
+  dispatch(finishLoading());
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -66,11 +69,11 @@ const WayToPay: React.FC = () => {
       <RevealText delay={40}>
         <h2 className={s.middleHeader}>Оплата для Москвы и Московской области</h2>
       </RevealText>
-      
+
       <RevealText delay={60}>
         <div className={s.textBlock}>
           <p>Для жителей столичного региона доступны следующие способы оплаты:</p>
-          
+
           <div className={s.paymentMethod}>
             <div className={s.paymentIcon}>💳</div>
             <div className={s.paymentContent}>
@@ -111,11 +114,11 @@ const WayToPay: React.FC = () => {
       <RevealText delay={100}>
         <h2 className={s.middleHeader}>Оплата для России</h2>
       </RevealText>
-      
+
       <RevealText delay={120}>
         <div className={s.textBlock}>
           <p>Для жителей других регионов России доступны следующие способы оплаты:</p>
-          
+
           <div className={s.paymentMethod}>
             <div className={s.paymentIcon}>💳</div>
             <div className={s.paymentContent}>

@@ -5,19 +5,13 @@
   justify-content: center;
   padding: 12px;
 }
+
 .default {
   cursor: pointer;
   border-radius: 50%;
   width: 25px;
   height: 25px;
   background-color: bisque;
-}
-
-button {
-  -webkit-appearance: none;
-  background: transparent;
-  border: none;
-  outline: 0;
 }
 
 .paginate {
@@ -27,14 +21,13 @@ button {
   border: none;
   outline: 0;
   cursor: pointer;
-  transform: translate3d(0, 0, 0); // fixes flicker in webkit
+  transform: translate3d(0, 0, 0);
   top: 0;
   bottom: 0;
   margin: auto;
 }
 
 .buttonStyle {
-
   width: 30px;
   height: 30px;
   margin: 0 5px;
@@ -43,6 +36,7 @@ button {
   box-shadow: inset 0 0 2px #040300;
   box-sizing: border-box;
 }
+
 .controllerHolder {
   position: absolute;
   top: 50%;
@@ -55,13 +49,13 @@ button {
 }
 
 .leftArrowHolder {
-  left:5px;
+  left: 5px;
   z-index: 200;
 }
 
 .rightArrowHolder {
   right: 5px;
-   z-index: 200;
+  z-index: 200;
 }
 
 .link {
@@ -71,48 +65,29 @@ button {
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  
   background: #e0e0e0;
   box-shadow: 
     inset 1px 1px 2px rgba(0, 0, 0, 0.1),
     inset -1px -1px 2px rgba(255, 255, 255, 0.8),
     0 1px 3px rgba(0, 0, 0, 0.08);
+}
 
-  &:hover {
-    background: #d0d0d0;
-    transform: scaleY(1.2);
-    box-shadow: 
-      inset 1px 1px 2px rgba(0, 0, 0, 0.15),
-      inset -1px -1px 2px rgba(255, 255, 255, 0.9),
-      0 2px 6px rgba(0, 0, 0, 0.12);
-  }
+.link:hover {
+  background: #d0d0d0;
+  transform: scaleY(1.2);
+  box-shadow: 
+    inset 1px 1px 2px rgba(0, 0, 0, 0.15),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.9),
+    0 2px 6px rgba(0, 0, 0, 0.12);
+}
 
-  &.active {
-    background: #2a2a2a;
-    transform: scaleY(1.2);
-    box-shadow: 
-      inset 1px 1px 2px rgba(255, 255, 255, 0.3),
-      inset -1px -1px 2px rgba(0, 0, 0, 0.4),
-      0 2px 8px rgba(0, 0, 0, 0.25);
-  }
-
-  // Эффект при наведении - показывает номер страницы
-  // &:hover::before {
-  //   content: attr(data-tooltip);
-  //   position: absolute;
-  //   bottom: 100%;
-  //   left: 50%;
-  //   transform: translateX(-50%);
-  //   background: #2a2a2a;
-  //   color: white;
-  //   padding: 6px 10px;
-  //   border-radius: 6px;
-  //   font-size: 12px;
-  //   font-weight: 500;
-  //   white-space: nowrap;
-  //   margin-bottom: 12px;
-  //   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  // }
+.link.active {
+  background: #2a2a2a;
+  transform: scaleY(1.2);
+  box-shadow: 
+    inset 1px 1px 2px rgba(255, 255, 255, 0.3),
+    inset -1px -1px 2px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 @keyframes pulse {
@@ -130,12 +105,23 @@ button {
   }
 }
 
-// Добавляем анимацию пульсации для активного элемента (без обводки)
 .link.active {
   animation: pulse 2s ease-in-out infinite;
 }
-.paginationContainer{ justify-content: center; display: flex; }
 
-.paginationArrow{ width: 30px; position: relative }
+.paginationContainer {
+  justify-content: center;
+  display: flex;
+}
 
-.paginationPages{ cursor: pointer; margin: auto 0; justify-content: center; display: flex; }
+.paginationArrow {
+  width: 30px;
+  position: relative;
+}
+
+.paginationPages {
+  cursor: pointer;
+  margin: auto 0;
+  justify-content: center;
+  display: flex;
+}

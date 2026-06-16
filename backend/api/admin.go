@@ -342,7 +342,7 @@ func (s *Server) handleAdminCreateProduct(c *gin.Context) {
 		Article:  req.Article,
 	}
 	fmt.Println(pathParams, "eeeeeeeeeeeeeeeeeeeeeeeee")
-	relativePath := s.imageService.BuildStructuredPath(pathParams)
+	relativePath := filepath.Join("products/", s.imageService.BuildStructuredPath(pathParams)) // ПРАВИЛЬНЫЙ СТРУКТУРИРОВАННЫЙ ПУТЬ
 	fmt.Println(relativePath, "rrrrrrrrrrrrrrrrrrrrrrrrrr")
 	timestamp := time.Now().UnixMilli()
 	compositeID := fmt.Sprintf("%s_%s_%s_%s", req.Firm, data.TypeKey, timestamp)
@@ -416,35 +416,16 @@ func (s *Server) handleAdminCreateProduct(c *gin.Context) {
 			fmt.Printf("Failed to insert discounts: %v\n", err)
 		}
 	}
-	// ========== 9. ПЕРЕНОСИМ ФАЙЛЫ ИЗ TEMP В ПРАВИЛЬНУЮ ПАПКУ ==========
-	permanentDir := filepath.Join(s.imageService.BaseDir, relativePath)
-
-	if err := os.MkdirAll(permanentDir, 0755); err != nil {
+	// ========== 9. КОНВЕРТИРУЕМ ИЗ TEMP В WEBP ==========
+	savedCount, err := s.imageService.ConvertTempToProduct(req.SessionID, relativePath)
+	if err != nil || savedCount == 0 {
 		s.store.DeleteHardProduct(c.Request.Context(), product.ID)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create product directory"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to convert images"})
 		return
 	}
 
-	// Просто переносим файлы, переименовывая в img1.jpg, img2.jpg...
-	for i, file := range files {
-		if file.IsDir() {
-			continue
-		}
-
-		oldPath := filepath.Join(tempDir, file.Name())
-		newPath := filepath.Join(permanentDir, fmt.Sprintf("img%d.png", i+1))
-		fmt.Println(oldPath, newPath, "Moving file")
-
-		if err := os.Rename(oldPath, newPath); err != nil {
-			os.RemoveAll(permanentDir)
-			s.store.DeleteHardProduct(c.Request.Context(), product.ID)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to move images"})
-			return
-		}
-	}
-
-	// Удаляем временную папку
-	os.RemoveAll(tempDir)
+	// Чистим temp
+	s.imageService.CleanTemp(req.SessionID)
 
 	// ========== 10. ЛОГИРУЕМ ==========
 	go func() {
@@ -461,7 +442,7 @@ func (s *Server) handleAdminCreateProduct(c *gin.Context) {
 			Action:     "create",
 			EntityType: pgtype.Text{String: "product", Valid: true},
 			EntityID:   pgtype.Int4{Int32: product.ID, Valid: true},
-			Details:    pgtype.Text{String: fmt.Sprintf("Created product: %s (Article: %s) with %d images", req.Name, req.Article, len(files)), Valid: true},
+			Details:    pgtype.Text{String: fmt.Sprintf("Created product: %s (Article: %s) with %d images", req.Name, req.Article, savedCount), Valid: true},
 			IpAddress:  ipAddr,
 		}
 		_ = s.store.CreateAdminLog(ctx, logParams)
@@ -710,7 +691,6 @@ func (s *Server) handleAdminUploadProductImage(c *gin.Context) {
 	}
 
 	admin, _ := c.Get("admin")
-
 	adminRow := admin.(db.GetAdminByIDRow)
 
 	// Получаем текущее количество изображений товара
@@ -721,21 +701,26 @@ func (s *Server) handleAdminUploadProductImage(c *gin.Context) {
 	}
 	nextNumber := product.ImageCount + 1
 
-	// Сохраняем изображение через ImageService
-	imageURL, err := s.imageService.SaveProductImage(int32(productID), file, int(nextNumber))
+	// Сохраняем через ImageService (вся логика внутри)
+	imageURL, thumbURL, err := s.imageService.SaveProductImage(product.ImagePath, file, int(nextNumber))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Сохраняем URL в БД
-	err = s.store.UpdateProduct(c.Request.Context(), db.UpdateProductParams{
+	// Обновляем счетчик в БД
+	err = s.store.UpdateProductImageCount(c.Request.Context(), db.UpdateProductImageCountParams{
+		ID:         int32(productID),
 		ImageCount: nextNumber,
 	})
-	// Логируем действие
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update product"})
+		return
+	}
+
+	// Логируем
 	go func() {
 		ctx := context.Background()
-
 		var ipAddr *netip.Addr
 		if ip := c.ClientIP(); ip != "" {
 			if parsed, err := netip.ParseAddr(ip); err == nil {
@@ -748,19 +733,19 @@ func (s *Server) handleAdminUploadProductImage(c *gin.Context) {
 			Action:     "upload",
 			EntityType: pgtype.Text{String: "product", Valid: true},
 			EntityID:   pgtype.Int4{Int32: int32(productID), Valid: true},
-			Details:    pgtype.Text{String: "Uploaded image for product ID: " + c.Param("id"), Valid: true},
+			Details:    pgtype.Text{String: fmt.Sprintf("Uploaded image #%d for product ID: %d", nextNumber, productID), Valid: true},
 			IpAddress:  ipAddr,
 		}
-
 		_ = s.store.CreateAdminLog(ctx, params)
 	}()
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":   "Image uploaded successfully",
-		"image_url": imageURL,
+		"message":      "Image uploaded successfully",
+		"image_url":    imageURL,
+		"thumb_url":    thumbURL,
+		"image_number": nextNumber,
 	})
 }
-
 func (s *Server) handleAdminDeleteProductImage(c *gin.Context) {
 	productID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -779,24 +764,30 @@ func (s *Server) handleAdminDeleteProductImage(c *gin.Context) {
 	admin, _ := c.Get("admin")
 	adminRow := admin.(db.GetAdminByIDRow)
 
-	// Получаем информацию о товаре до удаления
+	// Получаем информацию о товаре
 	product, err := s.store.GetProductsInfoById(c.Request.Context(), int32(productID))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get product info"})
 		return
 	}
 
-	// Формируем полный путь и удаляем файл
-	fullPath := req.ImagePath
-	fmt.Println(fullPath)
-	if err := s.imageService.DeleteProductImage(fullPath); err != nil {
+	// Удаляем файлы (и .webp и _thumb.webp)
+	// req.ImagePath может быть "products/123/img1.webp" или просто "img1.webp"
+	fullPath := filepath.Join(s.imageService.BaseDir, req.ImagePath)
+
+	// Удаляем оригинал
+	if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete image file"})
 		return
 	}
 
-	// Получаем актуальное количество изображений после удаления
-	newCount := s.imageService.ImagePathBuilder.CountExistingProductImages(product.ImagePath)
-	fmt.Println(newCount, "ckkmmlxkcmlkxzclkzxc")
+	// Удаляем thumb
+	ext := filepath.Ext(fullPath)
+	thumbPath := strings.Replace(fullPath, ext, "_thumb"+ext, 1)
+	os.Remove(thumbPath) // не страшно если нет
+
+	// Получаем актуальное количество изображений
+	newCount := s.imageService.CountExistingProductImages(product.ImagePath)
 	if newCount < 0 {
 		newCount = 0
 	}
@@ -806,17 +797,14 @@ func (s *Server) handleAdminDeleteProductImage(c *gin.Context) {
 		ID:         int32(productID),
 		ImageCount: newCount,
 	})
-
 	if err != nil {
-		fmt.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update product"})
 		return
 	}
 
-	// Логируем действие
+	// Логируем
 	go func() {
 		ctx := context.Background()
-
 		var ipAddr *netip.Addr
 		if ip := c.ClientIP(); ip != "" {
 			if parsed, err := netip.ParseAddr(ip); err == nil {
@@ -832,7 +820,6 @@ func (s *Server) handleAdminDeleteProductImage(c *gin.Context) {
 			Details:    pgtype.Text{String: fmt.Sprintf("Deleted image %s for product ID: %d", req.ImagePath, productID), Valid: true},
 			IpAddress:  ipAddr,
 		}
-
 		_ = s.store.CreateAdminLog(ctx, params)
 	}()
 
@@ -949,7 +936,8 @@ func (s *Server) handleAdminDeleteProductImages(c *gin.Context) {
 		return
 	}
 
-	adminID, _ := c.Get("admin_id")
+	admin, _ := c.Get("admin")
+	adminID := admin.(db.GetAdminByIDRow).ID
 
 	// Удаляем файлы
 	for _, imageURL := range req.ImageURLs {
@@ -985,7 +973,7 @@ func (s *Server) handleAdminDeleteProductImages(c *gin.Context) {
 		}
 
 		params := db.CreateAdminLogParams{
-			AdminID:    adminID.(int32),
+			AdminID:    adminID,
 			Action:     "delete",
 			EntityType: pgtype.Text{String: "product", Valid: true},
 			EntityID:   pgtype.Int4{Int32: int32(productID), Valid: true},
@@ -1567,7 +1555,8 @@ func (s *Server) handleAdminCreateSale(c *gin.Context) {
 		return
 	}
 
-	adminID, _ := c.Get("admin_id")
+	admin, _ := c.Get("admin")
+	adminID := admin.(db.GetAdminByIDRow).ID
 
 	// Проверяем существование товара
 	exists, err := s.store.CheckProductExistsById(c.Request.Context(), req.ProductID)
@@ -1663,7 +1652,7 @@ func (s *Server) handleAdminCreateSale(c *gin.Context) {
 		}
 
 		params := db.CreateAdminLogParams{
-			AdminID:    adminID.(int32),
+			AdminID:    adminID,
 			Action:     "create",
 			EntityType: pgtype.Text{String: "discount", Valid: true},
 			EntityID:   pgtype.Int4{Int32: req.ProductID, Valid: true},
@@ -1698,7 +1687,8 @@ func (s *Server) handleAdminUpdateSale(c *gin.Context) {
 		return
 	}
 
-	adminID, _ := c.Get("admin_id")
+	admin, _ := c.Get("admin")
+	adminID := admin.(db.GetAdminByIDRow).ID
 
 	// Проверяем существование товара
 	exists, err := s.store.CheckProductExistsById(c.Request.Context(), int32(productID))
@@ -1792,7 +1782,7 @@ func (s *Server) handleAdminUpdateSale(c *gin.Context) {
 		}
 
 		params := db.CreateAdminLogParams{
-			AdminID:    adminID.(int32),
+			AdminID:    adminID,
 			Action:     "update",
 			EntityType: pgtype.Text{String: "discount", Valid: true},
 			EntityID:   pgtype.Int4{Int32: int32(productID), Valid: true},
@@ -1818,7 +1808,8 @@ func (s *Server) handleAdminDeleteSale(c *gin.Context) {
 		return
 	}
 
-	adminID, _ := c.Get("admin_id")
+	admin, _ := c.Get("admin")
+	adminID := admin.(db.GetAdminByIDRow).ID
 
 	// Проверяем, существует ли товар
 	exists, err := s.store.CheckProductExistsById(c.Request.Context(), int32(productID))
@@ -1849,7 +1840,7 @@ func (s *Server) handleAdminDeleteSale(c *gin.Context) {
 		}
 
 		params := db.CreateAdminLogParams{
-			AdminID:    adminID.(int32),
+			AdminID:    adminID,
 			Action:     "delete",
 			EntityType: pgtype.Text{String: "discount", Valid: true},
 			EntityID:   pgtype.Int4{Int32: int32(productID), Valid: true},
@@ -1885,6 +1876,7 @@ func (s *Server) handleAdminGetSales(c *gin.Context) {
 // ========== УПРАВЛЕНИЕ ЗАКАЗАМИ ==========
 
 func (s *Server) handleAdminGetOrders(c *gin.Context) {
+	fmt.Println("ssssssssssssssssssssssssssssssssssssssssssssssssss1")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	status := c.Query("status")
@@ -1898,13 +1890,12 @@ func (s *Server) handleAdminGetOrders(c *gin.Context) {
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
-	offset := (page - 1) * limit
+	// offset := (page - 1) * limit
 
 	// Подготовка параметров для GetOrdersWithFilters
 	params := db.GetOrdersWithFiltersParams{
-		LimitVal:  int32(limit),
-		OffsetVal: int32(offset),
-		SortBy:    sortBy,
+
+		SortBy: sortBy,
 	}
 
 	// Статус
@@ -1933,27 +1924,9 @@ func (s *Server) handleAdminGetOrders(c *gin.Context) {
 
 	// Тип доставки
 	if deliveryType != "" {
-		switch deliveryType {
-		case "own":
-			params.DeliveryType = db.NullDeliveryEnum{
-				DeliveryEnum: db.DeliveryEnumOwn,
-				Valid:        true,
-			}
-		case "express":
-			params.DeliveryType = db.NullDeliveryEnum{
-				DeliveryEnum: db.DeliveryEnumExpress,
-				Valid:        true,
-			}
-		case "cdek":
-			params.DeliveryType = db.NullDeliveryEnum{
-				DeliveryEnum: db.DeliveryEnumCdek,
-				Valid:        true,
-			}
-		case "curier":
-			params.DeliveryType = db.NullDeliveryEnum{
-				DeliveryEnum: db.DeliveryEnumCurier,
-				Valid:        true,
-			}
+		params.DeliveryType = pgtype.Text{
+			String: deliveryType,
+			Valid:  true,
 		}
 	}
 
@@ -1975,7 +1948,10 @@ func (s *Server) handleAdminGetOrders(c *gin.Context) {
 		countParams.Status = params.Status
 	}
 	if deliveryType != "" {
-		countParams.DeliveryType = params.DeliveryType
+		countParams.DeliveryType = db.NullDeliveryEnum{
+			DeliveryEnum: db.DeliveryEnum(deliveryType),
+			Valid:        true,
+		}
 	}
 
 	// Получаем общее количество
@@ -2000,40 +1976,76 @@ func (s *Server) handleAdminGetOrderDetails(c *gin.Context) {
 		return
 	}
 
-	// Получаем информацию о заказе
-	orderInfo, err := s.store.GetOrderInfo(c.Request.Context(), int32(orderID))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
-		return
-	}
-
-	// Получаем сам заказ
+	// Получаем заказ (основная информация)
 	order, err := s.store.GetOrderById(c.Request.Context(), int32(orderID))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 		return
 	}
 
-	// Получаем адрес доставки (может отсутствовать)
-	var address *db.GetOrderAddressByIdRow
+	// Получаем информацию о заказе (статистика)
+	orderInfo, err := s.store.GetOrderInfo(c.Request.Context(), int32(orderID))
+	if err != nil {
+		orderInfo = nil // Не критично, может отсутствовать
+	}
+
+	// Получаем адрес доставки
+	var address *gin.H
 	addr, err := s.store.GetOrderAddressById(c.Request.Context(), int32(orderID))
 	if err == nil {
-		address = &addr
+		address = &gin.H{
+			"town":        addr.Town,
+			"street":      addr.Street,
+			"region":      addr.Region,
+			"index":       addr.Index,
+			"house":       addr.House,
+			"flat":        addr.Flat,
+			"coordinates": addr.Coordinates,
+		}
 	}
 
-	// Получаем покупателя
-	var customer struct {
-		Name  string `json:"name"`
-		Email string `json:"email"`
-		Phone string `json:"phone"`
-	}
+	// Формируем данные покупателя
+	customer := gin.H{}
 
-	if order.Unregistercustomerid.Int32 != 0 && order.Unregistercustomerid.Valid {
+	if order.Customerid.Valid && order.Customerid.Int32 != 0 {
+		// Зарегистрированный покупатель
+		cust, err := s.store.GetCustomerById(c.Request.Context(), order.Customerid.Int32)
+		if err == nil {
+			customer = gin.H{
+				"id":          cust.ID,
+				"name":        cust.Name,
+				"second_name": cust.Secondname,
+				"email":       cust.Mail,
+				"phone":       cust.Phone,
+				"town":        cust.Town,
+				"street":      cust.Street,
+				"region":      cust.Region,
+				"index":       cust.Index,
+				"house":       cust.Home,
+				"flat":        cust.Flat,
+				"type":        "registered",
+			}
+		}
+	} else if order.Unregistercustomerid.Valid && order.Unregistercustomerid.Int32 != 0 {
+		// Незарегистрированный покупатель
 		unregCust, err := s.store.GetUnregisterCustomerByID(c.Request.Context(), order.Unregistercustomerid.Int32)
 		if err == nil {
-			customer.Name = unregCust.Name
-			customer.Email = unregCust.Mail
-			customer.Phone = unregCust.Phone
+			customer = gin.H{
+				"id":               unregCust.ID,
+				"name":             unregCust.Name,
+				"second_name":      unregCust.Secondname,
+				"email":            unregCust.Mail,
+				"phone":            unregCust.Phone,
+				"town":             unregCust.Town,
+				"street":           unregCust.Street,
+				"settlement":       unregCust.Settlement,
+				"region":           unregCust.Region,
+				"index":            unregCust.Index,
+				"house":            unregCust.House,
+				"flat":             unregCust.Flat,
+				"delivery_comment": unregCust.Deliverycomment,
+				"type":             "unregistered",
+			}
 		}
 	}
 
@@ -2043,34 +2055,52 @@ func (s *Server) handleAdminGetOrderDetails(c *gin.Context) {
 		items = []db.GetOrderDataByIdRow{}
 	}
 
+	// Получаем историю изменений заказа
+	history, err := s.store.GetOrderEvents(c.Request.Context(), int32(orderID))
+	if err != nil {
+		history = []db.GetOrderEventsRow{}
+	}
+
+	// Рассчитываем общую сумму и количество
+	totalAmount := 0
+	totalItems := 0
+	for _, item := range items {
+		totalAmount += int(item.Price) * int(item.Quantity)
+		totalItems += int(item.Quantity)
+	}
+
 	// Формируем ответ
 	response := gin.H{
-		"id":         orderID,
-		"hash":       order.Hash,
-		"status":     order.Status,
-		"order_date": order.Orderdate,
-		"customer":   customer,
-		"items":      items,
-		"order_info": orderInfo,
+		"id":               orderID,
+		"hash":             order.Hash,
+		"status":           order.Status,
+		"order_date":       order.Orderdate,
+		"delivery_type":    order.Deliverytype,
+		"delivery_price":   order.Deliveryprice,
+		"delivery_comment": order.Deliverycomment,
+		"total_amount":     totalAmount,
+		"items_count":      totalItems,
+		"customer":         customer,
+		"items":            items,
+		"history":          history,
+		"created_at":       order.CreatedAt,
+	}
+
+	if orderInfo != nil {
+		response["order_info"] = orderInfo
 	}
 
 	if address != nil {
-		response["address"] = gin.H{
-			"town":        address.Town,
-			"street":      address.Street,
-			"region":      address.Region,
-			"index":       address.Index,
-			"house":       address.House,
-			"flat":        address.Flat,
-			"coordinates": address.Coordinates,
-		}
+		response["address"] = *address
 	}
 
 	c.JSON(http.StatusOK, response)
 }
 
 type UpdateOrderStatusRequest struct {
-	Status string `json:"status" binding:"required,oneof=pending approved rejected"`
+	Status     string  `json:"status" binding:"required,oneof=pending approved rejected"`
+	Reason     *string `json:"reason,omitempty"`
+	ReasonCode *string `json:"reason_code,omitempty"`
 }
 
 func (s *Server) handleAdminUpdateOrderStatus(c *gin.Context) {
@@ -2086,14 +2116,37 @@ func (s *Server) handleAdminUpdateOrderStatus(c *gin.Context) {
 		return
 	}
 
-	adminID, _ := c.Get("admin_id")
+	admin, exists := c.Get("admin")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Admin not authenticated"})
+		return
+	}
+	adminData := admin.(db.GetAdminByIDRow)
 
-	// Проверяем, существует ли заказ
-	_, err = s.store.GetOrderById(c.Request.Context(), int32(orderID))
+	// Получаем заказ для проверки текущего статуса
+	order, err := s.store.GetOrderById(c.Request.Context(), int32(orderID))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 		return
 	}
+
+	// Проверяем допустимость перехода (машина состояний)
+	if !isValidStatusTransition(string(order.Status), req.Status) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("Cannot change status from '%s' to '%s'", order.Status, req.Status),
+		})
+		return
+	}
+
+	// Для отмены/отклонения reason обязателен
+	if (req.Status == "rejected") && (req.Reason == nil || *req.Reason == "") {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Reason is required for rejection",
+		})
+		return
+	}
+
+	// Определяем статус
 	var statusEnum db.StatusEnum
 	switch req.Status {
 	case "pending":
@@ -2103,11 +2156,13 @@ func (s *Server) handleAdminUpdateOrderStatus(c *gin.Context) {
 	case "rejected":
 		statusEnum = db.StatusEnumRejected
 	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Must be 'pending', 'approved', or 'rejected'"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid status. Must be 'pending', 'approved', or 'rejected'",
+		})
 		return
 	}
 
-	// Обновляем статус
+	// Обновляем статус заказа
 	err = s.store.UpdateOrderStatus(c.Request.Context(), db.UpdateOrderStatusParams{
 		OrderID: int32(orderID),
 		Status:  statusEnum,
@@ -2117,7 +2172,7 @@ func (s *Server) handleAdminUpdateOrderStatus(c *gin.Context) {
 		return
 	}
 
-	// Логируем
+	// Логируем действие и сохраняем в order_events
 	go func() {
 		ctx := context.Background()
 		var ipAddr *netip.Addr
@@ -2127,18 +2182,84 @@ func (s *Server) handleAdminUpdateOrderStatus(c *gin.Context) {
 			}
 		}
 
-		params := db.CreateAdminLogParams{
-			AdminID:    adminID.(int32),
-			Action:     "update",
+		// 1. Лог админа (для аудита)
+		details := fmt.Sprintf("Updated order %d status from %s to %s", orderID, order.Status, req.Status)
+		if req.Reason != nil && *req.Reason != "" {
+			details += fmt.Sprintf(". Reason: %s", *req.Reason)
+		}
+
+		adminLogParams := db.CreateAdminLogParams{
+			AdminID:    adminData.ID,
+			Action:     "update_status",
 			EntityType: pgtype.Text{String: "order", Valid: true},
 			EntityID:   pgtype.Int4{Int32: int32(orderID), Valid: true},
-			Details:    pgtype.Text{String: fmt.Sprintf("Updated order %d status to %s", orderID, req.Status), Valid: true},
+			Details:    pgtype.Text{String: details, Valid: true},
 			IpAddress:  ipAddr,
 		}
-		_ = s.store.CreateAdminLog(ctx, params)
+		if err := s.store.CreateAdminLog(ctx, adminLogParams); err != nil {
+			log.Printf("Failed to create admin log: %v", err)
+		}
+
+		// 2. Сохраняем в историю событий заказа
+		var reasonText pgtype.Text
+		if req.Reason != nil {
+			reasonText = pgtype.Text{String: *req.Reason, Valid: true}
+		}
+
+		var reasonCodeText pgtype.Text
+		if req.ReasonCode != nil {
+			reasonCodeText = pgtype.Text{String: *req.ReasonCode, Valid: true}
+		}
+
+		orderEventParams := db.CreateOrderEventParams{
+			OrderID:        int32(orderID),
+			EventType:      "status_change",
+			OldStatus:      pgtype.Text{String: string(order.Status), Valid: true},
+			NewStatus:      pgtype.Text{String: req.Status, Valid: true},
+			Reason:         reasonText,
+			ReasonCode:     reasonCodeText,
+			ChangedByAdmin: pgtype.Int4{Int32: adminData.ID, Valid: true},
+			ChangedByType:  "admin",
+			IpAddress:      ipAddr,
+		}
+
+		if err := s.store.CreateOrderEvent(ctx, orderEventParams); err != nil {
+			log.Printf("Failed to create order event: %v", err)
+		}
 	}()
 
-	c.JSON(http.StatusOK, gin.H{"message": "Order status updated successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Order status updated successfully",
+		"order_id":   orderID,
+		"old_status": order.Status,
+		"new_status": req.Status,
+	})
+}
+
+// Машина состояний
+func isValidStatusTransition(currentStatus, newStatus string) bool {
+	transitions := map[string][]string{
+		"pending":  {"approved", "rejected"},
+		"approved": {},
+		"rejected": {},
+	}
+
+	allowed, exists := transitions[currentStatus]
+	if !exists {
+		return false
+	}
+
+	// Если статус не меняется - разрешаем (идемпотентность)
+	if currentStatus == newStatus {
+		return true
+	}
+
+	for _, status := range allowed {
+		if status == newStatus {
+			return true
+		}
+	}
+	return false
 }
 
 // ========== УПРАВЛЕНИЕ БАННЕРАМИ ==========
@@ -2236,7 +2357,8 @@ func (s *Server) handleAdminUpdateBanner(c *gin.Context) {
 		return
 	}
 
-	adminID, _ := c.Get("admin_id")
+	admin, _ := c.Get("admin")
+	adminID := admin.(db.GetAdminByIDRow).ID
 
 	// Получаем существующий баннер
 	existingBanner, err := s.store.GetBannerByID(c.Request.Context(), int32(bannerID))
@@ -2319,7 +2441,7 @@ func (s *Server) handleAdminUpdateBanner(c *gin.Context) {
 		}
 
 		params := db.CreateAdminLogParams{
-			AdminID:    adminID.(int32),
+			AdminID:    adminID,
 			Action:     "update",
 			EntityType: pgtype.Text{String: "banner", Valid: true},
 			EntityID:   pgtype.Int4{Int32: int32(bannerID), Valid: true},
@@ -3582,38 +3704,106 @@ func (s *Server) handleAdminGetBannersAndFilters(ctx *gin.Context) {
 
 //CONSOLE
 
+// --- request_models.go ---
+
 type ExecuteSQLRequest struct {
 	Query string `json:"query" binding:"required"`
 }
 
+// Режим выполнения
+type SQLExecutionMode string
+
+const (
+	SQLModeReadOnly SQLExecutionMode = "readonly" // Только SELECT
+	SQLModeWrite    SQLExecutionMode = "write"    // INSERT/UPDATE/DELETE
+	SQLModeDDL      SQLExecutionMode = "ddl"      // CREATE/ALTER/DROP
+	SQLModeAll      SQLExecutionMode = "all"      // Всё (только суперадмин)
+)
+
+// Разрешённые таблицы для записи
+var AllowedWriteTables = map[string][]string{
+	// INSERT разрешён
+	"INSERT": {
+		"products", "product_colors", "product_categories", "product_types",
+		"brands", "brand_lines", "colors", "store_house",
+		"discount", "discount_rules", "discount_rule_items",
+		"banners", "newsletter_subscribers",
+	},
+	// UPDATE разрешён
+	"UPDATE": {
+		"products", "product_categories", "product_types",
+		"brands", "brand_lines", "colors", "store_house",
+		"discount", "discount_rules", "discount_rule_items",
+		"banners", "customers", "orders",
+	},
+	// DELETE разрешён (осторожно!)
+	"DELETE": {
+		"products", "product_colors", "store_house",
+		"discount", "discount_rule_items",
+	},
+}
+
+// Запрещённые ключевые слова (полный список)
+var ForbiddenKeywords = []string{
+	"DROP DATABASE", "DROP SCHEMA", "DROP OWNED",
+	"REVOKE", "GRANT",
+	"CREATE DATABASE", "CREATE SCHEMA",
+	"ALTER DATABASE", "ALTER SCHEMA",
+	"COPY", "\\COPY",
+	"pg_read_file", "pg_read_binary_file",
+	"pg_ls_dir", "pg_ls_waldir",
+	"lo_import", "lo_export",
+	"EXECUTE", "PREPARE",
+	"LISTEN", "NOTIFY",
+	"VACUUM", "REINDEX", "CLUSTER",
+}
+
+// Запрещённые таблицы для записи (системные + чувствительные)
+var ForbiddenWriteTables = []string{
+	"admins", "admin_logs", "admin_invites",
+	"password_resets", "customer_password_resets", "admin_password_resets",
+	"verification", "order_events",
+	"pg_", "information_schema", "pg_catalog",
+}
+
+type SQLValidationResult struct {
+	Valid       bool               `json:"valid"`
+	Mode        SQLExecutionMode   `json:"mode"`
+	Operations  []SQLOperationInfo `json:"operations"`
+	Errors      []string           `json:"errors,omitempty"`
+	Warnings    []string           `json:"warnings,omitempty"`
+	EstimatedRC int                `json:"estimatedRowCount"` // примерное количество строк
+}
+
 type SQLOperationInfo struct {
-	Type         string `json:"type"`         // INSERT, UPDATE, ON CONFLICT, CREATE, WITH (CTE), BEGIN, COMMIT
-	Table        string `json:"table"`        // таблица
-	RowsAffected int64  `json:"rowsAffected"` // затронуто строк (если есть RETURNING)
-	Status       string `json:"status"`       // success/error/skipped
-	Message      string `json:"message"`      // доп. сообщение
+	Type         string `json:"type"`
+	Table        string `json:"table"`
+	RowsAffected int64  `json:"rowsAffected,omitempty"`
+	Status       string `json:"status"`
+	Message      string `json:"message,omitempty"`
 }
 
 type ExecuteSQLResponse struct {
-	Success    bool               `json:"success"`
-	Operations []SQLOperationInfo `json:"operations"`
-	Summary    ExecuteSummary     `json:"summary"`
-	TotalTime  string             `json:"totalTime"`
-	Error      string             `json:"error,omitempty"`
+	Success    bool                `json:"success"`
+	Validation SQLValidationResult `json:"validation"`
+	Operations []SQLOperationInfo  `json:"operations"`
+	Summary    ExecuteSummary      `json:"summary"`
+	TotalTime  string              `json:"totalTime"`
+	Error      string              `json:"error,omitempty"`
 }
 
 type ExecuteSummary struct {
 	TotalQueries     int            `json:"totalQueries"`
 	Successful       int            `json:"successful"`
 	Failed           int            `json:"failed"`
-	Skipped          int            `json:"skipped"`          // ON CONFLICT DO NOTHING сработал
-	TablesAffected   map[string]int `json:"tablesAffected"`   // таблица -> количество операций
-	OperationsByType map[string]int `json:"operationsByType"` // тип -> количество
+	Skipped          int            `json:"skipped"`
+	TablesAffected   map[string]int `json:"tablesAffected"`
+	OperationsByType map[string]int `json:"operationsByType"`
 }
 
 // Выполнение SQL
 func (s *Server) handleAdminExecuteSQL(ctx *gin.Context) {
-	var req ExecuteSQLRequest
+	var req types.ExecuteSQLRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		fmt.Printf("[SQL] ❌ Неверный формат запроса: %v\n", err)
@@ -3628,187 +3818,65 @@ func (s *Server) handleAdminExecuteSQL(ctx *gin.Context) {
 		return
 	}
 
+	adminRole, _ := ctx.Get("admin_role")
+	role := adminRole.(string)
+
 	fmt.Println("========================================")
-	fmt.Println("[SQL] 🚀 НАЧАЛО ВЫПОЛНЕНИЯ SQL")
-	fmt.Printf("[SQL] Длина запроса: %d символов, %d строк\n", len(query), len(strings.Split(query, "\n")))
+	fmt.Printf("[SQL] 🚀 ВЫПОЛНЕНИЕ SQL (роль: %s)\n", role)
+	fmt.Printf("[SQL] Длина запроса: %d символов\n", len(query))
 	fmt.Println("========================================")
 
 	startTime := time.Now()
 
-	// Парсим на отдельные запросы
-	fmt.Println("[SQL] 📝 Парсинг скрипта...")
-	parsedQueries := parseSQLScript(query)
-	fmt.Printf("[SQL] ✅ Найдено %d запросов\n\n", len(parsedQueries))
+	// 1. Парсим запросы
+	parsedQueries := util.ParseSQLScript(query)
+	fmt.Printf("[SQL] 📝 Найдено %d запросов\n", len(parsedQueries))
 
-	var operations []SQLOperationInfo
-	summary := ExecuteSummary{
-		TablesAffected:   make(map[string]int),
-		OperationsByType: make(map[string]int),
+	// 2. Валидируем
+	validation := util.ValidateSQL(parsedQueries, role)
+
+	// 3. Проверяем ошибки
+	if !validation.Valid {
+		fmt.Println("[SQL] ❌ ОШИБКИ ВАЛИДАЦИИ:")
+		for _, err := range validation.Errors {
+			fmt.Printf("  - %s\n", err)
+		}
+
+		ctx.JSON(http.StatusBadRequest, types.ExecuteSQLResponse{
+			Success:    false,
+			Validation: validation,
+			Error:      "Запрос не прошёл валидацию",
+			TotalTime:  fmt.Sprintf("%.2f мс", float64(time.Since(startTime).Microseconds())/1000),
+		})
+		return
 	}
 
-	for _, pq := range parsedQueries {
-		if pq.Query == "" {
-			continue
+	// 4. Предупреждения
+	if len(validation.Warnings) > 0 {
+		fmt.Println("[SQL] ⚠️ ПРЕДУПРЕЖДЕНИЯ:")
+		for _, w := range validation.Warnings {
+			fmt.Printf("  - %s\n", w)
 		}
+	}
 
-		summary.TotalQueries++
+	// 5. Выполняем
+	operations, summary, err := util.ExecuteSQLQueries(
+		ctx.Request.Context(),
+		s.store.DB(),
+		parsedQueries,
+		validation,
+	)
 
-		upperQ := strings.ToUpper(strings.TrimSpace(pq.Query))
-		opInfo := SQLOperationInfo{
-			Message: pq.Comment,
-		}
-
-		// Определяем тип и таблицу
-		switch {
-		case strings.HasPrefix(upperQ, "INSERT"):
-			opInfo.Type = "INSERT"
-			opInfo.Table = extractTableName(pq.Query, "INSERT INTO")
-			if opInfo.Table == "" {
-				opInfo.Table = extractTableName(pq.Query, "INSERT INTO public.")
-			}
-
-		case strings.HasPrefix(upperQ, "UPDATE"):
-			opInfo.Type = "UPDATE"
-			opInfo.Table = extractTableName(pq.Query, "UPDATE")
-
-		case strings.HasPrefix(upperQ, "DELETE"):
-			opInfo.Type = "DELETE"
-			opInfo.Table = extractTableName(pq.Query, "DELETE FROM")
-
-		case strings.HasPrefix(upperQ, "WITH"):
-			opInfo.Type = "CTE"
-			afterCTE := extractAfterCTE(pq.Query)
-			if strings.HasPrefix(strings.ToUpper(afterCTE), "UPDATE") {
-				opInfo.Type = "CTE + UPDATE"
-				opInfo.Table = extractTableName(afterCTE, "UPDATE")
-			} else if strings.HasPrefix(strings.ToUpper(afterCTE), "INSERT") {
-				opInfo.Type = "CTE + INSERT"
-				opInfo.Table = extractTableName(afterCTE, "INSERT INTO")
-			} else if strings.HasPrefix(strings.ToUpper(afterCTE), "SELECT") {
-				opInfo.Type = "CTE + SELECT"
-				opInfo.Table = extractTableName(afterCTE, "FROM")
-			}
-
-		case strings.HasPrefix(upperQ, "SELECT"):
-			opInfo.Type = "SELECT"
-			opInfo.Table = extractTableName(pq.Query, "FROM")
-			if opInfo.Table == "" {
-				opInfo.Table = extractTableName(pq.Query, "JOIN")
-			}
-
-		case strings.HasPrefix(upperQ, "BEGIN"):
-			opInfo.Type = "BEGIN"
-
-		case strings.HasPrefix(upperQ, "COMMIT"):
-			opInfo.Type = "COMMIT"
-
-		case strings.HasPrefix(upperQ, "CREATE"):
-			opInfo.Type = "CREATE"
-			opInfo.Table = extractTableName(pq.Query, "CREATE TABLE")
-			if opInfo.Table == "" {
-				opInfo.Table = extractTableName(pq.Query, "CREATE INDEX")
-			}
-
-		case strings.HasPrefix(upperQ, "ALTER"):
-			opInfo.Type = "ALTER"
-			opInfo.Table = extractTableName(pq.Query, "ALTER TABLE")
-
-		case strings.HasPrefix(upperQ, "DROP"):
-			opInfo.Type = "DROP"
-			opInfo.Table = extractTableName(pq.Query, "DROP TABLE")
-
-		default:
-			opInfo.Type = "OTHER"
-		}
-
-		// Логируем запрос
-		queryPreview := pq.Query
-		if len(queryPreview) > 200 {
-			queryPreview = queryPreview[:200] + "..."
-		}
-
-		fmt.Printf("[SQL] #%d %s", summary.TotalQueries, opInfo.Type)
-		if opInfo.Table != "" {
-			fmt.Printf(" -> %s", opInfo.Table)
-		}
-		if opInfo.Message != "" {
-			fmt.Printf(" | %s", opInfo.Message)
-		}
-		fmt.Println()
-
-		queryStartTime := time.Now()
-
-		// Выполняем запрос
-		if opInfo.Type == "BEGIN" || opInfo.Type == "COMMIT" {
-			_, err := s.store.DB().Exec(ctx, pq.Query)
-			if err != nil {
-				opInfo.Status = "error"
-				opInfo.Message = err.Error()
-				summary.Failed++
-				fmt.Printf("  ❌ Ошибка %s: %v (за %v)\n", opInfo.Type, err, time.Since(queryStartTime))
-			} else {
-				opInfo.Status = "success"
-				summary.Successful++
-				fmt.Printf("  ✅ %s выполнен (за %v)\n", opInfo.Type, time.Since(queryStartTime))
-			}
-		} else if strings.Contains(upperQ, "RETURNING") || strings.HasPrefix(upperQ, "SELECT") || opInfo.Type == "CTE + SELECT" {
-			rows, err := s.store.DB().Query(ctx, pq.Query)
-			if err != nil {
-				opInfo.Status = "error"
-				opInfo.Message = err.Error()
-				summary.Failed++
-				fmt.Printf("  ❌ Ошибка SELECT: %v (за %v)\n", err, time.Since(queryStartTime))
-			} else {
-				count := 0
-				for rows.Next() {
-					count++
-				}
-				rows.Close()
-				opInfo.Status = "success"
-				opInfo.RowsAffected = int64(count)
-				summary.Successful++
-				fmt.Printf("  ✅ SELECT вернул %d строк (за %v)\n", count, time.Since(queryStartTime))
-			}
-		} else {
-			result, err := s.store.DB().Exec(ctx, pq.Query)
-			if err != nil {
-				opInfo.Status = "error"
-				opInfo.Message = err.Error()
-				summary.Failed++
-				fmt.Printf("  ❌ Ошибка: %v (за %v)\n", err, time.Since(queryStartTime))
-			} else {
-				rowsAffected := result.RowsAffected()
-				opInfo.RowsAffected = rowsAffected
-
-				if rowsAffected == 0 && strings.Contains(upperQ, "ON CONFLICT") && strings.Contains(upperQ, "DO NOTHING") {
-					opInfo.Status = "skipped"
-					opInfo.Message = "Уже существует (ON CONFLICT DO NOTHING)"
-					summary.Skipped++
-					fmt.Printf("  ⏭️ Пропущено (уже существует) за %v\n", time.Since(queryStartTime))
-				} else if rowsAffected == 0 {
-					opInfo.Status = "success"
-					opInfo.Message = "Затронуто 0 строк"
-					summary.Successful++
-					fmt.Printf("  ✅ Выполнено (0 строк) за %v\n", time.Since(queryStartTime))
-				} else {
-					opInfo.Status = "success"
-					summary.Successful++
-					fmt.Printf("  ✅ Выполнено (%d строк) за %v\n", rowsAffected, time.Since(queryStartTime))
-				}
-			}
-		}
-
-		if opInfo.Table != "" {
-			summary.TablesAffected[opInfo.Table]++
-		}
-		summary.OperationsByType[opInfo.Type]++
-
-		operations = append(operations, opInfo)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Ошибка выполнения SQL: " + err.Error(),
+		})
+		return
 	}
 
 	elapsed := time.Since(startTime)
 
-	// Итоги
+	// 6. Итоги в консоль
 	fmt.Println("\n========================================")
 	fmt.Println("[SQL] 📊 ИТОГИ ВЫПОЛНЕНИЯ")
 	fmt.Println("========================================")
@@ -3817,24 +3885,28 @@ func (s *Server) handleAdminExecuteSQL(ctx *gin.Context) {
 	fmt.Printf("  ❌ Ошибок:          %d\n", summary.Failed)
 	fmt.Printf("  ⏭️ Пропущено:       %d\n", summary.Skipped)
 	fmt.Printf("  ⏱️ Общее время:     %v\n", elapsed)
-	fmt.Println("----------------------------------------")
-	fmt.Println("  По таблицам:")
-	for table, count := range summary.TablesAffected {
-		fmt.Printf("    %s: %d операций\n", table, count)
-	}
-	fmt.Println("----------------------------------------")
-	fmt.Println("  По типам операций:")
-	for opType, count := range summary.OperationsByType {
-		fmt.Printf("    %s: %d\n", opType, count)
+	if len(summary.TablesAffected) > 0 {
+		fmt.Println("  По таблицам:")
+		for table, count := range summary.TablesAffected {
+			fmt.Printf("    %s: %d операций\n", table, count)
+		}
 	}
 	fmt.Println("========================================\n")
 
-	ctx.JSON(http.StatusOK, ExecuteSQLResponse{
+	response := types.ExecuteSQLResponse{
 		Success:    summary.Failed == 0,
+		Validation: validation,
 		Operations: operations,
 		Summary:    summary,
-		TotalTime:  fmt.Sprintf("%.2f ms", float64(elapsed.Microseconds())/1000),
-	})
+		TotalTime:  fmt.Sprintf("%.2f мс", float64(elapsed.Microseconds())/1000),
+	}
+
+	if summary.Failed > 0 {
+		response.Error = fmt.Sprintf("%d из %d запросов завершились с ошибкой",
+			summary.Failed, summary.TotalQueries)
+	}
+
+	ctx.JSON(http.StatusOK, response)
 }
 
 // Парсинг SQL скрипта на отдельные запросы

@@ -1,7 +1,7 @@
 import React, { ReactElement, useEffect, useRef, useState, memo } from 'react'
 import MerchBlock from "./MerchBlock"
 import s from "./style.module.css"
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { toPrice } from 'src/global';
 
 interface merchInterface { 
@@ -16,10 +16,10 @@ interface merchInterface {
 
 const MerchFormBlock: React.FC<{ data: merchInterface, onChange: () => void }> = (props) => {
     const { data, onChange } = props;
-    const navigate = useNavigate();
+    const router = useRouter();
 
     const handleClick = () => {
-        navigate('/product/' + data.id);
+        router.push('/product/' + data.id);
     };
 
     return (

@@ -15,7 +15,7 @@ type merchType = {
 const PricesBlock: React.FC<merchType> = (props) => {
     const { price, size, active, id, onChange, discount, in_stock } = props
     
-    const finalPrice = discount ? discount : price;
+    const finalPrice = discount ? price - price*discount/100 : price;
     const hasDiscount = discount && discount > 0;
 
     return (
@@ -38,7 +38,7 @@ const PricesBlock: React.FC<merchType> = (props) => {
 
             {hasDiscount && (
                 <div className={s.discountLabel}>
-                    -{toPrice(price - discount)}
+                    -{toPrice(price *discount/100)}
                 </div>
             )}
 

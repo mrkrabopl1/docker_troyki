@@ -41,7 +41,6 @@ const ImagePresentationBlock: React.FC<IconProps> = ({
             onMouseOver={handleMouseOver}
             onMouseOut={handleMouseOut}
             className={s.imageContainer}
-            style={{ height: "100%" }}
             role="button"
             aria-label="Image presentation block"
         >

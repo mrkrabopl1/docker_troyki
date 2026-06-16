@@ -899,6 +899,556 @@ LIMIT CASE
         WHEN @offsetVal::integer > 0 THEN @offsetVal::integer
         ELSE 0
     END;
+
+
+
+-- ============================================================
+-- ПАГИНАЦИЯ (варианты)
+-- ============================================================
+
+-- name: GetProductsByFiltersPaginateBase :many
+-- Самый лёгкий – без скидок, без склада
+SELECT p.id, p.name, p.image_path,
+       b.name as firm,
+       p.minprice, p.maxprice, p.status
+FROM products p
+JOIN brands b ON p.brand_id = b.id
+WHERE (
+        COALESCE(array_length(@sizes::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY(@sizes::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        @status::text IS NULL OR @status::text = '' OR p.status = @status::text
+    )
+    AND (
+        @name::text IS NULL OR @name::text = ''
+        OR p.name ILIKE '%' || @name::text || '%'
+        OR p.article ILIKE '%' || @name::text || '%'
+    )
+    AND (
+        COALESCE(array_length(@categories::int[], 1), 0) = 0
+        OR p.category = ANY(@categories::int[])
+    )
+    AND (
+        COALESCE(array_length(@product_types::int[], 1), 0) = 0
+        OR p.type = ANY(@product_types::int[])
+    )
+    AND (
+        COALESCE(array_length(@firms::int[], 1), 0) = 0
+        OR p.brand_id = ANY(@firms::int[])
+    )
+    AND (
+        COALESCE(array_length(@lines::int[], 1), 0) = 0
+        OR p.line_id = ANY(@lines::int[])
+    )
+    AND (
+        COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
+        OR p.bodytype = ANY(@bodytypes::body_enum[])
+    )
+    AND (
+        sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
+    )
+    AND (
+        sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
+    )
+    AND (
+        @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
+    )
+ORDER BY
+    CASE WHEN @sort_type::int = 1 THEN p.name END ASC,
+    CASE WHEN @sort_type::int = 2 THEN p.name END DESC,
+    CASE WHEN @sort_type::int = 3 THEN p.minprice END ASC,
+    CASE WHEN @sort_type::int = 4 THEN p.minprice END DESC,
+    CASE WHEN @sort_type::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    p.id ASC
+LIMIT CASE WHEN @limitval::integer > 0 THEN @limitval::integer ELSE 50 END
+OFFSET CASE WHEN @offsetval::integer > 0 THEN @offsetval::integer ELSE 0 END;
+
+-- name: GetProductsByFiltersPaginateWithDiscount :many
+-- Только со скидками (LATERAL + discount)
+SELECT p.id, p.name, p.image_path,
+       b.name as firm,
+       p.minprice, p.maxprice, p.status,
+       COALESCE(d.maxdiscprice, 0) as maxdiscprice,
+       COALESCE(dr.discount_value, 0) as discount_percent
+FROM products p
+JOIN brands b ON p.brand_id = b.id
+LEFT JOIN discount d ON p.id = d.productid
+LEFT JOIN LATERAL (
+    SELECT dr2.discount_value, dr2.name
+    FROM discount_rule_items dri
+    JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+        AND dr2.is_active = true
+        AND dr2.starts_at <= NOW()
+        AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+    WHERE (
+            (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+         OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+         OR (dri.item_type = 'product' AND dri.item_id = p.id)
+        )
+        AND d.id IS NULL
+    ORDER BY dr2.priority DESC
+    LIMIT 1
+) dr ON true
+WHERE (
+        COALESCE(array_length(@sizes::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY(@sizes::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        @status::text IS NULL OR @status::text = '' OR p.status = @status::text
+    )
+    AND (
+        @name::text IS NULL OR @name::text = ''
+        OR p.name ILIKE '%' || @name::text || '%'
+        OR p.article ILIKE '%' || @name::text || '%'
+    )
+    AND (
+        COALESCE(array_length(@categories::int[], 1), 0) = 0
+        OR p.category = ANY(@categories::int[])
+    )
+    AND (
+        COALESCE(array_length(@product_types::int[], 1), 0) = 0
+        OR p.type = ANY(@product_types::int[])
+    )
+    AND (
+        COALESCE(array_length(@firms::int[], 1), 0) = 0
+        OR p.brand_id = ANY(@firms::int[])
+    )
+    AND (
+        COALESCE(array_length(@lines::int[], 1), 0) = 0
+        OR p.line_id = ANY(@lines::int[])
+    )
+    AND (
+        COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
+        OR p.bodytype = ANY(@bodytypes::body_enum[])
+    )
+    AND (
+        sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
+    )
+    AND (
+        sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
+    )
+    AND (
+        @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
+    )
+    -- фильтр по скидкам всегда активен, поэтому проверяем наличие
+    AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL)
+ORDER BY
+    CASE WHEN @sort_type::int = 1 THEN p.name END ASC,
+    CASE WHEN @sort_type::int = 2 THEN p.name END DESC,
+    CASE WHEN @sort_type::int = 3 THEN p.minprice END ASC,
+    CASE WHEN @sort_type::int = 4 THEN p.minprice END DESC,
+    CASE WHEN @sort_type::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    p.id ASC
+LIMIT CASE WHEN @limitval::integer > 0 THEN @limitval::integer ELSE 50 END
+OFFSET CASE WHEN @offsetval::integer > 0 THEN @offsetval::integer ELSE 0 END;
+
+-- name: GetProductsByFiltersPaginateWithStore :many
+-- Только со складом
+SELECT p.id, p.name, p.image_path,
+       b.name as firm,
+       p.minprice, p.maxprice, p.status,
+       (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
+FROM products p
+JOIN brands b ON p.brand_id = b.id
+LEFT JOIN store_house sh ON p.id = sh.productid
+WHERE (
+        COALESCE(array_length(@sizes::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY(@sizes::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        @status::text IS NULL OR @status::text = '' OR p.status = @status::text
+    )
+    AND (
+        @name::text IS NULL OR @name::text = ''
+        OR p.name ILIKE '%' || @name::text || '%'
+        OR p.article ILIKE '%' || @name::text || '%'
+    )
+    AND (
+        COALESCE(array_length(@categories::int[], 1), 0) = 0
+        OR p.category = ANY(@categories::int[])
+    )
+    AND (
+        COALESCE(array_length(@product_types::int[], 1), 0) = 0
+        OR p.type = ANY(@product_types::int[])
+    )
+    AND (
+        COALESCE(array_length(@firms::int[], 1), 0) = 0
+        OR p.brand_id = ANY(@firms::int[])
+    )
+    AND (
+        COALESCE(array_length(@lines::int[], 1), 0) = 0
+        OR p.line_id = ANY(@lines::int[])
+    )
+    AND (
+        COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
+        OR p.bodytype = ANY(@bodytypes::body_enum[])
+    )
+    AND (
+        sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
+    )
+    AND (
+        sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
+    )
+    AND (
+        @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
+    )
+    AND (sh.id IS NOT NULL AND sh.quantity > 0)
+ORDER BY
+    CASE WHEN @sort_type::int = 1 THEN p.name END ASC,
+    CASE WHEN @sort_type::int = 2 THEN p.name END DESC,
+    CASE WHEN @sort_type::int = 3 THEN p.minprice END ASC,
+    CASE WHEN @sort_type::int = 4 THEN p.minprice END DESC,
+    CASE WHEN @sort_type::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    p.id ASC
+LIMIT CASE WHEN @limitval::integer > 0 THEN @limitval::integer ELSE 50 END
+OFFSET CASE WHEN @offsetval::integer > 0 THEN @offsetval::integer ELSE 0 END;
+
+-- name: GetProductsByFiltersPaginateFull :many
+-- Всё вместе: и скидки, и склад
+SELECT p.id, p.name, p.image_path,
+       b.name as firm,
+       p.minprice, p.maxprice, p.status,
+       COALESCE(d.maxdiscprice, 0) as maxdiscprice,
+       COALESCE(dr.discount_value, 0) as discount_percent,
+       (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
+FROM products p
+JOIN brands b ON p.brand_id = b.id
+LEFT JOIN discount d ON p.id = d.productid
+LEFT JOIN store_house sh ON p.id = sh.productid
+LEFT JOIN LATERAL (
+    SELECT dr2.discount_value, dr2.name
+    FROM discount_rule_items dri
+    JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+        AND dr2.is_active = true
+        AND dr2.starts_at <= NOW()
+        AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+    WHERE (
+            (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+         OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+         OR (dri.item_type = 'product' AND dri.item_id = p.id)
+        )
+        AND d.id IS NULL
+    ORDER BY dr2.priority DESC
+    LIMIT 1
+) dr ON true
+WHERE (
+        COALESCE(array_length(@sizes::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY(@sizes::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        @status::text IS NULL OR @status::text = '' OR p.status = @status::text
+    )
+    AND (
+        @name::text IS NULL OR @name::text = ''
+        OR p.name ILIKE '%' || @name::text || '%'
+        OR p.article ILIKE '%' || @name::text || '%'
+    )
+    AND (
+        COALESCE(array_length(@categories::int[], 1), 0) = 0
+        OR p.category = ANY(@categories::int[])
+    )
+    AND (
+        COALESCE(array_length(@product_types::int[], 1), 0) = 0
+        OR p.type = ANY(@product_types::int[])
+    )
+    AND (
+        COALESCE(array_length(@firms::int[], 1), 0) = 0
+        OR p.brand_id = ANY(@firms::int[])
+    )
+    AND (
+        COALESCE(array_length(@lines::int[], 1), 0) = 0
+        OR p.line_id = ANY(@lines::int[])
+    )
+    AND (
+        COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
+        OR p.bodytype = ANY(@bodytypes::body_enum[])
+    )
+    AND (
+        sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
+    )
+    AND (
+        sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
+    )
+    AND (
+        @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
+    )
+    AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL)  -- скидка
+    AND (sh.id IS NOT NULL AND sh.quantity > 0)              -- склад
+ORDER BY
+    CASE WHEN @sort_type::int = 1 THEN p.name END ASC,
+    CASE WHEN @sort_type::int = 2 THEN p.name END DESC,
+    CASE WHEN @sort_type::int = 3 THEN p.minprice END ASC,
+    CASE WHEN @sort_type::int = 4 THEN p.minprice END DESC,
+    CASE WHEN @sort_type::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    p.id ASC
+LIMIT CASE WHEN @limitval::integer > 0 THEN @limitval::integer ELSE 50 END
+OFFSET CASE WHEN @offsetval::integer > 0 THEN @offsetval::integer ELSE 0 END;
+
+-- ============================================================
+-- COUNT (варианты)
+-- ============================================================
+
+-- name: CountProductsByFiltersBase :one
+SELECT COUNT(*)
+FROM products p
+WHERE (
+        COALESCE(array_length(@sizes::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY(@sizes::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        @status::text IS NULL OR @status::text = '' OR p.status = @status::text
+    )
+    AND (
+        @name::text IS NULL OR @name::text = ''
+        OR p.name ILIKE '%' || @name::text || '%'
+        OR p.article ILIKE '%' || @name::text || '%'
+    )
+    AND (
+        COALESCE(array_length(@categories::int[], 1), 0) = 0
+        OR p.category = ANY(@categories::int[])
+    )
+    AND (
+        COALESCE(array_length(@product_types::int[], 1), 0) = 0
+        OR p.type = ANY(@product_types::int[])
+    )
+    AND (
+        COALESCE(array_length(@firms::int[], 1), 0) = 0
+        OR p.brand_id = ANY(@firms::int[])
+    )
+    AND (
+        COALESCE(array_length(@lines::int[], 1), 0) = 0
+        OR p.line_id = ANY(@lines::int[])
+    )
+    AND (
+        COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
+        OR p.bodytype = ANY(@bodytypes::body_enum[])
+    )
+    AND (
+        sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
+    )
+    AND (
+        sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
+    )
+    AND (
+        @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
+    );
+
+-- name: CountProductsByFiltersWithDiscount :one
+SELECT COUNT(*)
+FROM products p
+WHERE (
+        COALESCE(array_length(@sizes::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY(@sizes::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        @status::text IS NULL OR @status::text = '' OR p.status = @status::text
+    )
+    AND (
+        @name::text IS NULL OR @name::text = ''
+        OR p.name ILIKE '%' || @name::text || '%'
+        OR p.article ILIKE '%' || @name::text || '%'
+    )
+    AND (
+        COALESCE(array_length(@categories::int[], 1), 0) = 0
+        OR p.category = ANY(@categories::int[])
+    )
+    AND (
+        COALESCE(array_length(@product_types::int[], 1), 0) = 0
+        OR p.type = ANY(@product_types::int[])
+    )
+    AND (
+        COALESCE(array_length(@firms::int[], 1), 0) = 0
+        OR p.brand_id = ANY(@firms::int[])
+    )
+    AND (
+        COALESCE(array_length(@lines::int[], 1), 0) = 0
+        OR p.line_id = ANY(@lines::int[])
+    )
+    AND (
+        COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
+        OR p.bodytype = ANY(@bodytypes::body_enum[])
+    )
+    AND (
+        sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
+    )
+    AND (
+        sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
+    )
+    AND (
+        @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
+    )
+    AND (
+        EXISTS (
+            SELECT 1 FROM discount d WHERE d.productid = p.id
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM discount_rule_items dri
+            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+               OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+               OR (dri.item_type = 'product' AND dri.item_id = p.id)
+        )
+    );
+
+-- name: CountProductsByFiltersWithStore :one
+SELECT COUNT(*)
+FROM products p
+WHERE (
+        COALESCE(array_length(@sizes::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY(@sizes::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        @status::text IS NULL OR @status::text = '' OR p.status = @status::text
+    )
+    AND (
+        @name::text IS NULL OR @name::text = ''
+        OR p.name ILIKE '%' || @name::text || '%'
+        OR p.article ILIKE '%' || @name::text || '%'
+    )
+    AND (
+        COALESCE(array_length(@categories::int[], 1), 0) = 0
+        OR p.category = ANY(@categories::int[])
+    )
+    AND (
+        COALESCE(array_length(@product_types::int[], 1), 0) = 0
+        OR p.type = ANY(@product_types::int[])
+    )
+    AND (
+        COALESCE(array_length(@firms::int[], 1), 0) = 0
+        OR p.brand_id = ANY(@firms::int[])
+    )
+    AND (
+        COALESCE(array_length(@lines::int[], 1), 0) = 0
+        OR p.line_id = ANY(@lines::int[])
+    )
+    AND (
+        COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
+        OR p.bodytype = ANY(@bodytypes::body_enum[])
+    )
+    AND (
+        sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
+    )
+    AND (
+        sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
+    )
+    AND (
+        @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
+    )
+    AND EXISTS (
+        SELECT 1 FROM store_house sh
+        WHERE sh.productid = p.id AND sh.quantity > 0
+    );
+
+-- name: CountProductsByFiltersFull :one
+SELECT COUNT(*)
+FROM products p
+WHERE (
+        COALESCE(array_length(@sizes::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY(@sizes::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        @status::text IS NULL OR @status::text = '' OR p.status = @status::text
+    )
+    AND (
+        @name::text IS NULL OR @name::text = ''
+        OR p.name ILIKE '%' || @name::text || '%'
+        OR p.article ILIKE '%' || @name::text || '%'
+    )
+    AND (
+        COALESCE(array_length(@categories::int[], 1), 0) = 0
+        OR p.category = ANY(@categories::int[])
+    )
+    AND (
+        COALESCE(array_length(@product_types::int[], 1), 0) = 0
+        OR p.type = ANY(@product_types::int[])
+    )
+    AND (
+        COALESCE(array_length(@firms::int[], 1), 0) = 0
+        OR p.brand_id = ANY(@firms::int[])
+    )
+    AND (
+        COALESCE(array_length(@lines::int[], 1), 0) = 0
+        OR p.line_id = ANY(@lines::int[])
+    )
+    AND (
+        COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
+        OR p.bodytype = ANY(@bodytypes::body_enum[])
+    )
+    AND (
+        sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
+    )
+    AND (
+        sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
+    )
+    AND (
+        @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
+    )
+    AND (
+        EXISTS (
+            SELECT 1 FROM discount d WHERE d.productid = p.id
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM discount_rule_items dri
+            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+               OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+               OR (dri.item_type = 'product' AND dri.item_id = p.id)
+        )
+    )
+    AND EXISTS (
+        SELECT 1 FROM store_house sh
+        WHERE sh.productid = p.id AND sh.quantity > 0
+    );
+
 -- name: DeleteDiscount :exec
 DELETE FROM discount
 WHERE productid = $1;

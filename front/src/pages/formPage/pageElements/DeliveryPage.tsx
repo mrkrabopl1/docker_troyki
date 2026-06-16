@@ -1,5 +1,4 @@
 import React, { ReactElement, useCallback, useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom';
 import s from "../style.module.css"
 import DeliveryTypeRadioGroup from './DeliveryTypeRadio';
 import DataField from 'src/components/dataField/DataField';

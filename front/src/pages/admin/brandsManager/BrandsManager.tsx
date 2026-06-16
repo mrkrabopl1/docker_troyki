@@ -1,6 +1,6 @@
 // src/pages/admin/BrandsManager/AdminBrandsManager.tsx
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import Button from 'src/components/Button';
 import Modal from 'src/components/modal/Modal';
 import SearchWithList from 'src/modules/searchWithList/SearchWithList';
@@ -9,6 +9,8 @@ import DiscountManager from 'src/modules/admin/discountManager/DiscountManager';
 import s from './style.module.css';
 import Combobox from 'src/components/combobox/Combobox';
 import NumInput from 'src/components/input/NumInput';
+import { finishLoading } from 'src/store/reducers/loadingSlice'
+import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
 import {
     updateBrandData,
     getBrandsStats,
@@ -25,8 +27,8 @@ type BulkAction = 'none' | 'discount' | 'sort_order' | 'active';
 type SelectMode = 'none' | 'page' | 'all';
 
 const AdminBrandsManager: React.FC = () => {
-    const navigate = useNavigate();
-
+    const router = useRouter();
+    const dispatch = useAppDispatch();
     const [brands, setBrands] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -84,6 +86,7 @@ const AdminBrandsManager: React.FC = () => {
             if (sortType > 0) params.append('sortType', sortType.toString());
 
             const data = await getBrandsStats(params);
+            dispatch(finishLoading());
             setBrands(data.brands || data || []);
             setTotalBrands(data.total_count || 0);
             activeCount.current = data.active_count || 0;
@@ -486,10 +489,10 @@ const AdminBrandsManager: React.FC = () => {
                                             />
                                         </td>
                                     )}
-                                    <td data-label="Фото" className={s.imageCell} onClick={() => !bulkMode && navigate("/admin/brands/" + brand.id)} style={{ cursor: bulkMode ? 'default' : 'pointer' }}>
+                                    <td data-label="Фото" className={s.imageCell} onClick={() => !bulkMode && router.push("/admin/brands/" + brand.id)} style={{ cursor: bulkMode ? 'default' : 'pointer' }}>
                                         {brand.image_path ? <img src={brand.image_path} alt={brand.name} /> : <div className={s.noImage}>—</div>}
                                     </td>
-                                    <td data-label="Название" className={s.nameCell} onClick={() => !bulkMode && navigate("/admin/brands/" + brand.id)} style={{ cursor: bulkMode ? 'default' : 'pointer' }}>
+                                    <td data-label="Название" className={s.nameCell} onClick={() => !bulkMode && router.push("/admin/brands/" + brand.id)} style={{ cursor: bulkMode ? 'default' : 'pointer' }}>
                                         <div className={s.brandName}>{brand.name}</div>
                                     </td>
                                     <td data-label="Страна">{brand.country || '—'}</td>

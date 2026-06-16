@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useState, useCallback, lazy, memo } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useRouter } from 'next/router';
 import { getUserData, unlogin } from 'src/providers/userProvider'
 import UserForm from 'src/modules/sendForm/UserForm'
 import { useAppDispatch } from 'src/store/hooks/redux'
@@ -46,9 +46,8 @@ const UserTabs = memo(({
 ))
 
 const User: React.FC = () => {
-  const { login } = useParams<UrlParamsType>()
+   const router = useRouter()
   const dispatch = useAppDispatch()
-  const navigate = useNavigate()
 
   const [tab, setTab] = useState(0)
   const [userVal, setUserVal] = useState<UserValType>({
@@ -65,10 +64,10 @@ const User: React.FC = () => {
       if (data) {
         setUserVal(prev => ({ ...prev, ...data }))
       } else {
-        navigate("/main")
+        router.push("/main")
       }
     })
-  }, [navigate])
+  }, [router])
 
   const handleTabChange = useCallback((tabIndex: number) => {
     setTab(tabIndex)
@@ -76,10 +75,10 @@ const User: React.FC = () => {
 
   const handleLogout = useCallback(() => {
     unlogin(() => {
-      navigate("/")
+      router.push("/")
       dispatch(verified(false))
     })
-  }, [dispatch, navigate])
+  }, [dispatch, router])
 
   const renderTabContent = useCallback(() => {
     switch (tab) {

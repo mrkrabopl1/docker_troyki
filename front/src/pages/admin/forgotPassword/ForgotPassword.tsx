@@ -1,12 +1,12 @@
 // pages/admin/ForgotPassword/ForgotPassword.tsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { requestPasswordReset } from 'src/providers/adminAuth';
 import ForgotPasswordForm from 'src/modules/loginForm/ForgotPasswordForm';
 import s from './style.module.css';
 
 const AdminForgotPassword: React.FC = () => {
-    const navigate = useNavigate();
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +34,7 @@ const AdminForgotPassword: React.FC = () => {
                     isLoading={isLoading}
                     error={error}
                     onSubmit={handleSubmit}
-                    onBack={() => navigate('/admin/login')}
+                    onBack={() => router.push('/admin/login')}
                 />
             </div>
             
