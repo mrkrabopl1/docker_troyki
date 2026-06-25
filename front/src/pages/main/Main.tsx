@@ -72,14 +72,12 @@ useEffect(() => {
 
 
 const handleMainPageInfo = useMemo(() => {
-  const val = categoriesVal();
-  if (Object.keys(val).length === 0) return [];
   return Object.entries(mainData.pageInfo).map(([key, value]: [string, any]) => (
     <MerchSliderField
       key={key}
-      name={val[key].name}
+      name={value.name}
       merchInfo={value.products}
-      onClick={() => router.push(`/search?category=${val[key].enum}&type=""`)}
+      onClick={() => router.push(`/search?${value.link_url}&type=""`)}
     />
   ));
 }, [mainData.pageInfo, categories, router]);  

@@ -4,8 +4,8 @@ import CheckBoxColumn from 'src/components/checkBoxForm/CheckBoxForm';
 import SearchableCheckboxColumn from 'src/modules/columnWithSerch/SearchableCheckboxColumn';
 import ZoneSliderValueSetter from 'src/modules/sliderValueSetter/ZoneSliderValueSetter';
 import DatePicker from 'src/components/input/DatePicker';
-import Combobox from 'src/components/combobox/Combobox';
 import s from './style.module.css';
+import {CheckBoxType} from 'src/types/modules';
 
 interface PriceProps {
     max: number;
@@ -15,16 +15,11 @@ interface PriceProps {
     onChange?: (arg: any) => void;
 }
 
-interface CheckBoxType {
-    enable: boolean;
-    activeData: boolean;
-    name: string;
-}
-
+// Теперь props — это массив CheckBoxType с полем id
 interface CheckboxProps {
     name: string;
     id: string;
-    props: any;
+    props: CheckBoxType[];
 }
 
 interface TimeProps {
@@ -33,20 +28,11 @@ interface TimeProps {
     value: string;
 }
 
-interface DiscountProps {
-    options: Record<string, string>; // ключ -> отображаемое название
-    currentKey: string;              // выбранный ключ
-    placeholder?: string;
-    label?: string;
-}
-
 interface ProductsFiltersProps {
     priceProps: PriceProps;
     checboxsProps: CheckboxProps[];
     soloDataProps: CheckBoxType[];
     timeProps?: TimeProps[];
-    discountProps?: DiscountProps;   // новый проп для выбора скидки
-    memo?: boolean;
     onChange?: (arg: { id: string; data: any }) => void;
     classNames?: {
         secondPage?: string;
@@ -60,14 +46,13 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
     checboxsProps,
     soloDataProps,
     timeProps,
-    discountProps
 }) => {
     const handlePriceChange = useCallback((data: any) => {
         onChange?.({ id: "price", data });
     }, [onChange]);
 
     const handleCheckboxChange = useCallback((id: string, data: any) => {
-        onChange?.({ id, data });
+        onChange?.({ id, data }); // data — массив id
     }, [onChange]);
 
     const handlSoloDataChange = useCallback((id: string, data: any) => {
@@ -76,10 +61,6 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
 
     const handleTimeChange = useCallback((id: string, data: any) => {
         onChange?.({ id, data });
-    }, [onChange]);
-
-    const handleDiscountChange = useCallback((key: string) => {
-        onChange?.({ id: "discount_rule", data: key });
     }, [onChange]);
 
     const renderCheckboxGroup = useCallback((checkboxProps: CheckboxProps) => (
@@ -113,24 +94,6 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
         </div>
     ), [handleTimeChange]);
 
-    const renderDiscount = useCallback(() => {
-        if (!discountProps) return null;
-        const { options, currentKey, placeholder, label = "Скидка" } = discountProps;
-        return (
-            <div style={{ padding: "5px" }}>
-                <DoubleInfoDrop info={label}>
-                    <Combobox
-                        data={options}
-                        currentIndex={currentKey}
-                        onChangeIndex={handleDiscountChange}
-                        width="100%"
-                        placeholder={placeholder || "Выберите условие"}
-                    />
-                </DoubleInfoDrop>
-            </div>
-        );
-    }, [discountProps, handleDiscountChange]);
-
     return (
         <div onScroll={(e) => e.stopPropagation()} className={s.wrapper}>
             {soloDataProps && (
@@ -141,7 +104,6 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
                     />
                 </div>
             )}
-            {renderDiscount()}
             {renderTimeGroup(timeProps)}
             <div style={{ padding: "5px" }}>
                 <DoubleInfoDrop info="Цена">

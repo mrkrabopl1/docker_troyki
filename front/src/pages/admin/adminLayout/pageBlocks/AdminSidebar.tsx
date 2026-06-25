@@ -60,11 +60,14 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, isMobile, onClose }
                     </NavLink>
                 )}
 
-                <NavLink href="/admin/sales">
+                <NavLink href="/admin/discount-manager">
                     <span className={s.icon}>💰</span>
                     Скидки
                 </NavLink>
-
+                <NavLink href="/admin/page-blocks">
+                    <span className={s.icon}>🧩</span>
+                    Блоки страниц
+                </NavLink>
                 <NavLink href="/admin/brands">
                     <span className={s.icon}>🏷️</span>
                     Бренды

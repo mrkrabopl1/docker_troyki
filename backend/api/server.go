@@ -129,7 +129,7 @@ func (s *Server) setupRouter() {
 	router.POST("/verifyChangePass", s.handleVerifyForgetPass)
 	router.POST("/changeForgetPass", s.handleChangeForgetPass)
 	router.POST("/getDataByCategoriesAndFilters", s.handleSearchProductByCategoriesAndFilters)
-	router.GET("/getMainPage", s.handleGetMainPageInfo)
+	router.GET("/getMainPage", s.handleGetMainPage)
 	router.GET("/getMainInfo", s.handleGetMainInfo)
 	router.GET("/checkCustomerData", s.handleCheckCustomerData)
 
@@ -189,6 +189,12 @@ func (s *Server) setupRouter() {
 		adminGroup.POST("/banners", s.handleAdminCreateBanner)
 		adminGroup.PUT("/banners/:id", s.handleAdminUpdateBanner)
 		adminGroup.DELETE("/banners/:id", s.handleAdminDeleteBanner)
+
+		adminGroup.GET("/page-blocks", s.handleAdminGetPageWidgets)
+		adminGroup.POST("/page-blocks", s.handleAdminCreatePageWidget)
+		adminGroup.PUT("/page-blocks/:id", s.handleAdminUpdatePageWidget)
+		adminGroup.DELETE("/page-blocks/:id", s.handleAdminDeletePageWidget)
+		adminGroup.PATCH("/page-blocks/reorder", s.handleAdminReorderPageWidgets)
 
 		discountRules := adminGroup.Group("/discount-rules")
 		{

@@ -271,7 +271,10 @@ WHERE (
     );
 -- name: GetFiltersByNameCategoryAndType :one
 WITH product_data AS (
-    SELECT p.id as global_id,
+    SELECT
+        p.id as global_id,
+        p.brand_id,
+        p.line_id,
         b.name as firm,
         p.minprice,
         p.maxprice,
@@ -279,90 +282,89 @@ WITH product_data AS (
         p.bodytype,
         p.type as product_type_id
     FROM products p
-        JOIN brands b ON p.brand_id = b.id
-        AND b.is_active = true
+    JOIN brands b ON p.brand_id = b.id AND b.is_active = true
     WHERE p.status = 'active'
-        AND (
-            sqlc.narg('type')::int IS NULL
-            OR p.type = sqlc.narg('type')::int
-        )
-        AND (
-            sqlc.narg('category')::int IS NULL
-            OR p.category = sqlc.narg('category')
-        )
-        AND (
-            sqlc.narg('name')::text IS NULL
-            OR p.name ILIKE '%' || sqlc.narg('name')::text || '%'
-        )
+        AND (sqlc.narg('type')::int IS NULL OR p.type = sqlc.narg('type')::int)
+        AND (sqlc.narg('category')::int IS NULL OR p.category = sqlc.narg('category'))
+        AND (sqlc.narg('name')::text IS NULL OR p.name ILIKE '%' || sqlc.narg('name')::text || '%')
 ),
 size_data AS (
-    SELECT size_key,
-        COUNT(*) as count
+    SELECT size_key, COUNT(*) as count
     FROM product_data
-        CROSS JOIN LATERAL jsonb_object_keys(sizes) as size_key
+    CROSS JOIN LATERAL jsonb_object_keys(sizes) as size_key
     WHERE (sizes->size_key->'price')::numeric > 0
     GROUP BY size_key
 ),
 firm_counts AS (
-    SELECT firm,
-        COUNT(*) AS firm_count
+    SELECT firm, COUNT(*) AS firm_count
     FROM product_data
     WHERE firm IS NOT NULL
     GROUP BY firm
 ),
 bodytype_counts AS (
-    SELECT bodytype,
-        COUNT(*) as count
+    SELECT bodytype, COUNT(*) as count
     FROM product_data
     GROUP BY bodytype
 ),
 price_range AS (
     SELECT COALESCE(MIN(minprice), 0) AS min_price,
-        COALESCE(MAX(maxprice), 0) AS max_price
+           COALESCE(MAX(maxprice), 0) AS max_price
     FROM product_data
 ),
 type_data AS (
-    SELECT product_type_id,
-        COUNT(*) as type_count
+    SELECT product_type_id, COUNT(*) as type_count
     FROM product_data
     GROUP BY product_type_id
+),
+discount_rules_applied AS (
+    SELECT DISTINCT
+        dr.id,
+        dr.name,
+        dr.discount_type,
+        dr.discount_value,
+        dr.priority
+    FROM product_data pd
+    JOIN discount_rule_items dri ON (
+        (dri.item_type = 'brand' AND dri.item_id = pd.brand_id) OR
+        (dri.item_type = 'line'   AND dri.item_id = pd.line_id) OR
+        (dri.item_type = 'product' AND dri.item_id = pd.global_id)
+    )
+    JOIN discount_rules dr ON dr.id = dri.rule_id
+    WHERE dr.is_active = true
+        AND dr.starts_at <= NOW()
+        AND (dr.ends_at IS NULL OR dr.ends_at > NOW())
 )
-SELECT COALESCE(
-        (
-            SELECT jsonb_object_agg(size_key, count)
-            FROM size_data
-        ),
+SELECT
+    COALESCE(
+        (SELECT jsonb_object_agg(size_key, count) FROM size_data),
         '{}'::jsonb
     ) as sizes,
     COALESCE(
-        (
-            SELECT jsonb_object_agg(bodytype::text, count)
-            FROM bodytype_counts
-        ),
+        (SELECT jsonb_object_agg(bodytype::text, count) FROM bodytype_counts),
         '{}'::jsonb
     ) as bodytypes,
-    (
-        SELECT min_price
-        FROM price_range
-    ) as min_price,
-    (
-        SELECT max_price
-        FROM price_range
-    ) as max_price,
+    (SELECT min_price FROM price_range) as min_price,
+    (SELECT max_price FROM price_range) as max_price,
     COALESCE(
-        (
-            SELECT jsonb_object_agg(COALESCE(firm, 'Unknown'), firm_count)
-            FROM firm_counts
-        ),
+        (SELECT jsonb_object_agg(COALESCE(firm, 'Unknown'), firm_count) FROM firm_counts),
         '{}'::jsonb
     ) as firms,
     COALESCE(
-        (
-            SELECT jsonb_agg(product_type_id)
-            FROM type_data
-        ),
+        (SELECT jsonb_agg(product_type_id) FROM type_data),
         '[]'::jsonb
-    ) as product_types;
+    ) as product_types,
+    COALESCE(
+        (SELECT jsonb_agg(
+            jsonb_build_object(
+                'id', id,
+                'name', name,
+                'discount_type', discount_type,
+                'discount_value', discount_value,
+                'priority', priority
+            )
+         ) FROM discount_rules_applied),
+        '[]'::jsonb
+    ) as discount_rules;
 -- name: GetCountIdByName :many
 SELECT b.name as firm,
     COUNT(p.id) count
@@ -1042,7 +1044,26 @@ WHERE (
         @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
     )
     -- фильтр по скидкам всегда активен, поэтому проверяем наличие
-    AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL)
+    AND (
+    -- Если передан список правил, то требуем наличие скидки от одного из них
+    (array_length(@rule_ids::int[], 1) > 0 AND EXISTS (
+        SELECT 1
+        FROM discount_rule_items dri2
+        JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
+            AND dr2.is_active = true
+            AND dr2.starts_at <= NOW()
+            AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+        WHERE dri2.rule_id = ANY(@rule_ids::int[])
+          AND (
+              (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+              (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+              (dri2.item_type = 'product' AND dri2.item_id = p.id)
+          )
+    ))
+    OR
+    -- Если список не передан, то используем старую логику (прямая скидка или правило)
+    (array_length(@rule_ids::int[], 1) = 0 AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL))
+)
 ORDER BY
     CASE WHEN @sort_type::int = 1 THEN p.name END ASC,
     CASE WHEN @sort_type::int = 2 THEN p.name END DESC,
@@ -1193,7 +1214,26 @@ WHERE (
     AND (
         @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
     )
-    AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL)  -- скидка
+     AND (
+    -- Если передан список правил, то требуем наличие скидки от одного из них
+    (array_length(@rule_ids::int[], 1) > 0 AND EXISTS (
+        SELECT 1
+        FROM discount_rule_items dri2
+        JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
+            AND dr2.is_active = true
+            AND dr2.starts_at <= NOW()
+            AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+        WHERE dri2.rule_id = ANY(@rule_ids::int[])
+          AND (
+              (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+              (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+              (dri2.item_type = 'product' AND dri2.item_id = p.id)
+          )
+    ))
+    OR
+    -- Если список не передан, то используем старую логику (прямая скидка или правило)
+    (array_length(@rule_ids::int[], 1) = 0 AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL))
+)  -- скидка
     AND (sh.id IS NOT NULL AND sh.quantity > 0)              -- склад
 ORDER BY
     CASE WHEN @sort_type::int = 1 THEN p.name END ASC,
@@ -1308,10 +1348,29 @@ WHERE (
     AND (
         @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
     )
-    AND (
-        EXISTS (
-            SELECT 1 FROM discount d WHERE d.productid = p.id
-        )
+       AND (
+    -- Вариант 1: передан список правил
+    (array_length(@rule_ids::int[], 1) > 0 AND EXISTS (
+        SELECT 1
+        FROM discount_rule_items dri2
+        WHERE dri2.rule_id = ANY(@rule_ids::int[])
+          AND (
+              (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+              (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+              (dri2.item_type = 'product' AND dri2.item_id = p.id)
+          )
+          AND EXISTS (
+              SELECT 1 FROM discount_rules dr2
+              WHERE dr2.id = dri2.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+          )
+    ))
+    OR
+    -- Вариант 2: список правил не передан – используем старую логику
+    (array_length(@rule_ids::int[], 1) = 0 AND (
+        EXISTS (SELECT 1 FROM discount d WHERE d.productid = p.id)
         OR EXISTS (
             SELECT 1
             FROM discount_rule_items dri
@@ -1323,7 +1382,8 @@ WHERE (
                OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
                OR (dri.item_type = 'product' AND dri.item_id = p.id)
         )
-    );
+    ))
+);
 
 -- name: CountProductsByFiltersWithStore :one
 SELECT COUNT(*)
@@ -1429,9 +1489,28 @@ WHERE (
         @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
     )
     AND (
-        EXISTS (
-            SELECT 1 FROM discount d WHERE d.productid = p.id
-        )
+    -- Вариант 1: передан список правил
+    (array_length(@rule_ids::int[], 1) > 0 AND EXISTS (
+        SELECT 1
+        FROM discount_rule_items dri2
+        WHERE dri2.rule_id = ANY(@rule_ids::int[])
+          AND (
+              (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+              (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+              (dri2.item_type = 'product' AND dri2.item_id = p.id)
+          )
+          AND EXISTS (
+              SELECT 1 FROM discount_rules dr2
+              WHERE dr2.id = dri2.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+          )
+    ))
+    OR
+    -- Вариант 2: список правил не передан – используем старую логику
+    (array_length(@rule_ids::int[], 1) = 0 AND (
+        EXISTS (SELECT 1 FROM discount d WHERE d.productid = p.id)
         OR EXISTS (
             SELECT 1
             FROM discount_rule_items dri
@@ -1443,7 +1522,9 @@ WHERE (
                OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
                OR (dri.item_type = 'product' AND dri.item_id = p.id)
         )
-    )
+    ))
+)
+    
     AND EXISTS (
         SELECT 1 FROM store_house sh
         WHERE sh.productid = p.id AND sh.quantity > 0
@@ -1692,6 +1773,14 @@ FROM product_categories pc
 WHERE pc.id = @category_id
     AND pt.id = @type_id
     AND b.id = @brand_id
+LIMIT 1;
+
+-- name: GetTypeByID :one
+SELECT 
+    pt.type_name,
+    pt.enum_key as type_key
+FROM product_types pt
+WHERE  pt.id = @type_id
 LIMIT 1;
 -- name: CheckTypeExistsByIds :one
 SELECT EXISTS(

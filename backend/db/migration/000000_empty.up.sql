@@ -22,7 +22,8 @@ CREATE TABLE page_widgets (
     type VARCHAR(100) NOT NULL,          -- "products_slider", "banner_slider", "brands_scroller"
     sort_order INT NOT NULL DEFAULT 0,   -- порядок на странице
     is_active BOOLEAN DEFAULT true,
-    settings JSONB                       -- произвольные настройки (тайтл, стили, лимит товаров и т.д.)
+    settings JSONB,                       -- произвольные настройки (тайтл, стили, лимит товаров и т.д.)
+    link_url VARCHAR(500) NOT NULL
 );
 -- Типы товаров
 CREATE TABLE IF NOT EXISTS public.product_types (

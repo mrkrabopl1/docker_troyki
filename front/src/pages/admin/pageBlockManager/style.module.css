@@ -1,63 +1,498 @@
-.blocksList {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-top: 1rem;
+/* pages/admin/PageBlocks/style.module.css */
+
+.container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
-.blockCard {
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 1rem;
-  background: #fff;
-}
-.blockHeader {
+
+.header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 15px;
 }
-.sortHandle {
-  cursor: grab;
-  font-size: 1.5rem;
-  user-select: none;
+
+.header h2 {
+  margin: 0;
+  font-size: 24px;
 }
-.blockInfo {
+
+.loader {
+  text-align: center;
+  padding: 50px;
+  font-size: 18px;
+  color: #666;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 60px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  color: #666;
+}
+
+.blocksGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.blockCard {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
   display: flex;
-  gap: 1rem;
-  margin: 0.5rem 0;
-  font-size: 0.9rem;
+  flex-direction: column;
+  gap: 12px;
 }
-.active { color: green; }
-.inactive { color: gray; }
-.blockActions button {
-  margin-right: 0.5rem;
+
+.blockCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
 }
-.formRow {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
+
+.blockCard.inactive {
+  opacity: 0.7;
+  background: #f5f5f5;
 }
-.formGroup {
-  flex: 1;
+
+.blockTitle {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
 }
-.previewSection {
-  margin-top: 2rem;
-  border-top: 1px solid #eee;
-  padding-top: 1rem;
-}
-.productsGrid {
+
+.blockMeta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: 12px;
+  font-size: 14px;
+  color: #666;
 }
+
+.active {
+  color: #2e7d32;
+  background: #e8f5e9;
+  padding: 2px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.inactive {
+  color: #757575;
+  background: #f5f5f5;
+  padding: 2px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.blockFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.filterTag {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.emptyFilters {
+  color: #ff9800;
+  font-style: italic;
+  font-size: 13px;
+}
+
+.blockActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  border-top: 1px solid #e0e0e0;
+  padding-top: 12px;
+}
+
+.editBtn, .deleteBtn {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.editBtn {
+  background: #2196F3;
+  color: white;
+}
+
+.editBtn:hover {
+  background: #1976D2;
+}
+
+.deleteBtn {
+  background: #f44336;
+  color: white;
+}
+
+.deleteBtn:hover {
+  background: #d32f2f;
+}
+
+/* Модальное окно */
+.modalContent {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  margin: auto;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modalHeader h3 {
+  margin: 0;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.formGroup {
+  margin-bottom: 18px;
+}
+
+.formGroup label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: #333;
+}
+
+.formGroup input[type="text"],
+.formGroup input[type="number"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: normal;
+}
+
+.checkboxLabel input {
+  width: auto;
+}
+
+.required {
+  color: #f44336;
+}
+
+/* Превью фильтров */
+.urlPreview {
+  background: #f5f5f5;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 2px solid #ddd;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.urlPreview:hover {
+  background: #e8e8e8;
+  border-color: #bbb;
+}
+
+.urlPreview.errorBorder {
+  border-color: #f44336;
+  background: #fff5f5;
+}
+
+.filtersSummary {
+  font-size: 14px;
+  color: #333;
+  flex: 1;
+}
+
+.editHint {
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.errorText {
+  color: #f44336;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Предпросмотр */
+.previewSection {
+  margin-top: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fafafa;
+}
+
+.previewSection h4 {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+}
+
+.previewStats {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.previewStats strong {
+  color: #333;
+}
+
+.error {
+  color: #f44336 !important;
+}
+
+.warning {
+  color: #ff9800 !important;
+}
+
+.productsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+}
+
 .previewProduct {
-  width: 80px;
+  background: white;
+  border-radius: 6px;
+  padding: 8px;
   text-align: center;
-  font-size: 0.8rem;
+  border: 1px solid #e0e0e0;
 }
+
 .previewProduct img {
   width: 100%;
-  height: auto;
+  height: 80px;
+  object-fit: contain;
+  background: #f5f5f5;
   border-radius: 4px;
 }
-.error { color: red; margin-left: 0.5rem; }
-.warning { color: orange; margin-left: 0.5rem; }
+
+.productName {
+  font-size: 11px;
+  color: #333;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border-radius: 6px;
+  padding: 10px;
+  color: #666;
+  font-size: 13px;
+}
+
+.modalActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.modalActions button {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.modalActions button:first-child {
+  background: #9e9e9e;
+  color: white;
+}
+
+.modalActions button:last-child {
+  background: #4CAF50;
+  color: white;
+}
+
+/* Панель фильтров (сбоку, как в BannersManager) */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1001;
+}
+
+.modalPanel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 500px;
+  max-width: 90vw;
+  height: 100vh;
+  background: white;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.15);
+  z-index: 1002;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  animation: slideIn 0.3s ease;
+  overflow-y: auto;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.modalPanel .modalHeader {
+  padding: 0 0 16px 0;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.modalPanel .modalHeader h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.modalPanel .modalHeader button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.modalPanel .modalHeader button:hover {
+  background: #f0f0f0;
+}
+
+.modalPanel :global(.productsFilters) {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 0;
+}
+
+.modalFooter {
+  padding: 16px 0 0 0;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: white;
+  flex-shrink: 0;
+}
+
+.modalFooter button {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #4CAF50;
+  color: white;
+}
+
+/* Адаптив */
+@media (max-width: 768px) {
+  .blocksGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+  
+  .modalContent {
+    width: 95%;
+    padding: 16px;
+  }
+  
+  .modalPanel {
+    width: 100%;
+  }
+  
+  .urlPreview {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .editHint {
+    text-align: right;
+  }
+}

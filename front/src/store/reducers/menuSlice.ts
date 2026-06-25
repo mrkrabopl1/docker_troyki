@@ -20,12 +20,7 @@ interface IField {
     firms: string[],
     categories: { id: number, category_name: string, image_path: string }[],
     typesVal: { [key: string]: { name: string, category_name: string, category_key: string, type_key: string, category_id: number } },
-    discountRules: {           // добавляем
-        id: number;
-        name: string;
-        discount_type: 'percentage' | 'fixed_amount';
-        discount_value: number;
-    }[];
+    discountRules: Record<string, string>;
     sizeTables: Record<string, any>;
 }
 
@@ -40,7 +35,7 @@ const initialState: IField = {
     typesVal: {},
     firms: [],
     firmMap: {},
-    discountRules: [],
+    discountRules: {},
     sizeTables: {},
 }
 

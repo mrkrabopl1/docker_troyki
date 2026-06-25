@@ -158,17 +158,24 @@ func (s *Server) handleSearchProductByCategoriesAndFilters(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, resp)
 }
 
-func (s *Server) handleGetMainPageInfo(ctx *gin.Context) {
-	fmt.Println("mainpageinwcdczcfo mainpageinfo mainpageinfo mainpageinfo mainpageinfo ")
-	resp, err := s.store.GetMainPageInfoComplex(ctx, 15)
+func (s *Server) handleGetMainPage(c *gin.Context) {
+	ctx := c.Request.Context()
 
-	fmt.Println(resp, "mainpageinfo mainpageinfo mainpageinfo mainpageinfo mainpageinfo ")
-	if err != nil {
-		fmt.Println(err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	// 1. Пытаемся получить из Redis
+	widgets, err := s.getPageWidgetsFromCache(ctx)
+	if err == nil && len(widgets) > 0 {
+		c.JSON(http.StatusOK, widgets)
+		c.Header("X-Cache", "HIT")
 		return
 	}
-	ctx.JSON(http.StatusOK, resp)
+
+	// 2. Кэш промахнулся
+	c.Header("X-Cache", "MISS")
+	s.refreshPageWidgetsCache(ctx)
+
+	// 3. Отдаём
+	widgets, _ = s.getPageWidgetsFromCache(ctx)
+	c.JSON(http.StatusOK, widgets)
 }
 
 func (s *Server) handleSearchProductAndByCategoriesAndFilters(ctx *gin.Context) {

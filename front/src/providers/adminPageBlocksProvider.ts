@@ -16,11 +16,12 @@ export interface PageBlock {
         firms: number[];
         types: number[];
         price: [number, number];
-        discount: number;
+        rule_ids: number[];
         in_store:boolean
     };
     min_items: number;
     max_items: number;
+    type:string
 }
 
 // GET /admin/page-blocks

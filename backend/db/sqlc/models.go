@@ -415,6 +415,16 @@ type Orderitem struct {
 	Size      pgtype.Text `json:"size"`
 }
 
+type PageWidget struct {
+	ID        int32       `json:"id"`
+	Name      string      `json:"name"`
+	Type      string      `json:"type"`
+	SortOrder int32       `json:"sort_order"`
+	IsActive  pgtype.Bool `json:"is_active"`
+	Settings  []byte      `json:"settings"`
+	LinkUrl   string      `json:"link_url"`
+}
+
 type PasswordReset struct {
 	ID        int32              `json:"id"`
 	Email     string             `json:"email"`

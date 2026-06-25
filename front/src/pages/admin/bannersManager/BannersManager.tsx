@@ -23,7 +23,7 @@ interface Banner {
 
 const BannersManager: React.FC = () => {
     const router = useRouter();
-    const { typesVal, categories } = useAppSelector(state => state.menuReducer);
+    const { typesVal, firmMap, discountRules } = useAppSelector(state => state.menuReducer)
     const dispatch = useAppDispatch();
     const filtersInfo = useRef<any>({
         sizes: [],
@@ -139,10 +139,10 @@ const BannersManager: React.FC = () => {
             soloDataProps: [
                 { name: "На витрине", activeData: filtersInfo.current.is_active === true, enable: true },
                 { name: "Скрытые", activeData: filtersInfo.current.is_active === false, enable: true },
-                { name: "Со скидкой", activeData: filtersInfo.current.discount || false, enable: true }
-            ]
+            ],
+            discountProps: discountRules
         }
-    }, [typesVal])
+    }, [typesVal,discountRules])
 
     const loadBanners = useCallback(async () => {
         setLoading(true)

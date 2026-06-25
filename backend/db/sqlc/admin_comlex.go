@@ -74,6 +74,7 @@ func (store *SQLStore) GetAllProductsAndFilters(ctx context.Context, page int, s
 			Sizes:      filters.Sizes,
 			FirmsCount: filters.Firms,
 			Types:      filters.ProductTypes,
+			Discounts:  filters.DiscountRules,
 		},
 	}, nil
 }

@@ -58,6 +58,7 @@ type FiltersSearchResponse struct {
 	Price      [2]int32    `json:"price"`
 	Sizes      interface{} `json:"sizes"`
 	Types      interface{} `json:"types"`
+	Discounts  interface{} `json:"discounts"`
 }
 
 type RespSearchProductsAndFiltersByString struct {
@@ -269,6 +270,7 @@ func (store *SQLStore) GetProductsAndFiltersByNameCategoryAndType(ctx context.Co
 			Sizes:      filter.Sizes,
 			FirmsCount: filter.Firms,
 			Types:      filter.ProductTypes,
+			Discounts:  filter.DiscountRules,
 		},
 	}, nil
 }
@@ -719,6 +721,7 @@ func (store *SQLStore) getProductsByFilters(
 			WithPrice:    filters.WithPrice,
 			Name:         "",
 			Categories:   nil,
+			RuleIds:      filters.RuleIDs,
 		}
 		if mainFilter.Category.Valid {
 			params.Categories = []int32{mainFilter.Category.Int32}
@@ -752,6 +755,7 @@ func (store *SQLStore) getProductsByFilters(
 			WithPrice:    filters.WithPrice,
 			Name:         params.Name,
 			Categories:   params.Categories,
+			RuleIds:      filters.RuleIDs,
 		}
 		if usePriceFilter && len(filters.Price) == 2 {
 			countParams.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
@@ -827,6 +831,7 @@ func (store *SQLStore) getProductsByFilters(
 			WithPrice:    filters.WithPrice,
 			Name:         "",
 			Categories:   nil,
+			RuleIds:      filters.RuleIDs,
 		}
 		if mainFilter.Category.Valid {
 			params.Categories = []int32{mainFilter.Category.Int32}
@@ -860,6 +865,7 @@ func (store *SQLStore) getProductsByFilters(
 			WithPrice:    filters.WithPrice,
 			Name:         params.Name,
 			Categories:   params.Categories,
+			RuleIds:      filters.RuleIDs,
 		}
 		if usePriceFilter && len(filters.Price) == 2 {
 			countParams.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}

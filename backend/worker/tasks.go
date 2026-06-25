@@ -24,6 +24,8 @@ const TaskSendAdminPasswordReset = "task:send_admin_password_reset"
 const TaskSendAdminPasswordChanged = "task:send_admin_password_changed"
 const TaskSendAdminInvite = "task:send_admin_invite"
 
+const TaskGenerateWidgetLink = "task:generate_widget_link"
+
 // Добавь структуру для приглашения админа
 type PayloadSendAdminInvite struct {
 	Email       string `json:"email"`
@@ -85,6 +87,11 @@ type PayloadSendNewsletterBroadcast struct {
 	Subject string   `json:"subject"`
 	Content string   `json:"content"`
 	Emails  []string `json:"emails"`
+}
+
+type PayloadGenerateWidgetLink struct {
+	WidgetID int32  `json:"widget_id"`
+	Action   string `json:"action"` // "create" | "update"
 }
 
 // ============ DISTRIBUTORS ============
@@ -277,6 +284,31 @@ func (distributor *RedisTaskDistributor) DistributeTaskSendAdminPasswordChanged(
 
 	log.Info().Str("type", task.Type()).Str("email", payload.Email).
 		Str("queue", info.Queue).Int("max_retry", info.MaxRetry).Msg("enqueued admin password changed task")
+	return nil
+}
+
+func (distributor *RedisTaskDistributor) DistributeTaskGenerateWidgetLink(
+	ctx context.Context,
+	payload *PayloadGenerateWidgetLink,
+	opts ...asynq.Option,
+) error {
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	task := asynq.NewTask(TaskGenerateWidgetLink, jsonPayload, opts...)
+	info, err := distributor.client.EnqueueContext(ctx, task)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task: %w", err)
+	}
+
+	log.Info().Str("type", task.Type()).
+		Int32("widget_id", payload.WidgetID).
+		Str("action", payload.Action).
+		Str("queue", info.Queue).
+		Msg("enqueued generate widget link task")
+
 	return nil
 }
 
@@ -755,5 +787,36 @@ func (processor *RedisTaskProcessor) ProcessTaskSendAdminInvite(ctx context.Cont
 	log.Info().Str("type", task.Type()).Str("email", payload.Email).
 		Str("role", payload.Role).Str("inviter", payload.InviterName).
 		Msg("sent admin invite email")
+	return nil
+}
+
+func (processor *RedisTaskProcessor) ProcessTaskGenerateWidgetLink(
+	ctx context.Context,
+	task *asynq.Task,
+) error {
+	var payload PayloadGenerateWidgetLink
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", asynq.SkipRetry)
+	}
+
+	log.Info().Int32("widget_id", payload.WidgetID).
+		Str("action", payload.Action).
+		Msg("processing generate widget link task")
+
+	// 🔥 Здесь вызываем метод, который генерирует link_url
+	// и обновляет Redis кэш
+
+	// Вариант 1: если у processor есть доступ к server
+	// processor.server.processWidgetLinkGeneration(ctx, payload.WidgetID)
+
+	// Вариант 2: если processor сам может генерировать
+	err := processor.generateWidgetLink(ctx, payload.WidgetID)
+	if err != nil {
+		return fmt.Errorf("failed to generate widget link: %w", err)
+	}
+
+	log.Info().Int32("widget_id", payload.WidgetID).
+		Msg("widget link generated successfully")
+
 	return nil
 }

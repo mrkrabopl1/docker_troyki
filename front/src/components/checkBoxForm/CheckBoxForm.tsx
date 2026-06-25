@@ -1,7 +1,8 @@
-import React, { useRef, useState, useEffect, useCallback, memo } from 'react';
+import React, { memo, useCallback } from 'react';
 import Checkbox from '../checkbox/Checkbox';
 
 interface CheckBoxType {
+    id: string | number;
     enable: boolean;
     activeData: boolean;
     name: string;
@@ -9,51 +10,27 @@ interface CheckBoxType {
 
 interface ColumnProps {
     data: CheckBoxType[];
-    onChange?: (data: boolean[]) => void;
+    onChange?: (data: CheckBoxType[]) => void; // возвращает обновлённый массив
 }
 
 const CheckBoxColumn: React.FC<ColumnProps> = ({ data, onChange }) => {
-    const dataRef = useRef<CheckBoxType[]>(data);
-    const valRef = useRef<boolean[]>([]);
-    const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    // Обновляем ref при изменении данных
-    useEffect(() => {
-        dataRef.current = data;
-        valRef.current = data.map(item => item.activeData);
-    }, [data]);
-
-    const handleChange = useCallback((id: number, active: boolean) => {
-        dataRef.current[id].activeData = active;
-        valRef.current[id] = active;
-
-        if (timeoutId.current) {
-            clearTimeout(timeoutId.current);
-        }
-
-        timeoutId.current = setTimeout(() => {
-            onChange?.(valRef.current);
-        }, 500);
-    }, [onChange]);
-
-    useEffect(() => {
-        return () => {
-            if (timeoutId.current) {
-                clearTimeout(timeoutId.current);
-            }
-        };
-    }, []);
+    const handleChange = useCallback((itemId: string | number, active: boolean) => {
+        const updatedData = data.map(item =>
+            item.id === itemId ? { ...item, activeData: active } : item
+        );
+        onChange?.(updatedData);
+    }, [data, onChange]);
 
     return (
         <div>
-            {data.map((val, id) => (
-                <div key={`${val.name}-${id}`} style={{ display: "flex", padding: "5px 0" }}>
-                    <Checkbox 
-                        onChange={(active) => handleChange(id, active)} 
-                        enable={val.enable} 
-                        activeData={val.activeData} 
+            {data.map((item) => (
+                <div key={item.id} style={{ display: "flex", padding: "5px 0" }}>
+                    <Checkbox
+                        onChange={(active) => handleChange(item.id, active)}
+                        enable={item.enable}
+                        activeData={item.activeData}
                     />
-                    <p  style={{  paddingLeft: "5px" }}>{val.name}</p>
+                    <p style={{ paddingLeft: "5px" }}>{item.name}</p>
                 </div>
             ))}
         </div>

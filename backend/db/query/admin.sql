@@ -333,6 +333,7 @@ LIMIT $2;
 WITH all_products AS (
     SELECT p.id,
         p.brand_id,
+        p.line_id,
         b.name as firm,
         p.minprice,
         p.maxprice,
@@ -411,6 +412,24 @@ status_counts AS (
             END
         ) as draft_products
     FROM all_products
+),
+discount_rules_applied AS (
+    SELECT DISTINCT
+        dr.id,
+        dr.name,
+        dr.discount_type,
+        dr.discount_value,
+        dr.priority
+    FROM all_products ap
+    JOIN discount_rule_items dri ON (
+        (dri.item_type = 'brand' AND dri.item_id = ap.brand_id) OR
+        (dri.item_type = 'line'   AND dri.item_id = ap.line_id) OR
+        (dri.item_type = 'product' AND dri.item_id = ap.id)
+    )
+    JOIN discount_rules dr ON dr.id = dri.rule_id
+    WHERE dr.is_active = true
+        AND dr.starts_at <= NOW()
+        AND (dr.ends_at IS NULL OR dr.ends_at > NOW())
 )
 SELECT -- Все размеры
     COALESCE(
@@ -488,7 +507,24 @@ SELECT -- Все размеры
     (
         SELECT draft_products
         FROM status_counts
-    ) as draft_products;
+    ) as draft_products,
+    -- Правила скидок
+    COALESCE(
+        (
+            SELECT jsonb_agg(
+                jsonb_build_object(
+                    'id', id,
+                    'name', name,
+                    'discount_type', discount_type,
+                    'discount_value', discount_value,
+                    'priority', priority
+                )
+            ) FROM discount_rules_applied
+        ),
+        '[]'::jsonb
+    ) as discount_rules;
+
+
 -- name: GetDiscountRuleByID :one
 SELECT id
 FROM discount_rules
@@ -1304,4 +1340,60 @@ WHERE p.image_path IS NOT NULL
   AND p.image_path != ''
   AND p.status != 'deleted'
 ORDER BY p.id;
-    
+
+
+
+
+
+-- name: CreatePageWidget :one
+INSERT INTO page_widgets (
+    name,
+    type,
+    sort_order,
+    is_active,
+    settings,
+    link_url
+) VALUES (
+    $1, $2, $3, $4, $5, $6
+)
+RETURNING *;
+
+-- name: GetPageWidget :one
+SELECT * FROM page_widgets
+WHERE id = $1;
+
+-- name: GetActivePageWidgets :many
+SELECT * FROM page_widgets
+WHERE is_active = true
+ORDER BY sort_order ASC, id ASC;
+
+-- name: GetAllPageWidgets :many
+SELECT * FROM page_widgets
+ORDER BY sort_order ASC, id ASC;
+
+-- name: UpdatePageWidget :one
+UPDATE page_widgets
+SET
+    name = COALESCE(sqlc.narg('name')::text, name),
+    type = COALESCE(sqlc.narg('type')::text, type),
+    sort_order = COALESCE(sqlc.narg('sort_order')::int, sort_order),
+    is_active = COALESCE(sqlc.narg('is_active')::bool, is_active),
+    settings = COALESCE(sqlc.narg('settings')::jsonb, settings),
+    link_url = COALESCE(sqlc.narg('link_url')::text, link_url)
+WHERE id = sqlc.arg('id')
+RETURNING *;
+
+-- name: DeletePageWidget :exec
+DELETE FROM page_widgets
+WHERE id = $1;
+
+-- name: ReorderPageWidgets :exec
+UPDATE page_widgets
+SET sort_order = new_order
+FROM (VALUES 
+    (@id::int, @new_order::int)
+) AS new_sort(id, new_order)
+WHERE page_widgets.id = new_sort.id;
+
+-- name: CountPageWidgets :one
+SELECT COUNT(*) FROM page_widgets;

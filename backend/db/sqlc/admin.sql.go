@@ -46,6 +46,17 @@ func (q *Queries) BulkUpdateBrandSortOrder(ctx context.Context, arg BulkUpdateBr
 	return err
 }
 
+const countPageWidgets = `-- name: CountPageWidgets :one
+SELECT COUNT(*) FROM page_widgets
+`
+
+func (q *Queries) CountPageWidgets(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countPageWidgets)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createAdmin = `-- name: CreateAdmin :one
 INSERT INTO admins (email, password_hash, name, role, is_active)
 VALUES ($1, $2, $3, $4, $5)
@@ -227,6 +238,51 @@ func (q *Queries) CreateOrderEvent(ctx context.Context, arg CreateOrderEventPara
 	return err
 }
 
+const createPageWidget = `-- name: CreatePageWidget :one
+INSERT INTO page_widgets (
+    name,
+    type,
+    sort_order,
+    is_active,
+    settings,
+    link_url
+) VALUES (
+    $1, $2, $3, $4, $5, $6
+)
+RETURNING id, name, type, sort_order, is_active, settings, link_url
+`
+
+type CreatePageWidgetParams struct {
+	Name      string      `json:"name"`
+	Type      string      `json:"type"`
+	SortOrder int32       `json:"sort_order"`
+	IsActive  pgtype.Bool `json:"is_active"`
+	Settings  []byte      `json:"settings"`
+	LinkUrl   string      `json:"link_url"`
+}
+
+func (q *Queries) CreatePageWidget(ctx context.Context, arg CreatePageWidgetParams) (PageWidget, error) {
+	row := q.db.QueryRow(ctx, createPageWidget,
+		arg.Name,
+		arg.Type,
+		arg.SortOrder,
+		arg.IsActive,
+		arg.Settings,
+		arg.LinkUrl,
+	)
+	var i PageWidget
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Type,
+		&i.SortOrder,
+		&i.IsActive,
+		&i.Settings,
+		&i.LinkUrl,
+	)
+	return i, err
+}
+
 const deleteAdmin = `-- name: DeleteAdmin :exec
 DELETE FROM admins
 WHERE id = $1
@@ -280,6 +336,50 @@ WHERE expires_at < NOW()
 func (q *Queries) DeleteOldPasswordResetTokens(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, deleteOldPasswordResetTokens)
 	return err
+}
+
+const deletePageWidget = `-- name: DeletePageWidget :exec
+DELETE FROM page_widgets
+WHERE id = $1
+`
+
+func (q *Queries) DeletePageWidget(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, deletePageWidget, id)
+	return err
+}
+
+const getActivePageWidgets = `-- name: GetActivePageWidgets :many
+SELECT id, name, type, sort_order, is_active, settings, link_url FROM page_widgets
+WHERE is_active = true
+ORDER BY sort_order ASC, id ASC
+`
+
+func (q *Queries) GetActivePageWidgets(ctx context.Context) ([]PageWidget, error) {
+	rows, err := q.db.Query(ctx, getActivePageWidgets)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PageWidget
+	for rows.Next() {
+		var i PageWidget
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Type,
+			&i.SortOrder,
+			&i.IsActive,
+			&i.Settings,
+			&i.LinkUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getAdminBanners = `-- name: GetAdminBanners :many
@@ -977,6 +1077,7 @@ const getAllFiltersForAdmin = `-- name: GetAllFiltersForAdmin :one
 WITH all_products AS (
     SELECT p.id,
         p.brand_id,
+        p.line_id,
         b.name as firm,
         p.minprice,
         p.maxprice,
@@ -1055,6 +1156,24 @@ status_counts AS (
             END
         ) as draft_products
     FROM all_products
+),
+discount_rules_applied AS (
+    SELECT DISTINCT
+        dr.id,
+        dr.name,
+        dr.discount_type,
+        dr.discount_value,
+        dr.priority
+    FROM all_products ap
+    JOIN discount_rule_items dri ON (
+        (dri.item_type = 'brand' AND dri.item_id = ap.brand_id) OR
+        (dri.item_type = 'line'   AND dri.item_id = ap.line_id) OR
+        (dri.item_type = 'product' AND dri.item_id = ap.id)
+    )
+    JOIN discount_rules dr ON dr.id = dri.rule_id
+    WHERE dr.is_active = true
+        AND dr.starts_at <= NOW()
+        AND (dr.ends_at IS NULL OR dr.ends_at > NOW())
 )
 SELECT -- Все размеры
     COALESCE(
@@ -1132,7 +1251,22 @@ SELECT -- Все размеры
     (
         SELECT draft_products
         FROM status_counts
-    ) as draft_products
+    ) as draft_products,
+    -- Правила скидок
+    COALESCE(
+        (
+            SELECT jsonb_agg(
+                jsonb_build_object(
+                    'id', id,
+                    'name', name,
+                    'discount_type', discount_type,
+                    'discount_value', discount_value,
+                    'priority', priority
+                )
+            ) FROM discount_rules_applied
+        ),
+        '[]'::jsonb
+    ) as discount_rules
 `
 
 type GetAllFiltersForAdminRow struct {
@@ -1147,6 +1281,7 @@ type GetAllFiltersForAdminRow struct {
 	ActiveProducts   int64       `json:"active_products"`
 	ArchivedProducts int64       `json:"archived_products"`
 	DraftProducts    int64       `json:"draft_products"`
+	DiscountRules    interface{} `json:"discount_rules"`
 }
 
 func (q *Queries) GetAllFiltersForAdmin(ctx context.Context) (GetAllFiltersForAdminRow, error) {
@@ -1164,8 +1299,42 @@ func (q *Queries) GetAllFiltersForAdmin(ctx context.Context) (GetAllFiltersForAd
 		&i.ActiveProducts,
 		&i.ArchivedProducts,
 		&i.DraftProducts,
+		&i.DiscountRules,
 	)
 	return i, err
+}
+
+const getAllPageWidgets = `-- name: GetAllPageWidgets :many
+SELECT id, name, type, sort_order, is_active, settings, link_url FROM page_widgets
+ORDER BY sort_order ASC, id ASC
+`
+
+func (q *Queries) GetAllPageWidgets(ctx context.Context) ([]PageWidget, error) {
+	rows, err := q.db.Query(ctx, getAllPageWidgets)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PageWidget
+	for rows.Next() {
+		var i PageWidget
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Type,
+			&i.SortOrder,
+			&i.IsActive,
+			&i.Settings,
+			&i.LinkUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getAllProductsForAdmin = `-- name: GetAllProductsForAdmin :many
@@ -1997,6 +2166,26 @@ func (q *Queries) GetOrdersWithFilters(ctx context.Context, arg GetOrdersWithFil
 		return nil, err
 	}
 	return items, nil
+}
+
+const getPageWidget = `-- name: GetPageWidget :one
+SELECT id, name, type, sort_order, is_active, settings, link_url FROM page_widgets
+WHERE id = $1
+`
+
+func (q *Queries) GetPageWidget(ctx context.Context, id int32) (PageWidget, error) {
+	row := q.db.QueryRow(ctx, getPageWidget, id)
+	var i PageWidget
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Type,
+		&i.SortOrder,
+		&i.IsActive,
+		&i.Settings,
+		&i.LinkUrl,
+	)
+	return i, err
 }
 
 const getProductIDsForAdminByFilters = `-- name: GetProductIDsForAdminByFilters :many
@@ -2841,6 +3030,25 @@ func (q *Queries) MarkProductsAsDeleted(ctx context.Context, dollar_1 []int32) e
 	return err
 }
 
+const reorderPageWidgets = `-- name: ReorderPageWidgets :exec
+UPDATE page_widgets
+SET sort_order = new_order
+FROM (VALUES 
+    ($1::int, $2::int)
+) AS new_sort(id, new_order)
+WHERE page_widgets.id = new_sort.id
+`
+
+type ReorderPageWidgetsParams struct {
+	ID       int32 `json:"id"`
+	NewOrder int32 `json:"new_order"`
+}
+
+func (q *Queries) ReorderPageWidgets(ctx context.Context, arg ReorderPageWidgetsParams) error {
+	_, err := q.db.Exec(ctx, reorderPageWidgets, arg.ID, arg.NewOrder)
+	return err
+}
+
 const updateAdmin = `-- name: UpdateAdmin :exec
 UPDATE admins
 SET name = COALESCE($1, name),
@@ -2964,6 +3172,52 @@ type UpdateOrderStatusParams struct {
 func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) error {
 	_, err := q.db.Exec(ctx, updateOrderStatus, arg.Status, arg.OrderID)
 	return err
+}
+
+const updatePageWidget = `-- name: UpdatePageWidget :one
+UPDATE page_widgets
+SET
+    name = COALESCE($1::text, name),
+    type = COALESCE($2::text, type),
+    sort_order = COALESCE($3::int, sort_order),
+    is_active = COALESCE($4::bool, is_active),
+    settings = COALESCE($5::jsonb, settings),
+    link_url = COALESCE($6::text, link_url)
+WHERE id = $7
+RETURNING id, name, type, sort_order, is_active, settings, link_url
+`
+
+type UpdatePageWidgetParams struct {
+	Name      pgtype.Text `json:"name"`
+	Type      pgtype.Text `json:"type"`
+	SortOrder pgtype.Int4 `json:"sort_order"`
+	IsActive  pgtype.Bool `json:"is_active"`
+	Settings  []byte      `json:"settings"`
+	LinkUrl   pgtype.Text `json:"link_url"`
+	ID        int32       `json:"id"`
+}
+
+func (q *Queries) UpdatePageWidget(ctx context.Context, arg UpdatePageWidgetParams) (PageWidget, error) {
+	row := q.db.QueryRow(ctx, updatePageWidget,
+		arg.Name,
+		arg.Type,
+		arg.SortOrder,
+		arg.IsActive,
+		arg.Settings,
+		arg.LinkUrl,
+		arg.ID,
+	)
+	var i PageWidget
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Type,
+		&i.SortOrder,
+		&i.IsActive,
+		&i.Settings,
+		&i.LinkUrl,
+	)
+	return i, err
 }
 
 const updateProductPrice = `-- name: UpdateProductPrice :exec

@@ -36,7 +36,7 @@ type SelectMode = 'none' | 'page' | 'all'
 
 const AdminProducts: React.FC = () => {
   const router = useRouter()
-  const { typesVal, firmMap } = useAppSelector(state => state.menuReducer)
+  const { typesVal, firmMap, discountRules } = useAppSelector(state => state.menuReducer)
 
   // Данные
   const [products, setProducts] = useState<ProductInfo[]>([])
@@ -385,6 +385,7 @@ const AdminProducts: React.FC = () => {
           return { ...prop, activeData }
         })
       })),
+      discountProps: discountRules,
       soloDataProps: filtersState.soloDataProps.map((prop: any, index: number) => ({
         ...prop,
         activeData: index === 0 ? filters.is_active === true :

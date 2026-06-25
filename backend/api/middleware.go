@@ -275,3 +275,5 @@ func CachedBannersMiddleware(s *Server) gin.HandlerFunc {
 		ctx.Next()
 	}
 }
+
+// api/middleware/rate_limit.go

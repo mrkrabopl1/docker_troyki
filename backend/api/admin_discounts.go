@@ -409,6 +409,24 @@ func (s *Server) handleAdminAddRuleItems(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Items added successfully"})
 }
 
+func (s *Server) handleAdminGetRuleItems(c *gin.Context) {
+	ruleID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid rule ID"})
+		return
+	}
+
+	items, err := s.store.GetRuleItems(c.Request.Context(), int32(ruleID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get rule items"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"items": items,
+	})
+}
+
 type BulkBrandDiscountRequest struct {
 	ProductIDs []int32 `json:"product_ids"`
 	SelectAll  bool    `json:"select_all"`

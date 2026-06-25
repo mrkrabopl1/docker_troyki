@@ -33,6 +33,13 @@ type TaskProcessor interface {
 	SetBanners(ctx context.Context, banners []db.CreateBannerParams) error
 	ClearBannersCache(ctx context.Context) error
 	GetBanners(ctx context.Context) ([]db.CreateBannerParams, error)
+
+	// ✅ НОВЫЕ МЕТОДЫ ДЛЯ ВИДЖЕТОВ (PAGE WIDGETS)
+	SetPageWidgets(ctx context.Context, data []byte) error
+	GetPageWidgets(ctx context.Context) ([]byte, error)
+	ClearPageWidgetsCache(ctx context.Context) error
+
+	ProcessTaskGenerateWidgetLink(ctx context.Context, task *asynq.Task) error
 }
 
 type RedisTaskProcessor struct {
@@ -160,6 +167,33 @@ func (p *RedisTaskProcessor) ClearBannersCache(ctx context.Context) error {
 	fmt.Printf("[Redis] Кэш баннеров очищен, ключ: %s\n", key)
 	return nil
 }
+func (p *RedisTaskProcessor) SetPageWidgets(ctx context.Context, data []byte) error {
+	key := "mainpage:widgets:v1"
+	return p.redisClient.Set(ctx, key, data, 1*time.Hour).Err()
+}
+
+func (p *RedisTaskProcessor) GetPageWidgets(ctx context.Context) ([]byte, error) {
+	key := "mainpage:widgets:v1"
+	return p.redisClient.Get(ctx, key).Bytes()
+}
+func (p *RedisTaskProcessor) GetPageWidgetsStruct(ctx context.Context) ([]CachedWidget, error) {
+	data, err := p.GetPageWidgets(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var widgets []CachedWidget
+	if err := json.Unmarshal(data, &widgets); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal widgets: %w", err)
+	}
+
+	return widgets, nil
+}
+
+func (p *RedisTaskProcessor) ClearPageWidgetsCache(ctx context.Context) error {
+	key := "mainpage:widgets:v1"
+	return p.redisClient.Del(ctx, key).Err()
+}
 
 func (processor *RedisTaskProcessor) Start() error {
 	mux := asynq.NewServeMux()
@@ -177,6 +211,7 @@ func (processor *RedisTaskProcessor) Start() error {
 	mux.HandleFunc(TaskSendAdminPasswordReset, processor.ProcessTaskSendAdminPasswordReset)
 	mux.HandleFunc(TaskSendAdminPasswordChanged, processor.ProcessTaskSendAdminPasswordChanged)
 	mux.HandleFunc(TaskSendAdminInvite, processor.ProcessTaskSendAdminInvite)
+	mux.HandleFunc(TaskGenerateWidgetLink, processor.ProcessTaskGenerateWidgetLink)
 	return processor.server.Start(mux)
 }
 

@@ -53,6 +53,12 @@ type TaskDistributor interface {
 		payload *PayloadSendAdminInvite,
 		opts ...asynq.Option,
 	) error
+
+	DistributeTaskGenerateWidgetLink(
+		ctx context.Context,
+		payload *PayloadGenerateWidgetLink,
+		opts ...asynq.Option,
+	) error
 }
 
 type RedisTaskDistributor struct {

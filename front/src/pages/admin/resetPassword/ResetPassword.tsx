@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { confirmPasswordReset } from 'src/providers/adminAuth';
 import ResetPasswordForm from 'src/modules/loginForm/ResetPasswordForm';
 import s from './style.module.css';
+import { finishLoading } from 'src/store/reducers/loadingSlice';
+import { useAppDispatch} from 'src/store/hooks/redux'
+
 
 const AdminResetPassword: React.FC = () => {
     const router = useRouter();
@@ -10,7 +13,13 @@ const AdminResetPassword: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isSuccess, setIsSuccess] = useState(false);
-
+     const dispatch = useAppDispatch();
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            dispatch(finishLoading());
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [dispatch]);
     const handleSubmit = (data: { password: string }) => {
         if (!token) {
             setError('Токен не найден');

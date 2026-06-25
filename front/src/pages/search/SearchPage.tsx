@@ -14,6 +14,7 @@ import { ReactComponent as Filter } from '/public/filter.svg'
 import { set } from 'ol/transform';
 import Combobox from 'src/components/combobox/Combobox';
 import { finishLoading } from 'src/store/reducers/loadingSlice';
+import { CheckBoxType } from 'src/types/modules';
 
 interface FiltersInfoRequest {
   sizes: string[]
@@ -24,7 +25,8 @@ interface FiltersInfoRequest {
   types: number[],
   store?: boolean,
   withPrice: boolean,
-  discount?: boolean
+  discount?:boolean,
+  rule_ids:number[],
 }
 
 interface FiltersState {
@@ -33,17 +35,12 @@ interface FiltersState {
     min: number
     dataLeft?: number
     dataRight?: number
-    onChange?: (arg: any) => void
   }
-  soloDataProps: {
-    name: string,
-    activeData: boolean,
-    enable: boolean
-  }[]
+  soloDataProps: CheckBoxType[]
   checboxsProps: {
     name: string,
     id: string,
-    props: any
+    props: CheckBoxType[],
   }[]
 }
 
@@ -52,7 +49,7 @@ const SearchPage: React.FC = () => {
 
   const router = useRouter();
   const searchParams = router.query;
-  const { typesVal, categories } = useAppSelector(state => state.menuReducer);
+  const { typesVal, categories, discountRules } = useAppSelector(state => state.menuReducer);
   // Refs для хранения изменяемых данных без перерисовки
   const filtersInfo = useRef<FiltersInfoRequest>({
     sizes: [],
@@ -61,7 +58,8 @@ const SearchPage: React.FC = () => {
     types: [],
     store: false,
     discount: false,
-    withPrice: true
+    withPrice: true,
+    rule_ids:[]
   })
   const [hoverSettings, setHoverSettings] = useState(false);
   const emptyData = useRef(false)
@@ -102,6 +100,7 @@ const SearchPage: React.FC = () => {
     } else {
       emptyData.current = false
       pages.current = Math.ceil(respData.totalCount / pageSize.current);
+      // Сбрасываем фильтры на новые, полученные от бэка
       filtersInfo.current = {
         sizes: [],
         price: [],
@@ -109,7 +108,8 @@ const SearchPage: React.FC = () => {
         types: [],
         lines: [],
         bodytypes: [],
-        withPrice: true
+        withPrice: true,
+        rule_ids:[]
       }
       const data = convertFilterseData(respData.filters)
       setFilters(data)
@@ -169,7 +169,7 @@ const SearchPage: React.FC = () => {
     sizes: { [key: string]: string }
     types?: number[]
     store?: boolean,
-    discount?: boolean
+    discounts?: {id:number,name:string}[],
     withPrice: boolean
   }) => {
     const priceProps = {
@@ -180,21 +180,24 @@ const SearchPage: React.FC = () => {
     }
     activeSizes.current = []
     firms.current = []
-    const checkBoxPropsData: any[] = []
+    const checkBoxPropsData: CheckBoxType[] = []
 
     // Обработка размеров одежды
     if (resData.sizes) {
-      Object.entries(resData.sizes).forEach(([firm, count]) => {
-        activeSizes.current.push(firm)
-        const active = filtersInfo.current.sizes.includes(firm)
+      Object.entries(resData.sizes).forEach(([size, count]) => {
+        activeSizes.current.push(size)
+        const active = filtersInfo.current.sizes.includes(size)
         checkBoxPropsData.push({
+          id: size,
           enable: true,
           activeData: active,
-          name: `${firm}`// `${firm}(${count})`
+          name: `${size}` // `${size}(${count})`
         })
       })
     }
-    const checkBoxPropsTypeData: any[] = []
+
+    // Обработка типов товара
+    const checkBoxPropsTypeData: CheckBoxType[] = []
     if (resData.types) {
       resData.types.forEach((typeId) => {
         let typeDescr = typesValRef.current[typeId];
@@ -207,111 +210,103 @@ const SearchPage: React.FC = () => {
           name = typeDescr.category_name + "/" + typeDescr.name
         }
         checkBoxPropsTypeData.push({
+          id: typeId,
           enable: true,
           activeData: active,
           name: `${typeDescr.name}(${resData.firmsCount[typeDescr.name] || 0})`
         })
-        filtersInfo.current.types.push(typeId)
-      }
-      )
+      })
     }
 
+    // Обработка скидок (discounts) – преобразуем в CheckBoxType
+    const checkBoxPropsDiscountData: CheckBoxType[] = []
+    if (resData.discounts) {
+      resData.discounts.forEach((disc) => {
+        const active = filtersInfo.current.rule_ids.includes(disc.id)
+        checkBoxPropsDiscountData.push({
+          id: disc.id,
+          enable: true,
+          activeData: active,
+          name: disc.name
+        })
+      })
+    }
 
     // Обработка фирм
-    const checkBoxPropsFirmData: any[] = []
+    const checkBoxPropsFirmData: CheckBoxType[] = []
     Object.entries(resData.firmsCount).forEach(([firm, count]) => {
       firms.current.push(firm)
       const active = filtersInfo.current.firms.includes(firm)
       checkBoxPropsFirmData.push({
+        id: firm,
         enable: true,
         activeData: active,
         name: `${firm}`
       })
     })
 
+    // Solo данные – два чекбокса: "Есть на складе" (withPrice) и "В наличии" (store)
+    const soloDataProps: CheckBoxType[] = [
+      {
+        id: 'withPrice',
+        enable: true,
+        activeData: filtersInfo.current.withPrice ?? true,
+        name: "Есть на складе"
+      },
+      {
+        id: 'store',
+        enable: true,
+        activeData: filtersInfo.current.store ?? false,
+        name: "В наличии"
+      }
+    ]
+
     return {
       priceProps,
       checboxsProps: [
         { id: "sizes", name: "Размеры", props: checkBoxPropsData },
         { id: "firms", name: "Фирмы", props: checkBoxPropsFirmData },
-        { id: "type", name: "Типы товара", props: checkBoxPropsTypeData }
+        { id: "type", name: "Типы товара", props: checkBoxPropsTypeData },
+        { id: "discounts", name: "Скидки", props: checkBoxPropsDiscountData }
       ],
-      soloDataProps: true ? [
-        { name: "Есть на складе", activeData: false, enable: true },
-        { name: "Со скидкой", activeData: false, enable: true },
-        { name: "В наличии", activeData: false, enable: true }
-      ] : []
+      soloDataProps
     }
-  }, [])
+  }, [discountRules])
 
 
   const onFiltersChange = useCallback((filter: any) => {
     switch (filter.id) {
       case "sizes":
-        filter.data.forEach((data: boolean, index: number) => {
-          const size = activeSizes.current[index]
-          // Обработка размеров одежды
-          const clothesIndex = filtersInfo.current.sizes.indexOf(size)
-          if (clothesIndex !== -1 && !data) {
-            filtersInfo.current.sizes.splice(clothesIndex, 1)
-          } else if (data && activeSizes.current.includes(size)) {
-            filtersInfo.current.sizes.push(size)
-          }
-
-          // Обработка размеров обуви
-          const snickersIndex = filtersInfo.current.sizes.indexOf(size)
-          if (snickersIndex !== -1 && !data) {
-            filtersInfo.current.sizes.splice(snickersIndex, 1)
-          } else if (data && activeSizes.current.includes(size)) {
-            filtersInfo.current.sizes.push(size)
-          }
-        })
-        break
-
-      case "price":
-        filtersInfo.current.price = filter.data
-        break
-
-      // case "type":
-      //   filter.data.forEach((data: boolean, index: number) => {
-      //     const firm = firms.current[index]
-      //     const firmIndex = filtersInfo.current.types.indexOf(firm)
-
-      //     if (firmIndex !== -1 && !data) {
-      //       filtersInfo.current.firms.splice(firmIndex, 1)
-      //     } else if (firmIndex === -1 && data) {
-      //       filtersInfo.current.firms.push(firm)
-      //     }
-      //   })
-      //   break
-
+        filtersInfo.current.sizes = filter.data; // массив строк (размеров)
+        break;
       case "firms":
-        filter.data.forEach((data: boolean, index: number) => {
-          const firm = firms.current[index]
-          const firmIndex = filtersInfo.current.firms.indexOf(firm)
-
-          if (firmIndex !== -1 && !data) {
-            filtersInfo.current.firms.splice(firmIndex, 1)
-          } else if (firmIndex === -1 && data) {
-            filtersInfo.current.firms.push(firm)
-          }
-        })
-        break
+        filtersInfo.current.firms = filter.data; // массив строк (названий фирм)
+        break;
+      case "type":
+        filtersInfo.current.types = filter.data; // массив чисел (typeId)
+        break;
+      case "discounts":
+        filtersInfo.current.rule_ids = filter.data; // массив чисел (ruleId)
+        break;
+      case "price":
+        filtersInfo.current.price = filter.data; // массив [min, max]
+        break;
       case "solo":
-        filter.data.forEach((data: boolean, index: number) => {
-          if (!index) {
-            filtersInfo.current.discount = data
-          } else if (index === 1) {
-            filtersInfo.current.store = data
-          } else {
-            filtersInfo.current.withPrice = data
-          }
-        })
-        break
+        // filter.data – массив объектов CheckBoxType, обновлённых через CheckBoxColumn
+        // У нас два элемента: с id 'withPrice' и 'store'
+        if (filter.data && filter.data.length >= 2) {
+          const withPriceItem = filter.data.find((item: CheckBoxType) => item.id === 'withPrice');
+          const storeItem = filter.data.find((item: CheckBoxType) => item.id === 'store');
+          filtersInfo.current.withPrice = withPriceItem ? withPriceItem.activeData : true;
+          filtersInfo.current.store = storeItem ? storeItem.activeData : false;
+        }
+        break;
+      default:
+        break;
     }
-
-    searchCallback(searchWord.current)
-  }, [updatMerch])
+    // после изменения фильтров делаем поиск
+    searchCallback(searchWord.current);
+  }, [searchCallback]);
 
   const pageChange = useCallback((page: number) => {
     currentPage.current = page
@@ -329,7 +324,9 @@ const SearchPage: React.FC = () => {
       price: [],
       firms: [],
       types: [],
-      withPrice: true
+      withPrice: true,
+      store: false,
+      rule_ids:[]
     }
     searchData()
   }, [updatMerch])
@@ -348,7 +345,6 @@ const SearchPage: React.FC = () => {
       }
     };
 
-    // Только слушатель resize + первоначальная проверка
     window.addEventListener('resize', handleResize);
     handleResize();
 
@@ -410,7 +406,10 @@ const SearchPage: React.FC = () => {
     }
 
     const name = searchParams.key_word as string || "";
-    filtersInfo.current.discount = Boolean(searchParams.discount as string || "");
+    if(searchParams.rule_ids || searchParams.discount){
+      filtersInfo.current.discount = searchParams.discount === "true"
+    }
+
     if (categoryId) {
       categoryRef.current = categoryId
     }
@@ -572,10 +571,6 @@ const SearchPage: React.FC = () => {
           gap: "10px"
         }}>
           <div style={{ margin: "auto", width: "30%", padding: "5px" }}>
-            {/* {showGrid ? <div onClick={() => setGrid(!grid)} className={s.gridSwitcher}>
-                {grid ? <FoureGrid /> : <SixGrid />}
-              </div> : <div style={{ width: "30%" }} />}  */}
-
             {widthProps ? <Filter style={{
               color: hoverSettings ? 'white' : 'black',
               fill: hoverSettings ? 'white' : 'white',
@@ -601,7 +596,6 @@ const SearchPage: React.FC = () => {
             val={searchWord.current}
             searchCallback={searchNameCallback}
             selectList={(data) => { router.push('/product/' + data); }}
-          // style={{ flex: 1, maxWidth: "300px", margin: "0 auto" }} // Центрирование поиска
           />
           {widthProps ? <div style={{ margin: "auto", width: "30%" }}>
             <Button
@@ -667,11 +661,8 @@ const SearchPage: React.FC = () => {
                 transition: "none"
               }}
             >
-
-
               <ProductsFilters
                 classNames={{ secondPage: s.secondPage }}
-                memo={settingsModuleMemo.current}
                 onChange={onFiltersChange}
                 {...filtersState}
               />
@@ -716,7 +707,6 @@ const SearchPage: React.FC = () => {
             </div>
             <ProductsFilters
               classNames={{ secondPage: s.secondPage }}
-              memo={settingsModuleMemo.current}
               onChange={onFiltersChange}
               {...filtersState}
             />

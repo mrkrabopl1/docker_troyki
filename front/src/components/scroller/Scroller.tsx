@@ -1,14 +1,39 @@
-import React, { useRef, useState, useEffect, useCallback, CSSProperties } from 'react';
+import React, { 
+    forwardRef, 
+    useImperativeHandle,
+    useRef, 
+    useState, 
+    useEffect, 
+    useCallback, 
+    CSSProperties 
+} from 'react';
 import ScrollerThumb from './ScrollThumb';
+
+// Экспортируем интерфейс для использования в родительских компонентах
+export interface ScrollerRef {
+    scrollToTop: () => void;
+    scrollToBottom: () => void;
+    scrollTo: (position: number) => void;
+    getCurrentPosition: () => number;
+}
 
 type ScrollType = {
     className?: string;
     children: React.ReactNode;
     onlyVertical?: boolean;
     maxHeight?: number;
+    top?: number;
+    left?: number;
 };
 
-const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical = false,  maxHeight }) => {
+const Scroller = forwardRef<ScrollerRef, ScrollType>(({ 
+    className = '', 
+    children, 
+    onlyVertical = false, 
+    maxHeight, 
+    top, 
+    left 
+}, ref) => {
     const [contTop, setContTop] = useState(0);
     const [contLeft, setContLeft] = useState(0);
     const [hasHorizontalScroll, setHasHorizontalScroll] = useState(false);
@@ -28,11 +53,112 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         horSize: 0,
     });
 
+    // Экспонируем методы через ref
+    useImperativeHandle(ref, () => ({
+        scrollToTop: () => {
+            const scroller = scrollerRef.current;
+            const scrollCont = scrollContRef.current;
+            if (!scroller || !scrollCont) return;
+
+            const maxScroll = scroller.clientHeight - scrollCont.clientHeight;
+            if (maxScroll >= 0) {
+                setContTop(0);
+                setThumbVertPos(0);
+                return;
+            }
+
+            setContTop(0);
+            setThumbVertPos(0);
+        },
+        
+        scrollToBottom: () => {
+            const scroller = scrollerRef.current;
+            const scrollCont = scrollContRef.current;
+            if (!scroller || !scrollCont) return;
+
+            const maxScroll = scroller.clientHeight - scrollCont.clientHeight;
+            if (maxScroll < 0) {
+                setContTop(maxScroll);
+                setThumbVertPos(1);
+            }
+        },
+        
+        scrollTo: (position: number) => {
+            const scroller = scrollerRef.current;
+            const scrollCont = scrollContRef.current;
+            if (!scroller || !scrollCont) return;
+
+            const maxScroll = scroller.clientHeight - scrollCont.clientHeight;
+            if (maxScroll >= 0) {
+                setContTop(0);
+                setThumbVertPos(0);
+                return;
+            }
+
+            const newTop = Math.min(0, Math.max(position, maxScroll));
+            setContTop(newTop);
+            
+            if (maxScroll !== 0) {
+                setThumbVertPos(Math.abs(newTop) / Math.abs(maxScroll));
+            }
+        },
+        
+        getCurrentPosition: () => {
+            return contTop;
+        }
+    }), [contTop]);
+
+    // Синхронизация с пропсом top
+    useEffect(() => {
+        if (top !== undefined) {
+            const scroller = scrollerRef.current;
+            const scrollCont = scrollContRef.current;
+            if (!scroller || !scrollCont) return;
+
+            const maxScroll = scroller.clientHeight - scrollCont.clientHeight;
+            if (maxScroll >= 0) {
+                setContTop(0);
+                setThumbVertPos(0);
+                return;
+            }
+
+            const newTop = Math.min(0, Math.max(top, maxScroll));
+            setContTop(newTop);
+
+            if (maxScroll !== 0) {
+                setThumbVertPos(Math.abs(newTop) / Math.abs(maxScroll));
+            }
+        }
+    }, [top]);
+
+    // Синхронизация с пропсом left
+    useEffect(() => {
+        if (left !== undefined) {
+            const scroller = scrollerRef.current;
+            const scrollCont = scrollContRef.current;
+            if (!scroller || !scrollCont) return;
+
+            const maxScroll = scroller.clientWidth - scrollCont.clientWidth;
+            if (maxScroll >= 0) {
+                setContLeft(0);
+                setThumbHorPos(0);
+                return;
+            }
+
+            const newLeft = Math.min(0, Math.max(left, maxScroll));
+            setContLeft(newLeft);
+
+            if (maxScroll !== 0) {
+                setThumbHorPos(Math.abs(newLeft) / Math.abs(maxScroll));
+            }
+        }
+    }, [left]);
+
     const getMaxScroll = useCallback(() => {
         const scroller = scrollerRef.current;
         const scrollCont = scrollContRef.current;
         if (!scroller || !scrollCont) return { maxScrollTop: 0, maxScrollLeft: 0 };
-        
+
         return {
             maxScrollTop: scroller.clientHeight - scrollCont.clientHeight,
             maxScrollLeft: scroller.clientWidth - scrollCont.clientWidth,
@@ -80,7 +206,7 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         }
 
         newTop = Math.min(0, Math.max(newTop, maxScroll));
-        
+
         setContTop(newTop);
 
         if (maxScroll !== 0) {
@@ -104,7 +230,7 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         }
 
         newLeft = Math.min(0, Math.max(newLeft, maxScroll));
-        
+
         setContLeft(newLeft);
 
         if (maxScroll !== 0) {
@@ -120,13 +246,13 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         const preventWheel = (e: WheelEvent) => {
             e.preventDefault();
             e.stopPropagation();
-            
+
             const delta = e.deltaY > 0 ? -40 : 40;
             scrollVertical(delta);
         };
 
         scroller.addEventListener('wheel', preventWheel, { passive: false });
-        
+
         return () => {
             scroller.removeEventListener('wheel', preventWheel);
         };
@@ -138,9 +264,6 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         if (!scroller) return;
 
         const handleTouchStart = (e: TouchEvent) => {
-           
-            
-            
             isTouchingRef.current = true;
             touchDirectionRef.current = null;
             lastTouchRef.current = {
@@ -152,7 +275,7 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         const handleTouchMove = (e: TouchEvent) => {
             e.preventDefault();
             e.stopPropagation();
-            
+
             if (!isTouchingRef.current) return;
 
             const currentX = e.touches[0].clientX;
@@ -175,10 +298,7 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
             lastTouchRef.current = { x: currentX, y: currentY };
         };
 
-        const handleTouchEnd = (e: TouchEvent) => {
-            // e.preventDefault();
-            // e.stopPropagation();
-            
+        const handleTouchEnd = () => {
             isTouchingRef.current = false;
             touchDirectionRef.current = null;
         };
@@ -187,7 +307,7 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         scroller.addEventListener('touchmove', handleTouchMove, { passive: false });
         scroller.addEventListener('touchend', handleTouchEnd);
         scroller.addEventListener('touchcancel', handleTouchEnd);
-        
+
         return () => {
             scroller.removeEventListener('touchstart', handleTouchStart);
             scroller.removeEventListener('touchmove', handleTouchMove);
@@ -222,14 +342,14 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
         position: "relative",
         width: "100%",
         height: maxHeight ? "auto" : "100%",
-        maxHeight:  maxHeight ? `${maxHeight}px` : undefined,
+        maxHeight: maxHeight ? `${maxHeight}px` : undefined,
         overflow: "hidden",
         touchAction: "none",
         WebkitOverflowScrolling: "touch",
     };
 
     const contentStyle: CSSProperties = {
-       position:maxHeight ? "relative" : "absolute",
+        position: maxHeight ? "relative" : "absolute",
         top: `${contTop}px`,
         left: `${contLeft}px`,
         width: onlyVertical ? "100%" : "auto",
@@ -266,6 +386,8 @@ const Scroller: React.FC<ScrollType> = ({ className = '', children, onlyVertical
             )}
         </div>
     );
-};
+});
+
+Scroller.displayName = 'Scroller';
 
 export default React.memo(Scroller);

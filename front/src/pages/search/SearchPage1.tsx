@@ -466,12 +466,11 @@ const SearchPage: React.FC = () => {
               />
 
 
-              <ProductsFilters
+              {/* <ProductsFilters
                 classNames={{ secondPage: s.secondPage }}
-                memo={settingsModuleMemo.current}
                 onChange={onFiltersChange}
                 {...filtersState}
-              />
+              /> */}
             </div>
 
             <div

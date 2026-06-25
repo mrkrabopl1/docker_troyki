@@ -1,0 +1,29 @@
+.selectAllBtn {
+    color: #2563eb;
+    font-size: 14px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: opacity 0.2s;
+}
+
+.selectAllBtn:hover {
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+.deselectAllBtn {
+    color: #6b7280;
+    font-size: 14px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: opacity 0.2s;
+}
+
+.deselectAllBtn:hover {
+    text-decoration: underline;
+    opacity: 0.8;
+}
