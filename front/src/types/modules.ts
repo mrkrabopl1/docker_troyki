@@ -4,3 +4,10 @@ export interface CheckBoxType {
     activeData: boolean;
     name: string;
 }
+
+
+export interface Firm {
+    id: number;
+    name: string;
+    slug: string;
+}

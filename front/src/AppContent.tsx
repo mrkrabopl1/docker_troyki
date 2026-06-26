@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useAppDispatch } from 'src/store/hooks/redux';
 import { useRouteChange } from 'src/store/hooks/redux';
-import { cartCountAction, setDiscountRules,setSizeTables } from 'src/store/reducers/menuSlice';
+import { cartCountAction, setDiscountRules, setSizeTables } from 'src/store/reducers/menuSlice';
 import { show, sticky, types, categories, setFirmMap, setFirms, collections } from 'src/store/reducers/menuSlice';
 import { setFooter } from 'src/store/reducers/dispetcherSlice';
 import { setWidthProps } from 'src/store/reducers/resizeSlice';
@@ -19,6 +19,8 @@ import ComplexDropMenuWithRequest from './modules/menu/ComplexDropMenuWithReques
 import StickyDispetcherButton from 'src/modules/stickyDispetcherButton/StickyDispetcherButton';
 import Footer from './modules/footer/Footer';
 
+
+import { Firm} from "src/types/modules"
 interface AppContentProps {
   children: React.ReactNode;
 }
@@ -114,16 +116,30 @@ const AppContent: React.FC<AppContentProps> = ({ children }) => {
 
       // 2. Фирмы и коллекции (как было в getFirms)
       const fieldData: Record<string, Record<string, string>> = {};
-      const firmMap: Record<string, number> = {};
+      const firmMap: Record<string, Firm> = {}; // ← теперь объект, а не number
+
       data.firms.forEach((row: any) => {
-        firmMap[row.firm] = row.brand_id;
+        // Создаем slug из названия фирмы
+        const slug = row.firm.toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-') // заменяем всё кроме букв и цифр на -
+          .replace(/^-|-$/g, ''); // убираем тире в начале и конце
+
+        // Сохраняем полную информацию о фирме
+        firmMap[slug] = {
+          id: row.brand_id,
+          name: row.firm,
+          slug: slug
+        };
+
+        // Коллекции (оставляем как есть)
         if (!fieldData[row.firm]) fieldData[row.firm] = {};
         if (row.collection_name) {
           fieldData[row.firm][row.line_id] = row.collection_name;
         }
       });
+
       dispatch(setFirms(Object.keys(fieldData)));
-      dispatch(setFirmMap(firmMap));
+      dispatch(setFirmMap(firmMap)); // ← теперь передаем объект с Firm
       dispatch(collections(fieldData));
 
       // 3. Скидки (добавляем)

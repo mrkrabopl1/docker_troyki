@@ -162,12 +162,14 @@ LIMIT @limitVal OFFSET @offsetVal;
 SELECT 
     b.id as brand_id,
     b.name as firm,
+    b.slug as brand_slug,
     bl.id as line_id,
-    bl.name as collection_name
+    bl.name as collection_name,
+    bl.slug as collection_slug
 FROM brands b
     LEFT JOIN brand_lines bl ON bl.brand_id = b.id AND bl.is_active = true
 WHERE b.is_active = true
-ORDER BY b.name, bl.name;
+ORDER BY b.sort_order ASC, b.name ASC, bl.sort_order ASC, bl.name ASC;
 -- name: GetSnickersByFirmName :many
 SELECT p.name,
     p.image_path,
@@ -914,8 +916,15 @@ SELECT p.id, p.name, p.image_path,
        b.name as firm,
        p.minprice, p.maxprice, p.status
 FROM products p
-JOIN brands b ON p.brand_id = b.id
-WHERE (
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length(@sizes::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -924,40 +933,45 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
-    AND (
-        @status::text IS NULL OR @status::text = '' OR p.status = @status::text
-    )
+    -- Поиск по имени/артикулу
     AND (
         @name::text IS NULL OR @name::text = ''
         OR p.name ILIKE '%' || @name::text || '%'
         OR p.article ILIKE '%' || @name::text || '%'
     )
+    -- Категории
     AND (
         COALESCE(array_length(@categories::int[], 1), 0) = 0
         OR p.category = ANY(@categories::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length(@product_types::int[], 1), 0) = 0
         OR p.type = ANY(@product_types::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length(@firms::int[], 1), 0) = 0
         OR p.brand_id = ANY(@firms::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length(@lines::int[], 1), 0) = 0
         OR p.line_id = ANY(@lines::int[])
     )
+    -- Bodytype
     AND (
         COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
         OR p.bodytype = ANY(@bodytypes::body_enum[])
     )
+    -- Цена
     AND (
         sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
     )
     AND (
         sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
     )
+    -- С ценой
     AND (
         @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
     )
@@ -979,7 +993,8 @@ SELECT p.id, p.name, p.image_path,
        COALESCE(d.maxdiscprice, 0) as maxdiscprice,
        COALESCE(dr.discount_value, 0) as discount_percent
 FROM products p
-JOIN brands b ON p.brand_id = b.id
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
 LEFT JOIN discount d ON p.id = d.productid
 LEFT JOIN LATERAL (
     SELECT dr2.discount_value, dr2.name
@@ -997,7 +1012,13 @@ LEFT JOIN LATERAL (
     ORDER BY dr2.priority DESC
     LIMIT 1
 ) dr ON true
-WHERE (
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length(@sizes::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -1006,64 +1027,69 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
-    AND (
-        @status::text IS NULL OR @status::text = '' OR p.status = @status::text
-    )
+    -- Поиск по имени/артикулу
     AND (
         @name::text IS NULL OR @name::text = ''
         OR p.name ILIKE '%' || @name::text || '%'
         OR p.article ILIKE '%' || @name::text || '%'
     )
+    -- Категории
     AND (
         COALESCE(array_length(@categories::int[], 1), 0) = 0
         OR p.category = ANY(@categories::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length(@product_types::int[], 1), 0) = 0
         OR p.type = ANY(@product_types::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length(@firms::int[], 1), 0) = 0
         OR p.brand_id = ANY(@firms::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length(@lines::int[], 1), 0) = 0
         OR p.line_id = ANY(@lines::int[])
     )
+    -- Bodytype
     AND (
         COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
         OR p.bodytype = ANY(@bodytypes::body_enum[])
     )
+    -- Цена
     AND (
         sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
     )
     AND (
         sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
     )
+    -- С ценой
     AND (
         @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
     )
     -- фильтр по скидкам всегда активен, поэтому проверяем наличие
     AND (
-    -- Если передан список правил, то требуем наличие скидки от одного из них
-    (array_length(@rule_ids::int[], 1) > 0 AND EXISTS (
-        SELECT 1
-        FROM discount_rule_items dri2
-        JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
-            AND dr2.is_active = true
-            AND dr2.starts_at <= NOW()
-            AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
-        WHERE dri2.rule_id = ANY(@rule_ids::int[])
-          AND (
-              (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
-              (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
-              (dri2.item_type = 'product' AND dri2.item_id = p.id)
-          )
-    ))
-    OR
-    -- Если список не передан, то используем старую логику (прямая скидка или правило)
-    (array_length(@rule_ids::int[], 1) = 0 AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL))
-)
+        -- Если передан список правил, то требуем наличие скидки от одного из них
+        (array_length(@rule_ids::int[], 1) > 0 AND EXISTS (
+            SELECT 1
+            FROM discount_rule_items dri2
+            JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE dri2.rule_id = ANY(@rule_ids::int[])
+              AND (
+                  (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+                  (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+                  (dri2.item_type = 'product' AND dri2.item_id = p.id)
+              )
+        ))
+        OR
+        -- Если список не передан, то используем старую логику (прямая скидка или правило)
+        (array_length(@rule_ids::int[], 1) = 0 AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL))
+    )
 ORDER BY
     CASE WHEN @sort_type::int = 1 THEN p.name END ASC,
     CASE WHEN @sort_type::int = 2 THEN p.name END DESC,
@@ -1081,9 +1107,16 @@ SELECT p.id, p.name, p.image_path,
        p.minprice, p.maxprice, p.status,
        (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
 FROM products p
-JOIN brands b ON p.brand_id = b.id
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
 LEFT JOIN store_house sh ON p.id = sh.productid
-WHERE (
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length(@sizes::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -1092,43 +1125,49 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
-    AND (
-        @status::text IS NULL OR @status::text = '' OR p.status = @status::text
-    )
+    -- Поиск по имени/артикулу
     AND (
         @name::text IS NULL OR @name::text = ''
         OR p.name ILIKE '%' || @name::text || '%'
         OR p.article ILIKE '%' || @name::text || '%'
     )
+    -- Категории
     AND (
         COALESCE(array_length(@categories::int[], 1), 0) = 0
         OR p.category = ANY(@categories::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length(@product_types::int[], 1), 0) = 0
         OR p.type = ANY(@product_types::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length(@firms::int[], 1), 0) = 0
         OR p.brand_id = ANY(@firms::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length(@lines::int[], 1), 0) = 0
         OR p.line_id = ANY(@lines::int[])
     )
+    -- Bodytype
     AND (
         COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
         OR p.bodytype = ANY(@bodytypes::body_enum[])
     )
+    -- Цена
     AND (
         sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
     )
     AND (
         sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
     )
+    -- С ценой
     AND (
         @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
     )
+    -- Наличие на складе
     AND (sh.id IS NOT NULL AND sh.quantity > 0)
 ORDER BY
     CASE WHEN @sort_type::int = 1 THEN p.name END ASC,
@@ -1149,7 +1188,8 @@ SELECT p.id, p.name, p.image_path,
        COALESCE(dr.discount_value, 0) as discount_percent,
        (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
 FROM products p
-JOIN brands b ON p.brand_id = b.id
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
 LEFT JOIN discount d ON p.id = d.productid
 LEFT JOIN store_house sh ON p.id = sh.productid
 LEFT JOIN LATERAL (
@@ -1168,7 +1208,13 @@ LEFT JOIN LATERAL (
     ORDER BY dr2.priority DESC
     LIMIT 1
 ) dr ON true
-WHERE (
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length(@sizes::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -1177,64 +1223,71 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
-    AND (
-        @status::text IS NULL OR @status::text = '' OR p.status = @status::text
-    )
+    -- Поиск по имени/артикулу
     AND (
         @name::text IS NULL OR @name::text = ''
         OR p.name ILIKE '%' || @name::text || '%'
         OR p.article ILIKE '%' || @name::text || '%'
     )
+    -- Категории
     AND (
         COALESCE(array_length(@categories::int[], 1), 0) = 0
         OR p.category = ANY(@categories::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length(@product_types::int[], 1), 0) = 0
         OR p.type = ANY(@product_types::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length(@firms::int[], 1), 0) = 0
         OR p.brand_id = ANY(@firms::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length(@lines::int[], 1), 0) = 0
         OR p.line_id = ANY(@lines::int[])
     )
+    -- Bodytype
     AND (
         COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
         OR p.bodytype = ANY(@bodytypes::body_enum[])
     )
+    -- Цена
     AND (
         sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
     )
     AND (
         sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
     )
+    -- С ценой
     AND (
         @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
     )
-     AND (
-    -- Если передан список правил, то требуем наличие скидки от одного из них
-    (array_length(@rule_ids::int[], 1) > 0 AND EXISTS (
-        SELECT 1
-        FROM discount_rule_items dri2
-        JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
-            AND dr2.is_active = true
-            AND dr2.starts_at <= NOW()
-            AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
-        WHERE dri2.rule_id = ANY(@rule_ids::int[])
-          AND (
-              (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
-              (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
-              (dri2.item_type = 'product' AND dri2.item_id = p.id)
-          )
-    ))
-    OR
-    -- Если список не передан, то используем старую логику (прямая скидка или правило)
-    (array_length(@rule_ids::int[], 1) = 0 AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL))
-)  -- скидка
-    AND (sh.id IS NOT NULL AND sh.quantity > 0)              -- склад
+    -- Скидки
+    AND (
+        -- Если передан список правил, то требуем наличие скидки от одного из них
+        (array_length(@rule_ids::int[], 1) > 0 AND EXISTS (
+            SELECT 1
+            FROM discount_rule_items dri2
+            JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE dri2.rule_id = ANY(@rule_ids::int[])
+              AND (
+                  (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+                  (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+                  (dri2.item_type = 'product' AND dri2.item_id = p.id)
+              )
+        ))
+        OR
+        -- Если список не передан, то используем старую логику (прямая скидка или правило)
+        (array_length(@rule_ids::int[], 1) = 0 AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL))
+    )
+    -- Наличие на складе
+    AND (sh.id IS NOT NULL AND sh.quantity > 0)
 ORDER BY
     CASE WHEN @sort_type::int = 1 THEN p.name END ASC,
     CASE WHEN @sort_type::int = 2 THEN p.name END DESC,
@@ -1252,7 +1305,15 @@ OFFSET CASE WHEN @offsetval::integer > 0 THEN @offsetval::integer ELSE 0 END;
 -- name: CountProductsByFiltersBase :one
 SELECT COUNT(*)
 FROM products p
-WHERE (
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length(@sizes::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -1261,40 +1322,45 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
-    AND (
-        @status::text IS NULL OR @status::text = '' OR p.status = @status::text
-    )
+    -- Поиск по имени/артикулу
     AND (
         @name::text IS NULL OR @name::text = ''
         OR p.name ILIKE '%' || @name::text || '%'
         OR p.article ILIKE '%' || @name::text || '%'
     )
+    -- Категории
     AND (
         COALESCE(array_length(@categories::int[], 1), 0) = 0
         OR p.category = ANY(@categories::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length(@product_types::int[], 1), 0) = 0
         OR p.type = ANY(@product_types::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length(@firms::int[], 1), 0) = 0
         OR p.brand_id = ANY(@firms::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length(@lines::int[], 1), 0) = 0
         OR p.line_id = ANY(@lines::int[])
     )
+    -- Bodytype
     AND (
         COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
         OR p.bodytype = ANY(@bodytypes::body_enum[])
     )
+    -- Цена
     AND (
         sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
     )
     AND (
         sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
     )
+    -- С ценой
     AND (
         @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
     );
@@ -1302,7 +1368,15 @@ WHERE (
 -- name: CountProductsByFiltersWithDiscount :one
 SELECT COUNT(*)
 FROM products p
-WHERE (
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length(@sizes::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -1311,84 +1385,98 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
-    AND (
-        @status::text IS NULL OR @status::text = '' OR p.status = @status::text
-    )
+    -- Поиск по имени/артикулу
     AND (
         @name::text IS NULL OR @name::text = ''
         OR p.name ILIKE '%' || @name::text || '%'
         OR p.article ILIKE '%' || @name::text || '%'
     )
+    -- Категории
     AND (
         COALESCE(array_length(@categories::int[], 1), 0) = 0
         OR p.category = ANY(@categories::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length(@product_types::int[], 1), 0) = 0
         OR p.type = ANY(@product_types::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length(@firms::int[], 1), 0) = 0
         OR p.brand_id = ANY(@firms::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length(@lines::int[], 1), 0) = 0
         OR p.line_id = ANY(@lines::int[])
     )
+    -- Bodytype
     AND (
         COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
         OR p.bodytype = ANY(@bodytypes::body_enum[])
     )
+    -- Цена
     AND (
         sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
     )
     AND (
         sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
     )
+    -- С ценой
     AND (
         @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
     )
-       AND (
-    -- Вариант 1: передан список правил
-    (array_length(@rule_ids::int[], 1) > 0 AND EXISTS (
-        SELECT 1
-        FROM discount_rule_items dri2
-        WHERE dri2.rule_id = ANY(@rule_ids::int[])
-          AND (
-              (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
-              (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
-              (dri2.item_type = 'product' AND dri2.item_id = p.id)
-          )
-          AND EXISTS (
-              SELECT 1 FROM discount_rules dr2
-              WHERE dr2.id = dri2.rule_id
-                AND dr2.is_active = true
-                AND dr2.starts_at <= NOW()
-                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
-          )
-    ))
-    OR
-    -- Вариант 2: список правил не передан – используем старую логику
-    (array_length(@rule_ids::int[], 1) = 0 AND (
-        EXISTS (SELECT 1 FROM discount d WHERE d.productid = p.id)
-        OR EXISTS (
+    -- Скидки
+    AND (
+        -- Вариант 1: передан список правил
+        (array_length(@rule_ids::int[], 1) > 0 AND EXISTS (
             SELECT 1
-            FROM discount_rule_items dri
-            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
-                AND dr2.is_active = true
-                AND dr2.starts_at <= NOW()
-                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
-            WHERE (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
-               OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
-               OR (dri.item_type = 'product' AND dri.item_id = p.id)
-        )
-    ))
-);
+            FROM discount_rule_items dri2
+            WHERE dri2.rule_id = ANY(@rule_ids::int[])
+              AND (
+                  (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+                  (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+                  (dri2.item_type = 'product' AND dri2.item_id = p.id)
+              )
+              AND EXISTS (
+                  SELECT 1 FROM discount_rules dr2
+                  WHERE dr2.id = dri2.rule_id
+                    AND dr2.is_active = true
+                    AND dr2.starts_at <= NOW()
+                    AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+              )
+        ))
+        OR
+        -- Вариант 2: список правил не передан – используем старую логику
+        (array_length(@rule_ids::int[], 1) = 0 AND (
+            EXISTS (SELECT 1 FROM discount d WHERE d.productid = p.id)
+            OR EXISTS (
+                SELECT 1
+                FROM discount_rule_items dri
+                JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                    AND dr2.is_active = true
+                    AND dr2.starts_at <= NOW()
+                    AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+                WHERE (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+                   OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+                   OR (dri.item_type = 'product' AND dri.item_id = p.id)
+            )
+        ))
+    );
 
 -- name: CountProductsByFiltersWithStore :one
 SELECT COUNT(*)
 FROM products p
-WHERE (
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length(@sizes::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -1397,43 +1485,49 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
-    AND (
-        @status::text IS NULL OR @status::text = '' OR p.status = @status::text
-    )
+    -- Поиск по имени/артикулу
     AND (
         @name::text IS NULL OR @name::text = ''
         OR p.name ILIKE '%' || @name::text || '%'
         OR p.article ILIKE '%' || @name::text || '%'
     )
+    -- Категории
     AND (
         COALESCE(array_length(@categories::int[], 1), 0) = 0
         OR p.category = ANY(@categories::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length(@product_types::int[], 1), 0) = 0
         OR p.type = ANY(@product_types::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length(@firms::int[], 1), 0) = 0
         OR p.brand_id = ANY(@firms::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length(@lines::int[], 1), 0) = 0
         OR p.line_id = ANY(@lines::int[])
     )
+    -- Bodytype
     AND (
         COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
         OR p.bodytype = ANY(@bodytypes::body_enum[])
     )
+    -- Цена
     AND (
         sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
     )
     AND (
         sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
     )
+    -- С ценой
     AND (
         @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
     )
+    -- Наличие на складе
     AND EXISTS (
         SELECT 1 FROM store_house sh
         WHERE sh.productid = p.id AND sh.quantity > 0
@@ -1442,7 +1536,15 @@ WHERE (
 -- name: CountProductsByFiltersFull :one
 SELECT COUNT(*)
 FROM products p
-WHERE (
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length(@sizes::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -1451,80 +1553,88 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
+    -- Статус (если нужен фильтр по статусу - оставляем, но для пользователей всегда active)
     AND (
         @status::text IS NULL OR @status::text = '' OR p.status = @status::text
     )
+    -- Поиск по имени/артикулу
     AND (
         @name::text IS NULL OR @name::text = ''
         OR p.name ILIKE '%' || @name::text || '%'
         OR p.article ILIKE '%' || @name::text || '%'
     )
+    -- Категории
     AND (
         COALESCE(array_length(@categories::int[], 1), 0) = 0
         OR p.category = ANY(@categories::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length(@product_types::int[], 1), 0) = 0
         OR p.type = ANY(@product_types::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length(@firms::int[], 1), 0) = 0
         OR p.brand_id = ANY(@firms::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length(@lines::int[], 1), 0) = 0
         OR p.line_id = ANY(@lines::int[])
     )
+    -- Bodytype
     AND (
         COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
         OR p.bodytype = ANY(@bodytypes::body_enum[])
     )
+    -- Цена
     AND (
         sqlc.narg('minprice')::int IS NULL OR p.maxprice >= sqlc.narg('minprice')::int
     )
     AND (
         sqlc.narg('maxprice')::int IS NULL OR p.minprice <= sqlc.narg('maxprice')::int
     )
+    -- С ценой
     AND (
         @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
     )
+    -- Скидки
     AND (
-    -- Вариант 1: передан список правил
-    (array_length(@rule_ids::int[], 1) > 0 AND EXISTS (
-        SELECT 1
-        FROM discount_rule_items dri2
-        WHERE dri2.rule_id = ANY(@rule_ids::int[])
-          AND (
-              (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
-              (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
-              (dri2.item_type = 'product' AND dri2.item_id = p.id)
-          )
-          AND EXISTS (
-              SELECT 1 FROM discount_rules dr2
-              WHERE dr2.id = dri2.rule_id
-                AND dr2.is_active = true
-                AND dr2.starts_at <= NOW()
-                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
-          )
-    ))
-    OR
-    -- Вариант 2: список правил не передан – используем старую логику
-    (array_length(@rule_ids::int[], 1) = 0 AND (
-        EXISTS (SELECT 1 FROM discount d WHERE d.productid = p.id)
-        OR EXISTS (
+        (array_length(@rule_ids::int[], 1) > 0 AND EXISTS (
             SELECT 1
-            FROM discount_rule_items dri
-            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
-                AND dr2.is_active = true
-                AND dr2.starts_at <= NOW()
-                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
-            WHERE (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
-               OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
-               OR (dri.item_type = 'product' AND dri.item_id = p.id)
-        )
-    ))
-)
-    
+            FROM discount_rule_items dri2
+            WHERE dri2.rule_id = ANY(@rule_ids::int[])
+              AND (
+                  (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+                  (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+                  (dri2.item_type = 'product' AND dri2.item_id = p.id)
+              )
+              AND EXISTS (
+                  SELECT 1 FROM discount_rules dr2
+                  WHERE dr2.id = dri2.rule_id
+                    AND dr2.is_active = true
+                    AND dr2.starts_at <= NOW()
+                    AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+              )
+        ))
+        OR
+        (array_length(@rule_ids::int[], 1) = 0 AND (
+            EXISTS (SELECT 1 FROM discount d WHERE d.productid = p.id)
+            OR EXISTS (
+                SELECT 1
+                FROM discount_rule_items dri
+                JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                    AND dr2.is_active = true
+                    AND dr2.starts_at <= NOW()
+                    AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+                WHERE (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+                   OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+                   OR (dri.item_type = 'product' AND dri.item_id = p.id)
+            )
+        ))
+    )
+    -- Наличие на складе
     AND EXISTS (
         SELECT 1 FROM store_house sh
         WHERE sh.productid = p.id AND sh.quantity > 0

@@ -603,7 +603,6 @@ func (s *Server) handleBulkUpdateProductDiscount(c *gin.Context) {
 		return
 	}
 
-	// Валидация rule_id
 	if req.RuleID <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid rule ID"})
 		return
@@ -619,7 +618,6 @@ func (s *Server) handleBulkUpdateProductDiscount(c *gin.Context) {
 	var productIDs []int32
 
 	if req.SelectAll {
-		// Получаем все ID товаров по фильтрам
 		params := convertFiltersToParams(req.Filters, req.Search)
 		params.ExcludeIds = req.ExcludeIDs
 
@@ -630,7 +628,6 @@ func (s *Server) handleBulkUpdateProductDiscount(c *gin.Context) {
 		}
 	} else {
 		if len(req.ExcludeIDs) > 0 {
-			// Исключаем указанные ID из списка
 			excludeMap := make(map[int32]bool)
 			for _, id := range req.ExcludeIDs {
 				excludeMap[id] = true
@@ -653,10 +650,18 @@ func (s *Server) handleBulkUpdateProductDiscount(c *gin.Context) {
 		return
 	}
 
-	// Добавляем скидки пачками (batch insert)
+	// ✅ Начинаем транзакцию
+	tx, err := s.store.BeginTx(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start transaction"})
+		return
+	}
+	defer tx.Rollback(c.Request.Context()) // ← если что-то пойдет не так, откат
+
 	batchSize := 100
 	addedCount := 0
 
+	// ✅ Добавляем все батчи в одной транзакции
 	for i := 0; i < len(productIDs); i += batchSize {
 		end := i + batchSize
 		if end > len(productIDs) {
@@ -665,26 +670,39 @@ func (s *Server) handleBulkUpdateProductDiscount(c *gin.Context) {
 
 		batch := productIDs[i:end]
 
-		// Используем batch insert для производительности
-		err = s.store.BulkAddRuleItems(c.Request.Context(), db.BulkAddRuleItemsParams{
+		// ✅ tx.BulkAddRuleItems РАБОТАЕТ!
+		err = tx.BulkAddRuleItems(c.Request.Context(), db.BulkAddRuleItemsParams{
 			RuleID:   req.RuleID,
 			ItemType: "product",
 			ItemIds:  batch,
 		})
-		fmt.Println("Recalculate discounts", batch)
 		if err != nil {
-			log.Printf("Failed to add discount batch for products %v: %v", batch, err)
-			continue
-		}
-		fmt.Println("Recalculate all discounts", batch)
-		err = s.store.RecalculateAllDiscounts(c.Request.Context())
-		if err != nil {
-			log.Printf("Failed to add discount batch for products %v: %v", batch, err)
-			continue
+			log.Printf("Failed to add discount batch: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add discounts"})
+			return
 		}
 
 		addedCount += len(batch)
 	}
+
+	// ✅ Коммитим транзакцию
+	if err := tx.Commit(c.Request.Context()); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit"})
+		return
+	}
+
+	// ✅ Пересчет в фоне (если нет триггеров)
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		log.Printf("[Recalculate] Started for rule %d", req.RuleID)
+		if err := s.store.RecalculateAffectedProducts(bgCtx, req.RuleID); err != nil {
+			log.Printf("[Recalculate] Failed: %v", err)
+		} else {
+			log.Printf("[Recalculate] Completed for rule %d", req.RuleID)
+		}
+	}()
 
 	c.JSON(http.StatusOK, gin.H{
 		"added_count": addedCount,

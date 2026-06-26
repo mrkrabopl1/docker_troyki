@@ -9,6 +9,7 @@ import (
 	"github.com/hibiken/asynq"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
 	"github.com/mrkrabopl1/go_db/mail"
+	"github.com/mrkrabopl1/go_db/types"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 )
@@ -40,6 +41,8 @@ type TaskProcessor interface {
 	ClearPageWidgetsCache(ctx context.Context) error
 
 	ProcessTaskGenerateWidgetLink(ctx context.Context, task *asynq.Task) error
+	RefreshPageWidgetsCache(ctx context.Context) error
+	RefreshSingleWidgetCache(ctx context.Context, widgetID int32) error
 }
 
 type RedisTaskProcessor struct {
@@ -176,13 +179,13 @@ func (p *RedisTaskProcessor) GetPageWidgets(ctx context.Context) ([]byte, error)
 	key := "mainpage:widgets:v1"
 	return p.redisClient.Get(ctx, key).Bytes()
 }
-func (p *RedisTaskProcessor) GetPageWidgetsStruct(ctx context.Context) ([]CachedWidget, error) {
+func (p *RedisTaskProcessor) GetPageWidgetsStruct(ctx context.Context) ([]types.CachedWidget, error) {
 	data, err := p.GetPageWidgets(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var widgets []CachedWidget
+	var widgets []types.CachedWidget
 	if err := json.Unmarshal(data, &widgets); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal widgets: %w", err)
 	}

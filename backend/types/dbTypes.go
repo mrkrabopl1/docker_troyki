@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/lib/pq"
@@ -182,4 +183,22 @@ type ProductsInsert struct {
 	Quantity    int    `db:"quantity"`
 	Productid   int    `db:"productid"`
 	ProductType int    `db:"producttype"`
+}
+
+type CachedProduct struct {
+	ID        int32       `json:"id"`
+	Name      string      `json:"name"`
+	ImagePath string      `json:"image_path"`
+	Price     int32       `json:"price"`
+	Discount  interface{} `json:"discount,omitempty"`
+}
+
+type CachedWidget struct {
+	ID        int32           `json:"id"`
+	Name      string          `json:"name"`
+	Type      string          `json:"type"`
+	SortOrder int32           `json:"sort_order"`
+	LinkUrl   string          `json:"link_url"`
+	Settings  json.RawMessage `json:"settings"`
+	Products  []CachedProduct `json:"products,omitempty"`
 }

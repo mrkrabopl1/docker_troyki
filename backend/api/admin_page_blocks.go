@@ -76,8 +76,11 @@ func (s *Server) handleAdminCreatePageWidget(c *gin.Context) {
 	// 4. 🔥 Инвалидируем кэш главной страницы (асинхронно)
 	go func() {
 		ctx := context.Background()
+		fmt.Println("Clear page widget cache")
 		if err := s.taskProcessor.ClearPageWidgetsCache(ctx); err != nil {
 			fmt.Printf("[Redis] Failed to clear page widgets cache: %v\n", err)
+		} else {
+			fmt.Println("Page widget cache cleared successfully")
 		}
 	}()
 

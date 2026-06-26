@@ -19,14 +19,14 @@ import { CheckBoxType } from 'src/types/modules';
 interface FiltersInfoRequest {
   sizes: string[]
   price: number[]
-  firms: string[],
+  firms: number[],
   bodytypes?: string[],
   lines?: string[],
   types: number[],
   store?: boolean,
   withPrice: boolean,
-  discount?:boolean,
-  rule_ids:number[],
+  discount?: boolean,
+  rule_ids: number[],
 }
 
 interface FiltersState {
@@ -49,7 +49,7 @@ const SearchPage: React.FC = () => {
 
   const router = useRouter();
   const searchParams = router.query;
-  const { typesVal, categories, discountRules } = useAppSelector(state => state.menuReducer);
+  const { typesVal, categories, discountRules, firmMap } = useAppSelector(state => state.menuReducer);
   // Refs для хранения изменяемых данных без перерисовки
   const filtersInfo = useRef<FiltersInfoRequest>({
     sizes: [],
@@ -59,7 +59,7 @@ const SearchPage: React.FC = () => {
     store: false,
     discount: false,
     withPrice: true,
-    rule_ids:[]
+    rule_ids: []
   })
   const [hoverSettings, setHoverSettings] = useState(false);
   const emptyData = useRef(false)
@@ -67,7 +67,7 @@ const SearchPage: React.FC = () => {
   const activeSizes = useRef<string[]>([])
   const orderType = useRef(0)
   const settingsModuleMemo = useRef(true)
-  const firms = useRef<string[]>([])
+  const firms = useRef<number[]>([])
   const searchWord = useRef("")
   const categoryRef = useRef(0)
   const typeRef = useRef(0)
@@ -109,14 +109,14 @@ const SearchPage: React.FC = () => {
         lines: [],
         bodytypes: [],
         withPrice: true,
-        rule_ids:[]
+        rule_ids: []
       }
-      const data = convertFilterseData(respData.filters)
+      const data = convertFiltersData(respData.filters)
       setFilters(data)
       settingsModuleMemo.current = !settingsModuleMemo.current
       setMerchFieldData(respData.products)
     }
-  }, [])
+  }, [firmMap])
 
   const updatMerch = useCallback((respData: any) => {
     pages.current = Math.ceil(respData.totalCount / pageSize.current);
@@ -162,14 +162,14 @@ const SearchPage: React.FC = () => {
   }, [updatMerch])
 
   // Преобразование данных фильтров
-  const convertFilterseData = useCallback((resData: {
+  const convertFiltersData = useCallback((resData: {
     price: number[],
     avalible: boolean,
     firmsCount: { [key: string]: string },
     sizes: { [key: string]: string }
     types?: number[]
     store?: boolean,
-    discounts?: {id:number,name:string}[],
+    discounts?: { id: number, name: string }[],
     withPrice: boolean
   }) => {
     const priceProps = {
@@ -232,18 +232,31 @@ const SearchPage: React.FC = () => {
       })
     }
 
-    // Обработка фирм
+    // Обработка фирм (ИСПРАВЛЕНО)
     const checkBoxPropsFirmData: CheckBoxType[] = []
-    Object.entries(resData.firmsCount).forEach(([firm, count]) => {
-      firms.current.push(firm)
-      const active = filtersInfo.current.firms.includes(firm)
+    Object.entries(resData.firmsCount).forEach(([firmName, count]) => {
+      // Ищем фирму по имени в firmMap
+      const firm = Object.values(firmMap).find(f => f.name === firmName);
+      if (!firm) {
+        // Если не нашли - пропускаем
+        console.warn(`Firm "${firmName}" not found in firmMap`);
+        return;
+      }
+
+      // Сохраняем ID для фильтрации
+      firms.current.push(firm.id);
+
+      // Проверяем, активна ли фирма в текущих фильтрах
+      const active = filtersInfo.current.firms.includes(firm.id);
+
+      // Используем slug как id для UI
       checkBoxPropsFirmData.push({
-        id: firm,
+        id: firm.slug, // ← теперь slug, а не имя
         enable: true,
         activeData: active,
-        name: `${firm}`
-      })
-    })
+        name: `${firmName} (${count})`
+      });
+    });
 
     // Solo данные – два чекбокса: "Есть на складе" (withPrice) и "В наличии" (store)
     const soloDataProps: CheckBoxType[] = [
@@ -271,29 +284,31 @@ const SearchPage: React.FC = () => {
       ],
       soloDataProps
     }
-  }, [discountRules])
+  }, [discountRules, firmMap]);
 
 
   const onFiltersChange = useCallback((filter: any) => {
     switch (filter.id) {
       case "sizes":
-        filtersInfo.current.sizes = filter.data; // массив строк (размеров)
+        filtersInfo.current.sizes = filter.data;
         break;
       case "firms":
-        filtersInfo.current.firms = filter.data; // массив строк (названий фирм)
+        // filter.data - массив slug'ов от чекбоксов
+        // Преобразуем slug'и в ID для запроса к API
+        filtersInfo.current.firms = filter.data
+          .map((slug: string) => firmMap[slug]?.id)
+          .filter(Boolean); // убираем undefined
         break;
       case "type":
-        filtersInfo.current.types = filter.data; // массив чисел (typeId)
+        filtersInfo.current.types = filter.data;
         break;
       case "discounts":
-        filtersInfo.current.rule_ids = filter.data; // массив чисел (ruleId)
+        filtersInfo.current.rule_ids = filter.data;
         break;
       case "price":
-        filtersInfo.current.price = filter.data; // массив [min, max]
+        filtersInfo.current.price = filter.data;
         break;
       case "solo":
-        // filter.data – массив объектов CheckBoxType, обновлённых через CheckBoxColumn
-        // У нас два элемента: с id 'withPrice' и 'store'
         if (filter.data && filter.data.length >= 2) {
           const withPriceItem = filter.data.find((item: CheckBoxType) => item.id === 'withPrice');
           const storeItem = filter.data.find((item: CheckBoxType) => item.id === 'store');
@@ -306,7 +321,7 @@ const SearchPage: React.FC = () => {
     }
     // после изменения фильтров делаем поиск
     searchCallback(searchWord.current);
-  }, [searchCallback]);
+  }, [searchCallback, firmMap]);
 
   const pageChange = useCallback((page: number) => {
     currentPage.current = page
@@ -326,7 +341,7 @@ const SearchPage: React.FC = () => {
       types: [],
       withPrice: true,
       store: false,
-      rule_ids:[]
+      rule_ids: []
     }
     searchData()
   }, [updatMerch])
@@ -362,13 +377,16 @@ const SearchPage: React.FC = () => {
       setShowGrid(false)
     }
     typesValRef.current = typesVal;
-    // Этот эффект сработает при каждом изменении query параметров
+
+    // Сбрасываем фильтры
     filtersInfo.current.sizes = [];
     filtersInfo.current.firms = [];
     filtersInfo.current.types = [];
+    filtersInfo.current.rule_ids = [];
     typeRef.current = 0;
     categoryRef.current = 0;
     currentPage.current = 1;
+
     const category = searchParams.category || "";
     let categoryId;
     let typeId
@@ -391,11 +409,15 @@ const SearchPage: React.FC = () => {
       }
     }
 
-    let firm = searchParams.firm as string || "";
-
-    if (firm) {
-      filtersInfo.current.firms.push(firm)
+    // Обработка фирмы из URL (ИСПРАВЛЕНО)
+    const firmSlug = searchParams.brand as string || "";
+    if (firmSlug) {
+      const firm = firmMap[firmSlug];
+      if (firm) {
+        filtersInfo.current.firms.push(firm.id); // сохраняем ID для API
+      }
     }
+
     let bodytype = searchParams.bodytype as string || "";
     if (bodytype) {
       filtersInfo.current.bodytypes.push(bodytype)
@@ -406,7 +428,7 @@ const SearchPage: React.FC = () => {
     }
 
     const name = searchParams.key_word as string || "";
-    if(searchParams.rule_ids || searchParams.discount){
+    if (searchParams.rule_ids || searchParams.discount) {
       filtersInfo.current.discount = searchParams.discount === "true"
     }
 
@@ -418,7 +440,7 @@ const SearchPage: React.FC = () => {
     }
     searchWord.current = name
     searchData()
-  }, [searchParams, typesVal, categories]);
+  }, [searchParams, typesVal, categories, firmMap]);
 
 
   const searchData = useCallback(() => {
@@ -444,7 +466,7 @@ const SearchPage: React.FC = () => {
         filtersInfo.current
       )
     }
-  }, [getProductsAndFiltersByString, getProductsAndFiltersByCategoryAndType])
+  }, [getProductsAndFiltersByString, getProductsAndFiltersByCategoryAndType, firmMap])
 
 
   const handleMouseEnter = useCallback(() => setHoverSettings(true), []);

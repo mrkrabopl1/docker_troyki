@@ -9,6 +9,7 @@ import { getBannersAndFilters, getBanners, createAdminBanner, updateAdminBanner,
 import { types } from 'src/store/reducers/menuSlice';
 import { finishLoading } from 'src/store/reducers/loadingSlice'
 import Modal from 'src/components/modal/Modal';
+import { CheckBoxType } from 'src/types/modules';
 
 interface Banner {
     id: number;
@@ -21,16 +22,33 @@ interface Banner {
     created_at: string;
 }
 
+interface FiltersState {
+    priceProps: {
+        max: number
+        min: number
+        dataLeft?: number
+        dataRight?: number
+    }
+    soloDataProps: CheckBoxType[]
+    checboxsProps: {
+        name: string
+        id: string
+        props: CheckBoxType[]
+    }[]
+}
+
 const BannersManager: React.FC = () => {
     const router = useRouter();
     const { typesVal, firmMap, discountRules } = useAppSelector(state => state.menuReducer)
     const dispatch = useAppDispatch();
+    
+    // Фильтры - храним ID для фирм
     const filtersInfo = useRef<any>({
         sizes: [],
         price: [],
         product_types: [],
         bodytypes: [],
-        firms: [],
+        firms: [], // ← здесь хранятся ID фирм
         store: false,
         discount: false,
         withPrice: true,
@@ -48,6 +66,7 @@ const BannersManager: React.FC = () => {
         withPrice: true,
         is_active: undefined
     })
+    
     const [banners, setBanners] = useState<Banner[]>([])
     const [loading, setLoading] = useState(false)
     const [showFiltersPanel, setShowFiltersPanel] = useState(false)
@@ -57,16 +76,16 @@ const BannersManager: React.FC = () => {
     const [imagePreview, setImagePreview] = useState<string>('')
     const [uploading, setUploading] = useState(false)
     const [errors, setErrors] = useState<{ image?: boolean; filters?: boolean }>({})
-    const [filtersState, setFilters] = useState<any>({
+    const [filtersState, setFilters] = useState<FiltersState>({
         priceProps: { max: 0, min: 0 },
         checboxsProps: [],
         soloDataProps: []
     })
 
     const activeSizes = useRef<string[]>([])
-    const firms = useRef<string[]>([])
+    const firms = useRef<string[]>([]) // ← здесь хранятся названия фирм для UI
 
-    // Конвертация фильтров для ProductsFilters
+    // Конвертация фильтров для ProductsFilters (ИСПРАВЛЕНО)
     const convertFiltersData = useCallback((resData: any) => {
         const priceProps = {
             min: resData.price?.[0] || 0,
@@ -77,13 +96,14 @@ const BannersManager: React.FC = () => {
         allFilters.current = resData
         activeSizes.current = []
         firms.current = []
-        const checkBoxPropsData: any[] = []
+        const checkBoxPropsData: CheckBoxType[] = []
 
         if (resData.sizes) {
             Object.entries(resData.sizes).forEach(([size]) => {
                 activeSizes.current.push(size)
                 const active = filtersInfo.current.sizes?.includes(size) || false
                 checkBoxPropsData.push({
+                    id: size,
                     enable: true,
                     activeData: active,
                     name: size
@@ -91,13 +111,14 @@ const BannersManager: React.FC = () => {
             })
         }
 
-        const checkBoxPropsProductsData: any[] = []
+        const checkBoxPropsProductsData: CheckBoxType[] = []
         if (resData.product_types) {
             resData.product_types.forEach((typeId: number) => {
                 const typeDescr = typesVal[typeId];
                 if (!typeDescr) return;
                 const active = filtersInfo.current.product_types?.includes(typeId) || false
                 checkBoxPropsProductsData.push({
+                    id: typeId,
                     enable: true,
                     activeData: active,
                     name: typeDescr.name
@@ -105,11 +126,12 @@ const BannersManager: React.FC = () => {
             })
         }
 
-        const checkBoxBodyTypesData: any[] = []
+        const checkBoxBodyTypesData: CheckBoxType[] = []
         if (resData.bodytypes) {
             Object.entries(resData.bodytypes).forEach(([bodytype]) => {
                 const active = filtersInfo.current.bodytypes?.includes(bodytype) || false
                 checkBoxBodyTypesData.push({
+                    id: bodytype,
                     enable: true,
                     activeData: active,
                     name: bodytype
@@ -117,16 +139,44 @@ const BannersManager: React.FC = () => {
             })
         }
 
-        const checkBoxPropsFirmData: any[] = []
-        Object.entries(resData.firms || {}).forEach(([firm]) => {
-            firms.current.push(firm)
-            const active = filtersInfo.current.firms?.includes(firm) || false
+        // Обработка фирм (ИСПРАВЛЕНО)
+        const checkBoxPropsFirmData: CheckBoxType[] = []
+        Object.entries(resData.firms || {}).forEach(([firmName]) => {
+            // Ищем фирму по имени в firmMap
+            const firm = Object.values(firmMap).find(f => f.name === firmName);
+            if (!firm) {
+                console.warn(`Firm "${firmName}" not found in firmMap`);
+                return;
+            }
+            
+            firms.current.push(firmName); // сохраняем имя для UI
+            
+            // Проверяем, активна ли фирма в текущих фильтрах (по ID)
+            const active = filtersInfo.current.firms?.includes(firm.id) || false;
+            
             checkBoxPropsFirmData.push({
+                id: firm.slug, // ← используем slug как id для UI
                 enable: true,
                 activeData: active,
-                name: firm
-            })
+                name: firmName
+            });
         })
+
+        // Solo чекбоксы
+        const soloDataProps: CheckBoxType[] = [
+            {
+                id: 'active',
+                enable: true,
+                activeData: filtersInfo.current.is_active === true,
+                name: "На витрине"
+            },
+            {
+                id: 'inactive',
+                enable: true,
+                activeData: filtersInfo.current.is_active === false,
+                name: "Скрытые"
+            },
+        ]
 
         return {
             priceProps,
@@ -136,13 +186,9 @@ const BannersManager: React.FC = () => {
                 { id: "type", name: "Типы товара", props: checkBoxPropsProductsData },
                 { id: "bodytypes", name: "Форма тела", props: checkBoxBodyTypesData }
             ],
-            soloDataProps: [
-                { name: "На витрине", activeData: filtersInfo.current.is_active === true, enable: true },
-                { name: "Скрытые", activeData: filtersInfo.current.is_active === false, enable: true },
-            ],
-            discountProps: discountRules
+            soloDataProps
         }
-    }, [typesVal,discountRules])
+    }, [typesVal, firmMap])
 
     const loadBanners = useCallback(async () => {
         setLoading(true)
@@ -193,68 +239,67 @@ const BannersManager: React.FC = () => {
         loadFilters()
     }, [loadFilters])
 
+    // Обработчик изменения фильтров (ИСПРАВЛЕНО)
     const onFiltersChange = useCallback((filter: any) => {
         switch (filter.id) {
             case "sizes":
-                filter.data.forEach((data: boolean, index: number) => {
-                    const size = activeSizes.current[index]
-                    const clothesIndex = filtersInfo.current.sizes.indexOf(size)
-                    if (clothesIndex !== -1 && !data) {
-                        filtersInfo.current.sizes.splice(clothesIndex, 1)
-                    } else if (data && activeSizes.current.includes(size)) {
-                        filtersInfo.current.sizes.push(size)
-                    }
-                })
+                filtersInfo.current.sizes = filter.data || []
                 break
             case "price":
-                filtersInfo.current.price = filter.data
+                filtersInfo.current.price = filter.data || [0, 100000]
                 break
             case "firms":
-                filter.data.forEach((data: boolean, index: number) => {
-                    const firm = firms.current[index]
-                    const firmIndex = filtersInfo.current.firms?.indexOf(firm)
-                    if (firmIndex !== -1 && !data) {
-                        filtersInfo.current.firms = filtersInfo.current.firms?.filter(f => f !== firm) || []
-                    } else if (firmIndex === -1 && data) {
-                        filtersInfo.current.firms = [...(filtersInfo.current.firms || []), firm]
-                    }
-                })
+                // filter.data - массив slug'ов от чекбоксов
+                // Преобразуем slug'и в ID для запроса к API
+                filtersInfo.current.firms = (filter.data || [])
+                    .map((slug: string) => firmMap[slug]?.id)
+                    .filter(Boolean) as number[];
                 break
             case "type":
-                filter.data.forEach((data: boolean, index: number) => {
-                    const product_type = allFilters.current.product_types[index]
-                    const productTypeIndex = filtersInfo.current.product_types?.indexOf(product_type)
-                    if (productTypeIndex !== -1 && !data) {
-                        filtersInfo.current.product_types = filtersInfo.current.product_types?.filter(pt => pt !== product_type) || []
-                    } else if (productTypeIndex === -1 && data) {
-                        filtersInfo.current.product_types = [...(filtersInfo.current.product_types || []), product_type]
-                    }
-                })
+                filtersInfo.current.product_types = filter.data || []
+                break
+            case "bodytypes":
+                filtersInfo.current.bodytypes = filter.data || []
                 break
             case "solo":
-                if (filter.data[0]) filtersInfo.current.is_active = true
-                else if (filter.data[1]) filtersInfo.current.is_active = false
-                else filtersInfo.current.is_active = undefined
-                filtersInfo.current.discount = filter.data[2]
+                // filter.data - массив CheckBoxType
+                if (filter.data && filter.data.length > 0) {
+                    const activeItem = filter.data.find((item: CheckBoxType) => item.id === 'active');
+                    const inactiveItem = filter.data.find((item: CheckBoxType) => item.id === 'inactive');
+                    
+                    if (activeItem?.activeData) {
+                        filtersInfo.current.is_active = true;
+                    } else if (inactiveItem?.activeData) {
+                        filtersInfo.current.is_active = false;
+                    } else {
+                        filtersInfo.current.is_active = undefined;
+                    }
+                }
+                break
+            default:
                 break
         }
 
         // Сбрасываем ошибку фильтров при изменении
         setErrors(prev => ({ ...prev, filters: false }))
-    }, [])
+    }, [firmMap])
 
     const generateUrlFromFilters = (filters: any): string => {
         const params = new URLSearchParams()
 
         if (filters.product_types && filters.product_types.length > 0) {
-            filters.product_types.forEach(product_type => {
+            filters.product_types.forEach((product_type: number) => {
                 const type = typesVal[product_type]
-                params.append('type', type.type_key)
+                if (type) params.append('type', type.type_key)
             })
         }
 
         if (filters.firms && filters.firms.length > 0) {
-            filters.firms.forEach(firm => params.append('firm', firm))
+            // filters.firms - массив ID, нужно получить имена для URL
+            filters.firms.forEach((firmId: number) => {
+                const firm = Object.values(firmMap).find(f => f.id === firmId);
+                if (firm) params.append('firm', firm.slug) // ← используем slug
+            })
         }
 
         if (filters.sizes && filters.sizes.length > 0) {
@@ -320,6 +365,7 @@ const BannersManager: React.FC = () => {
                 price: [],
                 firms: [],
                 product_types: [],
+                bodytypes: [],
                 store: false,
                 discount: false,
                 withPrice: true,
@@ -356,7 +402,7 @@ const BannersManager: React.FC = () => {
         const filters = {
             sizes: [] as string[],
             price: [] as number[],
-            firms: [] as string[],
+            firms: [] as number[], // ← теперь массив ID
             product_types: [] as number[],
             bodytypes: [] as string[],
             store: false,
@@ -372,8 +418,13 @@ const BannersManager: React.FC = () => {
             const sizes = params.getAll('size')
             if (sizes.length) filters.sizes = sizes
 
-            const firms = params.getAll('firm')
-            if (firms.length) filters.firms = firms
+            // Обработка фирм из URL (ИСПРАВЛЕНО)
+            const firmSlugs = params.getAll('firm')
+            if (firmSlugs.length) {
+                filters.firms = firmSlugs
+                    .map((slug: string) => firmMap[slug]?.id)
+                    .filter(Boolean) as number[];
+            }
 
             const bodytypes = params.getAll('bodytype')
             if (bodytypes.length) filters.bodytypes = bodytypes
@@ -395,7 +446,7 @@ const BannersManager: React.FC = () => {
                     const found = Object.entries(typesVal).find(([_, t]) => t.type_key === typeKey)
                     return found ? Number(found[0]) : null
                 }).filter((id): id is number => !!id)
-                filters.product_types = typeIds as number[]
+                filters.product_types = typeIds
             }
 
         } catch (error) {
@@ -418,6 +469,7 @@ const BannersManager: React.FC = () => {
                 price: [],
                 firms: [],
                 product_types: [],
+                bodytypes: [],
                 store: false,
                 discount: false,
                 withPrice: true,
@@ -467,8 +519,8 @@ const BannersManager: React.FC = () => {
                     </div>
                 ))}
             </div>
+            
             <Modal active={showModal} onChange={setShowModal}>
-
                 <div className={s.modalContent} onClick={e => e.stopPropagation()}>
                     <div className={s.modalHeader}>
                         <h3>{editingBanner ? 'Редактировать баннер' : 'Новый баннер'}</h3>
@@ -524,13 +576,20 @@ const BannersManager: React.FC = () => {
                         <div className={s.filtersPreview}>
                             {filtersInfo.current.product_types?.length > 0 && (
                                 <span>Тип: {filtersInfo.current.product_types
-                                    .map(type => typesVal[type]?.name)
+                                    .map((type: number) => typesVal[type]?.name)
                                     .filter(Boolean)
                                     .join(', ')}
                                 </span>
                             )}
                             {filtersInfo.current.firms?.length > 0 && (
-                                <span>Фирмы: {filtersInfo.current.firms.join(', ')}</span>
+                                <span>Фирмы: {filtersInfo.current.firms
+                                    .map((firmId: number) => {
+                                        const firm = Object.values(firmMap).find(f => f.id === firmId);
+                                        return firm?.name;
+                                    })
+                                    .filter(Boolean)
+                                    .join(', ')}
+                                </span>
                             )}
                             {filtersInfo.current.price && filtersInfo.current.price[0] > 0 && (
                                 <span>Цена от {filtersInfo.current.price[0]}</span>
@@ -554,6 +613,7 @@ const BannersManager: React.FC = () => {
                         />
                     </div>
                 </div>
+                
                 {showFiltersPanel && (
                     <div className={s.modalOverlay} onClick={() => setShowFiltersPanel(false)}>
                         <div className={s.modalPanel} onClick={e => e.stopPropagation()}>
@@ -562,7 +622,6 @@ const BannersManager: React.FC = () => {
                                 <button onClick={() => setShowFiltersPanel(false)}>✕</button>
                             </div>
                             <ProductsFilters
-                                memo={true}
                                 onChange={onFiltersChange}
                                 {...filtersState}
                             />

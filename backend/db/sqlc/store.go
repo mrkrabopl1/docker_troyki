@@ -48,6 +48,9 @@ type Store interface {
 	GetAllProductsAndFilters(ctx context.Context, page int, size int, orderedType int) (RespSearchProductsAndFiltersByStringForAdmin, error)
 	GetAdminProductsInfoByIdComplex(ctx context.Context, id int32) (ProductsAdminInfoResponse, error)
 	RecalculateAllDiscounts(ctx context.Context) error
+	GetPageWidgetsFromDB(ctx context.Context) ([]types.CachedWidget, error)
+	GetProductsForWidgetFromDB(ctx context.Context, widget PageWidget) ([]types.CachedProduct, error)
+	RecalculateAffectedProducts(ctx context.Context, ruleID int32) error
 }
 
 // SQLStore provides all functions to execute SQL queries and transactions

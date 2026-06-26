@@ -509,7 +509,15 @@ const countProductsByFiltersBase = `-- name: CountProductsByFiltersBase :one
 
 SELECT COUNT(*)
 FROM products p
-WHERE (
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length($1::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -518,48 +526,52 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
+    -- Поиск по имени/артикулу
     AND (
-        $2::text IS NULL OR $2::text = '' OR p.status = $2::text
+        $2::text IS NULL OR $2::text = ''
+        OR p.name ILIKE '%' || $2::text || '%'
+        OR p.article ILIKE '%' || $2::text || '%'
     )
+    -- Категории
     AND (
-        $3::text IS NULL OR $3::text = ''
-        OR p.name ILIKE '%' || $3::text || '%'
-        OR p.article ILIKE '%' || $3::text || '%'
+        COALESCE(array_length($3::int[], 1), 0) = 0
+        OR p.category = ANY($3::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length($4::int[], 1), 0) = 0
-        OR p.category = ANY($4::int[])
+        OR p.type = ANY($4::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length($5::int[], 1), 0) = 0
-        OR p.type = ANY($5::int[])
+        OR p.brand_id = ANY($5::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length($6::int[], 1), 0) = 0
-        OR p.brand_id = ANY($6::int[])
+        OR p.line_id = ANY($6::int[])
+    )
+    -- Bodytype
+    AND (
+        COALESCE(array_length($7::text[], 1), 0) = 0
+        OR p.bodytype = ANY($7::body_enum[])
+    )
+    -- Цена
+    AND (
+        $8::int IS NULL OR p.maxprice >= $8::int
     )
     AND (
-        COALESCE(array_length($7::int[], 1), 0) = 0
-        OR p.line_id = ANY($7::int[])
+        $9::int IS NULL OR p.minprice <= $9::int
     )
+    -- С ценой
     AND (
-        COALESCE(array_length($8::text[], 1), 0) = 0
-        OR p.bodytype = ANY($8::body_enum[])
-    )
-    AND (
-        $9::int IS NULL OR p.maxprice >= $9::int
-    )
-    AND (
-        $10::int IS NULL OR p.minprice <= $10::int
-    )
-    AND (
-        $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
+        $10::boolean IS NULL OR $10::boolean = false OR p.minprice > 0
     )
 `
 
 type CountProductsByFiltersBaseParams struct {
 	Sizes        []string    `json:"sizes"`
-	Status       string      `json:"status"`
 	Name         string      `json:"name"`
 	Categories   []int32     `json:"categories"`
 	ProductTypes []int32     `json:"product_types"`
@@ -577,7 +589,6 @@ type CountProductsByFiltersBaseParams struct {
 func (q *Queries) CountProductsByFiltersBase(ctx context.Context, arg CountProductsByFiltersBaseParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countProductsByFiltersBase,
 		arg.Sizes,
-		arg.Status,
 		arg.Name,
 		arg.Categories,
 		arg.ProductTypes,
@@ -596,7 +607,15 @@ func (q *Queries) CountProductsByFiltersBase(ctx context.Context, arg CountProdu
 const countProductsByFiltersFull = `-- name: CountProductsByFiltersFull :one
 SELECT COUNT(*)
 FROM products p
-WHERE (
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length($1::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -605,80 +624,88 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
+    -- Статус (если нужен фильтр по статусу - оставляем, но для пользователей всегда active)
     AND (
         $2::text IS NULL OR $2::text = '' OR p.status = $2::text
     )
+    -- Поиск по имени/артикулу
     AND (
         $3::text IS NULL OR $3::text = ''
         OR p.name ILIKE '%' || $3::text || '%'
         OR p.article ILIKE '%' || $3::text || '%'
     )
+    -- Категории
     AND (
         COALESCE(array_length($4::int[], 1), 0) = 0
         OR p.category = ANY($4::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length($5::int[], 1), 0) = 0
         OR p.type = ANY($5::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length($6::int[], 1), 0) = 0
         OR p.brand_id = ANY($6::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length($7::int[], 1), 0) = 0
         OR p.line_id = ANY($7::int[])
     )
+    -- Bodytype
     AND (
         COALESCE(array_length($8::text[], 1), 0) = 0
         OR p.bodytype = ANY($8::body_enum[])
     )
+    -- Цена
     AND (
         $9::int IS NULL OR p.maxprice >= $9::int
     )
     AND (
         $10::int IS NULL OR p.minprice <= $10::int
     )
+    -- С ценой
     AND (
         $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
     )
+    -- Скидки
     AND (
-    -- Вариант 1: передан список правил
-    (array_length($12::int[], 1) > 0 AND EXISTS (
-        SELECT 1
-        FROM discount_rule_items dri2
-        WHERE dri2.rule_id = ANY($12::int[])
-          AND (
-              (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
-              (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
-              (dri2.item_type = 'product' AND dri2.item_id = p.id)
-          )
-          AND EXISTS (
-              SELECT 1 FROM discount_rules dr2
-              WHERE dr2.id = dri2.rule_id
-                AND dr2.is_active = true
-                AND dr2.starts_at <= NOW()
-                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
-          )
-    ))
-    OR
-    -- Вариант 2: список правил не передан – используем старую логику
-    (array_length($12::int[], 1) = 0 AND (
-        EXISTS (SELECT 1 FROM discount d WHERE d.productid = p.id)
-        OR EXISTS (
+        (array_length($12::int[], 1) > 0 AND EXISTS (
             SELECT 1
-            FROM discount_rule_items dri
-            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
-                AND dr2.is_active = true
-                AND dr2.starts_at <= NOW()
-                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
-            WHERE (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
-               OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
-               OR (dri.item_type = 'product' AND dri.item_id = p.id)
-        )
-    ))
-)
-    
+            FROM discount_rule_items dri2
+            WHERE dri2.rule_id = ANY($12::int[])
+              AND (
+                  (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+                  (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+                  (dri2.item_type = 'product' AND dri2.item_id = p.id)
+              )
+              AND EXISTS (
+                  SELECT 1 FROM discount_rules dr2
+                  WHERE dr2.id = dri2.rule_id
+                    AND dr2.is_active = true
+                    AND dr2.starts_at <= NOW()
+                    AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+              )
+        ))
+        OR
+        (array_length($12::int[], 1) = 0 AND (
+            EXISTS (SELECT 1 FROM discount d WHERE d.productid = p.id)
+            OR EXISTS (
+                SELECT 1
+                FROM discount_rule_items dri
+                JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                    AND dr2.is_active = true
+                    AND dr2.starts_at <= NOW()
+                    AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+                WHERE (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+                   OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+                   OR (dri.item_type = 'product' AND dri.item_id = p.id)
+            )
+        ))
+    )
+    -- Наличие на складе
     AND EXISTS (
         SELECT 1 FROM store_house sh
         WHERE sh.productid = p.id AND sh.quantity > 0
@@ -723,7 +750,15 @@ func (q *Queries) CountProductsByFiltersFull(ctx context.Context, arg CountProdu
 const countProductsByFiltersWithDiscount = `-- name: CountProductsByFiltersWithDiscount :one
 SELECT COUNT(*)
 FROM products p
-WHERE (
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length($1::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -732,84 +767,89 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
+    -- Поиск по имени/артикулу
     AND (
-        $2::text IS NULL OR $2::text = '' OR p.status = $2::text
+        $2::text IS NULL OR $2::text = ''
+        OR p.name ILIKE '%' || $2::text || '%'
+        OR p.article ILIKE '%' || $2::text || '%'
     )
+    -- Категории
     AND (
-        $3::text IS NULL OR $3::text = ''
-        OR p.name ILIKE '%' || $3::text || '%'
-        OR p.article ILIKE '%' || $3::text || '%'
+        COALESCE(array_length($3::int[], 1), 0) = 0
+        OR p.category = ANY($3::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length($4::int[], 1), 0) = 0
-        OR p.category = ANY($4::int[])
+        OR p.type = ANY($4::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length($5::int[], 1), 0) = 0
-        OR p.type = ANY($5::int[])
+        OR p.brand_id = ANY($5::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length($6::int[], 1), 0) = 0
-        OR p.brand_id = ANY($6::int[])
+        OR p.line_id = ANY($6::int[])
+    )
+    -- Bodytype
+    AND (
+        COALESCE(array_length($7::text[], 1), 0) = 0
+        OR p.bodytype = ANY($7::body_enum[])
+    )
+    -- Цена
+    AND (
+        $8::int IS NULL OR p.maxprice >= $8::int
     )
     AND (
-        COALESCE(array_length($7::int[], 1), 0) = 0
-        OR p.line_id = ANY($7::int[])
+        $9::int IS NULL OR p.minprice <= $9::int
     )
+    -- С ценой
     AND (
-        COALESCE(array_length($8::text[], 1), 0) = 0
-        OR p.bodytype = ANY($8::body_enum[])
+        $10::boolean IS NULL OR $10::boolean = false OR p.minprice > 0
     )
+    -- Скидки
     AND (
-        $9::int IS NULL OR p.maxprice >= $9::int
-    )
-    AND (
-        $10::int IS NULL OR p.minprice <= $10::int
-    )
-    AND (
-        $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
-    )
-       AND (
-    -- Вариант 1: передан список правил
-    (array_length($12::int[], 1) > 0 AND EXISTS (
-        SELECT 1
-        FROM discount_rule_items dri2
-        WHERE dri2.rule_id = ANY($12::int[])
-          AND (
-              (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
-              (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
-              (dri2.item_type = 'product' AND dri2.item_id = p.id)
-          )
-          AND EXISTS (
-              SELECT 1 FROM discount_rules dr2
-              WHERE dr2.id = dri2.rule_id
-                AND dr2.is_active = true
-                AND dr2.starts_at <= NOW()
-                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
-          )
-    ))
-    OR
-    -- Вариант 2: список правил не передан – используем старую логику
-    (array_length($12::int[], 1) = 0 AND (
-        EXISTS (SELECT 1 FROM discount d WHERE d.productid = p.id)
-        OR EXISTS (
+        -- Вариант 1: передан список правил
+        (array_length($11::int[], 1) > 0 AND EXISTS (
             SELECT 1
-            FROM discount_rule_items dri
-            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
-                AND dr2.is_active = true
-                AND dr2.starts_at <= NOW()
-                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
-            WHERE (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
-               OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
-               OR (dri.item_type = 'product' AND dri.item_id = p.id)
-        )
-    ))
-)
+            FROM discount_rule_items dri2
+            WHERE dri2.rule_id = ANY($11::int[])
+              AND (
+                  (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+                  (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+                  (dri2.item_type = 'product' AND dri2.item_id = p.id)
+              )
+              AND EXISTS (
+                  SELECT 1 FROM discount_rules dr2
+                  WHERE dr2.id = dri2.rule_id
+                    AND dr2.is_active = true
+                    AND dr2.starts_at <= NOW()
+                    AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+              )
+        ))
+        OR
+        -- Вариант 2: список правил не передан – используем старую логику
+        (array_length($11::int[], 1) = 0 AND (
+            EXISTS (SELECT 1 FROM discount d WHERE d.productid = p.id)
+            OR EXISTS (
+                SELECT 1
+                FROM discount_rule_items dri
+                JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                    AND dr2.is_active = true
+                    AND dr2.starts_at <= NOW()
+                    AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+                WHERE (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+                   OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+                   OR (dri.item_type = 'product' AND dri.item_id = p.id)
+            )
+        ))
+    )
 `
 
 type CountProductsByFiltersWithDiscountParams struct {
 	Sizes        []string    `json:"sizes"`
-	Status       string      `json:"status"`
 	Name         string      `json:"name"`
 	Categories   []int32     `json:"categories"`
 	ProductTypes []int32     `json:"product_types"`
@@ -825,7 +865,6 @@ type CountProductsByFiltersWithDiscountParams struct {
 func (q *Queries) CountProductsByFiltersWithDiscount(ctx context.Context, arg CountProductsByFiltersWithDiscountParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countProductsByFiltersWithDiscount,
 		arg.Sizes,
-		arg.Status,
 		arg.Name,
 		arg.Categories,
 		arg.ProductTypes,
@@ -845,7 +884,15 @@ func (q *Queries) CountProductsByFiltersWithDiscount(ctx context.Context, arg Co
 const countProductsByFiltersWithStore = `-- name: CountProductsByFiltersWithStore :one
 SELECT COUNT(*)
 FROM products p
-WHERE (
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length($1::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -854,43 +901,49 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
+    -- Поиск по имени/артикулу
     AND (
-        $2::text IS NULL OR $2::text = '' OR p.status = $2::text
+        $2::text IS NULL OR $2::text = ''
+        OR p.name ILIKE '%' || $2::text || '%'
+        OR p.article ILIKE '%' || $2::text || '%'
     )
+    -- Категории
     AND (
-        $3::text IS NULL OR $3::text = ''
-        OR p.name ILIKE '%' || $3::text || '%'
-        OR p.article ILIKE '%' || $3::text || '%'
+        COALESCE(array_length($3::int[], 1), 0) = 0
+        OR p.category = ANY($3::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length($4::int[], 1), 0) = 0
-        OR p.category = ANY($4::int[])
+        OR p.type = ANY($4::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length($5::int[], 1), 0) = 0
-        OR p.type = ANY($5::int[])
+        OR p.brand_id = ANY($5::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length($6::int[], 1), 0) = 0
-        OR p.brand_id = ANY($6::int[])
+        OR p.line_id = ANY($6::int[])
+    )
+    -- Bodytype
+    AND (
+        COALESCE(array_length($7::text[], 1), 0) = 0
+        OR p.bodytype = ANY($7::body_enum[])
+    )
+    -- Цена
+    AND (
+        $8::int IS NULL OR p.maxprice >= $8::int
     )
     AND (
-        COALESCE(array_length($7::int[], 1), 0) = 0
-        OR p.line_id = ANY($7::int[])
+        $9::int IS NULL OR p.minprice <= $9::int
     )
+    -- С ценой
     AND (
-        COALESCE(array_length($8::text[], 1), 0) = 0
-        OR p.bodytype = ANY($8::body_enum[])
+        $10::boolean IS NULL OR $10::boolean = false OR p.minprice > 0
     )
-    AND (
-        $9::int IS NULL OR p.maxprice >= $9::int
-    )
-    AND (
-        $10::int IS NULL OR p.minprice <= $10::int
-    )
-    AND (
-        $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
-    )
+    -- Наличие на складе
     AND EXISTS (
         SELECT 1 FROM store_house sh
         WHERE sh.productid = p.id AND sh.quantity > 0
@@ -899,7 +952,6 @@ WHERE (
 
 type CountProductsByFiltersWithStoreParams struct {
 	Sizes        []string    `json:"sizes"`
-	Status       string      `json:"status"`
 	Name         string      `json:"name"`
 	Categories   []int32     `json:"categories"`
 	ProductTypes []int32     `json:"product_types"`
@@ -914,7 +966,6 @@ type CountProductsByFiltersWithStoreParams struct {
 func (q *Queries) CountProductsByFiltersWithStore(ctx context.Context, arg CountProductsByFiltersWithStoreParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countProductsByFiltersWithStore,
 		arg.Sizes,
-		arg.Status,
 		arg.Name,
 		arg.Categories,
 		arg.ProductTypes,
@@ -4133,19 +4184,23 @@ const getFirms = `-- name: GetFirms :many
 SELECT 
     b.id as brand_id,
     b.name as firm,
+    b.slug as brand_slug,
     bl.id as line_id,
-    bl.name as collection_name
+    bl.name as collection_name,
+    bl.slug as collection_slug
 FROM brands b
     LEFT JOIN brand_lines bl ON bl.brand_id = b.id AND bl.is_active = true
 WHERE b.is_active = true
-ORDER BY b.name, bl.name
+ORDER BY b.sort_order ASC, b.name ASC, bl.sort_order ASC, bl.name ASC
 `
 
 type GetFirmsRow struct {
 	BrandID        int32       `json:"brand_id"`
 	Firm           string      `json:"firm"`
+	BrandSlug      string      `json:"brand_slug"`
 	LineID         pgtype.Int4 `json:"line_id"`
 	CollectionName pgtype.Text `json:"collection_name"`
+	CollectionSlug pgtype.Text `json:"collection_slug"`
 }
 
 func (q *Queries) GetFirms(ctx context.Context) ([]GetFirmsRow, error) {
@@ -4160,8 +4215,10 @@ func (q *Queries) GetFirms(ctx context.Context) ([]GetFirmsRow, error) {
 		if err := rows.Scan(
 			&i.BrandID,
 			&i.Firm,
+			&i.BrandSlug,
 			&i.LineID,
 			&i.CollectionName,
+			&i.CollectionSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -5263,8 +5320,15 @@ SELECT p.id, p.name, p.image_path,
        b.name as firm,
        p.minprice, p.maxprice, p.status
 FROM products p
-JOIN brands b ON p.brand_id = b.id
-WHERE (
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length($1::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -5273,57 +5337,61 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
+    -- Поиск по имени/артикулу
     AND (
-        $2::text IS NULL OR $2::text = '' OR p.status = $2::text
+        $2::text IS NULL OR $2::text = ''
+        OR p.name ILIKE '%' || $2::text || '%'
+        OR p.article ILIKE '%' || $2::text || '%'
     )
+    -- Категории
     AND (
-        $3::text IS NULL OR $3::text = ''
-        OR p.name ILIKE '%' || $3::text || '%'
-        OR p.article ILIKE '%' || $3::text || '%'
+        COALESCE(array_length($3::int[], 1), 0) = 0
+        OR p.category = ANY($3::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length($4::int[], 1), 0) = 0
-        OR p.category = ANY($4::int[])
+        OR p.type = ANY($4::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length($5::int[], 1), 0) = 0
-        OR p.type = ANY($5::int[])
+        OR p.brand_id = ANY($5::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length($6::int[], 1), 0) = 0
-        OR p.brand_id = ANY($6::int[])
+        OR p.line_id = ANY($6::int[])
+    )
+    -- Bodytype
+    AND (
+        COALESCE(array_length($7::text[], 1), 0) = 0
+        OR p.bodytype = ANY($7::body_enum[])
+    )
+    -- Цена
+    AND (
+        $8::int IS NULL OR p.maxprice >= $8::int
     )
     AND (
-        COALESCE(array_length($7::int[], 1), 0) = 0
-        OR p.line_id = ANY($7::int[])
+        $9::int IS NULL OR p.minprice <= $9::int
     )
+    -- С ценой
     AND (
-        COALESCE(array_length($8::text[], 1), 0) = 0
-        OR p.bodytype = ANY($8::body_enum[])
-    )
-    AND (
-        $9::int IS NULL OR p.maxprice >= $9::int
-    )
-    AND (
-        $10::int IS NULL OR p.minprice <= $10::int
-    )
-    AND (
-        $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
+        $10::boolean IS NULL OR $10::boolean = false OR p.minprice > 0
     )
 ORDER BY
-    CASE WHEN $12::int = 1 THEN p.name END ASC,
-    CASE WHEN $12::int = 2 THEN p.name END DESC,
-    CASE WHEN $12::int = 3 THEN p.minprice END ASC,
-    CASE WHEN $12::int = 4 THEN p.minprice END DESC,
-    CASE WHEN $12::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    CASE WHEN $11::int = 1 THEN p.name END ASC,
+    CASE WHEN $11::int = 2 THEN p.name END DESC,
+    CASE WHEN $11::int = 3 THEN p.minprice END ASC,
+    CASE WHEN $11::int = 4 THEN p.minprice END DESC,
+    CASE WHEN $11::int NOT IN (1,2,3,4) THEN p.name END ASC,
     p.id ASC
-LIMIT CASE WHEN $14::integer > 0 THEN $14::integer ELSE 50 END
-OFFSET CASE WHEN $13::integer > 0 THEN $13::integer ELSE 0 END
+LIMIT CASE WHEN $13::integer > 0 THEN $13::integer ELSE 50 END
+OFFSET CASE WHEN $12::integer > 0 THEN $12::integer ELSE 0 END
 `
 
 type GetProductsByFiltersPaginateBaseParams struct {
 	Sizes        []string    `json:"sizes"`
-	Status       string      `json:"status"`
 	Name         string      `json:"name"`
 	Categories   []int32     `json:"categories"`
 	ProductTypes []int32     `json:"product_types"`
@@ -5355,7 +5423,6 @@ type GetProductsByFiltersPaginateBaseRow struct {
 func (q *Queries) GetProductsByFiltersPaginateBase(ctx context.Context, arg GetProductsByFiltersPaginateBaseParams) ([]GetProductsByFiltersPaginateBaseRow, error) {
 	rows, err := q.db.Query(ctx, getProductsByFiltersPaginateBase,
 		arg.Sizes,
-		arg.Status,
 		arg.Name,
 		arg.Categories,
 		arg.ProductTypes,
@@ -5403,7 +5470,8 @@ SELECT p.id, p.name, p.image_path,
        COALESCE(dr.discount_value, 0) as discount_percent,
        (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
 FROM products p
-JOIN brands b ON p.brand_id = b.id
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
 LEFT JOIN discount d ON p.id = d.productid
 LEFT JOIN store_house sh ON p.id = sh.productid
 LEFT JOIN LATERAL (
@@ -5422,7 +5490,13 @@ LEFT JOIN LATERAL (
     ORDER BY dr2.priority DESC
     LIMIT 1
 ) dr ON true
-WHERE (
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length($1::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -5431,78 +5505,84 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
+    -- Поиск по имени/артикулу
     AND (
-        $2::text IS NULL OR $2::text = '' OR p.status = $2::text
+        $2::text IS NULL OR $2::text = ''
+        OR p.name ILIKE '%' || $2::text || '%'
+        OR p.article ILIKE '%' || $2::text || '%'
     )
+    -- Категории
     AND (
-        $3::text IS NULL OR $3::text = ''
-        OR p.name ILIKE '%' || $3::text || '%'
-        OR p.article ILIKE '%' || $3::text || '%'
+        COALESCE(array_length($3::int[], 1), 0) = 0
+        OR p.category = ANY($3::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length($4::int[], 1), 0) = 0
-        OR p.category = ANY($4::int[])
+        OR p.type = ANY($4::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length($5::int[], 1), 0) = 0
-        OR p.type = ANY($5::int[])
+        OR p.brand_id = ANY($5::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length($6::int[], 1), 0) = 0
-        OR p.brand_id = ANY($6::int[])
+        OR p.line_id = ANY($6::int[])
+    )
+    -- Bodytype
+    AND (
+        COALESCE(array_length($7::text[], 1), 0) = 0
+        OR p.bodytype = ANY($7::body_enum[])
+    )
+    -- Цена
+    AND (
+        $8::int IS NULL OR p.maxprice >= $8::int
     )
     AND (
-        COALESCE(array_length($7::int[], 1), 0) = 0
-        OR p.line_id = ANY($7::int[])
+        $9::int IS NULL OR p.minprice <= $9::int
     )
+    -- С ценой
     AND (
-        COALESCE(array_length($8::text[], 1), 0) = 0
-        OR p.bodytype = ANY($8::body_enum[])
+        $10::boolean IS NULL OR $10::boolean = false OR p.minprice > 0
     )
+    -- Скидки
     AND (
-        $9::int IS NULL OR p.maxprice >= $9::int
+        -- Если передан список правил, то требуем наличие скидки от одного из них
+        (array_length($11::int[], 1) > 0 AND EXISTS (
+            SELECT 1
+            FROM discount_rule_items dri2
+            JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE dri2.rule_id = ANY($11::int[])
+              AND (
+                  (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+                  (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+                  (dri2.item_type = 'product' AND dri2.item_id = p.id)
+              )
+        ))
+        OR
+        -- Если список не передан, то используем старую логику (прямая скидка или правило)
+        (array_length($11::int[], 1) = 0 AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL))
     )
-    AND (
-        $10::int IS NULL OR p.minprice <= $10::int
-    )
-    AND (
-        $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
-    )
-     AND (
-    -- Если передан список правил, то требуем наличие скидки от одного из них
-    (array_length($12::int[], 1) > 0 AND EXISTS (
-        SELECT 1
-        FROM discount_rule_items dri2
-        JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
-            AND dr2.is_active = true
-            AND dr2.starts_at <= NOW()
-            AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
-        WHERE dri2.rule_id = ANY($12::int[])
-          AND (
-              (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
-              (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
-              (dri2.item_type = 'product' AND dri2.item_id = p.id)
-          )
-    ))
-    OR
-    -- Если список не передан, то используем старую логику (прямая скидка или правило)
-    (array_length($12::int[], 1) = 0 AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL))
-)  -- скидка
-    AND (sh.id IS NOT NULL AND sh.quantity > 0)              -- склад
+    -- Наличие на складе
+    AND (sh.id IS NOT NULL AND sh.quantity > 0)
 ORDER BY
-    CASE WHEN $13::int = 1 THEN p.name END ASC,
-    CASE WHEN $13::int = 2 THEN p.name END DESC,
-    CASE WHEN $13::int = 3 THEN p.minprice END ASC,
-    CASE WHEN $13::int = 4 THEN p.minprice END DESC,
-    CASE WHEN $13::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    CASE WHEN $12::int = 1 THEN p.name END ASC,
+    CASE WHEN $12::int = 2 THEN p.name END DESC,
+    CASE WHEN $12::int = 3 THEN p.minprice END ASC,
+    CASE WHEN $12::int = 4 THEN p.minprice END DESC,
+    CASE WHEN $12::int NOT IN (1,2,3,4) THEN p.name END ASC,
     p.id ASC
-LIMIT CASE WHEN $15::integer > 0 THEN $15::integer ELSE 50 END
-OFFSET CASE WHEN $14::integer > 0 THEN $14::integer ELSE 0 END
+LIMIT CASE WHEN $14::integer > 0 THEN $14::integer ELSE 50 END
+OFFSET CASE WHEN $13::integer > 0 THEN $13::integer ELSE 0 END
 `
 
 type GetProductsByFiltersPaginateFullParams struct {
 	Sizes        []string    `json:"sizes"`
-	Status       string      `json:"status"`
 	Name         string      `json:"name"`
 	Categories   []int32     `json:"categories"`
 	ProductTypes []int32     `json:"product_types"`
@@ -5535,7 +5615,6 @@ type GetProductsByFiltersPaginateFullRow struct {
 func (q *Queries) GetProductsByFiltersPaginateFull(ctx context.Context, arg GetProductsByFiltersPaginateFullParams) ([]GetProductsByFiltersPaginateFullRow, error) {
 	rows, err := q.db.Query(ctx, getProductsByFiltersPaginateFull,
 		arg.Sizes,
-		arg.Status,
 		arg.Name,
 		arg.Categories,
 		arg.ProductTypes,
@@ -5586,7 +5665,8 @@ SELECT p.id, p.name, p.image_path,
        COALESCE(d.maxdiscprice, 0) as maxdiscprice,
        COALESCE(dr.discount_value, 0) as discount_percent
 FROM products p
-JOIN brands b ON p.brand_id = b.id
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
 LEFT JOIN discount d ON p.id = d.productid
 LEFT JOIN LATERAL (
     SELECT dr2.discount_value, dr2.name
@@ -5604,7 +5684,13 @@ LEFT JOIN LATERAL (
     ORDER BY dr2.priority DESC
     LIMIT 1
 ) dr ON true
-WHERE (
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length($1::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -5613,78 +5699,82 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
+    -- Поиск по имени/артикулу
     AND (
-        $2::text IS NULL OR $2::text = '' OR p.status = $2::text
+        $2::text IS NULL OR $2::text = ''
+        OR p.name ILIKE '%' || $2::text || '%'
+        OR p.article ILIKE '%' || $2::text || '%'
     )
+    -- Категории
     AND (
-        $3::text IS NULL OR $3::text = ''
-        OR p.name ILIKE '%' || $3::text || '%'
-        OR p.article ILIKE '%' || $3::text || '%'
+        COALESCE(array_length($3::int[], 1), 0) = 0
+        OR p.category = ANY($3::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length($4::int[], 1), 0) = 0
-        OR p.category = ANY($4::int[])
+        OR p.type = ANY($4::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length($5::int[], 1), 0) = 0
-        OR p.type = ANY($5::int[])
+        OR p.brand_id = ANY($5::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length($6::int[], 1), 0) = 0
-        OR p.brand_id = ANY($6::int[])
+        OR p.line_id = ANY($6::int[])
+    )
+    -- Bodytype
+    AND (
+        COALESCE(array_length($7::text[], 1), 0) = 0
+        OR p.bodytype = ANY($7::body_enum[])
+    )
+    -- Цена
+    AND (
+        $8::int IS NULL OR p.maxprice >= $8::int
     )
     AND (
-        COALESCE(array_length($7::int[], 1), 0) = 0
-        OR p.line_id = ANY($7::int[])
+        $9::int IS NULL OR p.minprice <= $9::int
     )
+    -- С ценой
     AND (
-        COALESCE(array_length($8::text[], 1), 0) = 0
-        OR p.bodytype = ANY($8::body_enum[])
-    )
-    AND (
-        $9::int IS NULL OR p.maxprice >= $9::int
-    )
-    AND (
-        $10::int IS NULL OR p.minprice <= $10::int
-    )
-    AND (
-        $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
+        $10::boolean IS NULL OR $10::boolean = false OR p.minprice > 0
     )
     -- фильтр по скидкам всегда активен, поэтому проверяем наличие
     AND (
-    -- Если передан список правил, то требуем наличие скидки от одного из них
-    (array_length($12::int[], 1) > 0 AND EXISTS (
-        SELECT 1
-        FROM discount_rule_items dri2
-        JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
-            AND dr2.is_active = true
-            AND dr2.starts_at <= NOW()
-            AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
-        WHERE dri2.rule_id = ANY($12::int[])
-          AND (
-              (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
-              (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
-              (dri2.item_type = 'product' AND dri2.item_id = p.id)
-          )
-    ))
-    OR
-    -- Если список не передан, то используем старую логику (прямая скидка или правило)
-    (array_length($12::int[], 1) = 0 AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL))
-)
+        -- Если передан список правил, то требуем наличие скидки от одного из них
+        (array_length($11::int[], 1) > 0 AND EXISTS (
+            SELECT 1
+            FROM discount_rule_items dri2
+            JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE dri2.rule_id = ANY($11::int[])
+              AND (
+                  (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+                  (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+                  (dri2.item_type = 'product' AND dri2.item_id = p.id)
+              )
+        ))
+        OR
+        -- Если список не передан, то используем старую логику (прямая скидка или правило)
+        (array_length($11::int[], 1) = 0 AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL))
+    )
 ORDER BY
-    CASE WHEN $13::int = 1 THEN p.name END ASC,
-    CASE WHEN $13::int = 2 THEN p.name END DESC,
-    CASE WHEN $13::int = 3 THEN p.minprice END ASC,
-    CASE WHEN $13::int = 4 THEN p.minprice END DESC,
-    CASE WHEN $13::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    CASE WHEN $12::int = 1 THEN p.name END ASC,
+    CASE WHEN $12::int = 2 THEN p.name END DESC,
+    CASE WHEN $12::int = 3 THEN p.minprice END ASC,
+    CASE WHEN $12::int = 4 THEN p.minprice END DESC,
+    CASE WHEN $12::int NOT IN (1,2,3,4) THEN p.name END ASC,
     p.id ASC
-LIMIT CASE WHEN $15::integer > 0 THEN $15::integer ELSE 50 END
-OFFSET CASE WHEN $14::integer > 0 THEN $14::integer ELSE 0 END
+LIMIT CASE WHEN $14::integer > 0 THEN $14::integer ELSE 50 END
+OFFSET CASE WHEN $13::integer > 0 THEN $13::integer ELSE 0 END
 `
 
 type GetProductsByFiltersPaginateWithDiscountParams struct {
 	Sizes        []string    `json:"sizes"`
-	Status       string      `json:"status"`
 	Name         string      `json:"name"`
 	Categories   []int32     `json:"categories"`
 	ProductTypes []int32     `json:"product_types"`
@@ -5716,7 +5806,6 @@ type GetProductsByFiltersPaginateWithDiscountRow struct {
 func (q *Queries) GetProductsByFiltersPaginateWithDiscount(ctx context.Context, arg GetProductsByFiltersPaginateWithDiscountParams) ([]GetProductsByFiltersPaginateWithDiscountRow, error) {
 	rows, err := q.db.Query(ctx, getProductsByFiltersPaginateWithDiscount,
 		arg.Sizes,
-		arg.Status,
 		arg.Name,
 		arg.Categories,
 		arg.ProductTypes,
@@ -5765,9 +5854,16 @@ SELECT p.id, p.name, p.image_path,
        p.minprice, p.maxprice, p.status,
        (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
 FROM products p
-JOIN brands b ON p.brand_id = b.id
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
 LEFT JOIN store_house sh ON p.id = sh.productid
-WHERE (
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- Размеры
+    AND (
         COALESCE(array_length($1::text[], 1), 0) = 0
         OR EXISTS (
             SELECT 1
@@ -5776,58 +5872,63 @@ WHERE (
               AND (p.sizes->size_key->>'price')::numeric > 0
         )
     )
+    -- Поиск по имени/артикулу
     AND (
-        $2::text IS NULL OR $2::text = '' OR p.status = $2::text
+        $2::text IS NULL OR $2::text = ''
+        OR p.name ILIKE '%' || $2::text || '%'
+        OR p.article ILIKE '%' || $2::text || '%'
     )
+    -- Категории
     AND (
-        $3::text IS NULL OR $3::text = ''
-        OR p.name ILIKE '%' || $3::text || '%'
-        OR p.article ILIKE '%' || $3::text || '%'
+        COALESCE(array_length($3::int[], 1), 0) = 0
+        OR p.category = ANY($3::int[])
     )
+    -- Типы продуктов
     AND (
         COALESCE(array_length($4::int[], 1), 0) = 0
-        OR p.category = ANY($4::int[])
+        OR p.type = ANY($4::int[])
     )
+    -- Бренды
     AND (
         COALESCE(array_length($5::int[], 1), 0) = 0
-        OR p.type = ANY($5::int[])
+        OR p.brand_id = ANY($5::int[])
     )
+    -- Линии
     AND (
         COALESCE(array_length($6::int[], 1), 0) = 0
-        OR p.brand_id = ANY($6::int[])
+        OR p.line_id = ANY($6::int[])
+    )
+    -- Bodytype
+    AND (
+        COALESCE(array_length($7::text[], 1), 0) = 0
+        OR p.bodytype = ANY($7::body_enum[])
+    )
+    -- Цена
+    AND (
+        $8::int IS NULL OR p.maxprice >= $8::int
     )
     AND (
-        COALESCE(array_length($7::int[], 1), 0) = 0
-        OR p.line_id = ANY($7::int[])
+        $9::int IS NULL OR p.minprice <= $9::int
     )
+    -- С ценой
     AND (
-        COALESCE(array_length($8::text[], 1), 0) = 0
-        OR p.bodytype = ANY($8::body_enum[])
+        $10::boolean IS NULL OR $10::boolean = false OR p.minprice > 0
     )
-    AND (
-        $9::int IS NULL OR p.maxprice >= $9::int
-    )
-    AND (
-        $10::int IS NULL OR p.minprice <= $10::int
-    )
-    AND (
-        $11::boolean IS NULL OR $11::boolean = false OR p.minprice > 0
-    )
+    -- Наличие на складе
     AND (sh.id IS NOT NULL AND sh.quantity > 0)
 ORDER BY
-    CASE WHEN $12::int = 1 THEN p.name END ASC,
-    CASE WHEN $12::int = 2 THEN p.name END DESC,
-    CASE WHEN $12::int = 3 THEN p.minprice END ASC,
-    CASE WHEN $12::int = 4 THEN p.minprice END DESC,
-    CASE WHEN $12::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    CASE WHEN $11::int = 1 THEN p.name END ASC,
+    CASE WHEN $11::int = 2 THEN p.name END DESC,
+    CASE WHEN $11::int = 3 THEN p.minprice END ASC,
+    CASE WHEN $11::int = 4 THEN p.minprice END DESC,
+    CASE WHEN $11::int NOT IN (1,2,3,4) THEN p.name END ASC,
     p.id ASC
-LIMIT CASE WHEN $14::integer > 0 THEN $14::integer ELSE 50 END
-OFFSET CASE WHEN $13::integer > 0 THEN $13::integer ELSE 0 END
+LIMIT CASE WHEN $13::integer > 0 THEN $13::integer ELSE 50 END
+OFFSET CASE WHEN $12::integer > 0 THEN $12::integer ELSE 0 END
 `
 
 type GetProductsByFiltersPaginateWithStoreParams struct {
 	Sizes        []string    `json:"sizes"`
-	Status       string      `json:"status"`
 	Name         string      `json:"name"`
 	Categories   []int32     `json:"categories"`
 	ProductTypes []int32     `json:"product_types"`
@@ -5857,7 +5958,6 @@ type GetProductsByFiltersPaginateWithStoreRow struct {
 func (q *Queries) GetProductsByFiltersPaginateWithStore(ctx context.Context, arg GetProductsByFiltersPaginateWithStoreParams) ([]GetProductsByFiltersPaginateWithStoreRow, error) {
 	rows, err := q.db.Query(ctx, getProductsByFiltersPaginateWithStore,
 		arg.Sizes,
-		arg.Status,
 		arg.Name,
 		arg.Categories,
 		arg.ProductTypes,

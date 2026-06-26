@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -161,22 +162,38 @@ func (s *Server) handleSearchProductByCategoriesAndFilters(ctx *gin.Context) {
 func (s *Server) handleGetMainPage(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// 1. Пытаемся получить из Redis
-	widgets, err := s.getPageWidgetsFromCache(ctx)
+	// 1. Пытаемся получить из кэша
+	widgets, err := s.taskProcessor.GetPageWidgets(ctx)
+	// fmt.Println("widgets", widgets)
 	if err == nil && len(widgets) > 0 {
-		c.JSON(http.StatusOK, widgets)
+		c.Data(http.StatusOK, "application/json", widgets)
 		c.Header("X-Cache", "HIT")
 		return
 	}
 
-	// 2. Кэш промахнулся
+	// 2. Кэша нет - отдаём из БД
 	c.Header("X-Cache", "MISS")
-	s.refreshPageWidgetsCache(ctx)
 
-	// 3. Отдаём
-	widgets, _ = s.getPageWidgetsFromCache(ctx)
-	c.JSON(http.StatusOK, widgets)
+	widgetsFromDB, err := s.store.GetPageWidgetsFromDB(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	fmt.Println(widgetsFromDB)
+
+	// 3. Обновляем кэш в фоне
+	go func() {
+		bgCtx := context.Background()
+		if err := s.taskProcessor.RefreshPageWidgetsCache(bgCtx); err != nil {
+			fmt.Printf("[Redis] Failed to refresh cache: %v\n", err)
+		}
+	}()
+
+	c.JSON(http.StatusOK, widgetsFromDB)
 }
+
+// getPageWidgetsFromDB - получение виджетов напрямую из БД
 
 func (s *Server) handleSearchProductAndByCategoriesAndFilters(ctx *gin.Context) {
 	var postData types.PostDataAndFiltersByCategoryAndType

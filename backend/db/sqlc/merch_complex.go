@@ -640,7 +640,7 @@ func (store *SQLStore) getProductsByFilters(
 	offset := (page - 1) * size
 
 	// Определяем необходимость фильтров
-	needDiscount := filters.HasDiscount
+	needDiscount := filters.HasDiscount || len(filters.RuleIDs) > 0
 	needStore := filters.InStore
 
 	var total int64
@@ -659,8 +659,8 @@ func (store *SQLStore) getProductsByFilters(
 			ProductTypes: nil,
 			SortType:     int32(orderedType),
 			Lines:        filters.Lines,
-			Status:       filters.Status,
-			WithPrice:    filters.WithPrice,
+
+			WithPrice: filters.WithPrice,
 			// Название и категории
 			Name:       mainFilter.Name.String,
 			Categories: nil,
@@ -696,10 +696,10 @@ func (store *SQLStore) getProductsByFilters(
 			Bodytypes:    filters.Bodytypes,
 			ProductTypes: params.ProductTypes,
 			Lines:        filters.Lines,
-			Status:       filters.Status,
-			WithPrice:    filters.WithPrice,
-			Name:         params.Name,
-			Categories:   params.Categories,
+
+			WithPrice:  filters.WithPrice,
+			Name:       params.Name,
+			Categories: params.Categories,
 		}
 		if usePriceFilter && len(filters.Price) == 2 {
 			countParams.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
@@ -717,11 +717,11 @@ func (store *SQLStore) getProductsByFilters(
 			ProductTypes: nil,
 			SortType:     int32(orderedType),
 			Lines:        filters.Lines,
-			Status:       filters.Status,
-			WithPrice:    filters.WithPrice,
-			Name:         "",
-			Categories:   nil,
-			RuleIds:      filters.RuleIDs,
+
+			WithPrice:  filters.WithPrice,
+			Name:       "",
+			Categories: nil,
+			RuleIds:    filters.RuleIDs,
 		}
 		if mainFilter.Category.Valid {
 			params.Categories = []int32{mainFilter.Category.Int32}
@@ -751,11 +751,11 @@ func (store *SQLStore) getProductsByFilters(
 			Bodytypes:    filters.Bodytypes,
 			ProductTypes: params.ProductTypes,
 			Lines:        filters.Lines,
-			Status:       filters.Status,
-			WithPrice:    filters.WithPrice,
-			Name:         params.Name,
-			Categories:   params.Categories,
-			RuleIds:      filters.RuleIDs,
+
+			WithPrice:  filters.WithPrice,
+			Name:       params.Name,
+			Categories: params.Categories,
+			RuleIds:    filters.RuleIDs,
 		}
 		if usePriceFilter && len(filters.Price) == 2 {
 			countParams.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
@@ -773,10 +773,10 @@ func (store *SQLStore) getProductsByFilters(
 			ProductTypes: nil,
 			SortType:     int32(orderedType),
 			Lines:        filters.Lines,
-			Status:       filters.Status,
-			WithPrice:    filters.WithPrice,
-			Name:         "",
-			Categories:   nil,
+
+			WithPrice:  filters.WithPrice,
+			Name:       "",
+			Categories: nil,
 		}
 		if mainFilter.Category.Valid {
 			params.Categories = []int32{mainFilter.Category.Int32}
@@ -806,10 +806,10 @@ func (store *SQLStore) getProductsByFilters(
 			Bodytypes:    filters.Bodytypes,
 			ProductTypes: params.ProductTypes,
 			Lines:        filters.Lines,
-			Status:       filters.Status,
-			WithPrice:    filters.WithPrice,
-			Name:         params.Name,
-			Categories:   params.Categories,
+
+			WithPrice:  filters.WithPrice,
+			Name:       params.Name,
+			Categories: params.Categories,
 		}
 		if usePriceFilter && len(filters.Price) == 2 {
 			countParams.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
@@ -827,11 +827,11 @@ func (store *SQLStore) getProductsByFilters(
 			ProductTypes: nil,
 			SortType:     int32(orderedType),
 			Lines:        filters.Lines,
-			Status:       filters.Status,
-			WithPrice:    filters.WithPrice,
-			Name:         "",
-			Categories:   nil,
-			RuleIds:      filters.RuleIDs,
+
+			WithPrice:  filters.WithPrice,
+			Name:       "",
+			Categories: nil,
+			RuleIds:    filters.RuleIDs,
 		}
 		if mainFilter.Category.Valid {
 			params.Categories = []int32{mainFilter.Category.Int32}
@@ -882,4 +882,76 @@ func (store *SQLStore) getProductsByFilters(
 		Products:   products,
 		TotalCount: int(total),
 	}, nil
+}
+
+func (store *SQLStore) GetPageWidgetsFromDB(ctx context.Context) ([]types.CachedWidget, error) {
+	widgets, err := store.GetActivePageWidgets(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	cachedWidgets := make([]types.CachedWidget, 0, len(widgets))
+	for _, w := range widgets {
+		cached := types.CachedWidget{
+			ID:        w.ID,
+			Name:      w.Name,
+			Type:      w.Type,
+			SortOrder: w.SortOrder,
+			Settings:  w.Settings,
+			LinkUrl:   w.LinkUrl,
+		}
+
+		if w.Type == "products_slider" {
+			products, err := store.GetProductsForWidgetFromDB(ctx, w)
+			if err == nil {
+				cached.Products = products
+			}
+		}
+
+		cachedWidgets = append(cachedWidgets, cached)
+	}
+
+	return cachedWidgets, nil
+}
+
+// getProductsForWidgetFromDB - получение товаров для виджета напрямую из БД
+func (store *SQLStore) GetProductsForWidgetFromDB(ctx context.Context, widget PageWidget) ([]types.CachedProduct, error) {
+	var settings types.ProductsFilterStruct
+	if err := json.Unmarshal(widget.Settings, &settings); err != nil {
+		return nil, fmt.Errorf("failed to parse settings: %w", err)
+	}
+
+	limit := 20
+
+	settings.WithPrice = true
+	fmt.Println("Settttttttttttttings", settings)
+	result, err := store.GetProductsByFiltersComplex(
+		ctx,
+		"",
+		1,
+		limit,
+		settings,
+		0,
+	)
+	fmt.Println("result", result)
+	if err != nil {
+		return nil, err
+	}
+
+	cachedProducts := make([]types.CachedProduct, 0, len(result.Merch))
+	for _, p := range result.Merch {
+		imagePath := ""
+		if len(p.Image) > 0 {
+			imagePath = p.Image[0]
+		}
+		cachedProducts = append(cachedProducts, types.CachedProduct{
+			ID:        p.Id,
+			Name:      p.Name,
+			ImagePath: imagePath,
+			Price:     int32(p.Price),
+			Discount:  p.Discount,
+		})
+	}
+
+	return cachedProducts, nil
 }

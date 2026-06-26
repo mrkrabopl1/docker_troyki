@@ -7,6 +7,7 @@ import (
 
 	"github.com/hibiken/asynq"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
+	"github.com/mrkrabopl1/go_db/types"
 	"github.com/rs/zerolog/log"
 )
 
@@ -818,5 +819,116 @@ func (processor *RedisTaskProcessor) ProcessTaskGenerateWidgetLink(
 	log.Info().Int32("widget_id", payload.WidgetID).
 		Msg("widget link generated successfully")
 
+	return nil
+}
+
+func (processor *RedisTaskProcessor) RefreshPageWidgetsCache(ctx context.Context) error {
+	log.Info().Msg("Refreshing page widgets cache")
+
+	widgets, err := processor.store.GetActivePageWidgets(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get widgets: %w", err)
+	}
+
+	cachedWidgets := make([]types.CachedWidget, 0, len(widgets))
+
+	for _, w := range widgets {
+		cached := types.CachedWidget{
+			ID:        w.ID,
+			Name:      w.Name,
+			Type:      w.Type,
+			SortOrder: w.SortOrder,
+			Settings:  w.Settings,
+			LinkUrl:   w.LinkUrl,
+		}
+
+		if w.Type == "products_slider" {
+			products, err := processor.store.GetProductsForWidgetFromDB(ctx, w)
+			if err == nil {
+				cached.Products = products
+			} else {
+				log.Error().Err(err).Int32("widget_id", w.ID).Msg("failed to get products for widget")
+			}
+		}
+
+		cachedWidgets = append(cachedWidgets, cached)
+	}
+
+	data, err := json.Marshal(cachedWidgets)
+	if err != nil {
+		return fmt.Errorf("failed to marshal widgets: %w", err)
+	}
+
+	if err := processor.SetPageWidgets(ctx, data); err != nil {
+		return fmt.Errorf("failed to set cache: %w", err)
+	}
+
+	log.Info().Int("count", len(cachedWidgets)).Msg("widgets cache refreshed")
+	return nil
+}
+
+// RefreshSingleWidgetCache - обновление одного виджета в кэше
+func (processor *RedisTaskProcessor) RefreshSingleWidgetCache(ctx context.Context, widgetID int32) error {
+	// Проверяем, существует ли кэш
+	exists, _ := processor.redisClient.Exists(ctx, "mainpage:widgets:v1").Result()
+	if exists == 0 {
+		log.Info().Msg("cache is empty, skipping single widget refresh")
+		return nil
+	}
+
+	// Получаем виджет из БД
+	widget, err := processor.store.GetPageWidget(ctx, widgetID)
+	if err != nil {
+		return fmt.Errorf("failed to get widget: %w", err)
+	}
+
+	// Получаем текущий кэш
+	allWidgets, err := processor.GetPageWidgetsStruct(ctx)
+	if err != nil {
+		return processor.RefreshPageWidgetsCache(ctx)
+	}
+
+	// Строим обновленный виджет
+	cached := types.CachedWidget{
+		ID:        widget.ID,
+		Name:      widget.Name,
+		Type:      widget.Type,
+		SortOrder: widget.SortOrder,
+		Settings:  widget.Settings,
+		LinkUrl:   widget.LinkUrl,
+	}
+
+	if widget.Type == "products_slider" {
+		products, err := processor.store.GetProductsForWidgetFromDB(ctx, widget)
+		if err == nil {
+			cached.Products = products
+		}
+	}
+
+	// Обновляем в списке
+	found := false
+	for i, w := range allWidgets {
+		if w.ID == widgetID {
+			allWidgets[i] = cached
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		allWidgets = append(allWidgets, cached)
+	}
+
+	// Сохраняем обратно
+	data, err := json.Marshal(allWidgets)
+	if err != nil {
+		return fmt.Errorf("failed to marshal widgets: %w", err)
+	}
+
+	if err := processor.SetPageWidgets(ctx, data); err != nil {
+		return fmt.Errorf("failed to set cache: %w", err)
+	}
+
+	log.Info().Int32("widget_id", widgetID).Msg("single widget cache updated")
 	return nil
 }

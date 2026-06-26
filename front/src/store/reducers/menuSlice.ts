@@ -1,11 +1,10 @@
 import { createSlice } from "@reduxjs/toolkit"
 import dropFileType from '../../types/dropFile'
+import { Firm} from "src/types/modules"
 
 
+// types.ts или в начале файла
 
-type SizeType = {
-    [key: string]: number
-}
 interface IField {
     show: boolean,
     sticky: boolean,
@@ -13,7 +12,7 @@ interface IField {
         id: number,
         size: string
     }[],
-    firmMap: Record<string, number>;
+    firmMap: Record<string, Firm>; // ← меняем с number на Firm
     cartCount: number,
     isVerified: boolean,
     collections: Record<string, Record<string, string>>,
@@ -34,7 +33,7 @@ const initialState: IField = {
     categories: [],
     typesVal: {},
     firms: [],
-    firmMap: {},
+    firmMap: {}, // ← теперь будет { "nike": { id: 1, name: "Nike", slug: "nike" } }
     discountRules: {},
     sizeTables: {},
 }

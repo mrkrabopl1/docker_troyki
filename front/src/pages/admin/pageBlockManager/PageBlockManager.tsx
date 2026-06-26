@@ -65,7 +65,7 @@ const PageBlocksManager: React.FC = () => {
   // Фильтры - используем useRef для хранения текущих значений
   const filtersInfo = useRef<PageBlock['filters']>({
     sizes: [],
-    firms: [],
+    firms: [], // ← здесь хранятся ID фирм
     types: [],
     price: [0, 100000],
     rule_ids: [],
@@ -102,7 +102,7 @@ const PageBlocksManager: React.FC = () => {
     loadBlocks()
   }, [loadBlocks])
 
-  // Конвертация фильтров для ProductsFilters
+  // Конвертация фильтров для ProductsFilters (ИСПРАВЛЕНО)
   const convertFiltersData = useCallback((resData: any) => {
     if (!resData) return
 
@@ -115,7 +115,7 @@ const PageBlocksManager: React.FC = () => {
 
     // Получаем списки для чекбоксов
     const sizesList = resData.sizes ? Object.keys(resData.sizes) : []
-    const firmsList = resData.firmsCount ? Object.keys(resData.firmsCount) : []
+    const firmsList = resData.firmsCount ? Object.keys(resData.firmsCount) : [] // ← названия фирм
     const typesList = resData.types || []
     const discountsList = resData.discounts || []
 
@@ -135,16 +135,27 @@ const PageBlocksManager: React.FC = () => {
       name: typesVal[typeId]?.name || `Тип ${typeId}`
     }))
 
-    // Создаем чекбоксы для фирм - важно: firmsList содержит названия, а filtersInfo.firms - ID
-    const checkBoxPropsFirmData: CheckBoxType[] = firmsList.map((firm: string) => {
-      const firmId = firmMap[firm] || 0
-      return {
-        id: firmId,
-        enable: true,
-        activeData: filtersInfo.current.firms?.includes(firmId) || false,
-        name: firm
-      }
-    })
+    // Создаем чекбоксы для фирм (ИСПРАВЛЕНО)
+    const checkBoxPropsFirmData: CheckBoxType[] = firmsList
+      .map((firmName: string) => {
+        // Ищем фирму по имени в firmMap
+        const firm = Object.values(firmMap).find(f => f.name === firmName);
+        if (!firm) {
+          console.warn(`Firm "${firmName}" not found in firmMap`);
+          return null;
+        }
+        
+        // Проверяем, активна ли фирма в текущих фильтрах (по ID)
+        const active = filtersInfo.current.firms?.includes(firm.id) || false;
+        
+        return {
+          id: firm.slug, // ← используем slug как id для UI
+          enable: true,
+          activeData: active,
+          name: firmName
+        };
+      })
+      .filter(Boolean) as CheckBoxType[]; // убираем null
 
     // Создаем чекбоксы для скидок
     const checkBoxPropsDiscountData: CheckBoxType[] = discountsList.map((discount: any) => ({
@@ -210,7 +221,7 @@ const PageBlocksManager: React.FC = () => {
     try {
       const params = {
         sizes: filtersInfo.current.sizes || [],
-        firms: filtersInfo.current.firms || [],
+        firms: filtersInfo.current.firms || [], // ← здесь уже ID
         types: filtersInfo.current.types || [],
         price: filtersInfo.current.price || [0, 100000],
         rule_ids: filtersInfo.current.rule_ids || [],
@@ -236,14 +247,18 @@ const PageBlocksManager: React.FC = () => {
     }
   }, [maxItems])
 
-  // Обработчик изменения фильтров из ProductsFilters
+  // Обработчик изменения фильтров из ProductsFilters (ИСПРАВЛЕНО)
   const onFiltersChange = useCallback((filter: any) => {
     switch (filter.id) {
       case "sizes":
         filtersInfo.current.sizes = filter.data || []
         break
       case "firms":
-        filtersInfo.current.firms = filter.data || []
+        // filter.data - массив slug'ов от чекбоксов
+        // Преобразуем slug'и в ID для запроса к API
+        filtersInfo.current.firms = (filter.data || [])
+          .map((slug: string) => firmMap[slug]?.id)
+          .filter(Boolean) as number[];
         break
       case "type":
         filtersInfo.current.types = filter.data || []
@@ -267,7 +282,7 @@ const PageBlocksManager: React.FC = () => {
     setErrors(prev => ({ ...prev, filters: false }))
     // Обновляем предпросмотр
     updatePreview()
-  }, [updatePreview])
+  }, [updatePreview, firmMap])
 
   // Обновляем предпросмотр при открытии модалки
   useEffect(() => {
@@ -314,7 +329,7 @@ const PageBlocksManager: React.FC = () => {
       is_active: isActive,
       filters: {
         sizes: filtersInfo.current.sizes || [],
-        firms: filtersInfo.current.firms || [],
+        firms: filtersInfo.current.firms || [], // ← здесь ID
         types: filtersInfo.current.types || [],
         price: filtersInfo.current.price || [0, 100000],
         rule_ids: filtersInfo.current.rule_ids || [],
@@ -366,7 +381,7 @@ const PageBlocksManager: React.FC = () => {
       setBlockName(block.name)
       filtersInfo.current = {
         sizes: block.filters?.sizes || [],
-        firms: block.filters?.firms || [],
+        firms: block.filters?.firms || [], // ← здесь уже ID из БД
         types: block.filters?.types || [],
         price: block.filters?.price || [0, 100000],
         rule_ids: block.filters?.rule_ids || [],
@@ -393,7 +408,7 @@ const PageBlocksManager: React.FC = () => {
     }
   }
 
-  // Формируем текст условий
+  // Формируем текст условий (ИСПРАВЛЕНО)
   const getFiltersSummary = useMemo(() => {
     const parts: string[] = []
 
@@ -406,10 +421,11 @@ const PageBlocksManager: React.FC = () => {
     }
 
     if (filtersInfo.current.firms && filtersInfo.current.firms.length > 0) {
+      // Ищем названия фирм по ID
       const firmNames = filtersInfo.current.firms
         .map(firmId => {
-          const found = Object.entries(firmMap).find(([_, id]) => id === firmId)
-          return found ? found[0] : null
+          const firm = Object.values(firmMap).find(f => f.id === firmId);
+          return firm?.name || null;
         })
         .filter(Boolean)
         .join(', ')

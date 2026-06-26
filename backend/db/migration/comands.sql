@@ -913,3 +913,24 @@
 -- TRUNCATE TABLE page_widgets;
 -- ALTER TABLE page_widgets 
 -- ADD COLUMN link_url VARCHAR(500) NOT NULL;
+
+
+
+-- CREATE OR REPLACE FUNCTION update_products_status_on_brand_change()
+-- RETURNS TRIGGER AS $$
+-- BEGIN
+--     IF NEW.is_active = false AND OLD.is_active = true THEN
+--         UPDATE products 
+--         SET status = 'draft', updated_at = NOW()
+--         WHERE brand_id = NEW.id AND status = 'active';
+--     END IF;
+--     RETURN NEW;
+-- END;
+-- $$ LANGUAGE plpgsql;
+
+
+
+CREATE TRIGGER brand_status_change
+AFTER UPDATE OF is_active ON brands
+FOR EACH ROW
+EXECUTE FUNCTION update_products_status_on_brand_change();

@@ -116,6 +116,10 @@ type Querier interface {
 	GetAllProductsForAdmin(ctx context.Context, arg GetAllProductsForAdminParams) ([]GetAllProductsForAdminRow, error)
 	GetBannerByID(ctx context.Context, id int32) (GetBannerByIDRow, error)
 	GetBaseCustomerData(ctx context.Context, mail string) (GetBaseCustomerDataRow, error)
+	// Скидка на конкретный товар (самый высокий приоритет)
+	// Скидка на бренд
+	// Скидка на линию
+	GetBestDiscountsForProducts(ctx context.Context, dollar_1 []int32) ([]GetBestDiscountsForProductsRow, error)
 	GetBrandByID(ctx context.Context, brandID int32) (GetBrandByIDRow, error)
 	GetBrandByIDWithDiscount(ctx context.Context, brandID int32) (GetBrandByIDWithDiscountRow, error)
 	GetBrandById(ctx context.Context, id int32) (GetBrandByIdRow, error)
@@ -188,6 +192,8 @@ type Querier interface {
 	GetPreorderIdByHashUrl(ctx context.Context, hashurl string) (int32, error)
 	GetPreorderInfo(ctx context.Context, orderid int32) ([]GetPreorderInfoRow, error)
 	GetProductByArticle(ctx context.Context, article string) (GetProductByArticleRow, error)
+	GetProductIDsByBrandForAdmin(ctx context.Context, brandID int32) ([]int32, error)
+	GetProductIDsByLineForAdmin(ctx context.Context, lineID pgtype.Int4) ([]int32, error)
 	GetProductIDsForAdminByFilters(ctx context.Context, arg GetProductIDsForAdminByFiltersParams) ([]int32, error)
 	GetProductsBasicInfo(ctx context.Context, productIds []int32) ([]GetProductsBasicInfoRow, error)
 	GetProductsByFilters(ctx context.Context, arg GetProductsByFiltersParams) ([]GetProductsByFiltersRow, error)

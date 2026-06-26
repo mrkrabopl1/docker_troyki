@@ -1397,3 +1397,101 @@ WHERE page_widgets.id = new_sort.id;
 
 -- name: CountPageWidgets :one
 SELECT COUNT(*) FROM page_widgets;
+
+
+
+
+-- name: GetBestDiscountsForProducts :many
+SELECT 
+    p.id as product_id,
+    -- Выбираем лучшую скидку по приоритету
+    COALESCE(
+        pd.discount_value, 
+        bd.discount_value, 
+        ld.discount_value, 
+        0
+    ) as discount_value,
+    COALESCE(
+        pd.discount_type, 
+        bd.discount_type, 
+        ld.discount_type, 
+        'percentage'
+    ) as discount_type,
+    COALESCE(
+        pd.rule_id, 
+        bd.rule_id, 
+        ld.rule_id, 
+        0
+    ) as rule_id,
+    COALESCE(
+        pd.priority, 
+        bd.priority, 
+        ld.priority, 
+        0
+    ) as priority
+FROM products p
+-- Скидка на конкретный товар (самый высокий приоритет)
+LEFT JOIN (
+    SELECT DISTINCT ON (dri.item_id) 
+        dri.item_id as product_id,
+        dr.discount_value,
+        dr.discount_type,
+        dr.id as rule_id,
+        dr.priority
+    FROM discount_rule_items dri
+    JOIN discount_rules dr ON dr.id = dri.rule_id
+    WHERE dri.item_type = 'product'
+      AND dr.is_active = true
+      AND dr.starts_at <= NOW()
+      AND (dr.ends_at IS NULL OR dr.ends_at >= NOW())
+    ORDER BY dri.item_id, dr.priority DESC
+) pd ON pd.product_id = p.id
+-- Скидка на бренд
+LEFT JOIN (
+    SELECT DISTINCT ON (dri.item_id) 
+        dri.item_id as brand_id,
+        dr.discount_value,
+        dr.discount_type,
+        dr.id as rule_id,
+        dr.priority
+    FROM discount_rule_items dri
+    JOIN discount_rules dr ON dr.id = dri.rule_id
+    WHERE dri.item_type = 'brand'
+      AND dr.is_active = true
+      AND dr.starts_at <= NOW()
+      AND (dr.ends_at IS NULL OR dr.ends_at >= NOW())
+    ORDER BY dri.item_id, dr.priority DESC
+) bd ON bd.brand_id = p.brand_id
+-- Скидка на линию
+LEFT JOIN (
+    SELECT DISTINCT ON (dri.item_id) 
+        dri.item_id as line_id,
+        dr.discount_value,
+        dr.discount_type,
+        dr.id as rule_id,
+        dr.priority
+    FROM discount_rule_items dri
+    JOIN discount_rules dr ON dr.id = dri.rule_id
+    WHERE dri.item_type = 'line'
+      AND dr.is_active = true
+      AND dr.starts_at <= NOW()
+      AND (dr.ends_at IS NULL OR dr.ends_at >= NOW())
+    ORDER BY dri.item_id, dr.priority DESC
+) ld ON ld.line_id = p.line_id
+WHERE p.id = ANY($1::int[])
+  AND (
+      pd.product_id IS NOT NULL 
+      OR bd.brand_id IS NOT NULL 
+      OR ld.line_id IS NOT NULL
+  );
+
+
+
+-- name: GetProductIDsByBrandForAdmin :many
+SELECT id FROM products
+WHERE brand_id = $1;
+
+
+-- name: GetProductIDsByLineForAdmin :many
+SELECT id FROM products
+WHERE line_id = $1;  

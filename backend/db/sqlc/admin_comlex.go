@@ -304,6 +304,93 @@ func (s *SQLStore) RecalculateAllDiscounts(ctx context.Context) error {
 
 	return nil
 }
+func (s *SQLStore) RecalculateAffectedProducts(ctx context.Context, ruleID int32) error {
+	// 1. Получаем правило
+	_, err := s.GetDiscountRuleByID(ctx, ruleID)
+	if err != nil {
+		return err
+	}
+
+	// 2. Получаем элементы правила
+	items, err := s.GetRuleItems(ctx, ruleID)
+	if err != nil {
+		return err
+	}
+
+	// 3. Собираем ID продуктов, затронутых этим правилом
+	productIDs := make(map[int32]bool)
+
+	for _, item := range items {
+		switch item.ItemType {
+		case "product":
+			productIDs[item.ItemID] = true
+		case "brand":
+			products, _ := s.GetProductIDsByBrandForAdmin(ctx, item.ItemID)
+			for _, id := range products {
+				productIDs[id] = true
+			}
+		case "line":
+			products, _ := s.GetProductIDsByLineForAdmin(ctx, pgtype.Int4{Int32: item.ItemID})
+			for _, id := range products {
+				productIDs[id] = true
+			}
+		}
+	}
+
+	if len(productIDs) == 0 {
+		return nil
+	}
+
+	// 4. ID продуктов в слайс
+	ids := make([]int32, 0, len(productIDs))
+	for id := range productIDs {
+		ids = append(ids, id)
+	}
+
+	// 5. Получаем лучшие скидки для этих продуктов
+	discounts, err := s.GetBestDiscountsForProducts(ctx, ids)
+	if err != nil {
+		return err
+	}
+
+	if len(discounts) == 0 {
+		return nil
+	}
+
+	// 6. Конвертируем в BulkUpsertDiscountParams
+	params := BulkUpsertDiscountParams{
+		ProductIds:    make([]int32, 0, len(discounts)),
+		Values:        make([][]byte, 0, len(discounts)),
+		MinPrices:     make([]int32, 0, len(discounts)),
+		MaxDiscPrices: make([]int32, 0, len(discounts)),
+	}
+
+	for _, d := range discounts {
+		// Формируем JSON для value
+		valueMap := map[string]interface{}{
+			"type":    d.DiscountType,
+			"value":   d.DiscountValue,
+			"rule_id": d.RuleID,
+		}
+		valueJSON, err := json.Marshal(valueMap)
+		if err != nil {
+			log.Printf("Failed to marshal discount for product %d: %v", d.ProductID, err)
+			continue
+		}
+
+		params.ProductIds = append(params.ProductIds, d.ProductID)
+		params.Values = append(params.Values, valueJSON)
+		params.MinPrices = append(params.MinPrices, 0)         // TODO: посчитать из sizes
+		params.MaxDiscPrices = append(params.MaxDiscPrices, 0) // TODO: посчитать из sizes
+	}
+
+	if len(params.ProductIds) == 0 {
+		return nil
+	}
+
+	// 7. Обновляем через существующий метод
+	return s.BulkUpsertDiscount(ctx, params)
+}
 
 // processBatch – обработка пачки товаров
 func (s *SQLStore) processBatch(ctx context.Context, batch []GetProductsWithSizesByIDsRow, best map[int32]GetAllActiveDiscountsRow) error {

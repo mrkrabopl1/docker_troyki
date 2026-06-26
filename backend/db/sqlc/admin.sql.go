@@ -1461,6 +1461,125 @@ func (q *Queries) GetAllProductsForAdmin(ctx context.Context, arg GetAllProducts
 	return items, nil
 }
 
+const getBestDiscountsForProducts = `-- name: GetBestDiscountsForProducts :many
+SELECT 
+    p.id as product_id,
+    -- Выбираем лучшую скидку по приоритету
+    COALESCE(
+        pd.discount_value, 
+        bd.discount_value, 
+        ld.discount_value, 
+        0
+    ) as discount_value,
+    COALESCE(
+        pd.discount_type, 
+        bd.discount_type, 
+        ld.discount_type, 
+        'percentage'
+    ) as discount_type,
+    COALESCE(
+        pd.rule_id, 
+        bd.rule_id, 
+        ld.rule_id, 
+        0
+    ) as rule_id,
+    COALESCE(
+        pd.priority, 
+        bd.priority, 
+        ld.priority, 
+        0
+    ) as priority
+FROM products p
+LEFT JOIN (
+    SELECT DISTINCT ON (dri.item_id) 
+        dri.item_id as product_id,
+        dr.discount_value,
+        dr.discount_type,
+        dr.id as rule_id,
+        dr.priority
+    FROM discount_rule_items dri
+    JOIN discount_rules dr ON dr.id = dri.rule_id
+    WHERE dri.item_type = 'product'
+      AND dr.is_active = true
+      AND dr.starts_at <= NOW()
+      AND (dr.ends_at IS NULL OR dr.ends_at >= NOW())
+    ORDER BY dri.item_id, dr.priority DESC
+) pd ON pd.product_id = p.id
+LEFT JOIN (
+    SELECT DISTINCT ON (dri.item_id) 
+        dri.item_id as brand_id,
+        dr.discount_value,
+        dr.discount_type,
+        dr.id as rule_id,
+        dr.priority
+    FROM discount_rule_items dri
+    JOIN discount_rules dr ON dr.id = dri.rule_id
+    WHERE dri.item_type = 'brand'
+      AND dr.is_active = true
+      AND dr.starts_at <= NOW()
+      AND (dr.ends_at IS NULL OR dr.ends_at >= NOW())
+    ORDER BY dri.item_id, dr.priority DESC
+) bd ON bd.brand_id = p.brand_id
+LEFT JOIN (
+    SELECT DISTINCT ON (dri.item_id) 
+        dri.item_id as line_id,
+        dr.discount_value,
+        dr.discount_type,
+        dr.id as rule_id,
+        dr.priority
+    FROM discount_rule_items dri
+    JOIN discount_rules dr ON dr.id = dri.rule_id
+    WHERE dri.item_type = 'line'
+      AND dr.is_active = true
+      AND dr.starts_at <= NOW()
+      AND (dr.ends_at IS NULL OR dr.ends_at >= NOW())
+    ORDER BY dri.item_id, dr.priority DESC
+) ld ON ld.line_id = p.line_id
+WHERE p.id = ANY($1::int[])
+  AND (
+      pd.product_id IS NOT NULL 
+      OR bd.brand_id IS NOT NULL 
+      OR ld.line_id IS NOT NULL
+  )
+`
+
+type GetBestDiscountsForProductsRow struct {
+	ProductID     int32  `json:"product_id"`
+	DiscountValue int32  `json:"discount_value"`
+	DiscountType  string `json:"discount_type"`
+	RuleID        int32  `json:"rule_id"`
+	Priority      int32  `json:"priority"`
+}
+
+// Скидка на конкретный товар (самый высокий приоритет)
+// Скидка на бренд
+// Скидка на линию
+func (q *Queries) GetBestDiscountsForProducts(ctx context.Context, dollar_1 []int32) ([]GetBestDiscountsForProductsRow, error) {
+	rows, err := q.db.Query(ctx, getBestDiscountsForProducts, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBestDiscountsForProductsRow
+	for rows.Next() {
+		var i GetBestDiscountsForProductsRow
+		if err := rows.Scan(
+			&i.ProductID,
+			&i.DiscountValue,
+			&i.DiscountType,
+			&i.RuleID,
+			&i.Priority,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getCustomerDetails = `-- name: GetCustomerDetails :one
 SELECT c.id, c.name, c.secondname, c.mail, c.pass, c.phone, c.town, c.index, c.sendmail, c.street, c.region, c.home, c.flat, c.coordinates, c.created_at,
     json_agg(
@@ -2186,6 +2305,56 @@ func (q *Queries) GetPageWidget(ctx context.Context, id int32) (PageWidget, erro
 		&i.LinkUrl,
 	)
 	return i, err
+}
+
+const getProductIDsByBrandForAdmin = `-- name: GetProductIDsByBrandForAdmin :many
+SELECT id FROM products
+WHERE brand_id = $1
+`
+
+func (q *Queries) GetProductIDsByBrandForAdmin(ctx context.Context, brandID int32) ([]int32, error) {
+	rows, err := q.db.Query(ctx, getProductIDsByBrandForAdmin, brandID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int32
+	for rows.Next() {
+		var id int32
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProductIDsByLineForAdmin = `-- name: GetProductIDsByLineForAdmin :many
+SELECT id FROM products
+WHERE line_id = $1
+`
+
+func (q *Queries) GetProductIDsByLineForAdmin(ctx context.Context, lineID pgtype.Int4) ([]int32, error) {
+	rows, err := q.db.Query(ctx, getProductIDsByLineForAdmin, lineID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int32
+	for rows.Next() {
+		var id int32
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getProductIDsForAdminByFilters = `-- name: GetProductIDsForAdminByFilters :many
