@@ -68,19 +68,20 @@ func NewProductsSearchResponse5(ProductsSearch []GetProductsByIdsRow) []types.Pr
 			imgArr = append(imgArr, str)
 		}
 		var discount interface{}
-		if info.Maxdiscprice.Int32 != 0 {
-			discount = info.Maxdiscprice.Int32
+		if info.DiscountedPrice != 0 {
+			discount = info.DiscountedPrice
 		} else {
 			discount = nil
 		}
 		list = append(list, types.ProductsSearchResponse1{
-			Image:    imgArr,
-			Price:    int(info.Minprice),
-			Id:       int(info.GlobalID),
-			Name:     info.Name,
-			Firm:     info.Firm,
-			Discount: discount,
-			Article:  info.Article,
+			Image:           imgArr,
+			Price:           int(info.MinPrice),
+			Id:              int(info.GlobalID),
+			Name:            info.Name,
+			Firm:            info.Firm,
+			Discount:        discount,
+			DiscountPercent: info.DiscountPercent,
+			Article:         info.Article,
 		})
 
 	}

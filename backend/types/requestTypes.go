@@ -67,6 +67,7 @@ type PostDataSnickersAndFiltersByString struct {
 	SortType int                  `json:"orderedType"`
 	Type     int32                `json:"type"`
 	Category int32                `json:"category"`
+	BrandID  int32                `json:"brandId"`
 }
 
 type PostDataAndFiltersByCategoryAndType struct {

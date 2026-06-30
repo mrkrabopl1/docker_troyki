@@ -19,7 +19,6 @@ type Querier interface {
 	AddRuleItem(ctx context.Context, arg AddRuleItemParams) error
 	ArchiveProduct(ctx context.Context, id int32) error
 	BulkAddRuleItems(ctx context.Context, arg BulkAddRuleItemsParams) error
-	BulkInsertDiscounts(ctx context.Context, arg BulkInsertDiscountsParams) error
 	BulkUpdateBrandActive(ctx context.Context, arg BulkUpdateBrandActiveParams) error
 	BulkUpdateBrandSortOrder(ctx context.Context, arg BulkUpdateBrandSortOrderParams) error
 	BulkUpdateProductStatus(ctx context.Context, arg BulkUpdateProductStatusParams) error
@@ -105,6 +104,8 @@ type Querier interface {
 	GetAdminStats(ctx context.Context) (GetAdminStatsRow, error)
 	// ========== АДМИНИСТРАТОРЫ ==========
 	GetAdminsList(ctx context.Context, arg GetAdminsListParams) ([]GetAdminsListRow, error)
+	GetAggregatedFilters(ctx context.Context) (GetAggregatedFiltersRow, error)
+	GetAggregatedFiltersFast(ctx context.Context, arg GetAggregatedFiltersFastParams) (GetAggregatedFiltersFastRow, error)
 	GetAllActiveDiscountRules(ctx context.Context) ([]DiscountRule, error)
 	GetAllActiveDiscounts(ctx context.Context) ([]GetAllActiveDiscountsRow, error)
 	GetAllBanners(ctx context.Context) ([]GetAllBannersRow, error)
@@ -157,6 +158,8 @@ type Querier interface {
 	GetDiscounts(ctx context.Context, arg GetDiscountsParams) ([]GetDiscountsRow, error)
 	GetDiscountsCount(ctx context.Context) (int64, error)
 	GetFiltersByNameCategoryAndType(ctx context.Context, arg GetFiltersByNameCategoryAndTypeParams) (GetFiltersByNameCategoryAndTypeRow, error)
+	GetFiltersByNameCategoryAndTypeNew(ctx context.Context, arg GetFiltersByNameCategoryAndTypeNewParams) (GetFiltersByNameCategoryAndTypeNewRow, error)
+	GetFiltersByNameCategoryAndTypeNewWithLine(ctx context.Context, arg GetFiltersByNameCategoryAndTypeNewWithLineParams) (GetFiltersByNameCategoryAndTypeNewWithLineRow, error)
 	GetFirms(ctx context.Context) ([]GetFirmsRow, error)
 	GetFullPreorderCount(ctx context.Context, orderid int32) (interface{}, error)
 	GetFullProductsInfoByIds(ctx context.Context, dollar_1 []int32) ([]GetFullProductsInfoByIdsRow, error)
@@ -166,7 +169,6 @@ type Querier interface {
 	GetMerchCountOfCollectionsOrFirms(ctx context.Context, arg GetMerchCountOfCollectionsOrFirmsParams) (int64, error)
 	GetMerchFirms(ctx context.Context) ([]GetMerchFirmsRow, error)
 	GetMerchProductsByFirmName(ctx context.Context, name string) ([]GetMerchProductsByFirmNameRow, error)
-	GetMerchWithDiscount(ctx context.Context) ([]GetMerchWithDiscountRow, error)
 	GetNewsletterPendingCount(ctx context.Context) (int64, error)
 	GetNewsletterSubscriberByEmail(ctx context.Context, email string) (NewsletterSubscriber, error)
 	GetNewsletterSubscriberByToken(ctx context.Context, verificationToken string) (NewsletterSubscriber, error)
@@ -196,7 +198,6 @@ type Querier interface {
 	GetProductIDsByLineForAdmin(ctx context.Context, lineID pgtype.Int4) ([]int32, error)
 	GetProductIDsForAdminByFilters(ctx context.Context, arg GetProductIDsForAdminByFiltersParams) ([]int32, error)
 	GetProductsBasicInfo(ctx context.Context, productIds []int32) ([]GetProductsBasicInfoRow, error)
-	GetProductsByFilters(ctx context.Context, arg GetProductsByFiltersParams) ([]GetProductsByFiltersRow, error)
 	GetProductsByFiltersNewTest(ctx context.Context, arg GetProductsByFiltersNewTestParams) ([]GetProductsByFiltersNewTestRow, error)
 	GetProductsByFiltersPaginate(ctx context.Context, arg GetProductsByFiltersPaginateParams) ([]GetProductsByFiltersPaginateRow, error)
 	// ============================================================
@@ -234,7 +235,6 @@ type Querier interface {
 	GetUnregisterCustomersList(ctx context.Context, arg GetUnregisterCustomersListParams) ([]GetUnregisterCustomersListRow, error)
 	GetVerification(ctx context.Context, token string) (GetVerificationRow, error)
 	GetVerifiedNewsletterSubscribers(ctx context.Context) ([]string, error)
-	InsertDiscounts(ctx context.Context, arg InsertDiscountsParams) (int32, error)
 	InsertManyOrderItems(ctx context.Context, arg InsertManyOrderItemsParams) error
 	InsertManyPreorderItems(ctx context.Context, arg InsertManyPreorderItemsParams) error
 	InsertOrder(ctx context.Context, arg InsertOrderParams) (int32, error)

@@ -930,7 +930,204 @@
 
 
 
-CREATE TRIGGER brand_status_change
-AFTER UPDATE OF is_active ON brands
-FOR EACH ROW
-EXECUTE FUNCTION update_products_status_on_brand_change();
+-- CREATE TRIGGER brand_status_change
+-- AFTER UPDATE OF is_active ON brands
+-- FOR EACH ROW
+-- EXECUTE FUNCTION update_products_status_on_brand_change();
+
+
+
+
+
+
+
+
+
+-- -- ============================================================
+-- -- 1. ОЧИСТКА ТАБЛИЦЫ (удаляем все данные)
+-- -- ============================================================
+TRUNCATE TABLE discount RESTART IDENTITY CASCADE;
+
+-- -- ============================================================
+-- -- 2. ДОБАВЛЯЕМ НОВЫЕ КОЛОНКИ
+-- -- ============================================================
+
+-- -- Добавляем колонку для процента скидки (для бейджа)
+-- ALTER TABLE discount 
+-- ADD COLUMN IF NOT EXISTS discount_percent INTEGER DEFAULT 0;
+
+-- -- Добавляем колонку для оригинальной цены (зачеркнутая)
+-- ALTER TABLE discount 
+-- ADD COLUMN IF NOT EXISTS original_price INTEGER NOT NULL DEFAULT 0;
+
+-- -- Переименовываем старую колонку maxdiscprice в discounted_price
+-- ALTER TABLE discount 
+-- RENAME COLUMN maxdiscprice TO discounted_price;
+
+-- -- Меняем тип discounted_price на NOT NULL DEFAULT 0
+-- ALTER TABLE discount 
+-- ALTER COLUMN discounted_price SET DEFAULT 0,
+-- ALTER COLUMN discounted_price SET NOT NULL;
+
+-- -- Добавляем колонку для максимальной цены (для фильтрации)
+-- ALTER TABLE discount 
+-- ADD COLUMN IF NOT EXISTS max_price INTEGER NOT NULL DEFAULT 0;
+
+-- -- Переименовываем minprice в min_price для единообразия
+-- ALTER TABLE discount 
+-- RENAME COLUMN minprice TO min_price;
+
+-- -- ============================================================
+-- -- 3. ДОБАВЛЯЕМ ИНДЕКСЫ ДЛЯ БЫСТРЫХ ЗАПРОСОВ
+-- -- ============================================================
+
+-- -- Для поиска товаров со скидкой
+-- CREATE INDEX IF NOT EXISTS idx_discount_percent ON discount(discount_percent) 
+-- WHERE discount_percent > 0;
+
+-- -- Для фильтрации по цене
+-- CREATE INDEX IF NOT EXISTS idx_discount_min_price ON discount(min_price);
+-- CREATE INDEX IF NOT EXISTS idx_discount_max_price ON discount(max_price);
+
+-- -- Для быстрого JOIN по productid (уже есть PRIMARY KEY)
+-- -- Но добавим дополнительный индекс на productid если его нет
+-- CREATE INDEX IF NOT EXISTS idx_discount_productid ON discount(productid);
+
+
+
+
+
+
+
+
+
+
+
+-- -- Для основной фильтрации (статус + категория + тип)
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_status_category_type 
+-- ON products(status, category, type) 
+-- WHERE status = 'active';
+
+-- -- Для быстрого поиска по имени (триграммы)
+-- CREATE EXTENSION IF NOT EXISTS pg_trgm;
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_name_trgm 
+-- ON products USING gin(name gin_trgm_ops);
+
+-- -- Для связи с brands
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_brands_id_active 
+-- ON brands(id, is_active) 
+-- WHERE is_active = true;
+
+-- -- Для discount_rule_items – составной для быстрого поиска по типу и ID
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_discount_rule_items_type_id 
+-- ON discount_rule_items(item_type, item_id);
+
+-- -- Для discount_rules – активные с датами
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_discount_rules_active_dates 
+-- ON discount_rules(is_active, starts_at, ends_at) 
+-- WHERE is_active = true;
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- -- ============================================================
+-- -- 1. Таблица для нормализованных размеров (только необходимые поля)
+-- -- ============================================================
+-- CREATE TABLE IF NOT EXISTS public.product_sizes (
+--     product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+--     size_key TEXT NOT NULL,
+--     price NUMERIC NOT NULL,
+--     in_stock BOOLEAN DEFAULT true,
+--     quantity INTEGER DEFAULT 0,
+--     PRIMARY KEY (product_id, size_key)
+-- );
+
+-- -- Индексы для быстрых запросов
+-- CREATE INDEX IF NOT EXISTS idx_product_sizes_product_id ON public.product_sizes(product_id);
+-- CREATE INDEX IF NOT EXISTS idx_product_sizes_size_key ON public.product_sizes(size_key);
+
+-- -- ============================================================
+-- -- 2. Функция синхронизации (триггер)
+-- -- ============================================================
+-- CREATE OR REPLACE FUNCTION public.sync_product_sizes()
+-- RETURNS TRIGGER AS $$
+-- BEGIN
+--     -- Удаляем старые записи для этого товара
+--     DELETE FROM public.product_sizes WHERE product_id = NEW.id;
+
+--     -- Вставляем новые размеры из JSONB, только если цена > 0, есть в наличии и количество > 0
+--     INSERT INTO public.product_sizes (product_id, size_key, price, in_stock, quantity)
+--     SELECT
+--         NEW.id,
+--         key,
+--         (value->>'price')::NUMERIC,
+--         COALESCE((value->>'in_stock')::BOOLEAN, false),
+--         COALESCE((value->>'quantity')::INTEGER, 0)
+--     FROM jsonb_each(NEW.sizes)
+--     WHERE (value->>'price')::NUMERIC > 0
+--       AND COALESCE((value->>'in_stock')::BOOLEAN, false) = true
+--       AND COALESCE((value->>'quantity')::INTEGER, 0) > 0;
+
+--     RETURN NEW;
+-- END;
+-- $$ LANGUAGE plpgsql;
+
+-- -- ============================================================
+-- -- 3. Триггеры
+-- -- ============================================================
+-- CREATE TRIGGER trg_sync_sizes
+-- AFTER INSERT OR UPDATE OF sizes ON public.products
+-- FOR EACH ROW
+-- EXECUTE FUNCTION public.sync_product_sizes();
+
+-- -- ============================================================
+-- -- 4. Первоначальное заполнение (для уже существующих товаров)
+-- -- ============================================================
+-- INSERT INTO public.product_sizes (product_id, size_key, price, in_stock, quantity)
+-- SELECT
+--     p.id,
+--     key,
+--     (value->>'price')::NUMERIC,
+--     COALESCE((value->>'in_stock')::BOOLEAN, false),
+--     COALESCE((value->>'quantity')::INTEGER, 0)
+-- FROM public.products p,
+-- LATERAL jsonb_each(p.sizes)
+-- WHERE (value->>'price')::NUMERIC > 0
+--   AND COALESCE((value->>'in_stock')::BOOLEAN, false) = true
+--   AND COALESCE((value->>'quantity')::INTEGER, 0) > 0
+-- ON CONFLICT (product_id, size_key) DO NOTHING;
+
+-- -- ============================================================
+-- -- 5. Дополнительные индексы для основных запросов фильтрации
+-- -- ============================================================
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_status_category_type
+-- ON public.products(status, category, type) WHERE status = 'active';
+
+-- CREATE EXTENSION IF NOT EXISTS pg_trgm;
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_name_trgm
+-- ON public.products USING gin(name gin_trgm_ops);
+
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_discount_productid ON public.discount(productid);
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_discount_rule_id ON public.discount(rule_id);
+
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_brands_id_active ON public.brands(id, is_active) WHERE is_active = true;
+
+
+
+
+
+
+
+CREATE INDEX IF NOT EXISTS idx_discount_rule_id ON discount(rule_id);
+
+-- Индекс для быстрого поиска по productid (уже есть UNIQUE, но на всякий случай)
+CREATE INDEX IF NOT EXISTS idx_discount_productid ON discount(productid);

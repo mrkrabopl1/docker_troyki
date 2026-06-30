@@ -320,13 +320,17 @@ type CustomerPasswordReset struct {
 }
 
 type Discount struct {
-	ID           int32              `json:"id"`
-	Productid    int32              `json:"productid"`
-	Value        []byte             `json:"value"`
-	Minprice     int32              `json:"minprice"`
-	Maxdiscprice pgtype.Int4        `json:"maxdiscprice"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	ID              int32              `json:"id"`
+	Productid       int32              `json:"productid"`
+	Value           []byte             `json:"value"`
+	DiscountPercent int32              `json:"discount_percent"`
+	OriginalPrice   int32              `json:"original_price"`
+	DiscountedPrice int32              `json:"discounted_price"`
+	MinPrice        int32              `json:"min_price"`
+	MaxPrice        int32              `json:"max_price"`
+	RuleID          pgtype.Int4        `json:"rule_id"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }
 
 type DiscountRule struct {
@@ -501,6 +505,14 @@ type ProductColor struct {
 	ColorID   int32 `json:"color_id"`
 }
 
+type ProductSize struct {
+	ProductID int32          `json:"product_id"`
+	SizeKey   string         `json:"size_key"`
+	Price     pgtype.Numeric `json:"price"`
+	InStock   pgtype.Bool    `json:"in_stock"`
+	Quantity  pgtype.Int4    `json:"quantity"`
+}
+
 type ProductType struct {
 	ID         int32  `json:"id"`
 	CategoryID int32  `json:"category_id"`
@@ -515,6 +527,16 @@ type StoreHouse struct {
 	Quantity  int32              `json:"quantity"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type TmpProductID struct {
+	ID       int32       `json:"id"`
+	BrandID  int32       `json:"brand_id"`
+	LineID   pgtype.Int4 `json:"line_id"`
+	Type     int32       `json:"type"`
+	Bodytype BodyEnum    `json:"bodytype"`
+	Minprice int32       `json:"minprice"`
+	Maxprice int32       `json:"maxprice"`
 }
 
 type Uniquecustomer struct {

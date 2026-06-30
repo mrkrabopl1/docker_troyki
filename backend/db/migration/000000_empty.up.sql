@@ -91,9 +91,19 @@ CREATE TABLE IF NOT EXISTS public.discount_rule_items (
 CREATE TABLE IF NOT EXISTS public.discount (
     id SERIAL PRIMARY KEY,
     productid INTEGER NOT NULL UNIQUE REFERENCES products(id) ON DELETE CASCADE,
-    value JSONB NOT NULL,
-    minprice INTEGER NOT NULL DEFAULT 0,
-    maxdiscprice INTEGER,
+    
+    -- Детальные данные по размерам
+    value JSONB NOT NULL DEFAULT '{}'::jsonb,
+    
+    -- Для отображения в каталоге
+    discount_percent INTEGER NOT NULL DEFAULT 0,
+    original_price INTEGER NOT NULL DEFAULT 0,
+    discounted_price INTEGER NOT NULL DEFAULT 0,
+    
+    -- Для сортировки и фильтрации
+    min_price INTEGER NOT NULL DEFAULT 0,
+    max_price INTEGER NOT NULL DEFAULT 0,
+    rule_id INTEGER REFERENCES discount_rules(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -493,3 +503,33 @@ CREATE TABLE brands_stats (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 COMMIT;
+
+
+
+
+
+
+
+  CREATE TEMP TABLE tmp_product_ids ON COMMIT DROP AS
+    SELECT p.id, p.brand_id, p.line_id, p.type, p.bodytype, p.minprice, p.maxprice
+    FROM products p
+    JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+    WHERE p.status = 'active'
+      AND ($1::int IS NULL OR p.type = $1)
+      AND ($2::int IS NULL OR p.category = $2)
+      AND ($3::text IS NULL OR p.name ILIKE '%' || $3 || '%')
+      AND ($4::int IS NULL OR p.brand_id = $4);
+
+
+
+
+CREATE TABLE IF NOT EXISTS public.product_sizes (
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    size_key TEXT NOT NULL,
+    price NUMERIC NOT NULL,
+    in_stock BOOLEAN DEFAULT true,
+    quantity INTEGER DEFAULT 0,
+    PRIMARY KEY (product_id, size_key)
+);
+
+

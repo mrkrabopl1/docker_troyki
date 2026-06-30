@@ -835,7 +835,7 @@ const AdminProducts: React.FC = () => {
                     {product.discount ? (
                       <span onClick={(e) => { e.stopPropagation(); setShowDiscountModal(true); setSelectedProduct(product) }} className={s.discountBadge}>-{product.discount}%</span>
                     ) : (
-                      <span className={s.noDiscount}>—</span>
+                      <span onClick={(e) => { e.stopPropagation(); setShowDiscountModal(true); setSelectedProduct(product) }} className={s.noDiscount}>—</span>
                     )}
                   </td>
                   <td data-label="Статус" onClick={e => e.stopPropagation()}>

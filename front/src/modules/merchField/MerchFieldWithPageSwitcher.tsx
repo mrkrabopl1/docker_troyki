@@ -9,6 +9,7 @@ interface MerchInterface {
     id: string;
     price: string;
     className?: string;
+    discount_percent?: number;
 }
 
 interface MerchFieldProps {

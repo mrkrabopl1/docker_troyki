@@ -11,7 +11,6 @@ const AdminForgotPassword: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const dispatch = useAppDispatch();
-    dispatch(finishLoading());
     const handleSubmit = (email: string) => {
         setIsLoading(true);
         setError(null);

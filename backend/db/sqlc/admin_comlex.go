@@ -249,8 +249,8 @@ func (store *SQLStore) buildAdminProductsInfoResponse(snInfo GetAdminProductsInf
 
 type DiscountInfo struct {
 	ProductID     int32  `json:"product_id"`
-	DiscountValue int32  `json:"discount_value"` // 3000 = 30.00%
-	DiscountType  string `json:"discount_type"`  // "percentage" или "fixed"
+	DiscountValue int32  `json:"discount_value"`
+	DiscountType  string `json:"discount_type"`
 	Priority      int32  `json:"priority"`
 	RuleID        int32  `json:"rule_id"`
 }
@@ -262,8 +262,8 @@ func (s *SQLStore) RecalculateAllDiscounts(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(discounts, "sssssssss")
-	// 2. Группируем лучшую скидку по продукту
+
+	// 2. Группируем лучшую скидку по продукту (по приоритету)
 	best := make(map[int32]GetAllActiveDiscountsRow)
 	for _, d := range discounts {
 		cur, exists := best[d.ProductID]
@@ -272,52 +272,61 @@ func (s *SQLStore) RecalculateAllDiscounts(ctx context.Context) error {
 		}
 	}
 
-	// Если скидок нет — очищаем таблицу discount (удаляем только rule-based)
-	if len(best) == 0 {
-		return s.DeleteAllRuleBasedDiscounts(ctx)
+	// 3. ВСЕГДА удаляем старые rule-based скидки (до вставки новых)
+	err = s.DeleteAllRuleBasedDiscounts(ctx)
+	if err != nil {
+		return err
 	}
 
-	// 3. ID продуктов, у которых есть скидка
+	// Если скидок нет — выходим (старые уже удалены)
+	if len(best) == 0 {
+		log.Printf("No active discounts, all rule-based discounts removed")
+		return nil
+	}
+
+	// 4. ID продуктов, у которых есть скидка
 	ids := make([]int32, 0, len(best))
 	for pid := range best {
 		ids = append(ids, pid)
 	}
-	fmt.Println(ids, "sssssaqqqqqqqqqq")
-	// 4. Получаем продукты с sizes
+
+	// 5. Получаем продукты с sizes
 	products, err := s.GetProductsWithSizesByIDs(ctx, ids)
 	if err != nil {
 		return err
 	}
 
-	// 5. Батчами обновляем discount
+	// 6. Батчами обновляем discount
 	batchSize := 1000
+	totalBatches := (len(products) + batchSize - 1) / batchSize
+
 	for i := 0; i < len(products); i += batchSize {
 		end := i + batchSize
 		if end > len(products) {
 			end = len(products)
 		}
-		if err := s.processBatch(ctx, products[i:end], best); err != nil {
-			return err
+
+		// Передаём nil, потому что у товаров могут быть разные rule_id
+		if err := s.processBatch(ctx, products[i:end], best, nil); err != nil {
+			log.Printf("Batch %d/%d failed: %v", i/batchSize+1, totalBatches, err)
+			continue
 		}
-		log.Printf("Recalculate discounts: %d/%d", end, len(products))
+		log.Printf("Recalculate discounts: batch %d/%d (%d products)",
+			i/batchSize+1, totalBatches, end-i)
 	}
 
 	return nil
 }
-func (s *SQLStore) RecalculateAffectedProducts(ctx context.Context, ruleID int32) error {
-	// 1. Получаем правило
-	_, err := s.GetDiscountRuleByID(ctx, ruleID)
-	if err != nil {
-		return err
-	}
 
-	// 2. Получаем элементы правила
+// RecalculateAffectedProducts – пересчёт скидок для товаров, затронутых правилом
+func (s *SQLStore) RecalculateAffectedProducts(ctx context.Context, ruleID int32) error {
+	// 1. Получаем элементы правила
 	items, err := s.GetRuleItems(ctx, ruleID)
 	if err != nil {
 		return err
 	}
 
-	// 3. Собираем ID продуктов, затронутых этим правилом
+	// 2. Собираем ID продуктов, затронутых этим правилом
 	productIDs := make(map[int32]bool)
 
 	for _, item := range items {
@@ -325,12 +334,20 @@ func (s *SQLStore) RecalculateAffectedProducts(ctx context.Context, ruleID int32
 		case "product":
 			productIDs[item.ItemID] = true
 		case "brand":
-			products, _ := s.GetProductIDsByBrandForAdmin(ctx, item.ItemID)
+			products, err := s.GetProductIDsByBrandForAdmin(ctx, item.ItemID)
+			if err != nil {
+				log.Printf("Failed to get products for brand %d: %v", item.ItemID, err)
+				continue
+			}
 			for _, id := range products {
 				productIDs[id] = true
 			}
 		case "line":
-			products, _ := s.GetProductIDsByLineForAdmin(ctx, pgtype.Int4{Int32: item.ItemID})
+			products, err := s.GetProductIDsByLineForAdmin(ctx, pgtype.Int4{Int32: item.ItemID})
+			if err != nil {
+				log.Printf("Failed to get products for line %d: %v", item.ItemID, err)
+				continue
+			}
 			for _, id := range products {
 				productIDs[id] = true
 			}
@@ -341,10 +358,16 @@ func (s *SQLStore) RecalculateAffectedProducts(ctx context.Context, ruleID int32
 		return nil
 	}
 
-	// 4. ID продуктов в слайс
+	// 3. ID продуктов в слайс
 	ids := make([]int32, 0, len(productIDs))
 	for id := range productIDs {
 		ids = append(ids, id)
+	}
+
+	// 4. Получаем продукты с размерами
+	products, err := s.GetProductsWithSizesByIDs(ctx, ids)
+	if err != nil {
+		return err
 	}
 
 	// 5. Получаем лучшие скидки для этих продуктов
@@ -353,52 +376,56 @@ func (s *SQLStore) RecalculateAffectedProducts(ctx context.Context, ruleID int32
 		return err
 	}
 
-	if len(discounts) == 0 {
-		return nil
-	}
-
-	// 6. Конвертируем в BulkUpsertDiscountParams
-	params := BulkUpsertDiscountParams{
-		ProductIds:    make([]int32, 0, len(discounts)),
-		Values:        make([][]byte, 0, len(discounts)),
-		MinPrices:     make([]int32, 0, len(discounts)),
-		MaxDiscPrices: make([]int32, 0, len(discounts)),
-	}
-
+	// Собираем map для быстрого доступа
+	best := make(map[int32]GetAllActiveDiscountsRow)
 	for _, d := range discounts {
-		// Формируем JSON для value
-		valueMap := map[string]interface{}{
-			"type":    d.DiscountType,
-			"value":   d.DiscountValue,
-			"rule_id": d.RuleID,
+		best[d.ProductID] = GetAllActiveDiscountsRow{
+			ProductID:     d.ProductID,
+			DiscountValue: d.DiscountValue,
+			DiscountType:  d.DiscountType,
+			RuleID:        d.RuleID,
+			Priority:      d.Priority,
 		}
-		valueJSON, err := json.Marshal(valueMap)
-		if err != nil {
-			log.Printf("Failed to marshal discount for product %d: %v", d.ProductID, err)
+	}
+
+	// 6. Батчами обновляем discount
+	batchSize := 1000
+	for i := 0; i < len(products); i += batchSize {
+		end := i + batchSize
+		if end > len(products) {
+			end = len(products)
+		}
+
+		// Передаём ruleID, чтобы все скидки получили этот rule_id
+		if err := s.processBatch(ctx, products[i:end], best, &ruleID); err != nil {
+			log.Printf("Batch failed: %v", err)
 			continue
 		}
-
-		params.ProductIds = append(params.ProductIds, d.ProductID)
-		params.Values = append(params.Values, valueJSON)
-		params.MinPrices = append(params.MinPrices, 0)         // TODO: посчитать из sizes
-		params.MaxDiscPrices = append(params.MaxDiscPrices, 0) // TODO: посчитать из sizes
 	}
 
-	if len(params.ProductIds) == 0 {
-		return nil
-	}
-
-	// 7. Обновляем через существующий метод
-	return s.BulkUpsertDiscount(ctx, params)
+	return nil
 }
 
 // processBatch – обработка пачки товаров
-func (s *SQLStore) processBatch(ctx context.Context, batch []GetProductsWithSizesByIDsRow, best map[int32]GetAllActiveDiscountsRow) error {
+func (s *SQLStore) processBatch(
+	ctx context.Context,
+	batch []GetProductsWithSizesByIDsRow,
+	best map[int32]GetAllActiveDiscountsRow,
+	ruleID *int32,
+) error {
+	if len(batch) == 0 {
+		return nil
+	}
+
 	var params BulkUpsertDiscountParams
 	params.ProductIds = make([]int32, 0, len(batch))
 	params.Values = make([][]byte, 0, len(batch))
+	params.DiscountPercents = make([]int32, 0, len(batch))
+	params.OriginalPrices = make([]int32, 0, len(batch))
+	params.DiscountedPrices = make([]int32, 0, len(batch))
 	params.MinPrices = make([]int32, 0, len(batch))
-	params.MaxDiscPrices = make([]int32, 0, len(batch))
+	params.MaxPrices = make([]int32, 0, len(batch))
+	params.RuleIds = make([]int32, 0, len(batch))
 
 	for _, product := range batch {
 		discount, ok := best[product.ID]
@@ -406,69 +433,126 @@ func (s *SQLStore) processBatch(ctx context.Context, batch []GetProductsWithSize
 			continue
 		}
 
-		// Парсим sizes
-		var sizesMap map[string]map[string]interface{}
-		if err := json.Unmarshal(product.Sizes, &sizesMap); err != nil {
-			log.Printf("Skip product %d: invalid sizes", product.ID)
+		// Если скидка 0% - пропускаем
+		if discount.DiscountValue == 0 {
 			continue
 		}
 
-		// Строим скидки для каждого размера
+		// Парсим sizes
+		var sizesMap map[string]map[string]interface{}
+		if err := json.Unmarshal(product.Sizes, &sizesMap); err != nil {
+			log.Printf("Skip product %d: invalid sizes: %v", product.ID, err)
+			continue
+		}
+
+		if len(sizesMap) == 0 {
+			continue
+		}
+
+		// Переменные для вычислений
+		var maxPercent int32 = 0
+		var minPrice int32 = math.MaxInt32
+		var maxPrice int32 = 0
+		var displayOriginal int32 = 0
+		var displayDiscounted int32 = 0
+
 		sizeDiscounts := make(map[string]interface{})
-		minPrice := int32(math.MaxInt32)
-		maxDiscPrice := int32(0)
 
 		for size, sizeData := range sizesMap {
 			basePrice := getInt32Value(sizeData["price"])
-			if basePrice == 0 {
+
+			if basePrice <= 0 {
 				continue
 			}
 
 			// Вычисляем цену со скидкой
 			var discountedPrice int32
-			if discount.DiscountType == "percentage" {
-				// discount_value = 3000 => 30.00%
-				discountedPrice = basePrice * (10000 - discount.DiscountValue) / 10000
-			} else {
+			var percent int32
+
+			switch discount.DiscountType {
+			case "percentage":
+				percent = discount.DiscountValue
+				discountedPrice = basePrice * (100 - discount.DiscountValue) / 100
+			case "fixed_amount":
 				discountedPrice = basePrice - discount.DiscountValue
+				if discountedPrice > 0 && basePrice > 0 {
+					percent = (discount.DiscountValue * 100) / basePrice
+				} else {
+					percent = 0
+				}
+			default:
+				discountedPrice = basePrice
+				percent = 0
 			}
+
 			if discountedPrice < 0 {
 				discountedPrice = 0
 			}
 
-			// Записываем данные для размера
-			sizeDiscounts[size] = map[string]interface{}{
-				"value":   discount.DiscountValue,
-				"type":    discount.DiscountType,
-				"rule_id": discount.RuleID,
+			// Если скидка не применяется - пропускаем размер
+			if discountedPrice >= basePrice || percent == 0 {
+				continue
 			}
 
-			// Обновляем min/max
+			// Записываем данные для размера
+			sizeDiscounts[size] = map[string]interface{}{
+				"original_price":   basePrice,
+				"discounted_price": discountedPrice,
+				"percent":          percent,
+			}
+
+			// Обновляем максимумы/минимумы
+			if percent > maxPercent {
+				maxPercent = percent
+				displayOriginal = basePrice
+				displayDiscounted = discountedPrice
+			}
+
 			if discountedPrice < minPrice {
 				minPrice = discountedPrice
 			}
-			if discountedPrice > maxDiscPrice {
-				maxDiscPrice = discountedPrice
+			if basePrice > maxPrice {
+				maxPrice = basePrice
 			}
 		}
 
-		if len(sizeDiscounts) == 0 {
+		// Если ни один размер не получил скидку - пропускаем
+		if len(sizeDiscounts) == 0 || maxPercent == 0 {
 			continue
 		}
 
-		valueJSON, _ := json.Marshal(sizeDiscounts)
+		// Формируем JSON
+		valueJSON, err := json.Marshal(sizeDiscounts)
+		if err != nil {
+			log.Printf("Failed to marshal discounts for product %d: %v", product.ID, err)
+			continue
+		}
+
+		// Определяем rule_id
+		var ruleIDValue int32 = 0 // 0 = NULL
+		if ruleID != nil {
+			// Если передан ruleID (из RecalculateAffectedProducts)
+			ruleIDValue = *ruleID
+		} else if discount.RuleID != 0 {
+			// Если не передан, но у скидки есть RuleID (из RecalculateAllDiscounts)
+			ruleIDValue = discount.RuleID
+		}
+		// Если ruleID == nil и discount.RuleID == 0 → rule_id = 0 (NULL в БД)
 
 		params.ProductIds = append(params.ProductIds, product.ID)
 		params.Values = append(params.Values, valueJSON)
+		params.DiscountPercents = append(params.DiscountPercents, maxPercent)
+		params.OriginalPrices = append(params.OriginalPrices, displayOriginal)
+		params.DiscountedPrices = append(params.DiscountedPrices, displayDiscounted)
 		params.MinPrices = append(params.MinPrices, minPrice)
-		params.MaxDiscPrices = append(params.MaxDiscPrices, maxDiscPrice)
+		params.MaxPrices = append(params.MaxPrices, maxPrice)
+		params.RuleIds = append(params.RuleIds, ruleIDValue)
 	}
 
 	if len(params.ProductIds) == 0 {
 		return nil
 	}
-	fmt.Println("discounts update")
-	// Вызываем sqlc-метод массового вставки/обновления
+
 	return s.BulkUpsertDiscount(ctx, params)
 }
 

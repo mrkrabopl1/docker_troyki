@@ -106,25 +106,7 @@ func TestGetCombFiltersByString(t *testing.T) {
 //		require.NoError(t, err)
 //		require.NotEmpty(t, snickers)
 //	}
-func TestGetProductsByFilters(t *testing.T) {
-	params := GetProductsByFiltersParams{
-		Limitval:     int32(10000),
-		Offsetval:    int32(8),
-		Sizes:        []string{},
-		Firms:        []int32{},
-		Bodytypes:    []string{},
-		Categories:   []int32{1},
-		ProductTypes: []int32{},
-		SortType:     1,
-		Name:         "",
-		//WithPrice:    true,
-	}
-	fmt.Println(params, "test1")
-	snickers, err := testStore.GetProductsByFilters(context.Background(), params)
-	fmt.Println(len(snickers), err)
-	require.NoError(t, err)
-	require.NotEmpty(t, snickers)
-}
+
 func TestGetProductsByFiltersNew(t *testing.T) {
 	params := GetProductsByFiltersNewTestParams{}
 	snickers, err := testStore.GetProductsByFiltersNewTest(context.Background(), params)
@@ -234,16 +216,6 @@ func TestGetCollectionCount(t *testing.T) {
 	require.NotEmpty(t, snickers)
 }
 
-func TestGetMerchCollectionCount(t *testing.T) {
-	snickers, err := testStore.GetMerchCountOfCollectionsOrFirms(context.Background(), GetMerchCountOfCollectionsOrFirmsParams{
-		Firm: "solomerch",
-		Line: "",
-	})
-	fmt.Println(snickers, err)
-	require.NoError(t, err)
-	require.NotEmpty(t, snickers)
-}
-
 // func TestGetCollections(t *testing.T) {
 // 	// names := []string{"nike", "balanciaga"}
 // 	// placeholders := make([]string, len(names))
@@ -277,7 +249,7 @@ func TestGetProductsByName(t *testing.T) {
 
 func TestGetProductsAndFiltersByString(t *testing.T) {
 	filters := types.ProductsFilterStruct{}
-	params := GetFiltersByNameCategoryAndTypeParams{
+	params := GetFiltersByNameCategoryAndTypeParamsNew{
 		Name: pgtype.Text{String: "", Valid: true},
 		// Category: pgtype.Int4{Int32: 0, Valid: 0 != 0},
 		// Type:     pgtype.Int4{Int32: 0, Valid: 0 != 0},
@@ -288,50 +260,6 @@ func TestGetProductsAndFiltersByString(t *testing.T) {
 	require.NotEmpty(t, snickers)
 }
 
-func TestGetProductsByFiltersTime(t *testing.T) {
-	params := GetProductsByFiltersParams{
-		Limitval:     int32(1000),
-		Offsetval:    int32(8),
-		Sizes:        []string{},
-		Firms:        []int32{},
-		Bodytypes:    []string{},
-		Categories:   []int32{1},
-		ProductTypes: []int32{},
-		SortType:     1,
-		Name:         "",
-		//WithPrice:    true,
-	}
-	params1 := CountProductsByFiltersParams{
-		Sizes:        []string{},
-		Firms:        []int32{},
-		Bodytypes:    []string{},
-		Categories:   []int32{1},
-		ProductTypes: []int32{},
-		Name:         "",
-		//WithPrice:    true,
-	}
-	params2 := GetProductsByFiltersPaginateParams{
-		Limitval:     int32(1000),
-		Offsetval:    int32(8),
-		Sizes:        []string{},
-		Firms:        []int32{},
-		Bodytypes:    []string{},
-		Categories:   []int32{1},
-		ProductTypes: []int32{},
-		SortType:     1,
-		Name:         "",
-		//WithPrice:    true,
-	}
-	fmt.Println(params, "test1")
-	snickers, err := testStore.GetProductsByFilters(context.Background(), params)
-
-	count, err := testStore.CountProductsByFilters(context.Background(), params1)
-	snickers1, err := testStore.GetProductsByFiltersPaginate(context.Background(), params2)
-	fmt.Println(len(snickers), count, err)
-	require.NoError(t, err)
-	require.NotEmpty(t, snickers)
-	require.NotEmpty(t, snickers1)
-}
 func TestCGetDiscounts(t *testing.T) {
 
 	val, err := testStore.GetProductsWithDiscountComplex(context.Background())

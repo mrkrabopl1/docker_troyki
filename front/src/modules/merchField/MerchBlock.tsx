@@ -5,7 +5,7 @@ import { toPrice } from 'src/global';
 
 
 
-interface MerchInterface { name: string, imgs: string[], image_path?: string, id: string, price: string, discount?: number }
+interface MerchInterface { name: string, imgs: string[], image_path?: string, id: string, price: string, discount?: number ,discount_percent?:number}
 
 
 
@@ -106,7 +106,7 @@ const MerchBlock: React.FC<{ className?: string, width?: string, data: MerchInte
                 <div className={s.imageBlock}>
                     <img loading={"lazy"} className={s.img} style={firstImgStyle} src={(data.imgs ? data.imgs[0] : data.image_path)} alt={s.imgName} />
                     {data.discount ? <div className={s.badge_overlay}><div className={s.discountMarker}>
-                        {"Sale " + Math.round((Number(data.price) - data.discount) / Number(data.price) * 100) + "%"}
+                        {"Sale " + data.discount_percent + "%"}
                     </div></div> : null}
                 </div>
                 <div className={s.nameHolder}>
@@ -116,10 +116,10 @@ const MerchBlock: React.FC<{ className?: string, width?: string, data: MerchInte
                 <div className={s.textContainer}>
                     <div style={{ textAlign: "center", marginTop: "auto" }}>
                         {data.price ? <div>
-                            {data.discount ?
+                            {/* {data.discount ?
                                 <span className={s.discount}>{toPrice(data.price)}</span>
                                 : null
-                            }
+                            } */}
                             {data.discount ?
                                 <span className={s.imgName}>{"От " + toPrice(data.discount)}</span>
                                 : <span className={s.imgName}>{"От " + toPrice(data.price)}</span>

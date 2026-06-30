@@ -4,7 +4,7 @@ import s from "./style.module.css"
 
 
 
-interface merchInterface { name: string, imgs: string[], id: string , price:string}
+interface merchInterface { name: string, imgs: string[], id: string , price:string, discount_percent?:number}
 
 const MerchField: React.FC<{ size: number, data: merchInterface[] }> = (props) => {
     let { data, size } = { ...props }

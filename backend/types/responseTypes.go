@@ -38,14 +38,15 @@ type ProductsSearchResponse struct {
 }
 
 type ProductsSearchResponse1 struct {
-	Name       string      `json:"name"`
-	Image      []string    `json:"imgs"`
-	Firm       string      `json:"firm"`
-	Price      int         `json:"price"`
-	Id         int         `json:"id"`
-	Discount   interface{} `json:"discount"`
-	TotalCount int64       `json:"total_count"`
-	Article    string      `json:"article"`
+	Name            string      `json:"name"`
+	Image           []string    `json:"imgs"`
+	Firm            string      `json:"firm"`
+	Price           int         `json:"price"`
+	Id              int         `json:"id"`
+	Discount        interface{} `json:"discount"`
+	TotalCount      int64       `json:"total_count"`
+	Article         string      `json:"article"`
+	DiscountPercent int32       `json:"discount_percent"`
 }
 type MerchSearchResponse struct {
 	Name       string      `json:"name"`

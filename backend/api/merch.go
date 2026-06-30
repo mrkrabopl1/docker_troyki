@@ -3,8 +3,10 @@ package api
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -48,19 +50,6 @@ func (s *Server) handleGetSnickersByFirmName(ctx *gin.Context) {
 // 	}
 // }
 
-func (s *Server) handleGetCollectionCount(ctx *gin.Context) {
-	name := ctx.Query("name")
-	count, err := s.store.GetMerchCountOfCollectionsOrFirms(ctx, db.GetMerchCountOfCollectionsOrFirmsParams{
-		Firm: name,
-		Line: "",
-	})
-	if err != nil {
-		//log.WithCaller().Err(err)
-		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
-		return
-	}
-	ctx.JSON(http.StatusOK, count)
-}
 func (s *Server) handleGetProductsInfoById(ctx *gin.Context) {
 	id := ctx.Query("id")
 	numId, err := strconv.ParseInt(id, 10, 32)
@@ -120,25 +109,61 @@ type ProductsFilterStruct struct {
 }
 
 func (s *Server) handleSearchSnickersAndFiltersByNameCategoryAndType(ctx *gin.Context) {
+	startTotal := time.Now()
+	log.Printf("🚀 [START] handleSearchSnickersAndFiltersByNameCategoryAndType")
+
+	// ---- 1. Биндинг JSON ----
+	startBind := time.Now()
 	var postData types.PostDataSnickersAndFiltersByString
 	if err := ctx.BindJSON(&postData); err != nil {
 		fmt.Println(err, "error in handleSearchProductsByCategories")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	params := db.GetFiltersByNameCategoryAndTypeParams{
+	bindDuration := time.Since(startBind)
+	log.Printf("⏱️ [1] BindJSON: %v", bindDuration)
+	log.Printf("📥 postData: Name='%s', Category=%d, Type=%d, Page=%d, Size=%d, SortType=%d",
+		postData.Name, postData.Category, postData.Type, postData.Page, postData.Size, postData.SortType)
+
+	// ---- 2. Подготовка параметров ----
+	startParams := time.Now()
+	params := db.GetFiltersByNameCategoryAndTypeParamsNew{
 		Name:     pgtype.Text{String: postData.Name, Valid: postData.Name != ""},
 		Category: pgtype.Int4{Int32: postData.Category, Valid: postData.Category != 0},
 		Type:     pgtype.Int4{Int32: postData.Type, Valid: postData.Type != 0},
+		BrandID:  pgtype.Int4{Int32: postData.BrandID, Valid: postData.BrandID != 0},
 	}
-	fmt.Println(params.Type.Valid, params.Category.Valid, params.Name.Valid, "kfdnkjfndskjfbnklvkfnkjfbgfkjbjkewbqfjgvkjdsv jnsdfkbdsdkfsdkfnkdsjfnsdnfkjdsqkwpek")
-	ProductsInfo, err1 := s.store.GetProductsAndFiltersByNameCategoryAndType(ctx, params, postData.Page, postData.Size, postData.Filters, postData.SortType)
+	paramsDuration := time.Since(startParams)
+	log.Printf("⏱️ [2] Подготовка параметров: %v", paramsDuration)
+	fmt.Println(params)
+	log.Printf("📤 params: Type=%v, Category=%v, Name=%v, BrandId =%v",
+		params.Type.Valid, params.Category.Valid, params.Name.Valid, params.BrandID.Valid)
+
+	// ---- 3. Основной запрос ----
+	startQuery := time.Now()
+	ProductsInfo, err1 := s.store.GetProductsAndFiltersByNameCategoryAndType(
+		ctx, params, postData.Page, postData.Size, postData.Filters, postData.SortType)
+	queryDuration := time.Since(startQuery)
+	log.Printf("⏱️ [3] GetProductsAndFiltersByNameCategoryAndType: %v", queryDuration)
+
 	if err1 != nil {
+		log.Printf("❌ [ERROR] GetProductsAndFiltersByNameCategoryAndType: %v", err1)
 		ctx.JSON(http.StatusBadRequest, errorResponse(err1))
 		return
 	}
+	// log.Printf("📥 ProductsInfo: TotalCount=%v, ProductsCount=%d, Filters=%+v",
+	// 	ProductsInfo.TotalCount, len(ProductsInfo.Products), ProductsInfo.Filters)
 
+	// ---- 4. JSON ответ ----
+	startJSON := time.Now()
 	ctx.JSON(http.StatusOK, ProductsInfo)
+	jsonDuration := time.Since(startJSON)
+	log.Printf("⏱️ [4] ctx.JSON: %v", jsonDuration)
+
+	// ---- ИТОГО ----
+	totalDuration := time.Since(startTotal)
+	log.Printf("⏱️ [TOTAL] handleSearchSnickersAndFiltersByNameCategoryAndType: %v", totalDuration)
+	log.Printf("✅ [END] handleSearchSnickersAndFiltersByNameCategoryAndType")
 }
 func (s *Server) handleSearchProductByCategoriesAndFilters(ctx *gin.Context) {
 	var postData types.PostDataAndFiltersByCategoryAndType

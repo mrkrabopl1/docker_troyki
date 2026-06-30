@@ -80,6 +80,20 @@ func (s *Server) handleAdminCreateDiscountRule(c *gin.Context) {
 		}
 	}
 
+	// ========== 🔥 ПЕРЕСЧЕТ СКИДОК (АСИНХРОННО) ==========
+	// Пересчитываем скидки для затронутых продуктов
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		log.Printf("[Recalculate] Started for rule %d", rule.ID)
+		if err := s.store.RecalculateAffectedProducts(bgCtx, rule.ID); err != nil {
+			log.Printf("[Recalculate] Failed: %v", err)
+		} else {
+			log.Printf("[Recalculate] Completed for rule %d", rule.ID)
+		}
+	}()
+
 	// Логируем
 	admin, exists := c.Get("admin")
 	if !exists {
@@ -280,7 +294,6 @@ func (s *Server) handleAdminUpdateDiscountRule(c *gin.Context) {
 			params.EndsAt = pgtype.Timestamptz{Time: t, Valid: true}
 		}
 	} else if input.EndsAt == "" {
-		// Явно сбрасываем дату окончания
 		params.EndsAt = pgtype.Timestamptz{Valid: false}
 	}
 	if input.Priority >= 0 {
@@ -293,6 +306,19 @@ func (s *Server) handleAdminUpdateDiscountRule(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update discount rule"})
 		return
 	}
+
+	// ========== 🔥 ПЕРЕСЧЕТ СКИДОК (АСИНХРОННО) ==========
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		log.Printf("[Recalculate] Started for rule %d", ruleID)
+		if err := s.store.RecalculateAffectedProducts(bgCtx, int32(ruleID)); err != nil {
+			log.Printf("[Recalculate] Failed: %v", err)
+		} else {
+			log.Printf("[Recalculate] Completed for rule %d", ruleID)
+		}
+	}()
 
 	admin, exists := c.Get("admin")
 	if !exists {
@@ -344,6 +370,20 @@ func (s *Server) handleAdminDeleteDiscountRule(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete discount rule"})
 		return
 	}
+
+	// ========== 🔥 ПЕРЕСЧЕТ ВСЕХ СКИДОК (АСИНХРОННО) ==========
+	// При удалении правила нужно пересчитать все скидки
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		log.Printf("[Recalculate] Started for all products (rule %d deleted)", ruleID)
+		if err := s.store.RecalculateAllDiscounts(bgCtx); err != nil {
+			log.Printf("[Recalculate] Failed: %v", err)
+		} else {
+			log.Printf("[Recalculate] Completed for all products")
+		}
+	}()
 
 	admin, exists := c.Get("admin")
 	if !exists {
@@ -406,9 +446,21 @@ func (s *Server) handleAdminAddRuleItems(c *gin.Context) {
 		}
 	}
 
+	// ========== 🔥 ПЕРЕСЧЕТ СКИДОК (АСИНХРОННО) ==========
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		log.Printf("[Recalculate] Started for rule %d (items added)", ruleID)
+		if err := s.store.RecalculateAffectedProducts(bgCtx, int32(ruleID)); err != nil {
+			log.Printf("[Recalculate] Failed: %v", err)
+		} else {
+			log.Printf("[Recalculate] Completed for rule %d", ruleID)
+		}
+	}()
+
 	c.JSON(http.StatusOK, gin.H{"message": "Items added successfully"})
 }
-
 func (s *Server) handleAdminGetRuleItems(c *gin.Context) {
 	ruleID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -470,16 +522,15 @@ func (s *Server) handleAdminAddRuleBrands(c *gin.Context) {
 		return
 	}
 
+	// Создаем map для быстрой проверки исключений
+	excludeMap := make(map[int32]bool)
+	for _, id := range input.ExcludeIDs {
+		excludeMap[id] = true
+	}
+
+	addedCount := 0
 	for _, id := range brandIDs {
-		// Проверка на исключение без отдельной функции
-		skip := false
-		for _, excl := range input.ExcludeIDs {
-			if id == excl {
-				skip = true
-				break
-			}
-		}
-		if skip {
+		if excludeMap[id] {
 			continue
 		}
 
@@ -489,12 +540,31 @@ func (s *Server) handleAdminAddRuleBrands(c *gin.Context) {
 			ItemID:   id,
 		})
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add rule item"})
-			return
+			fmt.Printf("Failed to add brand %d: %v\n", id, err)
+			continue
 		}
+		addedCount++
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Items added successfully"})
+	// ========== 🔥 ПЕРЕСЧЕТ СКИДОК (АСИНХРОННО) ==========
+	if addedCount > 0 {
+		go func() {
+			bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+
+			log.Printf("[Recalculate] Started for rule %d (added %d brands)", ruleID, addedCount)
+			if err := s.store.RecalculateAffectedProducts(bgCtx, int32(ruleID)); err != nil {
+				log.Printf("[Recalculate] Failed: %v", err)
+			} else {
+				log.Printf("[Recalculate] Completed for rule %d", ruleID)
+			}
+		}()
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Brands added successfully",
+		"added_count": addedCount,
+	})
 }
 
 // DELETE /api/admin/discount-rules/:id/items
@@ -526,6 +596,19 @@ func (s *Server) handleAdminRemoveRuleItem(c *gin.Context) {
 		return
 	}
 
+	// ========== 🔥 ПЕРЕСЧЕТ СКИДОК (АСИНХРОННО) ==========
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		log.Printf("[Recalculate] Started for rule %d (removed %s %d)", ruleID, input.ItemType, input.ItemID)
+		if err := s.store.RecalculateAffectedProducts(bgCtx, int32(ruleID)); err != nil {
+			log.Printf("[Recalculate] Failed: %v", err)
+		} else {
+			log.Printf("[Recalculate] Completed for rule %d", ruleID)
+		}
+	}()
+
 	c.JSON(http.StatusOK, gin.H{"message": "Item removed successfully"})
 }
 
@@ -548,6 +631,20 @@ func (s *Server) handleAdminToggleRule(c *gin.Context) {
 	if rule.IsActive {
 		action = "activated"
 	}
+
+	// ========== 🔥 ПЕРЕСЧЕТ СКИДОК (АСИНХРОННО) ==========
+	// При включении/выключении правила нужно пересчитать затронутые продукты
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		log.Printf("[Recalculate] Started for rule %d (%s)", ruleID, action)
+		if err := s.store.RecalculateAffectedProducts(bgCtx, int32(ruleID)); err != nil {
+			log.Printf("[Recalculate] Failed for rule %d: %v", ruleID, err)
+		} else {
+			log.Printf("[Recalculate] Completed for rule %d (%s)", ruleID, action)
+		}
+	}()
 
 	admin, exists := c.Get("admin")
 	if !exists {

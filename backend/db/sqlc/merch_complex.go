@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/mrkrabopl1/go_db/db/query"
 	"github.com/mrkrabopl1/go_db/types"
 )
 
@@ -45,16 +48,18 @@ type ProductsInfoResponse struct {
 }
 
 type ProductsResponseD struct {
-	Name     string      `json:"name"`
-	Id       int32       `json:"id"`
-	Image    []string    `json:"imgs"`
-	Discount interface{} `json:"discount"`
-	Price    int         `json:"price"`
-	Status   string      `json:"status"`
+	Name            string      `json:"name"`
+	Id              int32       `json:"id"`
+	Image           []string    `json:"imgs"`
+	Discount        interface{} `json:"discount"`
+	Price           int         `json:"price"`
+	Status          string      `json:"status"`
+	DiscountPercent int32       `json:"discount_percent"`
 }
 
 type FiltersSearchResponse struct {
 	FirmsCount interface{} `json:"firmsCount"`
+	LinesData  interface{} `json:"linesData"`
 	Price      [2]int32    `json:"price"`
 	Sizes      interface{} `json:"sizes"`
 	Types      interface{} `json:"types"`
@@ -104,7 +109,7 @@ func (store *SQLStore) getProductImages(imagePath string, count int) []string {
 	imageBasePath := store.ImagePathBuilder.GetProductMainImage(imagePath)
 	images := make([]string, 0, count)
 	for i := 1; i <= count; i++ {
-		images = append(images, fmt.Sprintf("%s%d.png", imageBasePath, i))
+		images = append(images, imageBasePath)
 	}
 	return images
 }
@@ -171,8 +176,8 @@ func (store *SQLStore) buildLineProductsResponse(products []GetSoloCollectionWit
 		fullImagePath := store.ImagePathBuilder.GetProductMainImage(p.ImagePath)
 
 		var discount interface{}
-		if p.Maxdiscprice.Valid && p.Maxdiscprice.Int32 != 0 {
-			discount = p.Maxdiscprice.Int32
+		if p.DiscountedPrice.Valid && p.DiscountedPrice.Int32 != 0 {
+			discount = p.DiscountedPrice.Int32
 		} else {
 			discount = nil
 		}
@@ -217,7 +222,7 @@ func (store *SQLStore) buildProductsInfoResponse(snInfo GetProductsInfoByIdRow) 
 }
 
 func (store *SQLStore) GetProductsByString(ctx context.Context, name string, page int, size int, filters types.ProductsFilterStruct, orderedType int) (RespSearchProductsByString, error) {
-	data, err := store.getProductsByFilters(ctx, GetFiltersByNameCategoryAndTypeParams{Name: pgtype.Text{String: name, Valid: true}}, filters, page, size, orderedType, false)
+	data, err := store.getProductsByFilters(ctx, GetFiltersByNameCategoryAndTypeParamsNew{Name: pgtype.Text{String: name, Valid: true}}, filters, page, size, orderedType, false)
 	if err != nil {
 		return RespSearchProductsByString{}, err
 	}
@@ -229,7 +234,7 @@ func (store *SQLStore) GetProductsByString(ctx context.Context, name string, pag
 }
 
 func (store *SQLStore) GetProductsByFiltersComplex(ctx context.Context, name string, page int, size int, filters types.ProductsFilterStruct, orderedType int32) (RespProductsByStringStruct, error) {
-	data, err := store.getProductsByFilters(ctx, GetFiltersByNameCategoryAndTypeParams{Name: pgtype.Text{String: name, Valid: true}}, filters, page, size, int(orderedType), true)
+	data, err := store.getProductsByFilters(ctx, GetFiltersByNameCategoryAndTypeParamsNew{Name: pgtype.Text{String: name, Valid: true}}, filters, page, size, int(orderedType), true)
 	if err != nil {
 		return RespProductsByStringStruct{}, err
 	}
@@ -240,39 +245,404 @@ func (store *SQLStore) GetProductsByFiltersComplex(ctx context.Context, name str
 	}, nil
 }
 
-func (store *SQLStore) GetProductsAndFiltersByNameCategoryAndType(ctx context.Context, filtersParams GetFiltersByNameCategoryAndTypeParams, page int, size int, filters types.ProductsFilterStruct, orderedType int) (RespSearchProductsAndFiltersByString, error) {
-	fmt.Printf("%+v\n", filtersParams)
+type FilterParams struct {
+	Type     *int32  // id типа товара (может быть nil)
+	Category *int32  // id категории (может быть nil)
+	Name     *string // поисковая строка (может быть nil)
+	BrandID  *int32  // id бренда (может быть nil)
+}
+
+// FiltersResult – результат агрегации фильтров (JSON-поля как сырой JSON)
+type FiltersResult struct {
+	Sizes         json.RawMessage `json:"sizes"`
+	Bodytypes     json.RawMessage `json:"bodytypes"`
+	MinPrice      int32           `json:"min_price"`
+	MaxPrice      int32           `json:"max_price"`
+	Firms         json.RawMessage `json:"firms"`
+	ProductTypes  json.RawMessage `json:"product_types"`
+	DiscountRules json.RawMessage `json:"discount_rules"`
+}
+
+func (s *SQLStore) GetFiltersOptimized(ctx context.Context, params FilterParams) (*FiltersResult, error) {
+	// Начинаем транзакцию
+	tx, err := s.BeginTx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// ---- 1. Создаём временную таблицу ----
+	if _, err = tx.Exec(ctx, query.CreateTempTableSQL,
+		params.Type,
+		params.Category,
+		params.Name,
+		params.BrandID,
+	); err != nil {
+		return nil, fmt.Errorf("create temp table: %w", err)
+	}
+
+	// ---- 2. Создаём индексы ----
+	for _, idxSQL := range []string{
+		query.CreateIndexIDSQL,
+		query.CreateIndexBrandSQL,
+		query.CreateIndexLineSQL,
+	} {
+		if _, err = tx.Exec(ctx, idxSQL); err != nil {
+			return nil, fmt.Errorf("create index: %w", err)
+		}
+	}
+
+	// ---- 3. Выполняем агрегацию ----
+	row, err := tx.GetAggregatedFilters(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query filters: %w", err)
+	}
+
+	// ---- 4. Коммитим транзакцию ----
+	if err = tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+
+	// ---- 5. Преобразуем результат с приведением типов ----
+	res := &FiltersResult{
+		Sizes:        json.RawMessage(row.Sizes),
+		Bodytypes:    json.RawMessage(row.Bodytypes),
+		Firms:        json.RawMessage(row.Firms),
+		ProductTypes: json.RawMessage(row.ProductTypes),
+	}
+
+	// min_price
+	if row.MinPrice != nil {
+		switch v := row.MinPrice.(type) {
+		case int64:
+			res.MinPrice = int32(v)
+		case int32:
+			res.MinPrice = v
+		case float64:
+			res.MinPrice = int32(v)
+		default:
+			res.MinPrice = 0
+		}
+	}
+
+	// max_price
+	if row.MaxPrice != nil {
+		switch v := row.MaxPrice.(type) {
+		case int64:
+			res.MaxPrice = int32(v)
+		case int32:
+			res.MaxPrice = v
+		case float64:
+			res.MaxPrice = int32(v)
+		default:
+			res.MaxPrice = 0
+		}
+	}
+
+	// discount_rules
+	if dr, ok := row.DiscountRules.([]byte); ok {
+		res.DiscountRules = json.RawMessage(dr)
+	} else {
+		// Если NULL или другой тип – возвращаем пустой массив
+		res.DiscountRules = json.RawMessage([]byte("[]"))
+	}
+
+	return res, nil
+}
+func (s *SQLStore) GetFiltersOptimizedMemo(ctx context.Context, params FilterParams) (*FiltersResult, error) {
+	// Используй указатели, а не значения
+	var typePtr, categoryPtr, brandPtr interface{}
+	var namePtr interface{}
+
+	if params.Type != nil {
+		typePtr = int(*params.Type) // 👈 ПРИВЕДИ К INT
+	}
+	if params.Category != nil {
+		categoryPtr = int(*params.Category) // 👈 ПРИВЕДИ К INT
+	}
+	if params.Name != nil {
+		namePtr = *params.Name
+	}
+	if params.BrandID != nil {
+		brandPtr = int(*params.BrandID) // 👈 ПРИВЕДИ К INT
+	}
+
+	query := `
+    WITH product_data AS MATERIALIZED (
+        SELECT 
+            p.id, p.brand_id, p.line_id, p.type, p.bodytype, 
+            p.minprice, p.maxprice,
+            b.name as firm
+        FROM products p
+        JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+        WHERE p.status = 'active'
+          AND ($1::int IS NULL OR p.type = $1)
+          AND ($2::int IS NULL OR p.category = $2)
+          AND ($3::text IS NULL OR p.name ILIKE '%' || $3 || '%')
+          AND ($4::int IS NULL OR p.brand_id = $4)
+    )
+    SELECT 
+        COALESCE(
+            (SELECT jsonb_object_agg(bodytype, cnt)::text 
+             FROM (SELECT bodytype, COUNT(*) cnt FROM product_data GROUP BY bodytype) s),
+            '{}'::text
+        ) AS bodytypes,
+        
+        COALESCE(
+            (SELECT jsonb_object_agg(firm, cnt)::text 
+             FROM (SELECT firm, COUNT(*) cnt FROM product_data GROUP BY firm) s),
+            '{}'::text
+        ) AS firms,
+        
+        COALESCE(
+            (SELECT jsonb_agg(type)::text 
+             FROM (SELECT type FROM product_data GROUP BY type) s),
+            '[]'::text
+        ) AS product_types,
+        
+        COALESCE((SELECT MIN(minprice) FROM product_data), 0) AS min_price,
+        COALESCE((SELECT MAX(maxprice) FROM product_data), 0) AS max_price,
+        
+        COALESCE(
+            (SELECT jsonb_object_agg(size_key, cnt)::text
+             FROM (SELECT size_key, COUNT(*) cnt
+                   FROM product_sizes ps
+                   WHERE ps.product_id IN (SELECT id FROM product_data)
+                     AND ps.price > 0
+                   GROUP BY size_key) s),
+            '{}'::text
+        ) AS sizes,
+        
+        COALESCE(
+            (SELECT jsonb_agg(
+                jsonb_build_object(
+                    'id', dr.id,
+                    'name', dr.name,
+                    'discount_type', dr.discount_type,
+                    'discount_value', dr.discount_value,
+                    'priority', dr.priority
+                )
+             )::text
+             FROM discount_rules dr
+             WHERE dr.id IN (
+                 SELECT DISTINCT d.rule_id
+                 FROM discount d
+                 WHERE d.productid IN (SELECT id FROM product_data)
+                   AND d.discount_percent > 0
+             )
+             AND dr.is_active
+             AND dr.starts_at <= NOW()
+             AND (dr.ends_at IS NULL OR dr.ends_at > NOW())
+            ),
+            '[]'::text
+        ) AS discount_rules
+    `
+
+	var bodytypes, firms, productTypes, sizes, discountRules string
+	var minPrice, maxPrice int32
+
+	err := s.connPool.QueryRow(ctx, query,
+		typePtr,     // $1
+		categoryPtr, // $2
+		namePtr,     // $3
+		brandPtr,    // $4
+	).Scan(
+		&bodytypes,
+		&firms,
+		&productTypes,
+		&minPrice,
+		&maxPrice,
+		&sizes,
+		&discountRules,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query filters: %w", err)
+	}
+
+	return &FiltersResult{
+		Bodytypes:     json.RawMessage(bodytypes),
+		Firms:         json.RawMessage(firms),
+		ProductTypes:  json.RawMessage(productTypes),
+		MinPrice:      minPrice,
+		MaxPrice:      maxPrice,
+		Sizes:         json.RawMessage(sizes),
+		DiscountRules: json.RawMessage(discountRules),
+	}, nil
+}
+
+type GetFiltersByNameCategoryAndTypeParamsNew struct {
+	Type     pgtype.Int4 `json:"type"`
+	Category pgtype.Int4 `json:"category"`
+	Name     pgtype.Text `json:"name"`
+	BrandID  pgtype.Int4 `json:"brand_id"` // 👈 ДОБАВЛЯЕМ
+}
+
+func (store *SQLStore) GetProductsAndFiltersByNameCategoryAndType(
+	ctx context.Context,
+	filtersParams GetFiltersByNameCategoryAndTypeParamsNew,
+	page int, size int,
+	filters types.ProductsFilterStruct,
+	orderedType int,
+) (RespSearchProductsAndFiltersByString, error) {
+
+	startTotal := time.Now()
+	log.Printf("  📦 [GetProductsAndFiltersByNameCategoryAndType] START")
+
+	// ---- 1. Получение продуктов ----
+	startProducts := time.Now()
 	data, err := store.getProductsByFilters(ctx, filtersParams, filters, page, size, orderedType, false)
+	productsDuration := time.Since(startProducts)
+	log.Printf("  ⏱️ [1] getProductsByFilters: %v, найдено %d товаров, всего %d",
+		productsDuration, len(data.Products), data.TotalCount)
+
 	if err != nil {
-		fmt.Println(err, "2222222")
+		log.Printf("  ❌ [ERROR] getProductsByFilters: %v", err)
 		return RespSearchProductsAndFiltersByString{}, err
 	}
 
-	filter, err := store.GetFiltersByNameCategoryAndType(ctx, filtersParams)
-	if err != nil {
-		fmt.Println(err, "333333333333333")
-		return RespSearchProductsAndFiltersByString{}, err
+	// ---- 2. Получение фильтров ----
+	startFilters := time.Now()
+
+	// Конвертируем параметры
+	var typeID, categoryID, brandID int32
+	var name string
+
+	if filtersParams.Type.Valid {
+		typeID = filtersParams.Type.Int32
+	}
+	if filtersParams.Category.Valid {
+		categoryID = filtersParams.Category.Int32
+	}
+	if filtersParams.Name.Valid {
+		name = filtersParams.Name.String
+	}
+	if filtersParams.BrandID.Valid {
+		brandID = filtersParams.BrandID.Int32
+	}
+	fmt.Println("BrandId", brandID)
+	// Определяем, что показывать: бренды или линии
+	// Если BrandID передан и > 0 — показываем линии
+	useLines := brandID > 0
+
+	var minPrice, maxPrice int32
+	var sizes, filtersData, types, discounts, linesData json.RawMessage
+
+	if useLines {
+		fmt.Println("useLines")
+		row, err := store.GetFiltersByNameCategoryAndTypeNewWithLine(ctx, GetFiltersByNameCategoryAndTypeNewWithLineParams{
+			Column1: typeID,
+			Column2: categoryID,
+			Column3: name,
+			Column4: brandID,
+		})
+		if err != nil {
+			log.Printf("  ❌ [ERROR] GetFiltersByNameCategoryAndTypeNewWithLine: %v", err)
+			return RespSearchProductsAndFiltersByString{}, err
+		}
+		minPrice = toInt32(row.MinPrice)
+		maxPrice = toInt32(row.MaxPrice)
+		sizes = toJSONRawMessage(row.Sizes, "{}")
+		linesData = toJSONRawMessage(row.Lines, "{}")
+		types = toJSONRawMessage(row.ProductTypes, "[]")
+		discounts = toJSONRawMessage(row.DiscountRules, "[]")
+		filtersData = json.RawMessage("[]")
+	} else {
+		row, err := store.GetFiltersByNameCategoryAndTypeNew(ctx, GetFiltersByNameCategoryAndTypeNewParams{
+			Column1: typeID,
+			Column2: categoryID,
+			Column3: name,
+		})
+		if err != nil {
+			log.Printf("  ❌ [ERROR] GetFiltersByNameCategoryAndTypeNew: %v", err)
+			return RespSearchProductsAndFiltersByString{}, err
+		}
+		minPrice = toInt32(row.MinPrice)
+		maxPrice = toInt32(row.MaxPrice)
+		sizes = toJSONRawMessage(row.Sizes, "{}")
+		filtersData = toJSONRawMessage(row.Firms, "{}")
+		types = toJSONRawMessage(row.ProductTypes, "[]")
+		discounts = toJSONRawMessage(row.DiscountRules, "[]")
 	}
 
-	// Проверяем, есть ли данные
+	filtersDuration := time.Since(startFilters)
+	log.Printf("  ⏱️ [2] GetFilters (новый метод): %v", filtersDuration)
+
+	// ---- 3. Сборка ответа ----
+	startBuild := time.Now()
+	products := store.buildProductsResponseD(data.Products)
+	buildDuration := time.Since(startBuild)
+	log.Printf("  ⏱️ [3] buildProductsResponseD: %v, %d товаров", buildDuration, len(products))
+
+	// ---- 4. Формирование результата ----
 	var totalCount float64
 	if len(data.Products) > 0 {
 		totalCount = float64(data.TotalCount)
-	} else {
-		totalCount = 0
 	}
 
-	return RespSearchProductsAndFiltersByString{
-		Products:   store.buildProductsResponseD(data.Products),
+	result := RespSearchProductsAndFiltersByString{
+		Products:   products,
 		TotalCount: totalCount,
 		Filters: FiltersSearchResponse{
-			Price:      [2]int32{filter.MinPrice.(int32), filter.MaxPrice.(int32)},
-			Sizes:      filter.Sizes,
-			FirmsCount: filter.Firms,
-			Types:      filter.ProductTypes,
-			Discounts:  filter.DiscountRules,
+			Price:      [2]int32{minPrice, maxPrice},
+			Sizes:      sizes,
+			FirmsCount: filtersData,
+			LinesData:  linesData,
+			Types:      types,
+			Discounts:  discounts,
 		},
-	}, nil
+	}
+
+	totalDuration := time.Since(startTotal)
+	log.Printf("  ⏱️ [TOTAL] GetProductsAndFiltersByNameCategoryAndType: %v", totalDuration)
+	log.Printf("  📦 [GetProductsAndFiltersByNameCategoryAndType] END")
+
+	return result, nil
+}
+
+// ============================================================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ КОНВЕРТАЦИИ
+// ============================================================
+
+// toInt32 конвертирует interface{} в int32
+func toInt32(v interface{}) int32 {
+	if v == nil {
+		return 0
+	}
+	switch val := v.(type) {
+	case int32:
+		return val
+	case int64:
+		return int32(val)
+	case float64:
+		return int32(val)
+	case int:
+		return int32(val)
+	default:
+		return 0
+	}
+}
+
+// toJSONRawMessage конвертирует interface{} в json.RawMessage
+func toJSONRawMessage(v interface{}, defaultVal string) json.RawMessage {
+	if v == nil {
+		return json.RawMessage(defaultVal)
+	}
+
+	switch val := v.(type) {
+	case []byte:
+		return json.RawMessage(val)
+	case string:
+		return json.RawMessage(val)
+	case json.RawMessage:
+		return val
+	default:
+		// Пробуем сериализовать
+		data, err := json.Marshal(v)
+		if err != nil {
+			return json.RawMessage(defaultVal)
+		}
+		return json.RawMessage(data)
+	}
 }
 
 // getProductsByFilters - обобщенная функция для получения продуктов с фильтрами
@@ -333,12 +703,12 @@ func (store *SQLStore) buildProductsResponseD(data []ProductRow) []ProductsRespo
 	result := make([]ProductsResponseD, 0, len(data))
 	for _, row := range data {
 		result = append(result, ProductsResponseD{
-			Name:     row.Name,
-			Id:       row.ID,
-			Status:   row.Status,
-			Image:    store.getProductImages(row.ImagePath, 2), // 2 изображения
-			Price:    int(row.MinPrice),
-			Discount: getDiscountValue(pgtype.Int4{Valid: row.MaxDiscPrice != 0, Int32: getInt32Value(row.MaxDiscPrice)}),
+			Name:            row.Name,
+			Id:              row.ID,
+			Image:           store.getProductImages(row.ImagePath, 2), // 2 изображения
+			Price:           int(row.MinPrice),
+			Discount:        getDiscountValue(pgtype.Int4{Valid: row.MaxDiscPrice != 0, Int32: getInt32Value(row.MaxDiscPrice)}),
+			DiscountPercent: int32(row.DiscountPercent),
 		})
 	}
 	return result
@@ -394,7 +764,7 @@ func (store *SQLStore) buildProductsSearchResponse(products []GetProductsByNameR
 	for _, p := range products {
 		result = append(result, types.ProductsSearchResponse{
 			Image: store.getProductMainImage(p.ImagePath),
-			Price: int(p.Minprice),
+			Price: int(p.MinPrice),
 			Id:    int(p.GlobalID),
 			Name:  p.Name,
 			Firm:  p.Firm,
@@ -416,12 +786,13 @@ func (store *SQLStore) buildProductsSearchResponse1(products []GetSoloCollection
 	result := make([]types.ProductsSearchResponse1, 0, len(products))
 	for _, p := range products {
 		result = append(result, types.ProductsSearchResponse1{
-			Image:    store.getProductImages(p.ImagePath, 2),
-			Price:    int(p.Minprice),
-			Id:       int(p.ID),
-			Name:     p.Name,
-			Firm:     p.Firm,
-			Discount: getDiscountValueInt32(p.Maxdiscprice.Int32),
+			Image:           store.getProductImages(p.ImagePath, 2),
+			Price:           int(p.Minprice),
+			Id:              int(p.ID),
+			Name:            p.Name,
+			Firm:            p.Firm,
+			Discount:        getDiscountValueInt32(p.DiscountedPrice.Int32),
+			DiscountPercent: p.DiscountPercent.Int32,
 		})
 	}
 	return result
@@ -445,7 +816,7 @@ func (store *SQLStore) buildMerchSearchResponse(products []GetMerchCollectionRow
 			Id:         int(p.GlobalID),
 			Name:       p.Name,
 			Firm:       p.Firm,
-			Discount:   getDiscountValueInt32(p.Maxdiscprice.Int32),
+			Discount:   getDiscountValueInt32(p.DiscountedPrice.Int32),
 			Type:       p.Type,
 			TotalCount: p.TotalCount,
 		})
@@ -462,40 +833,16 @@ func (store *SQLStore) GetProductsWithDiscountComplex(ctx context.Context) ([]ty
 	return store.buildDiscountProductsResponse(products), nil
 }
 
-func (store *SQLStore) GetMerchWithDiscountComplex(ctx context.Context) ([]types.ProductsSearchResponse1, error) {
-	products, err := store.Queries.GetMerchWithDiscount(ctx)
-	if err != nil {
-		return []types.ProductsSearchResponse1{}, err
-	}
-
-	return store.buildDiscountMerchResponse(products), nil
-}
-
 func (store *SQLStore) buildDiscountProductsResponse(products []GetProductsWithDiscountRow) []types.ProductsSearchResponse1 {
 	result := make([]types.ProductsSearchResponse1, 0, len(products))
 	for _, p := range products {
 		result = append(result, types.ProductsSearchResponse1{
 			Image:    store.getProductImages(p.ImagePath, 2),
-			Price:    int(p.Minprice),
+			Price:    int(p.MinPrice),
 			Id:       int(p.ID),
 			Name:     p.Name,
 			Firm:     p.Firm,
-			Discount: getDiscountValueInt32(p.Maxdiscprice.Int32),
-		})
-	}
-	return result
-}
-
-func (store *SQLStore) buildDiscountMerchResponse(products []GetMerchWithDiscountRow) []types.ProductsSearchResponse1 {
-	result := make([]types.ProductsSearchResponse1, 0, len(products))
-	for _, p := range products {
-		result = append(result, types.ProductsSearchResponse1{
-			Image:    store.getProductImages(p.ImagePath, 2),
-			Price:    int(p.Minprice),
-			Id:       int(p.ID),
-			Name:     p.Name,
-			Firm:     p.Firm,
-			Discount: getDiscountValueInt32(p.Maxdiscprice.Int32),
+			Discount: getDiscountValueInt32(p.DiscountedPrice),
 		})
 	}
 	return result
@@ -503,9 +850,14 @@ func (store *SQLStore) buildDiscountMerchResponse(products []GetMerchWithDiscoun
 
 // ==================== DISCOUNTS ====================
 type DiscountData struct {
-	Value        json.RawMessage `json:"value"`          // JSONB с ценами со скидкой для каждого размера
-	MinPrice     int32           `json:"min_price"`      // Минимальная цена со скидкой
-	MaxDiscPrice int32           `json:"max_disc_price"` // Максимальная цена со скидкой
+	Value        []byte `json:"value"`
+	MinPrice     int32  `json:"min_price"`
+	MaxDiscPrice int32  `json:"max_disc_price"`
+	// Новые поля (опционально, для оптимизации)
+	DiscountPercent int32 `json:"discount_percent,omitempty"`
+	OriginalPrice   int32 `json:"original_price,omitempty"`
+	DiscountedPrice int32 `json:"discounted_price,omitempty"`
+	MaxPrice        int32 `json:"max_price,omitempty"`
 }
 
 func (store *SQLStore) CreateDiscounts(ctx context.Context, discountData map[int32]DiscountData) error {
@@ -513,47 +865,103 @@ func (store *SQLStore) CreateDiscounts(ctx context.Context, discountData map[int
 		return nil
 	}
 
-	productIDs := make([]int32, 0, len(discountData))
-	for productID := range discountData {
-		productIDs = append(productIDs, productID)
-	}
-
 	var productIDsBatch []int32
-	var discountValues [][]byte
+	var values [][]byte
+	var discountPercents []int32
+	var originalPrices []int32
+	var discountedPrices []int32
 	var minPrices []int32
-	var maxDiscPrices []int32
+	var maxPrices []int32
 
-	for _, productID := range productIDs {
-		discount, exists := discountData[productID]
-		if !exists {
-			continue
-		}
-
+	for productID, discount := range discountData {
 		// Проверяем, что Value не пустой
 		if len(discount.Value) == 0 {
 			fmt.Printf("Skipping product %d: no discount value\n", productID)
 			continue
 		}
 
+		// Если DiscountData уже содержит все поля
 		productIDsBatch = append(productIDsBatch, productID)
-		discountValues = append(discountValues, discount.Value)
-		minPrices = append(minPrices, discount.MinPrice)
-		maxDiscPrices = append(maxDiscPrices, discount.MaxDiscPrice)
+		values = append(values, discount.Value)
+
+		// Если в DiscountData уже есть все поля - используем их
+		// Иначе вычисляем из Value
+		if discount.DiscountPercent > 0 || discount.OriginalPrice > 0 || discount.DiscountedPrice > 0 {
+			discountPercents = append(discountPercents, discount.DiscountPercent)
+			originalPrices = append(originalPrices, discount.OriginalPrice)
+			discountedPrices = append(discountedPrices, discount.DiscountedPrice)
+			minPrices = append(minPrices, discount.MinPrice)
+			maxPrices = append(maxPrices, discount.MaxPrice)
+		} else {
+			// Вычисляем из Value
+			percent, original, discounted, minP, maxP := calculateDiscountFields(discount.Value)
+			discountPercents = append(discountPercents, percent)
+			originalPrices = append(originalPrices, original)
+			discountedPrices = append(discountedPrices, discounted)
+			minPrices = append(minPrices, minP)
+			maxPrices = append(maxPrices, maxP)
+		}
 	}
 
 	if len(productIDsBatch) > 0 {
-		err := store.BulkInsertDiscounts(ctx, BulkInsertDiscountsParams{
-			ProductIds:     productIDsBatch,
-			DiscountValues: discountValues,
-			MinPrices:      minPrices,
-			MaxDiscPrices:  maxDiscPrices,
+		err := store.BulkUpsertDiscount(ctx, BulkUpsertDiscountParams{
+			ProductIds:       productIDsBatch,
+			Values:           values,
+			DiscountPercents: discountPercents,
+			OriginalPrices:   originalPrices,
+			DiscountedPrices: discountedPrices,
+			MinPrices:        minPrices,
+			MaxPrices:        maxPrices,
 		})
 		if err != nil {
-			return fmt.Errorf("error bulk inserting discounts: %w", err)
+			return fmt.Errorf("error bulk upserting discounts: %w", err)
 		}
 	}
 
 	return nil
+}
+
+// calculateDiscountFields вычисляет поля из JSONB value
+func calculateDiscountFields(value []byte) (discountPercent, originalPrice, discountedPrice, minPrice, maxPrice int32) {
+	var sizeDiscounts map[string]map[string]interface{}
+	if err := json.Unmarshal(value, &sizeDiscounts); err != nil {
+		return 0, 0, 0, 0, 0
+	}
+
+	var maxPercent int32 = 0
+	var minDiscounted int32 = 0
+	var maxOriginal int32 = 0
+	var displayOriginal int32 = 0
+	var displayDiscounted int32 = 0
+
+	for _, sizeData := range sizeDiscounts {
+		original := getInt32Value(sizeData["original_price"])
+		discounted := getInt32Value(sizeData["discounted_price"])
+		percent := getInt32Value(sizeData["percent"])
+
+		if original <= 0 || discounted <= 0 {
+			continue
+		}
+
+		// Максимальный процент
+		if percent > maxPercent {
+			maxPercent = percent
+			displayOriginal = original
+			displayDiscounted = discounted
+		}
+
+		// Минимальная цена со скидкой
+		if minDiscounted == 0 || discounted < minDiscounted {
+			minDiscounted = discounted
+		}
+
+		// Максимальная оригинальная цена
+		if original > maxOriginal {
+			maxOriginal = original
+		}
+	}
+
+	return maxPercent, displayOriginal, displayDiscounted, minDiscounted, maxOriginal
 }
 
 type productsWithCount struct {
@@ -568,7 +976,6 @@ type ProductRow struct {
 	Firm            string
 	MinPrice        int32
 	MaxPrice        int32
-	Status          string
 	MaxDiscPrice    float64
 	DiscountPercent float64
 	InStore         bool
@@ -583,7 +990,6 @@ func baseRowToProductRow(r GetProductsByFiltersPaginateBaseRow) ProductRow {
 		Firm:      r.Firm,
 		MinPrice:  r.Minprice,
 		MaxPrice:  r.Maxprice,
-		Status:    r.Status,
 	}
 }
 
@@ -593,10 +999,9 @@ func discountRowToProductRow(r GetProductsByFiltersPaginateWithDiscountRow) Prod
 		Name:            r.Name,
 		ImagePath:       r.ImagePath,
 		Firm:            r.Firm,
-		MinPrice:        r.Minprice,
-		MaxPrice:        r.Maxprice,
-		Status:          r.Status,
-		MaxDiscPrice:    float64(r.Maxdiscprice),
+		MinPrice:        r.MinPrice,
+		MaxPrice:        r.MaxPrice,
+		MaxDiscPrice:    float64(r.DiscountedPrice),
 		DiscountPercent: float64(r.DiscountPercent),
 	}
 }
@@ -609,7 +1014,6 @@ func storeRowToProductRow(r GetProductsByFiltersPaginateWithStoreRow) ProductRow
 		Firm:      r.Firm,
 		MinPrice:  r.Minprice,
 		MaxPrice:  r.Maxprice,
-		Status:    r.Status,
 		InStore:   r.InStore.Bool,
 	}
 }
@@ -620,10 +1024,9 @@ func fullRowToProductRow(r GetProductsByFiltersPaginateFullRow) ProductRow {
 		Name:            r.Name,
 		ImagePath:       r.ImagePath,
 		Firm:            r.Firm,
-		MinPrice:        r.Minprice,
-		MaxPrice:        r.Maxprice,
-		Status:          r.Status,
-		MaxDiscPrice:    float64(r.Maxdiscprice),
+		MinPrice:        r.MinPrice,
+		MaxPrice:        r.MaxPrice,
+		MaxDiscPrice:    float64(r.DiscountedPrice),
 		DiscountPercent: float64(r.DiscountPercent),
 		InStore:         r.InStore.Bool,
 	}
@@ -632,7 +1035,7 @@ func fullRowToProductRow(r GetProductsByFiltersPaginateFullRow) ProductRow {
 // Основная функция getProductsByFilters – теперь выбирает лёгкий запрос
 func (store *SQLStore) getProductsByFilters(
 	ctx context.Context,
-	mainFilter GetFiltersByNameCategoryAndTypeParams,
+	mainFilter GetFiltersByNameCategoryAndTypeParamsNew,
 	filters types.ProductsFilterStruct,
 	page, size, orderedType int,
 	usePriceFilter bool,
@@ -680,8 +1083,8 @@ func (store *SQLStore) getProductsByFilters(
 			params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
 			params.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
 		}
-		fmt.Println("%v", params.Categories, "ddddddddddddddddddddddddddddddaaaaaaaaaaa", params.ProductTypes)
-		fmt.Println("%v", mainFilter.Category, "ddddddddddddddddddddddddddddddaaaaaaaaaaa", mainFilter.Type)
+		// fmt.Println("%v", params.Categories, "ddddddddddddddddddddddddddddddaaaaaaaaaaa", params.ProductTypes)
+		// fmt.Println("%v", mainFilter.Category, "ddddddddddddddddddddddddddddddaaaaaaaaaaa", mainFilter.Type)
 		rows, err := store.GetProductsByFiltersPaginateBase(ctx, params)
 		if err != nil {
 			return productsWithCount{}, err
@@ -846,7 +1249,7 @@ func (store *SQLStore) getProductsByFilters(
 			params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
 			params.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
 		}
-		fmt.Println("%v", params, "ddddddddddddddddddddddddddddddaaaaaaaaaaa")
+		// fmt.Println("%v", params, "ddddddddddddddddddddddddddddddaaaaaaaaaaa")
 		rows, err := store.GetProductsByFiltersPaginateFull(ctx, params)
 		if err != nil {
 			return productsWithCount{}, err
@@ -945,11 +1348,12 @@ func (store *SQLStore) GetProductsForWidgetFromDB(ctx context.Context, widget Pa
 			imagePath = p.Image[0]
 		}
 		cachedProducts = append(cachedProducts, types.CachedProduct{
-			ID:        p.Id,
-			Name:      p.Name,
-			ImagePath: imagePath,
-			Price:     int32(p.Price),
-			Discount:  p.Discount,
+			ID:              p.Id,
+			Name:            p.Name,
+			ImagePath:       imagePath,
+			Price:           int32(p.Price),
+			Discount:        p.Discount,
+			DiscountPercent: p.DiscountPercent,
 		})
 	}
 

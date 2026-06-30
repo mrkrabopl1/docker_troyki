@@ -140,7 +140,7 @@
   height: 100%;
   overflow: hidden;
   pointer-events: none;
-  z-index: 100;
+  z-index: 20;
   -webkit-transition: width 1s ease, height 1s ease;
   -moz-transition: width 1s ease, height 1s ease;
   -o-transition: width 1s ease, height 1s ease;

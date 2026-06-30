@@ -13,6 +13,7 @@ import Button from 'src/components/Button';
 import s from './style.module.css';
 import { useAppDispatch, useAppSelector, useMediaQuery } from 'src/store/hooks/redux';
 import { finishLoading } from 'src/store/reducers/loadingSlice';
+import Modal from 'src/components/modal/Modal';
 
 interface DiscountRule {
     id: number;
@@ -78,9 +79,9 @@ const DiscountRulesManager: React.FC = () => {
         try {
             const data = await getDiscountRules(filters.page, filters.limit);
             dispatch(finishLoading());
-            
+
             let rulesData = data.rules || [];
-            
+
             // Фильтрация на клиенте (если бэк не поддерживает)
             if (filters.search) {
                 const searchLower = filters.search.toLowerCase();
@@ -94,7 +95,7 @@ const DiscountRulesManager: React.FC = () => {
                     String(rule.is_active) === filters.is_active
                 );
             }
-            
+
             setRules(rulesData);
         } catch (err) {
             setError('Ошибка загрузки правил скидок');
@@ -238,6 +239,7 @@ const DiscountRulesManager: React.FC = () => {
             <div className={s.header}>
                 <h2>Управление скидками</h2>
                 <Button
+                    className={'btnStyle dark'}
                     text="+ Создать правило"
                     onClick={() => {
                         setShowCreateModal(true);
@@ -435,100 +437,103 @@ const DiscountRulesManager: React.FC = () => {
             )}
 
             {/* Модальное окно создания */}
-            {showCreateModal && (
-                <div className={s.modal} onClick={() => setShowCreateModal(false)}>
-                    <div className={s.modalContent} onClick={e => e.stopPropagation()}>
-                        <div className={s.modalHeader}>
-                            <h3>Создание правила скидки</h3>
-                            <button className={s.closeBtn} onClick={() => setShowCreateModal(false)}>✕</button>
-                        </div>
-
-                        <div className={s.formGroup}>
-                            <label>Название *</label>
-                            <input
-                                type="text"
-                                value={form.name}
-                                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                placeholder="Введите название"
-                            />
-                        </div>
-
-                        <div className={s.formGroup}>
-                            <label>Описание</label>
-                            <textarea
-                                value={form.description}
-                                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                                placeholder="Описание правила"
-                                rows={2}
-                            />
-                        </div>
-
-                        <div className={s.formRow}>
-                            <div className={s.formGroup}>
-                                <label>Тип скидки *</label>
-                                <select
-                                    value={form.discount_type}
-                                    onChange={(e) => setForm({ ...form, discount_type: e.target.value as any })}
-                                >
-                                    <option value="percentage">Процент (%)</option>
-                                    <option value="fixed_amount">Фикс. сумма (₽)</option>
-                                </select>
+            <Modal onChange={() => setShowCreateModal(false)} active={showCreateModal}>
+                <div style={{ height: "100%" }} onClick={(e) => e.stopPropagation()} className={s.modalWrap1}>
+                    <div className={s.modal} onClick={() => setShowCreateModal(false)}>
+                        <div className={s.modalContent} onClick={e => e.stopPropagation()}>
+                            <div className={s.modalHeader}>
+                                <h3>Создание правила скидки</h3>
+                                <button className={s.closeBtn} onClick={() => setShowCreateModal(false)}>✕</button>
                             </div>
+
                             <div className={s.formGroup}>
-                                <label>Значение *</label>
+                                <label>Название *</label>
+                                <input
+                                    type="text"
+                                    value={form.name}
+                                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                    placeholder="Введите название"
+                                />
+                            </div>
+
+                            <div className={s.formGroup}>
+                                <label>Описание</label>
+                                <textarea
+                                    value={form.description}
+                                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                                    placeholder="Описание правила"
+                                    rows={2}
+                                />
+                            </div>
+
+                            <div className={s.formRow}>
+                                <div className={s.formGroup}>
+                                    <label>Тип скидки *</label>
+                                    <select
+                                        value={form.discount_type}
+                                        onChange={(e) => setForm({ ...form, discount_type: e.target.value as any })}
+                                    >
+                                        <option value="percentage">Процент (%)</option>
+                                        <option value="fixed_amount">Фикс. сумма (₽)</option>
+                                    </select>
+                                </div>
+                                <div className={s.formGroup}>
+                                    <label>Значение *</label>
+                                    <input
+                                        type="number"
+                                        value={form.discount_value}
+                                        onChange={(e) => setForm({ ...form, discount_value: +e.target.value })}
+                                        min={0}
+                                        placeholder="0"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className={s.formRow}>
+                                <div className={s.formGroup}>
+                                    <label>Дата начала *</label>
+                                    <input
+                                        type="date"
+                                        value={form.starts_at}
+                                        onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
+                                    />
+                                </div>
+                                <div className={s.formGroup}>
+                                    <label>Дата окончания</label>
+                                    <input
+                                        type="date"
+                                        value={form.ends_at}
+                                        onChange={(e) => setForm({ ...form, ends_at: e.target.value })}
+                                    />
+                                    <span className={s.hint}>Оставьте пустым для бессрочной скидки</span>
+                                </div>
+                            </div>
+
+                            <div className={s.formGroup}>
+                                <label>Приоритет</label>
                                 <input
                                     type="number"
-                                    value={form.discount_value}
-                                    onChange={(e) => setForm({ ...form, discount_value: +e.target.value })}
+                                    value={form.priority}
+                                    onChange={(e) => setForm({ ...form, priority: +e.target.value })}
                                     min={0}
                                     placeholder="0"
                                 />
+                                <span className={s.hint}>Чем выше число, тем выше приоритет</span>
                             </div>
-                        </div>
 
-                        <div className={s.formRow}>
-                            <div className={s.formGroup}>
-                                <label>Дата начала *</label>
-                                <input
-                                    type="date"
-                                    value={form.starts_at}
-                                    onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
-                                />
+                            <div className={s.modalActions}>
+                                <button className={s.cancelBtn} onClick={() => setShowCreateModal(false)}>
+                                    Отмена
+                                </button>
+                                <button className={s.submitBtn} onClick={handleCreate}>
+                                    Создать
+                                </button>
                             </div>
-                            <div className={s.formGroup}>
-                                <label>Дата окончания</label>
-                                <input
-                                    type="date"
-                                    value={form.ends_at}
-                                    onChange={(e) => setForm({ ...form, ends_at: e.target.value })}
-                                />
-                                <span className={s.hint}>Оставьте пустым для бессрочной скидки</span>
-                            </div>
-                        </div>
-
-                        <div className={s.formGroup}>
-                            <label>Приоритет</label>
-                            <input
-                                type="number"
-                                value={form.priority}
-                                onChange={(e) => setForm({ ...form, priority: +e.target.value })}
-                                min={0}
-                                placeholder="0"
-                            />
-                            <span className={s.hint}>Чем выше число, тем выше приоритет</span>
-                        </div>
-
-                        <div className={s.modalActions}>
-                            <button className={s.cancelBtn} onClick={() => setShowCreateModal(false)}>
-                                Отмена
-                            </button>
-                            <button className={s.submitBtn} onClick={handleCreate}>
-                                Создать
-                            </button>
                         </div>
                     </div>
                 </div>
-            )}
+            </Modal>
+
 
             {/* Модальное окно редактирования */}
             {showEditModal && (
@@ -656,8 +661,8 @@ const DiscountRulesManager: React.FC = () => {
                                             <td>
                                                 <span className={s.itemType}>
                                                     {item.item_type === 'brand' ? 'Бренд' :
-                                                     item.item_type === 'line' ? 'Линейка' :
-                                                     item.item_type === 'product' ? 'Товар' : '—'}
+                                                        item.item_type === 'line' ? 'Линейка' :
+                                                            item.item_type === 'product' ? 'Товар' : '—'}
                                                 </span>
                                             </td>
                                             <td>{item.item_id}</td>

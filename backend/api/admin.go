@@ -377,39 +377,55 @@ func (s *Server) handleAdminCreateProduct(c *gin.Context) {
 		return
 	}
 	var productIDs []int32
-	var discountValues [][]byte
+	var values [][]byte
+	var discountPercents []int32
+	var originalPrices []int32
+	var discountedPrices []int32
 	var minPrices []int32
-	var maxDiscPrices []int32
+	var maxPrices []int32
 
 	for sizeName, sizeData := range req.Sizes {
 		// Если есть скидка
 		if sizeData.Discount > 0 {
 			productIDs = append(productIDs, product.ID)
 
-			// Формируем значение скидки для этого размера
+			// Формируем value для этого размера
 			discountValue := map[string]interface{}{
-				sizeName: sizeData.Discount,
+				"original_price":   sizeData.Price,
+				"discounted_price": sizeData.Price - sizeData.Discount,
+				"percent":          sizeData.Discount,
 			}
 
-			discountJSON, err := json.Marshal(discountValue)
+			// Для каждого размера своя скидка
+			sizeDiscounts := map[string]interface{}{
+				sizeName: discountValue,
+			}
+
+			discountJSON, err := json.Marshal(sizeDiscounts)
 			if err != nil {
 				fmt.Printf("Failed to marshal discount for size %s: %v\n", sizeName, err)
 				continue
 			}
 
-			discountValues = append(discountValues, discountJSON)
-			minPrices = append(minPrices, sizeData.Price)                           // исходная цена
-			maxDiscPrices = append(maxDiscPrices, sizeData.Price-sizeData.Discount) // цена со скидкой
+			values = append(values, discountJSON)
+			discountPercents = append(discountPercents, sizeData.Discount)
+			originalPrices = append(originalPrices, sizeData.Price)
+			discountedPrices = append(discountedPrices, sizeData.Price-sizeData.Discount)
+			minPrices = append(minPrices, sizeData.Price-sizeData.Discount)
+			maxPrices = append(maxPrices, sizeData.Price)
 		}
 	}
 
 	// Вставляем скидки если есть
 	if len(productIDs) > 0 {
-		err = s.store.BulkInsertDiscounts(c.Request.Context(), db.BulkInsertDiscountsParams{
-			ProductIds:     productIDs,
-			DiscountValues: discountValues,
-			MinPrices:      minPrices,
-			MaxDiscPrices:  maxDiscPrices,
+		err = s.store.BulkUpsertDiscount(c.Request.Context(), db.BulkUpsertDiscountParams{
+			ProductIds:       productIDs,
+			Values:           values,
+			DiscountPercents: discountPercents,
+			OriginalPrices:   originalPrices,
+			DiscountedPrices: discountedPrices,
+			MinPrices:        minPrices,
+			MaxPrices:        maxPrices,
 		})
 		if err != nil {
 			// Логируем ошибку, но не откатываем создание продукта

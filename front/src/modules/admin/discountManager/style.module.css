@@ -1,9 +1,14 @@
-/* style.module.css */
+/* src/modules/admin/DiscountManager/style.module.css */
+
 .container {
-    min-width: 500px;
+    min-width: 320px;
     max-width: 600px;
+    width: 100%;
+    padding: 16px;
+    box-sizing: border-box;
 }
 
+/* ===== Header ===== */
 .header {
     display: flex;
     justify-content: space-between;
@@ -11,17 +16,20 @@
     margin-bottom: 16px;
     padding-bottom: 12px;
     border-bottom: 1px solid #e0e0e0;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .header h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: clamp(16px, 2.5vw, 18px);
+    word-break: break-word;
 }
 
 .entityType {
     font-weight: normal;
     color: #888;
-    font-size: 14px;
+    font-size: clamp(12px, 1.8vw, 14px);
     margin-left: 8px;
 }
 
@@ -31,18 +39,95 @@
     font-size: 20px;
     cursor: pointer;
     color: #888;
+    padding: 4px 8px;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: color 0.2s;
 }
 
+.closeBtn:hover {
+    color: #333;
+}
+
+.closeBtn:focus-visible {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+}
+
+/* ===== Actions ===== */
 .actions {
+    display: flex;
+    gap: 8px;
     margin-bottom: 16px;
+    flex-wrap: wrap;
 }
 
-/* Форма */
+.actions button {
+    flex: 1;
+    min-width: 140px;
+}
+
+/* ===== Buttons ===== */
+.btnPrimary,
+.btnSecondary {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: 1px solid transparent;
+    -webkit-appearance: none;
+    appearance: none;
+    text-align: center;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+}
+
+.btnPrimary {
+    background-color: #000;
+    color: #fff;
+}
+
+.btnPrimary:hover {
+    background-color: #1f1f1f;
+}
+
+.btnPrimary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btnSecondary {
+    background-color: #fff;
+    color: #000;
+    border-color: #000;
+}
+
+.btnSecondary:hover {
+    background-color: #f5f5f5;
+}
+
+.btnSecondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ===== Forms ===== */
 .form {
     background: #f9f9f9;
     padding: 16px;
     border-radius: 8px;
     margin-bottom: 16px;
+    box-sizing: border-box;
+}
+
+.form h4 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
 }
 
 .formRow {
@@ -50,6 +135,7 @@
     align-items: center;
     margin-bottom: 10px;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
 .formRow label {
@@ -62,16 +148,58 @@
 .formRow input,
 .formRow select {
     flex: 1;
+    min-width: 120px;
     padding: 6px 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 14px;
+    -webkit-appearance: none;
+    appearance: none;
+    background-color: #fff;
+    box-sizing: border-box;
+}
+
+/* Safari fix для select */
+.formRow select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+}
+
+/* Safari fix для input[type="date"] */
+.formRow input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-height: 34px;
+}
+
+.inputGroup {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 120px;
+    position: relative;
+}
+
+.inputGroup input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    -webkit-appearance: none;
+    appearance: none;
+    background-color: #fff;
+    min-width: 60px;
+    box-sizing: border-box;
 }
 
 .suffix {
     font-size: 14px;
     color: #888;
-    width: 20px;
+    margin-left: 4px;
+    min-width: 20px;
 }
 
 .hint {
@@ -80,16 +208,28 @@
     white-space: nowrap;
 }
 
+.comboboxWrapper {
+    flex: 1;
+    min-width: 120px;
+}
+
 .formActions {
     display: flex;
     gap: 8px;
     margin-top: 12px;
+    flex-wrap: wrap;
 }
 
-/* Список */
+.formActions button {
+    flex: 1;
+    min-width: 100px;
+}
+
+/* ===== List ===== */
 .list {
     max-height: 400px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .loading,
@@ -100,6 +240,7 @@
     font-size: 14px;
 }
 
+/* ===== Discount Row ===== */
 .discountRow {
     display: flex;
     align-items: center;
@@ -107,7 +248,10 @@
     border: 1px solid #e0e0e0;
     border-radius: 6px;
     margin-bottom: 8px;
-    gap: 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+    background-color: #fff;
+    transition: opacity 0.2s;
 }
 
 .discountRow.inactive {
@@ -117,12 +261,14 @@
 
 .discountInfo {
     flex: 1;
+    min-width: 120px;
 }
 
 .discountName {
     font-weight: 500;
     font-size: 14px;
     margin-bottom: 2px;
+    word-break: break-word;
 }
 
 .discountMeta {
@@ -135,13 +281,16 @@
     font-size: 16px;
     color: #ff4757;
     white-space: nowrap;
+    padding: 0 4px;
 }
 
 .discountActions {
     display: flex;
-    gap: 6px;
+    gap: 4px;
+    flex-wrap: wrap;
 }
 
+/* ===== Action Buttons ===== */
 .toggleBtn {
     padding: 4px 10px;
     border: 1px solid #ddd;
@@ -151,6 +300,10 @@
     cursor: pointer;
     background: #f0f0f0;
     color: #888;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: all 0.2s;
+    min-height: 30px;
 }
 
 .toggleBtn.active {
@@ -158,6 +311,11 @@
     color: white;
     border-color: #27ae60;
 }
+
+.toggleBtn:hover:not(.active) {
+    background: #e0e0e0;
+}
+
 .removeBtn {
     background: none;
     border: 1px solid #ddd;
@@ -166,19 +324,32 @@
     cursor: pointer;
     font-size: 14px;
     padding: 4px 8px;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: all 0.2s;
+    min-height: 30px;
 }
 
 .removeBtn:hover {
     background: #fef5e7;
     border-color: #f39c12;
 }
+
 .deleteBtn {
     background: none;
     border: none;
     color: #ff4757;
     cursor: pointer;
     font-size: 16px;
-    padding: 4px;
+    padding: 4px 8px;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: color 0.2s;
+    min-height: 30px;
+}
+
+.deleteBtn:hover {
+    color: #c0392b;
 }
 
 .editBtn {
@@ -189,9 +360,139 @@
     cursor: pointer;
     font-size: 14px;
     padding: 4px 8px;
-    margin-right: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: all 0.2s;
+    min-height: 30px;
 }
+
 .editBtn:hover {
     background: #eaf2f8;
     border-color: #2980b9;
+}
+
+/* ===== Focus states for accessibility ===== */
+.discountRow button:focus-visible,
+.formRow input:focus-visible,
+.formRow select:focus-visible,
+.closeBtn:focus-visible {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+}
+
+/* ===== Media Queries ===== */
+@media (max-width: 768px) {
+    .container {
+        padding: 12px;
+    }
+
+    .formRow {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .formRow label {
+        width: 100%;
+        margin-bottom: 2px;
+    }
+
+    .formRow input,
+    .formRow select,
+    .inputGroup,
+    .comboboxWrapper {
+        width: 100%;
+        min-width: unset;
+    }
+
+    .discountRow {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+
+    .discountInfo {
+        min-width: unset;
+    }
+
+    .discountValue {
+        text-align: center;
+    }
+
+    .discountActions {
+        justify-content: center;
+    }
+
+    .actions button {
+        min-width: 100px;
+        flex: 1;
+    }
+
+    .formActions button {
+        min-width: 80px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 8px;
+        min-width: unset;
+    }
+
+    .header h3 {
+        font-size: 15px;
+    }
+
+    .actions {
+        flex-direction: column;
+    }
+
+    .actions button {
+        width: 100%;
+    }
+
+    .form {
+        padding: 12px;
+    }
+
+    .formRow input,
+    .formRow select {
+        font-size: 16px; /* предотвращает зум на iOS */
+        padding: 8px 10px;
+    }
+
+    .discountActions {
+        gap: 6px;
+    }
+
+    .discountActions button {
+        min-height: 36px;
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+
+    .toggleBtn {
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+
+    .discountValue {
+        font-size: 15px;
+    }
+}
+
+/* ===== Print styles ===== */
+@media print {
+    .container {
+        max-width: 100%;
+        padding: 0;
+    }
+
+    .discountRow {
+        break-inside: avoid;
+        border-color: #ccc;
+    }
+
+    .discountActions {
+        display: none;
+    }
 }

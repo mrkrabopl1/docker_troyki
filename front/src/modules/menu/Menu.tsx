@@ -182,10 +182,9 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
             <Modal onChange={setActiveAlphabet} active={activeAlphabet}>
                 <div style={{ height: "100%" }} onClick={(e) => e.stopPropagation()} className={s.modalWrap1}>
                     <AlphabetNavigation
-                        names={firms}
                         onChange={(name) => {
+                            router.push(`/search?brand=${name}`);
                             setActiveAlphabet(false);
-                            router.push(`/collections/${name}`);
                         }}
                     />
                 </div>

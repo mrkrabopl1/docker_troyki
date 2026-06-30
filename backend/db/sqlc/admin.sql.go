@@ -2541,9 +2541,8 @@ SELECT p.id,
     -- Итоговый процент скидки: максимальный процент из всех размеров в discount
     COALESCE(
         (
-            SELECT MAX((item.value->>'value')::int)
+            SELECT MAX((item.value->>'percent')::int)
             FROM jsonb_each(d.value) AS item
-            WHERE item.value->>'type' = 'percentage'
         ),
         0
     ) AS discount_percent,
@@ -2656,9 +2655,8 @@ ORDER BY -- Сортировка по имени
     CASE
         WHEN $16::int = 7 THEN COALESCE(
             (
-                SELECT MAX((item.value->>'value')::int)
+                SELECT MAX((item.value->>'percent')::int)
                 FROM jsonb_each(d.value) AS item
-                WHERE item.value->>'type' = 'percentage'
             ),
             0
         )
@@ -2666,9 +2664,8 @@ ORDER BY -- Сортировка по имени
     CASE
         WHEN $16::int = 8 THEN COALESCE(
             (
-                SELECT MAX((item.value->>'value')::int)
+                SELECT MAX((item.value->>'percent')::int)
                 FROM jsonb_each(d.value) AS item
-                WHERE item.value->>'type' = 'percentage'
             ),
             0
         )

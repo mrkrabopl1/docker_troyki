@@ -1,6 +1,7 @@
 // src/modules/admin/DiscountManager/DiscountManager.tsx
 import React, { useState, useEffect } from 'react';
 import Button from 'src/components/Button';
+import Combobox from 'src/components/combobox/Combobox';
 import {
     getEntityDiscounts,
     getDiscountRules,
@@ -44,7 +45,7 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
     const [showAddExisting, setShowAddExisting] = useState(false);
     const [formLoading, setFormLoading] = useState(false);
     const [selectedRuleId, setSelectedRuleId] = useState<number | null>(null);
-    const [editingRule, setEditingRule] = useState<DiscountRule | null>(null); // <-- для редактирования
+    const [editingRule, setEditingRule] = useState<DiscountRule | null>(null);
 
     const initialForm = {
         name: '',
@@ -75,12 +76,10 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
         loadDiscounts();
     }, []);
 
-    // Правила, которые ещё не применены к сущности
     const availableRules = allRules.filter(
         rule => !discounts.find(d => d.id === rule.id)
     );
 
-    // ============ Редактирование ============
     const startEdit = (rule: DiscountRule) => {
         setEditingRule(rule);
         setForm({
@@ -99,14 +98,12 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
         setForm(initialForm);
     };
 
-    // ============ Сохранение (создание или обновление) ============
     const handleSave = async () => {
         if (form.discount_value <= 0) return;
 
         setFormLoading(true);
         try {
             if (editingRule) {
-                // Обновление существующего правила
                 await updateDiscountRule(editingRule.id, {
                     name: form.name,
                     discount_type: form.discount_type,
@@ -116,7 +113,6 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
                 });
                 cancelEdit();
             } else {
-                // Создание нового правила
                 await createDiscountRule({
                     name: form.name || `${entityType === 'brand' ? 'Бренд' : 'Линейка'}: ${entityName}`,
                     discount_type: form.discount_type,
@@ -139,7 +135,6 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
         }
     };
 
-    // ============ Добавление в существующее правило ============
     const handleAddToExisting = async () => {
         if (!selectedRuleId) return;
 
@@ -160,7 +155,6 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
         }
     };
 
-    // ============ Удаление из правила (но само правило остаётся) ============
     const handleRemoveFromRule = async (ruleId: number) => {
         if (!confirm('Убрать из этого правила? Само правило не удалится.')) return;
         try {
@@ -171,7 +165,6 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
         }
     };
 
-    // ============ Удаление правила целиком ============
     const handleDelete = async (ruleId: number) => {
         if (!confirm('Удалить правило полностью? Оно удалится для всех.')) return;
         try {
@@ -182,7 +175,6 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
         }
     };
 
-    // ============ Переключение активности ============
     const handleToggle = async (ruleId: number) => {
         try {
             await toggleDiscountRule(ruleId);
@@ -194,24 +186,29 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
 
     const formatDate = (dateStr: string) => {
         if (!dateStr) return '';
-        return new Date(dateStr).toLocaleDateString('ru-RU');
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('ru-RU', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
     };
 
-    // ============ UI ============
     return (
         <div className={s.container}>
             <div className={s.header}>
                 <h3>
                     Скидки: {entityName}
                     <span className={s.entityType}>
-                        ({entityType === 'brand' ? 'Бренд' : 'Линейка'})
+                        ({entityType === 'brand' ? 'Бренд' : entityType === 'line' ? 'Линейка' : 'Товар'})
                     </span>
                 </h3>
-                <button className={s.closeBtn} onClick={onClose}>✕</button>
+                <button className={s.closeBtn} onClick={onClose} aria-label="Закрыть">✕</button>
             </div>
 
             <div className={s.actions}>
                 <Button
+                    className={s.btnPrimary}
                     text="+ Новая скидка"
                     onClick={() => {
                         cancelEdit();
@@ -220,6 +217,7 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
                     }}
                 />
                 <Button
+                    className={s.btnSecondary}
                     text="+ Добавить в существующую"
                     onClick={() => {
                         cancelEdit();
@@ -229,13 +227,13 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
                 />
             </div>
 
-            {/* Форма создания / редактирования */}
             {(showForm || editingRule) && (
                 <div className={s.form}>
                     <h4>{editingRule ? 'Редактирование правила' : 'Новая скидка'}</h4>
                     <div className={s.formRow}>
-                        <label>Название:</label>
+                        <label htmlFor="ruleName">Название:</label>
                         <input
+                            id="ruleName"
                             type="text"
                             value={form.name}
                             onChange={e => setForm({ ...form, name: e.target.value })}
@@ -243,8 +241,9 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
                         />
                     </div>
                     <div className={s.formRow}>
-                        <label>Тип:</label>
+                        <label htmlFor="discountType">Тип:</label>
                         <select
+                            id="discountType"
                             value={form.discount_type}
                             onChange={e => setForm({ ...form, discount_type: e.target.value as any })}
                         >
@@ -253,26 +252,32 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
                         </select>
                     </div>
                     <div className={s.formRow}>
-                        <label>Значение:</label>
-                        <input
-                            type="number"
-                            value={form.discount_value}
-                            onChange={e => setForm({ ...form, discount_value: +e.target.value })}
-                            min={0}
-                        />
-                        <span className={s.suffix}>{form.discount_type === 'percentage' ? '%' : '₽'}</span>
+                        <label htmlFor="discountValue">Значение:</label>
+                        <div className={s.inputGroup}>
+                            <input
+                                id="discountValue"
+                                type="number"
+                                value={form.discount_value}
+                                onChange={e => setForm({ ...form, discount_value: +e.target.value })}
+                                min={0}
+                                step="any"
+                            />
+                            <span className={s.suffix}>{form.discount_type === 'percentage' ? '%' : '₽'}</span>
+                        </div>
                     </div>
                     <div className={s.formRow}>
-                        <label>Начало:</label>
+                        <label htmlFor="startsAt">Начало:</label>
                         <input
+                            id="startsAt"
                             type="date"
                             value={form.starts_at}
                             onChange={e => setForm({ ...form, starts_at: e.target.value })}
                         />
                     </div>
                     <div className={s.formRow}>
-                        <label>Конец:</label>
+                        <label htmlFor="endsAt">Конец:</label>
                         <input
+                            id="endsAt"
                             type="date"
                             value={form.ends_at}
                             onChange={e => setForm({ ...form, ends_at: e.target.value })}
@@ -281,11 +286,13 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
                     </div>
                     <div className={s.formActions}>
                         <Button
+                            className={s.btnPrimary}
                             text={editingRule ? 'Сохранить изменения' : 'Создать'}
                             onClick={handleSave}
                             disabled={formLoading}
                         />
                         <Button
+                            className={s.btnSecondary}
                             text="Отмена"
                             onClick={() => {
                                 if (editingRule) cancelEdit();
@@ -296,7 +303,6 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
                 </div>
             )}
 
-            {/* Форма добавления в существующее правило */}
             {showAddExisting && (
                 <div className={s.form}>
                     <h4>Добавить в существующее правило</h4>
@@ -304,40 +310,45 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
                         <>
                             <div className={s.formRow}>
                                 <label>Правило:</label>
-                                <select
-                                    value={selectedRuleId || ''}
-                                    onChange={e => setSelectedRuleId(Number(e.target.value) || null)}
-                                >
-                                    <option value="">Выберите правило</option>
-                                    {availableRules.map(rule => (
-                                        <option key={rule.id} value={rule.id}>
-                                            {rule.name} ({rule.discount_type === 'percentage'
-                                                ? `-${rule.discount_value}%`
-                                                : `-${rule.discount_value}₽`})
-                                            {rule.ends_at ? ` до ${formatDate(rule.ends_at)}` : ''}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div className={s.comboboxWrapper}>
+                                    <Combobox
+                                        data={allRules.reduce((acc, rule, i) => {
+                                            acc[i] = `${rule.name} (${rule.discount_type === 'percentage' ? `-${rule.discount_value}%` : `-${rule.discount_value}₽`})${rule.ends_at ? ` до ${formatDate(rule.ends_at)}` : ''}`;
+                                            return acc;
+                                        }, {} as Record<number, string>)}
+                                        placeholder="Выберите правило"
+                                        currentIndex={selectedRuleId !== null ? allRules.findIndex(r => r.id === selectedRuleId) : -1}
+                                        onChangeIndex={(index) => {
+                                            const rule = allRules[index];
+                                            setSelectedRuleId(rule ? rule.id : null);
+                                        }}
+                                       
+                                    />
+                                </div>
                             </div>
                             <div className={s.formActions}>
                                 <Button
+                                    className={s.btnPrimary}
                                     text="Добавить"
                                     onClick={handleAddToExisting}
                                     disabled={!selectedRuleId || formLoading}
                                 />
-                                <Button text="Отмена" onClick={() => { setShowAddExisting(false); setSelectedRuleId(null); }} />
+                                <Button
+                                    className={s.btnSecondary}
+                                    text="Отмена"
+                                    onClick={() => { setShowAddExisting(false); setSelectedRuleId(null); }}
+                                />
                             </div>
                         </>
                     ) : (
                         <div className={s.empty}>
-                            Нет доступных правил.<br/>
+                            Нет доступных правил.<br />
                             Все существующие правила уже применены к этой сущности.
                         </div>
                     )}
                 </div>
             )}
 
-            {/* Список применённых скидок */}
             <div className={s.list}>
                 {loading ? (
                     <div className={s.loading}>Загрузка...</div>
@@ -364,11 +375,11 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
                                     : `-${discount.discount_value}₽`}
                             </div>
                             <div className={s.discountActions}>
-                                {/* Кнопка редактирования */}
                                 <button
                                     className={s.editBtn}
                                     onClick={() => startEdit(discount)}
                                     title="Редактировать правило"
+                                    aria-label="Редактировать"
                                 >
                                     ✎
                                 </button>
@@ -376,6 +387,7 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
                                     className={`${s.toggleBtn} ${discount.is_active ? s.active : ''}`}
                                     onClick={() => handleToggle(discount.id)}
                                     title={discount.is_active ? 'Деактивировать' : 'Активировать'}
+                                    aria-label={discount.is_active ? 'Деактивировать' : 'Активировать'}
                                 >
                                     {discount.is_active ? 'ON' : 'OFF'}
                                 </button>
@@ -383,6 +395,7 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
                                     className={s.removeBtn}
                                     onClick={() => handleRemoveFromRule(discount.id)}
                                     title="Убрать из правила"
+                                    aria-label="Убрать из правила"
                                 >
                                     ↩
                                 </button>
@@ -390,6 +403,7 @@ const DiscountManager: React.FC<DiscountManagerProps> = ({
                                     className={s.deleteBtn}
                                     onClick={() => handleDelete(discount.id)}
                                     title="Удалить правило полностью"
+                                    aria-label="Удалить правило"
                                 >
                                     ✕
                                 </button>

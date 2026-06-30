@@ -186,11 +186,12 @@ type ProductsInsert struct {
 }
 
 type CachedProduct struct {
-	ID        int32       `json:"id"`
-	Name      string      `json:"name"`
-	ImagePath string      `json:"image_path"`
-	Price     int32       `json:"price"`
-	Discount  interface{} `json:"discount,omitempty"`
+	ID              int32       `json:"id"`
+	Name            string      `json:"name"`
+	ImagePath       string      `json:"image_path"`
+	Price           int32       `json:"price"`
+	Discount        interface{} `json:"discount,omitempty"`
+	DiscountPercent int32       `json:"discount_percent,omitempty"`
 }
 
 type CachedWidget struct {

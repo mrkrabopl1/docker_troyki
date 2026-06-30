@@ -1,21 +1,26 @@
 import React, { memo, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useRouter } from 'next/router';
 import s from "./style.module.css"
 import Scroller from '../scroller/Scroller';
 import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux';
 
 interface IAlphabetNavigationProps {
-    names?: string[];
-    onChange?: (name: string) => void;
+    onChange?: (slug: string) => void;
 }
 
 const AlphabetNavigation: React.FC<IAlphabetNavigationProps> = ({
     onChange,
-    names,
 }) => {
-    const { firms } = useAppSelector(state => state.menuReducer);
+    const router = useRouter();
+    const { firmMap } = useAppSelector(state => state.menuReducer);
     
+    // Получаем список фирм из firmMap
+    const firms = useMemo(() => {
+        return Object.values(firmMap).map(firm => firm.name).sort();
+    }, [firmMap]);
+
+    // Создаем алфавитный список
     const createAlphabetItems = useMemo(() => {
-       
         const sortedFirms = [...firms].sort();
         
         const alphabet: Record<string, string[]> = {};
@@ -31,6 +36,15 @@ const AlphabetNavigation: React.FC<IAlphabetNavigationProps> = ({
             alphabet[firstChar].push(name);
         });
 
+        // Функция перехода на страницу бренда
+        const handleBrandClick = (name: string) => {
+            // Находим фирму по имени
+            const firm = Object.values(firmMap).find(f => f.name === name);
+            if (firm) {
+               onChange?.(firm.slug)
+            }
+        };
+
         return Object.entries(alphabet).map(([key, value]) => {
             return (
                 <div className={s.alphabetTable} key={key}>
@@ -39,7 +53,7 @@ const AlphabetNavigation: React.FC<IAlphabetNavigationProps> = ({
                         {value.map((name, index) => (
                             <div 
                                 className={s.alphabetName} 
-                                onClick={() => onChange?.(name)} 
+                                onClick={() => handleBrandClick(name)} 
                                 key={`${key}-${index}`}
                             >
                                 {name}
@@ -49,7 +63,7 @@ const AlphabetNavigation: React.FC<IAlphabetNavigationProps> = ({
                 </div>
             );
         });
-    }, [firms, onChange]);
+    }, [firms, firmMap, router, onChange]);
 
     return (
         <div style={{ width: '100%', height: '100%' }}>

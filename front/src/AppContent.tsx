@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { useAppDispatch } from 'src/store/hooks/redux';
 import { useRouteChange } from 'src/store/hooks/redux';
 import { cartCountAction, setDiscountRules, setSizeTables } from 'src/store/reducers/menuSlice';
-import { show, sticky, types, categories, setFirmMap, setFirms, collections } from 'src/store/reducers/menuSlice';
+import { show, sticky, types, categories, setFirmMap, setFirms, collections,setLineMap } from 'src/store/reducers/menuSlice';
 import { setFooter } from 'src/store/reducers/dispetcherSlice';
 import { setWidthProps } from 'src/store/reducers/resizeSlice';
 import { getCookie } from './global';
@@ -20,7 +20,7 @@ import StickyDispetcherButton from 'src/modules/stickyDispetcherButton/StickyDis
 import Footer from './modules/footer/Footer';
 
 
-import { Firm} from "src/types/modules"
+import { Firm,Line } from "src/types/modules"
 interface AppContentProps {
   children: React.ReactNode;
 }
@@ -117,18 +117,19 @@ const AppContent: React.FC<AppContentProps> = ({ children }) => {
       // 2. Фирмы и коллекции (как было в getFirms)
       const fieldData: Record<string, Record<string, string>> = {};
       const firmMap: Record<string, Firm> = {}; // ← теперь объект, а не number
-
+      const lineMap: Record<string, Line> = {};
       data.firms.forEach((row: any) => {
-        // Создаем slug из названия фирмы
-        const slug = row.firm.toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-') // заменяем всё кроме букв и цифр на -
-          .replace(/^-|-$/g, ''); // убираем тире в начале и конце
+        // ============================================================
+        // ФИРМЫ (как было)
+        // ============================================================
+        const firmSlug = row.firm.toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
 
-        // Сохраняем полную информацию о фирме
-        firmMap[slug] = {
+        firmMap[firmSlug] = {
           id: row.brand_id,
           name: row.firm,
-          slug: slug
+          slug: firmSlug,
         };
 
         // Коллекции (оставляем как есть)
@@ -136,11 +137,31 @@ const AppContent: React.FC<AppContentProps> = ({ children }) => {
         if (row.collection_name) {
           fieldData[row.firm][row.line_id] = row.collection_name;
         }
+
+        // ============================================================
+        // ЛИНИИ (НОВОЕ! заполняем из тех же данных)
+        // ============================================================
+        if (row.collection_name && row.line_id) {
+          const lineSlug = row.collection_name.toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+
+          // Сохраняем линию, если её ещё нет в lineMap
+          if (!lineMap[lineSlug]) {
+            lineMap[lineSlug] = {
+              id: row.line_id,
+              name: row.collection_name,
+              slug: lineSlug,
+              brand_id: row.brand_id,
+            };
+          }
+        }
       });
 
       dispatch(setFirms(Object.keys(fieldData)));
       dispatch(setFirmMap(firmMap)); // ← теперь передаем объект с Firm
       dispatch(collections(fieldData));
+      dispatch(setLineMap(lineMap));
 
       // 3. Скидки (добавляем)
       const activeDiscounts = (data.discounts || [])

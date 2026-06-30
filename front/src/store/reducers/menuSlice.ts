@@ -1,6 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit"
 import dropFileType from '../../types/dropFile'
-import { Firm} from "src/types/modules"
+import { Firm ,Line} from "src/types/modules"
 
 
 // types.ts или в начале файла
@@ -13,6 +13,7 @@ interface IField {
         size: string
     }[],
     firmMap: Record<string, Firm>; // ← меняем с number на Firm
+    lineMap: Record<string, Line>;
     cartCount: number,
     isVerified: boolean,
     collections: Record<string, Record<string, string>>,
@@ -33,6 +34,7 @@ const initialState: IField = {
     categories: [],
     typesVal: {},
     firms: [],
+    lineMap: {},
     firmMap: {}, // ← теперь будет { "nike": { id: 1, name: "Nike", slug: "nike" } }
     discountRules: {},
     sizeTables: {},
@@ -72,6 +74,9 @@ const menuSlice = createSlice({
         setFirmMap(state, action) {
             state.firmMap = { ...action.payload };
         },
+        setLineMap: (state, action) => {
+            state.lineMap = action.payload;
+        },
         setDiscountRules(state, action) {
             state.discountRules = action.payload;
         },
@@ -82,6 +87,6 @@ const menuSlice = createSlice({
 
 });
 
-export const { show, sticky, shopAction, cartCountAction, verified, collections, categories, types, setFirms, setFirmMap, setDiscountRules, setSizeTables } = menuSlice.actions
+export const { show, sticky, shopAction, cartCountAction, verified, collections, categories, types, setFirms, setFirmMap, setDiscountRules, setSizeTables,setLineMap } = menuSlice.actions
 
 export default menuSlice.reducer

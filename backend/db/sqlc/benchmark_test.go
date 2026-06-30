@@ -5,25 +5,6 @@ import (
 	"testing"
 )
 
-func BenchmarkGetProducts_SingleQuery(b *testing.B) {
-	// Подготовка общих параметров (только фильтры, лимит/оффсет)
-	params := GetProductsByFiltersParams{
-		Limitval:   1000,
-		Offsetval:  8,
-		Categories: []int32{1},
-		SortType:   1,
-		// ... остальные пустые/нулевые
-	}
-
-	b.ResetTimer() // сбрасываем таймер после подготовки
-	for i := 0; i < b.N; i++ {
-		_, err := testStore.GetProductsByFilters(context.Background(), params)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
 func BenchmarkGetProducts_SeparateQueries(b *testing.B) {
 	countParams := CountProductsByFiltersParams{
 		Categories: []int32{1},

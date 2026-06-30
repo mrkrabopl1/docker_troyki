@@ -41,7 +41,13 @@ type Store interface {
 	GetProductsWithDiscountComplex(ctx context.Context) ([]types.ProductsSearchResponse1, error)
 	GetProductsForAdminByFiltersComplex(ctx context.Context, name string, page int, size int, filters types.ProductsForAdminFilterStruct, orderedType int32) (RespProductsForAdminByStringStruct, error)
 	GetSnickersHistoryComplex(ctx context.Context, idCustomer int32) ([]types.ProductsSearchResponse1, error)
-	GetProductsAndFiltersByNameCategoryAndType(ctx context.Context, filterParams GetFiltersByNameCategoryAndTypeParams, page int, size int, filters types.ProductsFilterStruct, orderedType int) (RespSearchProductsAndFiltersByString, error)
+	GetProductsAndFiltersByNameCategoryAndType(
+		ctx context.Context,
+		filtersParams GetFiltersByNameCategoryAndTypeParamsNew,
+		page int, size int,
+		filters types.ProductsFilterStruct,
+		orderedType int,
+	) (RespSearchProductsAndFiltersByString, error)
 	GetProductsByString(ctx context.Context, name string, page int, size int, filters types.ProductsFilterStruct, orderedType int) (RespSearchProductsByString, error)
 	CreateDiscounts(ctx context.Context, discountData map[int32]DiscountData) error
 	GetProductsByFiltersComplex(ctx context.Context, name string, page int, size int, filters types.ProductsFilterStruct, orderedType int32) (RespProductsByStringStruct, error)
@@ -51,6 +57,8 @@ type Store interface {
 	GetPageWidgetsFromDB(ctx context.Context) ([]types.CachedWidget, error)
 	GetProductsForWidgetFromDB(ctx context.Context, widget PageWidget) ([]types.CachedProduct, error)
 	RecalculateAffectedProducts(ctx context.Context, ruleID int32) error
+	GetFiltersOptimized(ctx context.Context, params FilterParams) (*FiltersResult, error)
+	GetFiltersOptimizedMemo(ctx context.Context, params FilterParams) (*FiltersResult, error)
 }
 
 // SQLStore provides all functions to execute SQL queries and transactions

@@ -99,11 +99,13 @@ const AdminProductForm: React.FC = () => {
 
     // Данные для комбобоксов
     const brandsData = useMemo(() => {
-        return firms.reduce((acc, name) => {
-            const id = firmMap[name];
-            if (id) acc[id] = name;
-            return acc;
-        }, {} as Record<number, string>);
+         return firms.reduce((acc, name) => {
+        const firm = firmMap[name]; // 👈 теперь это объект Firm
+        if (firm) {
+            acc[firm.id] = name;    // 👈 берём id из объекта
+        }
+        return acc;
+    }, {} as Record<number, string>);
     }, [firms, firmMap]);
 
     const linesData = useMemo(() => {
@@ -191,7 +193,7 @@ const AdminProductForm: React.FC = () => {
         setLoading(true);
         try {
             await getAdminProductById(productId, (data) => {
-                const brandId = firmMap[data.firm] || -1;
+                const brandId = firmMap[data.firm].id || -1;
                 setSelectedBrandId(brandId);
                 setSelectedLineName(data.line || '');
 

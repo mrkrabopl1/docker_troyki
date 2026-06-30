@@ -87,36 +87,6 @@ func (q *Queries) BulkAddRuleItems(ctx context.Context, arg BulkAddRuleItemsPara
 	return err
 }
 
-const bulkInsertDiscounts = `-- name: BulkInsertDiscounts :exec
-INSERT INTO discount (productid, value, minprice, maxdiscprice)
-SELECT unnest($1::integer []),
-    unnest($2::jsonb []),
-    unnest($3::integer []),
-    unnest($4::integer []) ON CONFLICT (productid) DO
-UPDATE
-SET value = EXCLUDED.value,
-    minprice = EXCLUDED.minprice,
-    maxdiscprice = EXCLUDED.maxdiscprice,
-    updated_at = NOW()
-`
-
-type BulkInsertDiscountsParams struct {
-	ProductIds     []int32  `json:"product_ids"`
-	DiscountValues [][]byte `json:"discount_values"`
-	MinPrices      []int32  `json:"min_prices"`
-	MaxDiscPrices  []int32  `json:"max_disc_prices"`
-}
-
-func (q *Queries) BulkInsertDiscounts(ctx context.Context, arg BulkInsertDiscountsParams) error {
-	_, err := q.db.Exec(ctx, bulkInsertDiscounts,
-		arg.ProductIds,
-		arg.DiscountValues,
-		arg.MinPrices,
-		arg.MaxDiscPrices,
-	)
-	return err
-}
-
 const bulkUpdateProductStatus = `-- name: BulkUpdateProductStatus :exec
 UPDATE products
 SET status = $1,
@@ -135,32 +105,63 @@ func (q *Queries) BulkUpdateProductStatus(ctx context.Context, arg BulkUpdatePro
 }
 
 const bulkUpsertDiscount = `-- name: BulkUpsertDiscount :exec
-INSERT INTO discount (productid, value, minprice, maxdiscprice)
-SELECT
-    unnest($1::int[]),
-    unnest($2::jsonb[]),
-    unnest($3::int[]),
-    unnest($4::int[])
-ON CONFLICT (productid) DO UPDATE SET
+INSERT INTO discount (
+    productid, 
+    value, 
+    discount_percent, 
+    original_price, 
+    discounted_price, 
+    min_price, 
+    max_price,
+    updated_at,
+    rule_id
+)
+SELECT 
+    unnest($1::int[]) as productid,
+    unnest($2::jsonb[]) as value,
+    unnest($3::int[]) as discount_percent,
+    unnest($4::int[]) as original_price,
+    unnest($5::int[]) as discounted_price,
+    unnest($6::int[]) as min_price,
+    unnest($7::int[]) as max_price,
+    NOW() as updated_at,
+    unnest($8::int[]) as rule_id
+ON CONFLICT (productid) DO UPDATE 
+SET 
     value = EXCLUDED.value,
-    minprice = EXCLUDED.minprice,
-    maxdiscprice = EXCLUDED.maxdiscprice,
-    updated_at = NOW()
+    discount_percent = EXCLUDED.discount_percent,
+    original_price = EXCLUDED.original_price,
+    discounted_price = EXCLUDED.discounted_price,
+    min_price = EXCLUDED.min_price,
+    max_price = EXCLUDED.max_price,
+    updated_at = EXCLUDED.updated_at,
+    rule_id = CASE 
+        WHEN EXCLUDED.rule_id = 0 THEN NULL 
+        ELSE EXCLUDED.rule_id 
+    END
 `
 
 type BulkUpsertDiscountParams struct {
-	ProductIds    []int32  `json:"product_ids"`
-	Values        [][]byte `json:"values"`
-	MinPrices     []int32  `json:"min_prices"`
-	MaxDiscPrices []int32  `json:"max_disc_prices"`
+	ProductIds       []int32  `json:"product_ids"`
+	Values           [][]byte `json:"values"`
+	DiscountPercents []int32  `json:"discount_percents"`
+	OriginalPrices   []int32  `json:"original_prices"`
+	DiscountedPrices []int32  `json:"discounted_prices"`
+	MinPrices        []int32  `json:"min_prices"`
+	MaxPrices        []int32  `json:"max_prices"`
+	RuleIds          []int32  `json:"rule_ids"`
 }
 
 func (q *Queries) BulkUpsertDiscount(ctx context.Context, arg BulkUpsertDiscountParams) error {
 	_, err := q.db.Exec(ctx, bulkUpsertDiscount,
 		arg.ProductIds,
 		arg.Values,
+		arg.DiscountPercents,
+		arg.OriginalPrices,
+		arg.DiscountedPrices,
 		arg.MinPrices,
-		arg.MaxDiscPrices,
+		arg.MaxPrices,
+		arg.RuleIds,
 	)
 	return err
 }
@@ -1820,6 +1821,206 @@ func (q *Queries) GetActiveDiscountRules(ctx context.Context) ([]DiscountRule, e
 		return nil, err
 	}
 	return items, nil
+}
+
+const getAggregatedFilters = `-- name: GetAggregatedFilters :one
+WITH product_data AS (
+    SELECT id, brand_id, line_id, type, bodytype, minprice, maxprice FROM tmp_product_ids
+),
+aggregated AS (
+    SELECT
+        (SELECT jsonb_object_agg(bodytype::text, cnt)
+         FROM (SELECT bodytype, COUNT(*) cnt FROM product_data GROUP BY bodytype) s) AS bodytypes,
+        (SELECT jsonb_object_agg(firm, cnt)
+         FROM (SELECT b.name AS firm, COUNT(*) cnt
+               FROM product_data pd
+               JOIN brands b ON pd.brand_id = b.id
+               GROUP BY b.name) s) AS firms,
+        (SELECT jsonb_agg(type)
+         FROM (SELECT type, COUNT(*) FROM product_data GROUP BY type) s) AS product_types,
+        (SELECT MIN(minprice) FROM product_data) AS min_price,
+        (SELECT MAX(maxprice) FROM product_data) AS max_price
+),
+sizes_agg AS (
+    SELECT jsonb_object_agg(size_key, cnt) AS sizes
+    FROM (
+        SELECT size_key, COUNT(*) AS cnt
+        FROM product_sizes
+        WHERE product_id IN (SELECT id FROM product_data)
+          AND price > 0
+        GROUP BY size_key
+    ) s
+),
+discount_rules_agg AS (
+    SELECT COALESCE(
+        jsonb_agg(
+            jsonb_build_object(
+                'id', dr.id,
+                'name', dr.name,
+                'discount_type', dr.discount_type,
+                'discount_value', dr.discount_value,
+                'priority', dr.priority
+            )
+        ),
+        '[]'::jsonb
+    ) AS discount_rules
+    FROM discount_rules dr
+    WHERE dr.id IN (
+        SELECT DISTINCT d.rule_id
+        FROM discount d
+        WHERE d.productid IN (SELECT id FROM product_data)
+          AND d.discount_percent > 0
+    )
+    AND dr.is_active
+    AND dr.starts_at <= NOW()
+    AND (dr.ends_at IS NULL OR dr.ends_at > NOW())
+)
+SELECT
+    (SELECT sizes FROM sizes_agg) AS sizes,
+    (SELECT bodytypes FROM aggregated) AS bodytypes,
+    (SELECT min_price FROM aggregated) AS min_price,
+    (SELECT max_price FROM aggregated) AS max_price,
+    (SELECT firms FROM aggregated) AS firms,
+    (SELECT product_types FROM aggregated) AS product_types,
+    (SELECT discount_rules FROM discount_rules_agg) AS discount_rules
+`
+
+type GetAggregatedFiltersRow struct {
+	Sizes         []byte      `json:"sizes"`
+	Bodytypes     []byte      `json:"bodytypes"`
+	MinPrice      interface{} `json:"min_price"`
+	MaxPrice      interface{} `json:"max_price"`
+	Firms         []byte      `json:"firms"`
+	ProductTypes  []byte      `json:"product_types"`
+	DiscountRules interface{} `json:"discount_rules"`
+}
+
+func (q *Queries) GetAggregatedFilters(ctx context.Context) (GetAggregatedFiltersRow, error) {
+	row := q.db.QueryRow(ctx, getAggregatedFilters)
+	var i GetAggregatedFiltersRow
+	err := row.Scan(
+		&i.Sizes,
+		&i.Bodytypes,
+		&i.MinPrice,
+		&i.MaxPrice,
+		&i.Firms,
+		&i.ProductTypes,
+		&i.DiscountRules,
+	)
+	return i, err
+}
+
+const getAggregatedFiltersFast = `-- name: GetAggregatedFiltersFast :one
+WITH product_data AS MATERIALIZED (
+    SELECT 
+        p.id, p.brand_id, p.line_id, p.type, p.bodytype, 
+        p.minprice, p.maxprice,
+        b.name as firm
+    FROM products p
+    JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+    WHERE p.status = 'active'
+      AND ($1::int IS NULL OR p.type = $1)
+      AND ($2::int IS NULL OR p.category = $2)
+      AND ($3::text IS NULL OR p.name ILIKE '%' || $3 || '%')
+      AND ($4::int IS NULL OR p.brand_id = $4)
+)
+SELECT 
+    COALESCE(
+        (SELECT jsonb_object_agg(bodytype, cnt) 
+         FROM (SELECT bodytype, COUNT(*) cnt FROM product_data GROUP BY bodytype) s),
+        '{}'::jsonb
+    ) AS bodytypes,
+    
+    COALESCE(
+        (SELECT jsonb_object_agg(firm, cnt) 
+         FROM (SELECT firm, COUNT(*) cnt FROM product_data GROUP BY firm) s),
+        '{}'::jsonb
+    ) AS firms,
+    
+    COALESCE(
+        (SELECT jsonb_agg(type) 
+         FROM (SELECT type FROM product_data GROUP BY type) s),
+        '[]'::jsonb
+    ) AS product_types,
+    
+    COALESCE(
+        (SELECT MIN(minprice) FROM product_data), 0
+    ) AS min_price,
+    
+    COALESCE(
+        (SELECT MAX(maxprice) FROM product_data), 0
+    ) AS max_price,
+    
+    COALESCE(
+        (SELECT jsonb_object_agg(size_key, cnt)
+         FROM (SELECT size_key, COUNT(*) cnt
+               FROM product_sizes ps
+               WHERE ps.product_id IN (SELECT id FROM product_data)
+                 AND ps.price > 0
+               GROUP BY size_key) s),
+        '{}'::jsonb
+    ) AS sizes,
+    
+    COALESCE(
+        (SELECT jsonb_agg(
+            jsonb_build_object(
+                'id', dr.id,
+                'name', dr.name,
+                'discount_type', dr.discount_type,
+                'discount_value', dr.discount_value,
+                'priority', dr.priority
+            )
+         )
+         FROM discount_rules dr
+         WHERE dr.id IN (
+             SELECT DISTINCT d.rule_id
+             FROM discount d
+             WHERE d.productid IN (SELECT id FROM product_data)
+               AND d.discount_percent > 0
+         )
+         AND dr.is_active
+         AND dr.starts_at <= NOW()
+         AND (dr.ends_at IS NULL OR dr.ends_at > NOW())
+        ),
+        '[]'::jsonb
+    ) AS discount_rules
+`
+
+type GetAggregatedFiltersFastParams struct {
+	Column1 int32  `json:"column_1"`
+	Column2 int32  `json:"column_2"`
+	Column3 string `json:"column_3"`
+	Column4 int32  `json:"column_4"`
+}
+
+type GetAggregatedFiltersFastRow struct {
+	Bodytypes     interface{} `json:"bodytypes"`
+	Firms         interface{} `json:"firms"`
+	ProductTypes  interface{} `json:"product_types"`
+	MinPrice      interface{} `json:"min_price"`
+	MaxPrice      interface{} `json:"max_price"`
+	Sizes         interface{} `json:"sizes"`
+	DiscountRules interface{} `json:"discount_rules"`
+}
+
+func (q *Queries) GetAggregatedFiltersFast(ctx context.Context, arg GetAggregatedFiltersFastParams) (GetAggregatedFiltersFastRow, error) {
+	row := q.db.QueryRow(ctx, getAggregatedFiltersFast,
+		arg.Column1,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+	)
+	var i GetAggregatedFiltersFastRow
+	err := row.Scan(
+		&i.Bodytypes,
+		&i.Firms,
+		&i.ProductTypes,
+		&i.MinPrice,
+		&i.MaxPrice,
+		&i.Sizes,
+		&i.DiscountRules,
+	)
+	return i, err
 }
 
 const getAllActiveDiscountRules = `-- name: GetAllActiveDiscountRules :many
@@ -3811,28 +4012,41 @@ func (q *Queries) GetCountOfCollectionsOrFirms(ctx context.Context, arg GetCount
 }
 
 const getDiscountByProductID = `-- name: GetDiscountByProductID :one
-SELECT d.productid,
+SELECT 
+    d.productid,
     p.name AS product_name,
     p.article,
+    p.image_path,
     d.value,
-    d.minprice,
-    d.maxdiscprice,
+    d.discount_percent,
+    d.original_price,
+    d.discounted_price,
+    d.min_price,
+    d.max_price,
     d.created_at,
-    d.updated_at
+    d.updated_at,
+    -- Флаг наличия скидки (всегда true, т.к. запись есть)
+    true AS has_discount
 FROM discount d
-    JOIN products p ON d.productid = p.id
+JOIN products p ON d.productid = p.id
 WHERE d.productid = $1
+  AND p.status = 'active'
 `
 
 type GetDiscountByProductIDRow struct {
-	Productid    int32              `json:"productid"`
-	ProductName  string             `json:"product_name"`
-	Article      string             `json:"article"`
-	Value        []byte             `json:"value"`
-	Minprice     int32              `json:"minprice"`
-	Maxdiscprice pgtype.Int4        `json:"maxdiscprice"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	Productid       int32              `json:"productid"`
+	ProductName     string             `json:"product_name"`
+	Article         string             `json:"article"`
+	ImagePath       string             `json:"image_path"`
+	Value           []byte             `json:"value"`
+	DiscountPercent int32              `json:"discount_percent"`
+	OriginalPrice   int32              `json:"original_price"`
+	DiscountedPrice int32              `json:"discounted_price"`
+	MinPrice        int32              `json:"min_price"`
+	MaxPrice        int32              `json:"max_price"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	HasDiscount     bool               `json:"has_discount"`
 }
 
 func (q *Queries) GetDiscountByProductID(ctx context.Context, productid int32) (GetDiscountByProductIDRow, error) {
@@ -3842,11 +4056,16 @@ func (q *Queries) GetDiscountByProductID(ctx context.Context, productid int32) (
 		&i.Productid,
 		&i.ProductName,
 		&i.Article,
+		&i.ImagePath,
 		&i.Value,
-		&i.Minprice,
-		&i.Maxdiscprice,
+		&i.DiscountPercent,
+		&i.OriginalPrice,
+		&i.DiscountedPrice,
+		&i.MinPrice,
+		&i.MaxPrice,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HasDiscount,
 	)
 	return i, err
 }
@@ -3980,16 +4199,23 @@ func (q *Queries) GetDiscountRulesCount(ctx context.Context) (int64, error) {
 }
 
 const getDiscounts = `-- name: GetDiscounts :many
-SELECT d.productid,
+SELECT 
+    d.productid,
     p.name AS product_name,
     p.article,
+    p.image_path,
+    p.status AS product_status,
     d.value,
-    d.minprice,
-    d.maxdiscprice,
+    d.discount_percent,
+    d.original_price,
+    d.discounted_price,
+    d.min_price,
+    d.max_price,
     d.created_at,
-    d.updated_at
+    d.updated_at,
+    true AS has_discount
 FROM discount d
-    JOIN products p ON d.productid = p.id
+JOIN products p ON d.productid = p.id
 ORDER BY d.created_at DESC
 LIMIT $1 OFFSET $2
 `
@@ -4000,14 +4226,20 @@ type GetDiscountsParams struct {
 }
 
 type GetDiscountsRow struct {
-	Productid    int32              `json:"productid"`
-	ProductName  string             `json:"product_name"`
-	Article      string             `json:"article"`
-	Value        []byte             `json:"value"`
-	Minprice     int32              `json:"minprice"`
-	Maxdiscprice pgtype.Int4        `json:"maxdiscprice"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	Productid       int32              `json:"productid"`
+	ProductName     string             `json:"product_name"`
+	Article         string             `json:"article"`
+	ImagePath       string             `json:"image_path"`
+	ProductStatus   string             `json:"product_status"`
+	Value           []byte             `json:"value"`
+	DiscountPercent int32              `json:"discount_percent"`
+	OriginalPrice   int32              `json:"original_price"`
+	DiscountedPrice int32              `json:"discounted_price"`
+	MinPrice        int32              `json:"min_price"`
+	MaxPrice        int32              `json:"max_price"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	HasDiscount     bool               `json:"has_discount"`
 }
 
 func (q *Queries) GetDiscounts(ctx context.Context, arg GetDiscountsParams) ([]GetDiscountsRow, error) {
@@ -4023,11 +4255,17 @@ func (q *Queries) GetDiscounts(ctx context.Context, arg GetDiscountsParams) ([]G
 			&i.Productid,
 			&i.ProductName,
 			&i.Article,
+			&i.ImagePath,
+			&i.ProductStatus,
 			&i.Value,
-			&i.Minprice,
-			&i.Maxdiscprice,
+			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
+			&i.MinPrice,
+			&i.MaxPrice,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.HasDiscount,
 		); err != nil {
 			return nil, err
 		}
@@ -4180,6 +4418,277 @@ func (q *Queries) GetFiltersByNameCategoryAndType(ctx context.Context, arg GetFi
 	return i, err
 }
 
+const getFiltersByNameCategoryAndTypeNew = `-- name: GetFiltersByNameCategoryAndTypeNew :one
+WITH product_data AS (
+    SELECT
+        p.id,
+        p.brand_id,
+        p.line_id,
+        b.name as firm,
+        p.minprice,
+        p.maxprice,
+        p.bodytype,
+        p.type as product_type_id
+    FROM products p
+    JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+    WHERE p.status = 'active'
+        AND (CASE WHEN $1::int = 0 THEN TRUE ELSE p.type = $1 END)
+        AND (CASE WHEN $2::int = 0 THEN TRUE ELSE p.category = $2 END)
+        AND (CASE WHEN $3::text = '' THEN TRUE ELSE p.name ILIKE '%' || $3 || '%' END)
+),
+firm_counts AS (
+    SELECT firm, COUNT(*) AS firm_count
+    FROM product_data
+    WHERE firm IS NOT NULL
+    GROUP BY firm
+),
+bodytype_counts AS (
+    SELECT bodytype, COUNT(*) as count
+    FROM product_data
+    GROUP BY bodytype
+),
+price_range AS (
+    SELECT COALESCE(MIN(minprice), 0) AS min_price,
+           COALESCE(MAX(maxprice), 0) AS max_price
+    FROM product_data
+),
+type_data AS (
+    SELECT product_type_id, COUNT(*) as type_count
+    FROM product_data
+    GROUP BY product_type_id
+),
+sizes_agg AS (
+    SELECT jsonb_object_agg(size_key, cnt) AS sizes
+    FROM (
+        SELECT size_key, COUNT(*) AS cnt
+        FROM product_sizes ps
+        WHERE ps.product_id IN (SELECT id FROM product_data)
+          AND ps.price > 0
+        GROUP BY size_key
+    ) s
+),
+discount_rules_applied AS (
+    SELECT DISTINCT
+        dr.id,
+        dr.name,
+        dr.discount_type,
+        dr.discount_value,
+        dr.priority
+    FROM discount_rules dr
+    WHERE dr.is_active = true
+        AND dr.starts_at <= NOW()
+        AND (dr.ends_at IS NULL OR dr.ends_at > NOW())
+        AND dr.id IN (
+            SELECT DISTINCT d.rule_id
+            FROM discount d
+            WHERE d.productid IN (SELECT id FROM product_data)
+              AND d.discount_percent > 0
+        )
+)
+SELECT
+    COALESCE(
+        (SELECT sizes FROM sizes_agg),
+        '{}'::jsonb
+    ) as sizes,
+    COALESCE(
+        (SELECT jsonb_object_agg(bodytype::text, count) FROM bodytype_counts),
+        '{}'::jsonb
+    ) as bodytypes,
+    (SELECT min_price FROM price_range) as min_price,
+    (SELECT max_price FROM price_range) as max_price,
+    COALESCE(
+        (SELECT jsonb_object_agg(COALESCE(firm, 'Unknown'), firm_count) FROM firm_counts),
+        '{}'::jsonb
+    ) as firms,
+    COALESCE(
+        (SELECT jsonb_agg(product_type_id) FROM type_data),
+        '[]'::jsonb
+    ) as product_types,
+    COALESCE(
+        (SELECT jsonb_agg(
+            jsonb_build_object(
+                'id', id,
+                'name', name,
+                'discount_type', discount_type,
+                'discount_value', discount_value,
+                'priority', priority
+            )
+         ) FROM discount_rules_applied),
+        '[]'::jsonb
+    ) as discount_rules
+`
+
+type GetFiltersByNameCategoryAndTypeNewParams struct {
+	Column1 int32  `json:"column_1"`
+	Column2 int32  `json:"column_2"`
+	Column3 string `json:"column_3"`
+}
+
+type GetFiltersByNameCategoryAndTypeNewRow struct {
+	Sizes         interface{} `json:"sizes"`
+	Bodytypes     interface{} `json:"bodytypes"`
+	MinPrice      interface{} `json:"min_price"`
+	MaxPrice      interface{} `json:"max_price"`
+	Firms         interface{} `json:"firms"`
+	ProductTypes  interface{} `json:"product_types"`
+	DiscountRules interface{} `json:"discount_rules"`
+}
+
+func (q *Queries) GetFiltersByNameCategoryAndTypeNew(ctx context.Context, arg GetFiltersByNameCategoryAndTypeNewParams) (GetFiltersByNameCategoryAndTypeNewRow, error) {
+	row := q.db.QueryRow(ctx, getFiltersByNameCategoryAndTypeNew, arg.Column1, arg.Column2, arg.Column3)
+	var i GetFiltersByNameCategoryAndTypeNewRow
+	err := row.Scan(
+		&i.Sizes,
+		&i.Bodytypes,
+		&i.MinPrice,
+		&i.MaxPrice,
+		&i.Firms,
+		&i.ProductTypes,
+		&i.DiscountRules,
+	)
+	return i, err
+}
+
+const getFiltersByNameCategoryAndTypeNewWithLine = `-- name: GetFiltersByNameCategoryAndTypeNewWithLine :one
+WITH product_data AS (
+    SELECT
+        p.id,
+        p.brand_id,
+        p.line_id,
+        b.name as firm,
+        bl.name as line_name,
+        p.minprice,
+        p.maxprice,
+        p.bodytype,
+        p.type as product_type_id
+    FROM products p
+    JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+    WHERE p.status = 'active'
+        AND (CASE WHEN $1::int = 0 THEN TRUE ELSE p.type = $1 END)
+        AND (CASE WHEN $2::int = 0 THEN TRUE ELSE p.category = $2 END)
+        AND (CASE WHEN $3::text = '' THEN TRUE ELSE p.name ILIKE '%' || $3 || '%' END)
+        AND (CASE WHEN $4::int = 0 THEN TRUE ELSE p.brand_id = $4 END)  -- 👈 ФИЛЬТР ПО БРЕНДУ
+),
+line_counts AS (
+    SELECT line_name, COUNT(*) AS line_count
+    FROM product_data
+    WHERE line_name IS NOT NULL
+    GROUP BY line_name
+),
+bodytype_counts AS (
+    SELECT bodytype, COUNT(*) as count
+    FROM product_data
+    GROUP BY bodytype
+),
+price_range AS (
+    SELECT COALESCE(MIN(minprice), 0) AS min_price,
+           COALESCE(MAX(maxprice), 0) AS max_price
+    FROM product_data
+),
+type_data AS (
+    SELECT product_type_id, COUNT(*) as type_count
+    FROM product_data
+    GROUP BY product_type_id
+),
+sizes_agg AS (
+    SELECT jsonb_object_agg(size_key, cnt) AS sizes
+    FROM (
+        SELECT size_key, COUNT(*) AS cnt
+        FROM product_sizes ps
+        WHERE ps.product_id IN (SELECT id FROM product_data)
+          AND ps.price > 0
+        GROUP BY size_key
+    ) s
+),
+discount_rules_applied AS (
+    SELECT DISTINCT
+        dr.id,
+        dr.name,
+        dr.discount_type,
+        dr.discount_value,
+        dr.priority
+    FROM discount_rules dr
+    WHERE dr.is_active = true
+        AND dr.starts_at <= NOW()
+        AND (dr.ends_at IS NULL OR dr.ends_at > NOW())
+        AND dr.id IN (
+            SELECT DISTINCT d.rule_id
+            FROM discount d
+            WHERE d.productid IN (SELECT id FROM product_data)
+              AND d.discount_percent > 0
+        )
+)
+SELECT
+    COALESCE(
+        (SELECT sizes FROM sizes_agg),
+        '{}'::jsonb
+    ) as sizes,
+    COALESCE(
+        (SELECT jsonb_object_agg(bodytype::text, count) FROM bodytype_counts),
+        '{}'::jsonb
+    ) as bodytypes,
+    (SELECT min_price FROM price_range) as min_price,
+    (SELECT max_price FROM price_range) as max_price,
+    COALESCE(
+        (SELECT jsonb_object_agg(COALESCE(line_name, 'Unknown'), line_count) FROM line_counts),
+        '{}'::jsonb
+    ) as lines,
+    COALESCE(
+        (SELECT jsonb_agg(product_type_id) FROM type_data),
+        '[]'::jsonb
+    ) as product_types,
+    COALESCE(
+        (SELECT jsonb_agg(
+            jsonb_build_object(
+                'id', id,
+                'name', name,
+                'discount_type', discount_type,
+                'discount_value', discount_value,
+                'priority', priority
+            )
+         ) FROM discount_rules_applied),
+        '[]'::jsonb
+    ) as discount_rules
+`
+
+type GetFiltersByNameCategoryAndTypeNewWithLineParams struct {
+	Column1 int32  `json:"column_1"`
+	Column2 int32  `json:"column_2"`
+	Column3 string `json:"column_3"`
+	Column4 int32  `json:"column_4"`
+}
+
+type GetFiltersByNameCategoryAndTypeNewWithLineRow struct {
+	Sizes         interface{} `json:"sizes"`
+	Bodytypes     interface{} `json:"bodytypes"`
+	MinPrice      interface{} `json:"min_price"`
+	MaxPrice      interface{} `json:"max_price"`
+	Lines         interface{} `json:"lines"`
+	ProductTypes  interface{} `json:"product_types"`
+	DiscountRules interface{} `json:"discount_rules"`
+}
+
+func (q *Queries) GetFiltersByNameCategoryAndTypeNewWithLine(ctx context.Context, arg GetFiltersByNameCategoryAndTypeNewWithLineParams) (GetFiltersByNameCategoryAndTypeNewWithLineRow, error) {
+	row := q.db.QueryRow(ctx, getFiltersByNameCategoryAndTypeNewWithLine,
+		arg.Column1,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+	)
+	var i GetFiltersByNameCategoryAndTypeNewWithLineRow
+	err := row.Scan(
+		&i.Sizes,
+		&i.Bodytypes,
+		&i.MinPrice,
+		&i.MaxPrice,
+		&i.Lines,
+		&i.ProductTypes,
+		&i.DiscountRules,
+	)
+	return i, err
+}
+
 const getFirms = `-- name: GetFirms :many
 SELECT 
     b.id as brand_id,
@@ -4231,13 +4740,16 @@ func (q *Queries) GetFirms(ctx context.Context) ([]GetFirmsRow, error) {
 }
 
 const getFullProductsInfoByIds = `-- name: GetFullProductsInfoByIds :many
-SELECT p.minprice,
-    p.maxprice,
+SELECT
+    COALESCE(d.min_price, p.minprice) AS min_price,
+    COALESCE(d.max_price, p.maxprice) AS max_price,
     p.id as global_id,
     p.image_path,
     p.name,
     b.name as firm,
-    d.maxdiscprice,
+     d.discount_percent,
+    d.original_price,
+    d.discounted_price,
     p.type,
     p.sizes as sizes_jsonb
 FROM products p
@@ -4249,15 +4761,17 @@ ORDER BY p.minprice ASC
 `
 
 type GetFullProductsInfoByIdsRow struct {
-	Minprice     int32       `json:"minprice"`
-	Maxprice     int32       `json:"maxprice"`
-	GlobalID     int32       `json:"global_id"`
-	ImagePath    string      `json:"image_path"`
-	Name         string      `json:"name"`
-	Firm         string      `json:"firm"`
-	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-	Type         int32       `json:"type"`
-	SizesJsonb   []byte      `json:"sizes_jsonb"`
+	MinPrice        int32       `json:"min_price"`
+	MaxPrice        int32       `json:"max_price"`
+	GlobalID        int32       `json:"global_id"`
+	ImagePath       string      `json:"image_path"`
+	Name            string      `json:"name"`
+	Firm            string      `json:"firm"`
+	DiscountPercent pgtype.Int4 `json:"discount_percent"`
+	OriginalPrice   pgtype.Int4 `json:"original_price"`
+	DiscountedPrice pgtype.Int4 `json:"discounted_price"`
+	Type            int32       `json:"type"`
+	SizesJsonb      []byte      `json:"sizes_jsonb"`
 }
 
 func (q *Queries) GetFullProductsInfoByIds(ctx context.Context, dollar_1 []int32) ([]GetFullProductsInfoByIdsRow, error) {
@@ -4270,13 +4784,15 @@ func (q *Queries) GetFullProductsInfoByIds(ctx context.Context, dollar_1 []int32
 	for rows.Next() {
 		var i GetFullProductsInfoByIdsRow
 		if err := rows.Scan(
-			&i.Minprice,
-			&i.Maxprice,
+			&i.MinPrice,
+			&i.MaxPrice,
 			&i.GlobalID,
 			&i.ImagePath,
 			&i.Name,
 			&i.Firm,
-			&i.Maxdiscprice,
+			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
 			&i.Type,
 			&i.SizesJsonb,
 		); err != nil {
@@ -4368,12 +4884,13 @@ func (q *Queries) GetMainPageInfo(ctx context.Context, productsPerCategory int32
 }
 
 const getMerchCollection = `-- name: GetMerchCollection :many
-SELECT COALESCE(d.minprice, p.minprice) AS minprice,
+SELECT 
+    COALESCE(d.min_price, p.minprice) AS minprice,
     p.id AS global_id,
     p.image_path,
     p.name,
     b.name as firm,
-    d.maxdiscprice,
+    d.discounted_price,
     st.productid,
     p.type,
     COUNT(*) OVER() AS total_count
@@ -4390,7 +4907,7 @@ WHERE (
     )
     AND p.status = 'active'
 ORDER BY CASE
-        WHEN COALESCE(COALESCE(d.minprice, p.minprice), 0) > 0 THEN 0
+        WHEN COALESCE(COALESCE(d.min_price, p.minprice), 0) > 0 THEN 0
         ELSE 1
     END
 LIMIT $4 OFFSET $3
@@ -4404,15 +4921,15 @@ type GetMerchCollectionParams struct {
 }
 
 type GetMerchCollectionRow struct {
-	Minprice     int32       `json:"minprice"`
-	GlobalID     int32       `json:"global_id"`
-	ImagePath    string      `json:"image_path"`
-	Name         string      `json:"name"`
-	Firm         string      `json:"firm"`
-	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-	Productid    pgtype.Int4 `json:"productid"`
-	Type         int32       `json:"type"`
-	TotalCount   int64       `json:"total_count"`
+	Minprice        int32       `json:"minprice"`
+	GlobalID        int32       `json:"global_id"`
+	ImagePath       string      `json:"image_path"`
+	Name            string      `json:"name"`
+	Firm            string      `json:"firm"`
+	DiscountedPrice pgtype.Int4 `json:"discounted_price"`
+	Productid       pgtype.Int4 `json:"productid"`
+	Type            int32       `json:"type"`
+	TotalCount      int64       `json:"total_count"`
 }
 
 func (q *Queries) GetMerchCollection(ctx context.Context, arg GetMerchCollectionParams) ([]GetMerchCollectionRow, error) {
@@ -4435,7 +4952,7 @@ func (q *Queries) GetMerchCollection(ctx context.Context, arg GetMerchCollection
 			&i.ImagePath,
 			&i.Name,
 			&i.Firm,
-			&i.Maxdiscprice,
+			&i.DiscountedPrice,
 			&i.Productid,
 			&i.Type,
 			&i.TotalCount,
@@ -4451,12 +4968,15 @@ func (q *Queries) GetMerchCollection(ctx context.Context, arg GetMerchCollection
 }
 
 const getMerchCollectionWithCount = `-- name: GetMerchCollectionWithCount :many
-SELECT COALESCE(d.minprice, p.minprice) AS minprice,
+SELECT 
+    COALESCE(d.min_price, p.minprice) AS minprice,
     p.id,
     p.image_path,
     p.name,
     b.name as firm,
-    d.maxdiscprice,
+    d.discount_percent,
+    d.original_price,
+    d.discounted_price,
     p.type,
     COUNT(*) OVER () AS total_count
 FROM products p
@@ -4482,14 +5002,16 @@ type GetMerchCollectionWithCountParams struct {
 }
 
 type GetMerchCollectionWithCountRow struct {
-	Minprice     int32       `json:"minprice"`
-	ID           int32       `json:"id"`
-	ImagePath    string      `json:"image_path"`
-	Name         string      `json:"name"`
-	Firm         string      `json:"firm"`
-	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-	Type         int32       `json:"type"`
-	TotalCount   int64       `json:"total_count"`
+	Minprice        int32       `json:"minprice"`
+	ID              int32       `json:"id"`
+	ImagePath       string      `json:"image_path"`
+	Name            string      `json:"name"`
+	Firm            string      `json:"firm"`
+	DiscountPercent pgtype.Int4 `json:"discount_percent"`
+	OriginalPrice   pgtype.Int4 `json:"original_price"`
+	DiscountedPrice pgtype.Int4 `json:"discounted_price"`
+	Type            int32       `json:"type"`
+	TotalCount      int64       `json:"total_count"`
 }
 
 func (q *Queries) GetMerchCollectionWithCount(ctx context.Context, arg GetMerchCollectionWithCountParams) ([]GetMerchCollectionWithCountRow, error) {
@@ -4512,7 +5034,9 @@ func (q *Queries) GetMerchCollectionWithCount(ctx context.Context, arg GetMerchC
 			&i.ImagePath,
 			&i.Name,
 			&i.Firm,
-			&i.Maxdiscprice,
+			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
 			&i.Type,
 			&i.TotalCount,
 		); err != nil {
@@ -4599,7 +5123,7 @@ const getMerchProductsByFirmName = `-- name: GetMerchProductsByFirmName :many
 SELECT p.name,
     p.image_path,
     p.id,
-    COALESCE(d.minprice, p.minprice) AS value,
+    COALESCE(d.min_price, p.minprice) AS value,
     p.article,
     p.type
 FROM products p
@@ -4635,63 +5159,6 @@ func (q *Queries) GetMerchProductsByFirmName(ctx context.Context, name string) (
 			&i.ID,
 			&i.Value,
 			&i.Article,
-			&i.Type,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getMerchWithDiscount = `-- name: GetMerchWithDiscount :many
-SELECT p.minprice,
-    p.qId,
-    p.id,
-    p.image_path,
-    p.name,
-    b.name as firm,
-    d.maxdiscprice,
-    p.type
-FROM products p
-    LEFT JOIN discount d ON p.id = d.productid
-    JOIN brands b ON p.brand_id = b.id
-    AND b.is_active = true
-WHERE p.status = 'active'
-ORDER BY p.minprice ASC
-`
-
-type GetMerchWithDiscountRow struct {
-	Minprice     int32       `json:"minprice"`
-	Qid          string      `json:"qid"`
-	ID           int32       `json:"id"`
-	ImagePath    string      `json:"image_path"`
-	Name         string      `json:"name"`
-	Firm         string      `json:"firm"`
-	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-	Type         int32       `json:"type"`
-}
-
-func (q *Queries) GetMerchWithDiscount(ctx context.Context) ([]GetMerchWithDiscountRow, error) {
-	rows, err := q.db.Query(ctx, getMerchWithDiscount)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetMerchWithDiscountRow
-	for rows.Next() {
-		var i GetMerchWithDiscountRow
-		if err := rows.Scan(
-			&i.Minprice,
-			&i.Qid,
-			&i.ID,
-			&i.ImagePath,
-			&i.Name,
-			&i.Firm,
-			&i.Maxdiscprice,
 			&i.Type,
 		); err != nil {
 			return nil, err
@@ -4786,225 +5253,12 @@ func (q *Queries) GetProductsBasicInfo(ctx context.Context, productIds []int32) 
 	return items, nil
 }
 
-const getProductsByFilters = `-- name: GetProductsByFilters :many
-SELECT p.id,
-    p.name,
-    p.image_path,
-    b.name as firm,
-    p.minprice,
-    p.maxprice,
-    p.status,
-    COALESCE(d.maxdiscprice, 0) as maxdiscprice,
-    COALESCE(dr.discount_value, 0) as discount_percent,
-    COUNT(*) OVER() AS total_count
-FROM products p
-    LEFT JOIN discount d ON p.id = d.productid
-    LEFT JOIN store_house sh ON p.id = sh.productid
-    JOIN brands b ON p.brand_id = b.id
-    LEFT JOIN brand_lines bl ON p.line_id = bl.id
-    LEFT JOIN LATERAL (
-        SELECT dr2.discount_value,
-            dr2.name
-        FROM discount_rule_items dri
-            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
-            AND dr2.is_active = true
-            AND dr2.starts_at <= NOW()
-            AND (
-                dr2.ends_at IS NULL
-                OR dr2.ends_at >= NOW()
-            )
-        WHERE (
-                dri.item_type = 'brand'
-                AND dri.item_id = p.brand_id
-            )
-            OR (
-                dri.item_type = 'line'
-                AND dri.item_id = p.line_id
-            )
-            OR (
-                dri.item_type = 'product'
-                AND dri.item_id = p.id
-            )
-            AND d.id IS NULL
-        ORDER BY dr2.priority DESC
-        LIMIT 1
-    ) dr ON true
-WHERE (
-        COALESCE(array_length($1::text [], 1), 0) = 0
-        OR EXISTS (
-            SELECT 1
-            FROM jsonb_object_keys(p.sizes) AS size_key
-            WHERE size_key = ANY($1::text [])
-                AND (p.sizes->size_key->>'price')::numeric > 0
-        )
-    )
-    AND (
-        $2::text IS NULL
-        OR $2::text = ''
-        OR p.status = $2::text
-    )
-    AND (
-        $3::text IS NULL
-        OR $3::text = ''
-        OR p.name ILIKE '%' || $3::text || '%'
-        OR p.article ILIKE '%' || $3::text || '%'
-    )
-    AND (
-        COALESCE(array_length($4::int [], 1), 0) = 0
-        OR p.category = ANY($4::int [])
-    )
-    AND (
-        COALESCE(array_length($5::int [], 1), 0) = 0
-        OR p.type = ANY($5::int [])
-    )
-    AND (
-        COALESCE(array_length($6::int [], 1), 0) = 0
-        OR p.brand_id = ANY($6::int [])
-    )
-    AND (
-        COALESCE(array_length($7::int [], 1), 0) = 0
-        OR p.line_id = ANY($7::int [])
-    )
-    AND (
-        COALESCE(array_length($8::text [], 1), 0) = 0
-        OR p.bodytype = ANY($8::body_enum [])
-    )
-    AND (
-        $9::int IS NULL
-        OR p.maxprice >= $9::int
-    )
-    AND (
-        $10::int IS NULL
-        OR p.minprice <= $10::int
-    )
-    AND (
-        $11::boolean IS NULL
-        OR $11::boolean = false
-        OR d.id IS NOT NULL
-        OR dr.discount_value IS NOT NULL
-    )
-    AND (
-        $12::boolean IS NULL
-        OR $12::boolean = false
-        OR (
-            sh.id IS NOT NULL
-            AND sh.quantity > 0
-        )
-    )
-    AND (
-        $13::boolean IS NULL
-        OR $13::boolean = false
-        OR p.minprice > 0
-    )
-ORDER BY CASE
-        WHEN $14::int = 1 THEN p.name
-    END ASC,
-    CASE
-        WHEN $14::int = 2 THEN p.name
-    END DESC,
-    CASE
-        WHEN $14::int = 3 THEN p.minprice
-    END ASC,
-    CASE
-        WHEN $14::int = 4 THEN p.minprice
-    END DESC,
-    CASE
-        WHEN $14::int NOT IN (1, 2, 3, 4) THEN p.name
-    END ASC,
-    p.id ASC
-LIMIT CASE
-        WHEN $16::integer > 0 THEN $16::integer
-        ELSE 50
-    END OFFSET CASE
-        WHEN $15::integer > 0 THEN $15::integer
-        ELSE 0
-    END
-`
-
-type GetProductsByFiltersParams struct {
-	Sizes        []string    `json:"sizes"`
-	Status       string      `json:"status"`
-	Name         string      `json:"name"`
-	Categories   []int32     `json:"categories"`
-	ProductTypes []int32     `json:"product_types"`
-	Firms        []int32     `json:"firms"`
-	Lines        []int32     `json:"lines"`
-	Bodytypes    []string    `json:"bodytypes"`
-	Minprice     pgtype.Int4 `json:"minprice"`
-	Maxprice     pgtype.Int4 `json:"maxprice"`
-	HasDiscount  bool        `json:"has_discount"`
-	InStore      bool        `json:"in_store"`
-	WithPrice    bool        `json:"with_price"`
-	SortType     int32       `json:"sort_type"`
-	Offsetval    int32       `json:"offsetval"`
-	Limitval     int32       `json:"limitval"`
-}
-
-type GetProductsByFiltersRow struct {
-	ID              int32  `json:"id"`
-	Name            string `json:"name"`
-	ImagePath       string `json:"image_path"`
-	Firm            string `json:"firm"`
-	Minprice        int32  `json:"minprice"`
-	Maxprice        int32  `json:"maxprice"`
-	Status          string `json:"status"`
-	Maxdiscprice    int32  `json:"maxdiscprice"`
-	DiscountPercent int32  `json:"discount_percent"`
-	TotalCount      int64  `json:"total_count"`
-}
-
-func (q *Queries) GetProductsByFilters(ctx context.Context, arg GetProductsByFiltersParams) ([]GetProductsByFiltersRow, error) {
-	rows, err := q.db.Query(ctx, getProductsByFilters,
-		arg.Sizes,
-		arg.Status,
-		arg.Name,
-		arg.Categories,
-		arg.ProductTypes,
-		arg.Firms,
-		arg.Lines,
-		arg.Bodytypes,
-		arg.Minprice,
-		arg.Maxprice,
-		arg.HasDiscount,
-		arg.InStore,
-		arg.WithPrice,
-		arg.SortType,
-		arg.Offsetval,
-		arg.Limitval,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetProductsByFiltersRow
-	for rows.Next() {
-		var i GetProductsByFiltersRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.ImagePath,
-			&i.Firm,
-			&i.Minprice,
-			&i.Maxprice,
-			&i.Status,
-			&i.Maxdiscprice,
-			&i.DiscountPercent,
-			&i.TotalCount,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getProductsByFiltersNewTest = `-- name: GetProductsByFiltersNewTest :many
 SELECT p.id,
     p.name,
-    d.maxdiscprice,
+     d.discount_percent,
+    d.original_price,
+    d.discounted_price,
     p.image_path
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
@@ -5062,10 +5316,12 @@ type GetProductsByFiltersNewTestParams struct {
 }
 
 type GetProductsByFiltersNewTestRow struct {
-	ID           int32       `json:"id"`
-	Name         string      `json:"name"`
-	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-	ImagePath    string      `json:"image_path"`
+	ID              int32       `json:"id"`
+	Name            string      `json:"name"`
+	DiscountPercent pgtype.Int4 `json:"discount_percent"`
+	OriginalPrice   pgtype.Int4 `json:"original_price"`
+	DiscountedPrice pgtype.Int4 `json:"discounted_price"`
+	ImagePath       string      `json:"image_path"`
 }
 
 func (q *Queries) GetProductsByFiltersNewTest(ctx context.Context, arg GetProductsByFiltersNewTestParams) ([]GetProductsByFiltersNewTestRow, error) {
@@ -5089,7 +5345,9 @@ func (q *Queries) GetProductsByFiltersNewTest(ctx context.Context, arg GetProduc
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.Maxdiscprice,
+			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
 			&i.ImagePath,
 		); err != nil {
 			return nil, err
@@ -5107,11 +5365,12 @@ SELECT p.id,
     p.name,
     p.image_path,
     b.name as firm,
-    p.minprice,
-    p.maxprice,
+    COALESCE(d.min_price, p.minprice) AS min_price,
+    COALESCE(d.max_price, p.maxprice) AS max_price,
     p.status,
-    COALESCE(d.maxdiscprice, 0) as maxdiscprice,
-    COALESCE(dr.discount_value, 0) as discount_percent
+    COALESCE(d.discount_percent, 0) as discount_percent,
+    COALESCE(d.original_price, 0) as original_price,
+    COALESCE(d.discounted_price, 0) as discounted_price
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
     LEFT JOIN store_house sh ON p.id = sh.productid
@@ -5260,11 +5519,12 @@ type GetProductsByFiltersPaginateRow struct {
 	Name            string `json:"name"`
 	ImagePath       string `json:"image_path"`
 	Firm            string `json:"firm"`
-	Minprice        int32  `json:"minprice"`
-	Maxprice        int32  `json:"maxprice"`
+	MinPrice        int32  `json:"min_price"`
+	MaxPrice        int32  `json:"max_price"`
 	Status          string `json:"status"`
-	Maxdiscprice    int32  `json:"maxdiscprice"`
 	DiscountPercent int32  `json:"discount_percent"`
+	OriginalPrice   int32  `json:"original_price"`
+	DiscountedPrice int32  `json:"discounted_price"`
 }
 
 func (q *Queries) GetProductsByFiltersPaginate(ctx context.Context, arg GetProductsByFiltersPaginateParams) ([]GetProductsByFiltersPaginateRow, error) {
@@ -5298,11 +5558,12 @@ func (q *Queries) GetProductsByFiltersPaginate(ctx context.Context, arg GetProdu
 			&i.Name,
 			&i.ImagePath,
 			&i.Firm,
-			&i.Minprice,
-			&i.Maxprice,
+			&i.MinPrice,
+			&i.MaxPrice,
 			&i.Status,
-			&i.Maxdiscprice,
 			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
 		); err != nil {
 			return nil, err
 		}
@@ -5463,12 +5724,20 @@ func (q *Queries) GetProductsByFiltersPaginateBase(ctx context.Context, arg GetP
 }
 
 const getProductsByFiltersPaginateFull = `-- name: GetProductsByFiltersPaginateFull :many
-SELECT p.id, p.name, p.image_path,
-       b.name as firm,
-       p.minprice, p.maxprice, p.status,
-       COALESCE(d.maxdiscprice, 0) as maxdiscprice,
-       COALESCE(dr.discount_value, 0) as discount_percent,
-       (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
+SELECT 
+p.id, 
+    p.name, 
+    p.image_path,
+    b.name as firm,
+    -- 🔥 Данные о скидке из таблицы discount
+    COALESCE(d.discount_percent, 0) AS discount_percent,
+    COALESCE(d.original_price, 0) AS original_price,
+    COALESCE(d.discounted_price, p.minprice) AS discounted_price,
+    COALESCE(d.min_price, p.minprice) AS min_price,
+    COALESCE(d.max_price, p.maxprice) AS max_price,
+    d.id IS NOT NULL AS has_discount,
+    -- Наличие на складе
+    (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
 FROM products p
 INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
 LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
@@ -5603,11 +5872,12 @@ type GetProductsByFiltersPaginateFullRow struct {
 	Name            string      `json:"name"`
 	ImagePath       string      `json:"image_path"`
 	Firm            string      `json:"firm"`
-	Minprice        int32       `json:"minprice"`
-	Maxprice        int32       `json:"maxprice"`
-	Status          string      `json:"status"`
-	Maxdiscprice    int32       `json:"maxdiscprice"`
 	DiscountPercent int32       `json:"discount_percent"`
+	OriginalPrice   int32       `json:"original_price"`
+	DiscountedPrice int32       `json:"discounted_price"`
+	MinPrice        int32       `json:"min_price"`
+	MaxPrice        int32       `json:"max_price"`
+	HasDiscount     interface{} `json:"has_discount"`
 	InStore         pgtype.Bool `json:"in_store"`
 }
 
@@ -5641,11 +5911,12 @@ func (q *Queries) GetProductsByFiltersPaginateFull(ctx context.Context, arg GetP
 			&i.Name,
 			&i.ImagePath,
 			&i.Firm,
-			&i.Minprice,
-			&i.Maxprice,
-			&i.Status,
-			&i.Maxdiscprice,
 			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
+			&i.MinPrice,
+			&i.MaxPrice,
+			&i.HasDiscount,
 			&i.InStore,
 		); err != nil {
 			return nil, err
@@ -5659,11 +5930,19 @@ func (q *Queries) GetProductsByFiltersPaginateFull(ctx context.Context, arg GetP
 }
 
 const getProductsByFiltersPaginateWithDiscount = `-- name: GetProductsByFiltersPaginateWithDiscount :many
-SELECT p.id, p.name, p.image_path,
-       b.name as firm,
-       p.minprice, p.maxprice, p.status,
-       COALESCE(d.maxdiscprice, 0) as maxdiscprice,
-       COALESCE(dr.discount_value, 0) as discount_percent
+SELECT 
+    p.id, 
+    p.name, 
+    p.image_path,
+    b.name as firm,
+    p.status,
+    -- 🔥 Данные о скидке из таблицы discount
+    COALESCE(d.discount_percent, 0) AS discount_percent,
+    COALESCE(d.original_price, 0) AS original_price,
+    COALESCE(d.discounted_price, p.minprice) AS discounted_price,
+    COALESCE(d.min_price, p.minprice) AS min_price,
+    COALESCE(d.max_price, p.maxprice) AS max_price,
+    d.id IS NOT NULL AS has_discount
 FROM products p
 INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
 LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
@@ -5791,15 +6070,17 @@ type GetProductsByFiltersPaginateWithDiscountParams struct {
 }
 
 type GetProductsByFiltersPaginateWithDiscountRow struct {
-	ID              int32  `json:"id"`
-	Name            string `json:"name"`
-	ImagePath       string `json:"image_path"`
-	Firm            string `json:"firm"`
-	Minprice        int32  `json:"minprice"`
-	Maxprice        int32  `json:"maxprice"`
-	Status          string `json:"status"`
-	Maxdiscprice    int32  `json:"maxdiscprice"`
-	DiscountPercent int32  `json:"discount_percent"`
+	ID              int32       `json:"id"`
+	Name            string      `json:"name"`
+	ImagePath       string      `json:"image_path"`
+	Firm            string      `json:"firm"`
+	Status          string      `json:"status"`
+	DiscountPercent int32       `json:"discount_percent"`
+	OriginalPrice   int32       `json:"original_price"`
+	DiscountedPrice int32       `json:"discounted_price"`
+	MinPrice        int32       `json:"min_price"`
+	MaxPrice        int32       `json:"max_price"`
+	HasDiscount     interface{} `json:"has_discount"`
 }
 
 // Только со скидками (LATERAL + discount)
@@ -5832,11 +6113,13 @@ func (q *Queries) GetProductsByFiltersPaginateWithDiscount(ctx context.Context, 
 			&i.Name,
 			&i.ImagePath,
 			&i.Firm,
-			&i.Minprice,
-			&i.Maxprice,
 			&i.Status,
-			&i.Maxdiscprice,
 			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
+			&i.MinPrice,
+			&i.MaxPrice,
+			&i.HasDiscount,
 		); err != nil {
 			return nil, err
 		}
@@ -5999,32 +6282,44 @@ func (q *Queries) GetProductsByFiltersPaginateWithStore(ctx context.Context, arg
 }
 
 const getProductsByIds = `-- name: GetProductsByIds :many
-SELECT p.minprice,
+SELECT 
     p.id as global_id,
     p.image_path,
     p.name,
     b.name as firm,
-    d.maxdiscprice,
+    COALESCE(d.discount_percent, 0) AS discount_percent,
+    COALESCE(d.original_price, 0) AS original_price,
+    COALESCE(d.discounted_price, p.minprice) AS discounted_price,
+    COALESCE(d.min_price, p.minprice) AS min_price,
+    COALESCE(d.max_price, p.maxprice) AS max_price,
     p.type,
-    p.article
+    p.article,
+    p.category,
+    p.status,
+    d.id IS NOT NULL AS has_discount
 FROM products p
-    LEFT JOIN discount d ON p.id = d.productid
-    JOIN brands b ON p.brand_id = b.id
-    AND b.is_active = true
-WHERE p.id = ANY($1::integer [])
-    AND p.status = 'active'
+JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN discount d ON p.id = d.productid
+WHERE p.id = ANY($1::integer[])
+  AND p.status = 'active'
 ORDER BY p.minprice ASC
 `
 
 type GetProductsByIdsRow struct {
-	Minprice     int32       `json:"minprice"`
-	GlobalID     int32       `json:"global_id"`
-	ImagePath    string      `json:"image_path"`
-	Name         string      `json:"name"`
-	Firm         string      `json:"firm"`
-	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-	Type         int32       `json:"type"`
-	Article      string      `json:"article"`
+	GlobalID        int32       `json:"global_id"`
+	ImagePath       string      `json:"image_path"`
+	Name            string      `json:"name"`
+	Firm            string      `json:"firm"`
+	DiscountPercent int32       `json:"discount_percent"`
+	OriginalPrice   int32       `json:"original_price"`
+	DiscountedPrice int32       `json:"discounted_price"`
+	MinPrice        int32       `json:"min_price"`
+	MaxPrice        int32       `json:"max_price"`
+	Type            int32       `json:"type"`
+	Article         string      `json:"article"`
+	Category        int32       `json:"category"`
+	Status          string      `json:"status"`
+	HasDiscount     interface{} `json:"has_discount"`
 }
 
 func (q *Queries) GetProductsByIds(ctx context.Context, dollar_1 []int32) ([]GetProductsByIdsRow, error) {
@@ -6037,14 +6332,20 @@ func (q *Queries) GetProductsByIds(ctx context.Context, dollar_1 []int32) ([]Get
 	for rows.Next() {
 		var i GetProductsByIdsRow
 		if err := rows.Scan(
-			&i.Minprice,
 			&i.GlobalID,
 			&i.ImagePath,
 			&i.Name,
 			&i.Firm,
-			&i.Maxdiscprice,
+			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
+			&i.MinPrice,
+			&i.MaxPrice,
 			&i.Type,
 			&i.Article,
+			&i.Category,
+			&i.Status,
+			&i.HasDiscount,
 		); err != nil {
 			return nil, err
 		}
@@ -6106,9 +6407,11 @@ SELECT p.id as global_id,
     p.image_path,
     p.name,
     b.name as firm,
-    p.minprice,
-    p.maxprice,
-    d.maxdiscprice,
+    COALESCE(d.min_price, p.minprice) AS min_price,
+    COALESCE(d.max_price, p.maxprice) AS max_price,
+    d.discount_percent,
+    d.original_price,
+    d.discounted_price,
     p.type,
     p.article,
     p.type,
@@ -6133,17 +6436,19 @@ type GetProductsByNameParams struct {
 }
 
 type GetProductsByNameRow struct {
-	GlobalID     int32       `json:"global_id"`
-	ImagePath    string      `json:"image_path"`
-	Name         string      `json:"name"`
-	Firm         string      `json:"firm"`
-	Minprice     int32       `json:"minprice"`
-	Maxprice     int32       `json:"maxprice"`
-	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-	Type         int32       `json:"type"`
-	Article      string      `json:"article"`
-	Type_2       int32       `json:"type_2"`
-	Category     int32       `json:"category"`
+	GlobalID        int32       `json:"global_id"`
+	ImagePath       string      `json:"image_path"`
+	Name            string      `json:"name"`
+	Firm            string      `json:"firm"`
+	MinPrice        int32       `json:"min_price"`
+	MaxPrice        int32       `json:"max_price"`
+	DiscountPercent pgtype.Int4 `json:"discount_percent"`
+	OriginalPrice   pgtype.Int4 `json:"original_price"`
+	DiscountedPrice pgtype.Int4 `json:"discounted_price"`
+	Type            int32       `json:"type"`
+	Article         string      `json:"article"`
+	Type_2          int32       `json:"type_2"`
+	Category        int32       `json:"category"`
 }
 
 func (q *Queries) GetProductsByName(ctx context.Context, arg GetProductsByNameParams) ([]GetProductsByNameRow, error) {
@@ -6160,9 +6465,11 @@ func (q *Queries) GetProductsByName(ctx context.Context, arg GetProductsByNamePa
 			&i.ImagePath,
 			&i.Name,
 			&i.Firm,
-			&i.Minprice,
-			&i.Maxprice,
-			&i.Maxdiscprice,
+			&i.MinPrice,
+			&i.MaxPrice,
+			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
 			&i.Type,
 			&i.Article,
 			&i.Type_2,
@@ -6316,13 +6623,17 @@ func (q *Queries) GetProductsInfoById(ctx context.Context, id int32) (GetProduct
 }
 
 const getProductsWithDiscount = `-- name: GetProductsWithDiscount :many
-SELECT p.type,
-    p.minprice,
+SELECT 
+    p.type,
+    COALESCE(d.min_price, p.minprice) AS min_price,
+    COALESCE(d.max_price, p.maxprice) AS max_price,
     p.id,
     p.image_path,
     p.name,
     b.name as firm,
-    d.maxdiscprice,
+    d.discount_percent,
+    d.original_price,
+    d.discounted_price,
     d.value AS discount_value
 FROM products p
     JOIN discount d ON p.id = d.productid
@@ -6332,14 +6643,17 @@ WHERE p.status = 'active'
 `
 
 type GetProductsWithDiscountRow struct {
-	Type          int32       `json:"type"`
-	Minprice      int32       `json:"minprice"`
-	ID            int32       `json:"id"`
-	ImagePath     string      `json:"image_path"`
-	Name          string      `json:"name"`
-	Firm          string      `json:"firm"`
-	Maxdiscprice  pgtype.Int4 `json:"maxdiscprice"`
-	DiscountValue []byte      `json:"discount_value"`
+	Type            int32  `json:"type"`
+	MinPrice        int32  `json:"min_price"`
+	MaxPrice        int32  `json:"max_price"`
+	ID              int32  `json:"id"`
+	ImagePath       string `json:"image_path"`
+	Name            string `json:"name"`
+	Firm            string `json:"firm"`
+	DiscountPercent int32  `json:"discount_percent"`
+	OriginalPrice   int32  `json:"original_price"`
+	DiscountedPrice int32  `json:"discounted_price"`
+	DiscountValue   []byte `json:"discount_value"`
 }
 
 func (q *Queries) GetProductsWithDiscount(ctx context.Context) ([]GetProductsWithDiscountRow, error) {
@@ -6353,12 +6667,15 @@ func (q *Queries) GetProductsWithDiscount(ctx context.Context) ([]GetProductsWit
 		var i GetProductsWithDiscountRow
 		if err := rows.Scan(
 			&i.Type,
-			&i.Minprice,
+			&i.MinPrice,
+			&i.MaxPrice,
 			&i.ID,
 			&i.ImagePath,
 			&i.Name,
 			&i.Firm,
-			&i.Maxdiscprice,
+			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
 			&i.DiscountValue,
 		); err != nil {
 			return nil, err
@@ -6465,7 +6782,7 @@ const getSnickersByFirmName = `-- name: GetSnickersByFirmName :many
 SELECT p.name,
     p.image_path,
     p.id,
-    COALESCE(d.minprice, p.minprice) AS value,
+    COALESCE(d.min_price, p.minprice) AS value,
     p.article
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
@@ -6510,12 +6827,15 @@ func (q *Queries) GetSnickersByFirmName(ctx context.Context, name string) ([]Get
 }
 
 const getSoloCollection = `-- name: GetSoloCollection :many
-SELECT COALESCE(d.minprice, p.minprice) AS minprice,
+SELECT 
+    COALESCE(d.min_price, p.minprice) AS minprice,
     p.id,
     p.image_path,
     p.name,
     b.name as firm,
-    d.maxdiscprice
+    d.discount_percent,
+    d.original_price,
+    d.discounted_price
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
     JOIN brands b ON p.brand_id = b.id
@@ -6538,12 +6858,14 @@ type GetSoloCollectionParams struct {
 }
 
 type GetSoloCollectionRow struct {
-	Minprice     int32       `json:"minprice"`
-	ID           int32       `json:"id"`
-	ImagePath    string      `json:"image_path"`
-	Name         string      `json:"name"`
-	Firm         string      `json:"firm"`
-	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
+	Minprice        int32       `json:"minprice"`
+	ID              int32       `json:"id"`
+	ImagePath       string      `json:"image_path"`
+	Name            string      `json:"name"`
+	Firm            string      `json:"firm"`
+	DiscountPercent pgtype.Int4 `json:"discount_percent"`
+	OriginalPrice   pgtype.Int4 `json:"original_price"`
+	DiscountedPrice pgtype.Int4 `json:"discounted_price"`
 }
 
 func (q *Queries) GetSoloCollection(ctx context.Context, arg GetSoloCollectionParams) ([]GetSoloCollectionRow, error) {
@@ -6566,7 +6888,9 @@ func (q *Queries) GetSoloCollection(ctx context.Context, arg GetSoloCollectionPa
 			&i.ImagePath,
 			&i.Name,
 			&i.Firm,
-			&i.Maxdiscprice,
+			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
 		); err != nil {
 			return nil, err
 		}
@@ -6579,12 +6903,15 @@ func (q *Queries) GetSoloCollection(ctx context.Context, arg GetSoloCollectionPa
 }
 
 const getSoloCollectionWithCount = `-- name: GetSoloCollectionWithCount :many
-SELECT COALESCE(d.minprice, p.minprice) AS minprice,
+SELECT 
+    COALESCE(d.min_price, p.minprice) AS minprice,
     p.id,
     p.image_path,
     p.name,
     b.name as firm,
-    d.maxdiscprice,
+    d.discount_percent,
+    d.original_price,
+    d.discounted_price,
     COUNT(*) OVER () AS total_count
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
@@ -6606,13 +6933,15 @@ type GetSoloCollectionWithCountParams struct {
 }
 
 type GetSoloCollectionWithCountRow struct {
-	Minprice     int32       `json:"minprice"`
-	ID           int32       `json:"id"`
-	ImagePath    string      `json:"image_path"`
-	Name         string      `json:"name"`
-	Firm         string      `json:"firm"`
-	Maxdiscprice pgtype.Int4 `json:"maxdiscprice"`
-	TotalCount   int64       `json:"total_count"`
+	Minprice        int32       `json:"minprice"`
+	ID              int32       `json:"id"`
+	ImagePath       string      `json:"image_path"`
+	Name            string      `json:"name"`
+	Firm            string      `json:"firm"`
+	DiscountPercent pgtype.Int4 `json:"discount_percent"`
+	OriginalPrice   pgtype.Int4 `json:"original_price"`
+	DiscountedPrice pgtype.Int4 `json:"discounted_price"`
+	TotalCount      int64       `json:"total_count"`
 }
 
 func (q *Queries) GetSoloCollectionWithCount(ctx context.Context, arg GetSoloCollectionWithCountParams) ([]GetSoloCollectionWithCountRow, error) {
@@ -6635,7 +6964,9 @@ func (q *Queries) GetSoloCollectionWithCount(ctx context.Context, arg GetSoloCol
 			&i.ImagePath,
 			&i.Name,
 			&i.Firm,
-			&i.Maxdiscprice,
+			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err
@@ -6667,39 +6998,6 @@ func (q *Queries) GetTypeByID(ctx context.Context, typeID int32) (GetTypeByIDRow
 	var i GetTypeByIDRow
 	err := row.Scan(&i.TypeName, &i.TypeKey)
 	return i, err
-}
-
-const insertDiscounts = `-- name: InsertDiscounts :one
-INSERT INTO public.discount (
-        productid,
-        value,
-        minprice,
-        maxdiscprice
-    )
-SELECT unnest($1::int []),
-    unnest($2::json []),
-    NULLIF(unnest($3::int []), 0),
-    NULLIF(unnest($4::int []), 0)
-RETURNING id
-`
-
-type InsertDiscountsParams struct {
-	ProductIds     []int32  `json:"product_ids"`
-	DiscountValues [][]byte `json:"discount_values"`
-	MinPrices      []int32  `json:"min_prices"`
-	MaxDiscPrices  []int32  `json:"max_disc_prices"`
-}
-
-func (q *Queries) InsertDiscounts(ctx context.Context, arg InsertDiscountsParams) (int32, error) {
-	row := q.db.QueryRow(ctx, insertDiscounts,
-		arg.ProductIds,
-		arg.DiscountValues,
-		arg.MinPrices,
-		arg.MaxDiscPrices,
-	)
-	var id int32
-	err := row.Scan(&id)
-	return id, err
 }
 
 const removeRuleItem = `-- name: RemoveRuleItem :exec

@@ -21,7 +21,7 @@ interface FiltersInfoRequest {
   price: number[]
   firms: number[],
   bodytypes?: string[],
-  lines?: string[],
+  lines?: number[],
   types: number[],
   store?: boolean,
   withPrice: boolean,
@@ -49,13 +49,14 @@ const SearchPage: React.FC = () => {
 
   const router = useRouter();
   const searchParams = router.query;
-  const { typesVal, categories, discountRules, firmMap } = useAppSelector(state => state.menuReducer);
+  const { typesVal, categories, discountRules, firmMap, lineMap } = useAppSelector(state => state.menuReducer);
   // Refs для хранения изменяемых данных без перерисовки
   const filtersInfo = useRef<FiltersInfoRequest>({
     sizes: [],
     price: [],
     firms: [],
     types: [],
+    lines:[],
     store: false,
     discount: false,
     withPrice: true,
@@ -71,6 +72,7 @@ const SearchPage: React.FC = () => {
   const searchWord = useRef("")
   const categoryRef = useRef(0)
   const typeRef = useRef(0)
+  const brandIdRef = useRef(0)
   const emtyText = useRef("По запросу ничего не найдено. Проверьте правописание или выберите другие слова либо фразу.")
   const [merchFieldData, setMerchFieldData] = useState<any[]>([])
   const [grid, setGrid] = useState(false)
@@ -89,7 +91,71 @@ const SearchPage: React.FC = () => {
     checboxsProps: [],
     soloDataProps: []
   })
+const setFiltersFromUrl = useCallback(() => {
+    filtersInfo.current.sizes = [];
+    filtersInfo.current.firms = [];
+    filtersInfo.current.types = [];
+    filtersInfo.current.rule_ids = [];
+    typeRef.current = 0;
+    categoryRef.current = 0;
+    currentPage.current = 1;
 
+    const category = searchParams.category || "";
+    let categoryId;
+    let typeId
+
+    if (category) {
+      for (let key in categories) {
+        if (key === category) {
+          categoryId = categories[key].id
+          break;
+        }
+      }
+    }
+    const type = searchParams.type || "";
+    if (type) {
+      for (let key in typesVal) {
+        if (typesVal[key].type_key === type && typesVal[key].category_key === category) {
+          typeId = Number(key)
+          break;
+        }
+      }
+    }
+
+    // Обработка фирмы из URL (ИСПРАВЛЕНО)
+    const firmSlug = searchParams.brand as string || "";
+    if (firmSlug) {
+      const firm = firmMap[firmSlug];
+      if (firm) {
+        filtersInfo.current.firms.push(firm.id); // сохраняем ID для API
+        brandIdRef.current = firm.id
+      }
+    }
+
+    let bodytype = searchParams.bodytype as string || "";
+    if (bodytype) {
+      filtersInfo.current.bodytypes.push(bodytype)
+    }
+    const lineSlug = searchParams.line as string || "";
+    if (lineSlug) {
+      const line = lineMap[lineSlug];
+      if (line) {
+        filtersInfo.current.lines.push(line.id); // сохраняем ID для API
+        // если нужно сохранить ID линии для других целей
+        // lineIdRef.current = line.id;
+      }
+    }
+    if (searchParams.rule_ids || searchParams.discount) {
+      filtersInfo.current.discount = searchParams.discount === "true"
+    }
+
+    if (categoryId) {
+      categoryRef.current = categoryId
+    }
+    if (typeId) {
+      typeRef.current = typeId
+    }
+  }, [searchParams, typesVal, categories, firmMap])
   // Мемоизированные колбэки
   const updatePage = useCallback((respData: any) => {
     dispatch(finishLoading());
@@ -101,22 +167,13 @@ const SearchPage: React.FC = () => {
       emptyData.current = false
       pages.current = Math.ceil(respData.totalCount / pageSize.current);
       // Сбрасываем фильтры на новые, полученные от бэка
-      filtersInfo.current = {
-        sizes: [],
-        price: [],
-        firms: [],
-        types: [],
-        lines: [],
-        bodytypes: [],
-        withPrice: true,
-        rule_ids: []
-      }
+      setFiltersFromUrl()
       const data = convertFiltersData(respData.filters)
       setFilters(data)
       settingsModuleMemo.current = !settingsModuleMemo.current
       setMerchFieldData(respData.products)
     }
-  }, [firmMap])
+  }, [firmMap,setFiltersFromUrl,searchParams])
 
   const updatMerch = useCallback((respData: any) => {
     pages.current = Math.ceil(respData.totalCount / pageSize.current);
@@ -166,6 +223,7 @@ const SearchPage: React.FC = () => {
     price: number[],
     avalible: boolean,
     firmsCount: { [key: string]: string },
+    linesData: { [key: string]: string },
     sizes: { [key: string]: string }
     types?: number[]
     store?: boolean,
@@ -273,14 +331,37 @@ const SearchPage: React.FC = () => {
         name: "В наличии"
       }
     ]
+    const checkBoxPropsLineData: CheckBoxType[] = []
+    if (resData.linesData) {
+      Object.entries(resData.linesData).forEach(([lineName, count]) => {
+        // Ищем линию по имени в lineMap
+        const line = Object.values(lineMap).find(l => l.name === lineName);
+        if (!line) {
+          console.warn(`Line "${lineName}" not found in lineMap`);
+          return;
+        }
 
+
+        // Проверяем, активна ли линия в текущих фильтрах
+        const active = filtersInfo.current.lines.includes(line.id);
+
+        checkBoxPropsLineData.push({
+          id: line.slug,
+          enable: true,
+          activeData: active,
+          name: `${lineName} (${count})`
+        });
+      });
+    }
     return {
       priceProps,
       checboxsProps: [
         { id: "sizes", name: "Размеры", props: checkBoxPropsData },
         { id: "firms", name: "Фирмы", props: checkBoxPropsFirmData },
+        { id: "lines", name: "Линейки", props: checkBoxPropsLineData },
+
         { id: "type", name: "Типы товара", props: checkBoxPropsTypeData },
-        { id: "discounts", name: "Скидки", props: checkBoxPropsDiscountData }
+        { id: "discounts", name: "Скидки", props: checkBoxPropsDiscountData },
       ],
       soloDataProps
     }
@@ -291,6 +372,11 @@ const SearchPage: React.FC = () => {
     switch (filter.id) {
       case "sizes":
         filtersInfo.current.sizes = filter.data;
+        break;
+      case "lines": // 👈 ДОБАВЛЯЕМ
+        filtersInfo.current.lines = filter.data
+          .map((slug: string) => lineMap[slug]?.id)
+          .filter(Boolean);
         break;
       case "firms":
         // filter.data - массив slug'ов от чекбоксов
@@ -369,7 +455,7 @@ const SearchPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (Object.entries(typesVal).length === 0 || Object.entries(categories).length === 0) {
+    if (Object.entries(typesVal).length === 0 || Object.entries(categories).length === 0, !router.isReady) {
       return;
     }
     if (pageWrap.current && pageWrap.current.clientWidth < 600) {
@@ -378,71 +464,13 @@ const SearchPage: React.FC = () => {
     }
     typesValRef.current = typesVal;
 
-    // Сбрасываем фильтры
-    filtersInfo.current.sizes = [];
-    filtersInfo.current.firms = [];
-    filtersInfo.current.types = [];
-    filtersInfo.current.rule_ids = [];
-    typeRef.current = 0;
-    categoryRef.current = 0;
-    currentPage.current = 1;
-
-    const category = searchParams.category || "";
-    let categoryId;
-    let typeId
-
-    if (category) {
-      for (let key in categories) {
-        if (key === category) {
-          categoryId = categories[key].id
-          break;
-        }
-      }
-    }
-    const type = searchParams.type || "";
-    if (type) {
-      for (let key in typesVal) {
-        if (typesVal[key].type_key === type && typesVal[key].category_key === category) {
-          typeId = Number(key)
-          break;
-        }
-      }
-    }
-
-    // Обработка фирмы из URL (ИСПРАВЛЕНО)
-    const firmSlug = searchParams.brand as string || "";
-    if (firmSlug) {
-      const firm = firmMap[firmSlug];
-      if (firm) {
-        filtersInfo.current.firms.push(firm.id); // сохраняем ID для API
-      }
-    }
-
-    let bodytype = searchParams.bodytype as string || "";
-    if (bodytype) {
-      filtersInfo.current.bodytypes.push(bodytype)
-    }
-    let line = searchParams.line as string || "";
-    if (line) {
-      filtersInfo.current.lines.push(line)
-    }
-
+    setFiltersFromUrl()
     const name = searchParams.key_word as string || "";
-    if (searchParams.rule_ids || searchParams.discount) {
-      filtersInfo.current.discount = searchParams.discount === "true"
-    }
-
-    if (categoryId) {
-      categoryRef.current = categoryId
-    }
-    if (typeId) {
-      typeRef.current = typeId
-    }
     searchWord.current = name
     searchData()
   }, [searchParams, typesVal, categories, firmMap]);
 
-
+  
   const searchData = useCallback(() => {
     if (searchWord.current) {
       getProductsAndFiltersByString(
@@ -463,10 +491,11 @@ const SearchPage: React.FC = () => {
         "0",
         categoryRef.current,
         typeRef.current,
+        brandIdRef.current,
         filtersInfo.current
       )
     }
-  }, [getProductsAndFiltersByString, getProductsAndFiltersByCategoryAndType, firmMap])
+  }, [getProductsAndFiltersByString, getProductsAndFiltersByCategoryAndType, firmMap,setFiltersFromUrl])
 
 
   const handleMouseEnter = useCallback(() => setHoverSettings(true), []);

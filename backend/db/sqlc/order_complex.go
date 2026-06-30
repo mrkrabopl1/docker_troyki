@@ -410,19 +410,15 @@ func NewProductsSearchResponse3(ProductsSearch []GetProductsWithDiscountRow) []t
 			str := "/images/" + fmt.Sprintf(info.ImagePath+"/img%d.png", i)
 			imgArr = append(imgArr, str)
 		}
-		var discount interface{}
-		if info.Maxdiscprice.Int32 != 0 {
-			discount = info.Maxdiscprice.Int32
-		} else {
-			discount = nil
-		}
+
 		list = append(list, types.ProductsSearchResponse1{
-			Image:    imgArr,
-			Price:    int(info.Minprice),
-			Id:       int(info.ID),
-			Name:     info.Name,
-			Firm:     info.Firm,
-			Discount: discount,
+			Image:           imgArr,
+			Price:           int(info.MinPrice),
+			Id:              int(info.ID),
+			Name:            info.Name,
+			Firm:            info.Firm,
+			Discount:        info.DiscountedPrice,
+			DiscountPercent: info.DiscountPercent,
 		})
 
 	}

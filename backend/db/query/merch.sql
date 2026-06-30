@@ -18,7 +18,7 @@ ORDER BY b.name;
 SELECT p.name,
     p.image_path,
     p.id,
-    COALESCE(d.minprice, p.minprice) AS value,
+    COALESCE(d.min_price, p.minprice) AS value,
     p.article,
     p.type
 FROM products p
@@ -28,27 +28,17 @@ FROM products p
 WHERE b.name = $1
     AND p.status = 'active'
 ORDER BY p.name;
--- name: InsertDiscounts :one
-INSERT INTO public.discount (
-        productid,
-        value,
-        minprice,
-        maxdiscprice
-    )
-SELECT unnest(@product_ids::int []),
-    unnest(@discount_values::json []),
-    NULLIF(unnest(@min_prices::int []), 0),
-    NULLIF(unnest(@max_disc_prices::int []), 0)
-RETURNING id;
+
 -- name: SelectMainCategories :one
 SELECT enum_range(NULL::main_categories);
 -- name: GetMerchCollection :many
-SELECT COALESCE(d.minprice, p.minprice) AS minprice,
+SELECT 
+    COALESCE(d.min_price, p.minprice) AS minprice,
     p.id AS global_id,
     p.image_path,
     p.name,
     b.name as firm,
-    d.maxdiscprice,
+    d.discounted_price,
     st.productid,
     p.type,
     COUNT(*) OVER() AS total_count
@@ -65,7 +55,7 @@ WHERE (
     )
     AND p.status = 'active'
 ORDER BY CASE
-        WHEN COALESCE(COALESCE(d.minprice, p.minprice), 0) > 0 THEN 0
+        WHEN COALESCE(COALESCE(d.min_price, p.minprice), 0) > 0 THEN 0
         ELSE 1
     END
 LIMIT @limitVal OFFSET @offsetVal;
@@ -74,9 +64,11 @@ SELECT p.id as global_id,
     p.image_path,
     p.name,
     b.name as firm,
-    p.minprice,
-    p.maxprice,
-    d.maxdiscprice,
+    COALESCE(d.min_price, p.minprice) AS min_price,
+    COALESCE(d.max_price, p.maxprice) AS max_price,
+    d.discount_percent,
+    d.original_price,
+    d.discounted_price,
     p.type,
     p.article,
     p.type,
@@ -94,36 +86,28 @@ ORDER BY CASE
     p.name
 LIMIT $2;
 -- name: GetProductsByIds :many
-SELECT p.minprice,
+SELECT 
     p.id as global_id,
     p.image_path,
     p.name,
     b.name as firm,
-    d.maxdiscprice,
+    COALESCE(d.discount_percent, 0) AS discount_percent,
+    COALESCE(d.original_price, 0) AS original_price,
+    COALESCE(d.discounted_price, p.minprice) AS discounted_price,
+    COALESCE(d.min_price, p.minprice) AS min_price,
+    COALESCE(d.max_price, p.maxprice) AS max_price,
     p.type,
-    p.article
+    p.article,
+    p.category,
+    p.status,
+    d.id IS NOT NULL AS has_discount
 FROM products p
-    LEFT JOIN discount d ON p.id = d.productid
-    JOIN brands b ON p.brand_id = b.id
-    AND b.is_active = true
-WHERE p.id = ANY($1::integer [])
-    AND p.status = 'active'
+JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN discount d ON p.id = d.productid
+WHERE p.id = ANY($1::integer[])
+  AND p.status = 'active'
 ORDER BY p.minprice ASC;
--- name: GetMerchWithDiscount :many
-SELECT p.minprice,
-    p.qId,
-    p.id,
-    p.image_path,
-    p.name,
-    b.name as firm,
-    d.maxdiscprice,
-    p.type
-FROM products p
-    LEFT JOIN discount d ON p.id = d.productid
-    JOIN brands b ON p.brand_id = b.id
-    AND b.is_active = true
-WHERE p.status = 'active'
-ORDER BY p.minprice ASC;
+
 -- name: GetMerchCountOfCollectionsOrFirms :one
 SELECT COUNT(*) AS total_count
 FROM products p
@@ -137,12 +121,15 @@ WHERE (
     )
     AND p.status = 'active';
 -- name: GetMerchCollectionWithCount :many
-SELECT COALESCE(d.minprice, p.minprice) AS minprice,
+SELECT 
+    COALESCE(d.min_price, p.minprice) AS minprice,
     p.id,
     p.image_path,
     p.name,
     b.name as firm,
-    d.maxdiscprice,
+    d.discount_percent,
+    d.original_price,
+    d.discounted_price,
     p.type,
     COUNT(*) OVER () AS total_count
 FROM products p
@@ -174,7 +161,7 @@ ORDER BY b.sort_order ASC, b.name ASC, bl.sort_order ASC, bl.name ASC;
 SELECT p.name,
     p.image_path,
     p.id,
-    COALESCE(d.minprice, p.minprice) AS value,
+    COALESCE(d.min_price, p.minprice) AS value,
     p.article
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
@@ -367,6 +354,350 @@ SELECT
          ) FROM discount_rules_applied),
         '[]'::jsonb
     ) as discount_rules;
+
+
+
+-- name: GetFiltersByNameCategoryAndTypeNew :one
+WITH product_data AS (
+    SELECT
+        p.id,
+        p.brand_id,
+        p.line_id,
+        b.name as firm,
+        p.minprice,
+        p.maxprice,
+        p.bodytype,
+        p.type as product_type_id
+    FROM products p
+    JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+    WHERE p.status = 'active'
+        AND (CASE WHEN $1::int = 0 THEN TRUE ELSE p.type = $1 END)
+        AND (CASE WHEN $2::int = 0 THEN TRUE ELSE p.category = $2 END)
+        AND (CASE WHEN $3::text = '' THEN TRUE ELSE p.name ILIKE '%' || $3 || '%' END)
+),
+firm_counts AS (
+    SELECT firm, COUNT(*) AS firm_count
+    FROM product_data
+    WHERE firm IS NOT NULL
+    GROUP BY firm
+),
+bodytype_counts AS (
+    SELECT bodytype, COUNT(*) as count
+    FROM product_data
+    GROUP BY bodytype
+),
+price_range AS (
+    SELECT COALESCE(MIN(minprice), 0) AS min_price,
+           COALESCE(MAX(maxprice), 0) AS max_price
+    FROM product_data
+),
+type_data AS (
+    SELECT product_type_id, COUNT(*) as type_count
+    FROM product_data
+    GROUP BY product_type_id
+),
+sizes_agg AS (
+    SELECT jsonb_object_agg(size_key, cnt) AS sizes
+    FROM (
+        SELECT size_key, COUNT(*) AS cnt
+        FROM product_sizes ps
+        WHERE ps.product_id IN (SELECT id FROM product_data)
+          AND ps.price > 0
+        GROUP BY size_key
+    ) s
+),
+discount_rules_applied AS (
+    SELECT DISTINCT
+        dr.id,
+        dr.name,
+        dr.discount_type,
+        dr.discount_value,
+        dr.priority
+    FROM discount_rules dr
+    WHERE dr.is_active = true
+        AND dr.starts_at <= NOW()
+        AND (dr.ends_at IS NULL OR dr.ends_at > NOW())
+        AND dr.id IN (
+            SELECT DISTINCT d.rule_id
+            FROM discount d
+            WHERE d.productid IN (SELECT id FROM product_data)
+              AND d.discount_percent > 0
+        )
+)
+SELECT
+    COALESCE(
+        (SELECT sizes FROM sizes_agg),
+        '{}'::jsonb
+    ) as sizes,
+    COALESCE(
+        (SELECT jsonb_object_agg(bodytype::text, count) FROM bodytype_counts),
+        '{}'::jsonb
+    ) as bodytypes,
+    (SELECT min_price FROM price_range) as min_price,
+    (SELECT max_price FROM price_range) as max_price,
+    COALESCE(
+        (SELECT jsonb_object_agg(COALESCE(firm, 'Unknown'), firm_count) FROM firm_counts),
+        '{}'::jsonb
+    ) as firms,
+    COALESCE(
+        (SELECT jsonb_agg(product_type_id) FROM type_data),
+        '[]'::jsonb
+    ) as product_types,
+    COALESCE(
+        (SELECT jsonb_agg(
+            jsonb_build_object(
+                'id', id,
+                'name', name,
+                'discount_type', discount_type,
+                'discount_value', discount_value,
+                'priority', priority
+            )
+         ) FROM discount_rules_applied),
+        '[]'::jsonb
+    ) as discount_rules;
+
+
+
+
+-- name: GetFiltersByNameCategoryAndTypeNewWithLine :one
+WITH product_data AS (
+    SELECT
+        p.id,
+        p.brand_id,
+        p.line_id,
+        b.name as firm,
+        bl.name as line_name,
+        p.minprice,
+        p.maxprice,
+        p.bodytype,
+        p.type as product_type_id
+    FROM products p
+    JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+    WHERE p.status = 'active'
+        AND (CASE WHEN $1::int = 0 THEN TRUE ELSE p.type = $1 END)
+        AND (CASE WHEN $2::int = 0 THEN TRUE ELSE p.category = $2 END)
+        AND (CASE WHEN $3::text = '' THEN TRUE ELSE p.name ILIKE '%' || $3 || '%' END)
+        AND (CASE WHEN $4::int = 0 THEN TRUE ELSE p.brand_id = $4 END)  -- 👈 ФИЛЬТР ПО БРЕНДУ
+),
+line_counts AS (
+    SELECT line_name, COUNT(*) AS line_count
+    FROM product_data
+    WHERE line_name IS NOT NULL
+    GROUP BY line_name
+),
+bodytype_counts AS (
+    SELECT bodytype, COUNT(*) as count
+    FROM product_data
+    GROUP BY bodytype
+),
+price_range AS (
+    SELECT COALESCE(MIN(minprice), 0) AS min_price,
+           COALESCE(MAX(maxprice), 0) AS max_price
+    FROM product_data
+),
+type_data AS (
+    SELECT product_type_id, COUNT(*) as type_count
+    FROM product_data
+    GROUP BY product_type_id
+),
+sizes_agg AS (
+    SELECT jsonb_object_agg(size_key, cnt) AS sizes
+    FROM (
+        SELECT size_key, COUNT(*) AS cnt
+        FROM product_sizes ps
+        WHERE ps.product_id IN (SELECT id FROM product_data)
+          AND ps.price > 0
+        GROUP BY size_key
+    ) s
+),
+discount_rules_applied AS (
+    SELECT DISTINCT
+        dr.id,
+        dr.name,
+        dr.discount_type,
+        dr.discount_value,
+        dr.priority
+    FROM discount_rules dr
+    WHERE dr.is_active = true
+        AND dr.starts_at <= NOW()
+        AND (dr.ends_at IS NULL OR dr.ends_at > NOW())
+        AND dr.id IN (
+            SELECT DISTINCT d.rule_id
+            FROM discount d
+            WHERE d.productid IN (SELECT id FROM product_data)
+              AND d.discount_percent > 0
+        )
+)
+SELECT
+    COALESCE(
+        (SELECT sizes FROM sizes_agg),
+        '{}'::jsonb
+    ) as sizes,
+    COALESCE(
+        (SELECT jsonb_object_agg(bodytype::text, count) FROM bodytype_counts),
+        '{}'::jsonb
+    ) as bodytypes,
+    (SELECT min_price FROM price_range) as min_price,
+    (SELECT max_price FROM price_range) as max_price,
+    COALESCE(
+        (SELECT jsonb_object_agg(COALESCE(line_name, 'Unknown'), line_count) FROM line_counts),
+        '{}'::jsonb
+    ) as lines,
+    COALESCE(
+        (SELECT jsonb_agg(product_type_id) FROM type_data),
+        '[]'::jsonb
+    ) as product_types,
+    COALESCE(
+        (SELECT jsonb_agg(
+            jsonb_build_object(
+                'id', id,
+                'name', name,
+                'discount_type', discount_type,
+                'discount_value', discount_value,
+                'priority', priority
+            )
+         ) FROM discount_rules_applied),
+        '[]'::jsonb
+    ) as discount_rules;
+
+-- name: GetAggregatedFiltersFast :one
+WITH product_data AS MATERIALIZED (
+    SELECT 
+        p.id, p.brand_id, p.line_id, p.type, p.bodytype, 
+        p.minprice, p.maxprice,
+        b.name as firm
+    FROM products p
+    JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+    WHERE p.status = 'active'
+      AND ($1::int IS NULL OR p.type = $1)
+      AND ($2::int IS NULL OR p.category = $2)
+      AND ($3::text IS NULL OR p.name ILIKE '%' || $3 || '%')
+      AND ($4::int IS NULL OR p.brand_id = $4)
+)
+SELECT 
+    COALESCE(
+        (SELECT jsonb_object_agg(bodytype, cnt) 
+         FROM (SELECT bodytype, COUNT(*) cnt FROM product_data GROUP BY bodytype) s),
+        '{}'::jsonb
+    ) AS bodytypes,
+    
+    COALESCE(
+        (SELECT jsonb_object_agg(firm, cnt) 
+         FROM (SELECT firm, COUNT(*) cnt FROM product_data GROUP BY firm) s),
+        '{}'::jsonb
+    ) AS firms,
+    
+    COALESCE(
+        (SELECT jsonb_agg(type) 
+         FROM (SELECT type FROM product_data GROUP BY type) s),
+        '[]'::jsonb
+    ) AS product_types,
+    
+    COALESCE(
+        (SELECT MIN(minprice) FROM product_data), 0
+    ) AS min_price,
+    
+    COALESCE(
+        (SELECT MAX(maxprice) FROM product_data), 0
+    ) AS max_price,
+    
+    COALESCE(
+        (SELECT jsonb_object_agg(size_key, cnt)
+         FROM (SELECT size_key, COUNT(*) cnt
+               FROM product_sizes ps
+               WHERE ps.product_id IN (SELECT id FROM product_data)
+                 AND ps.price > 0
+               GROUP BY size_key) s),
+        '{}'::jsonb
+    ) AS sizes,
+    
+    COALESCE(
+        (SELECT jsonb_agg(
+            jsonb_build_object(
+                'id', dr.id,
+                'name', dr.name,
+                'discount_type', dr.discount_type,
+                'discount_value', dr.discount_value,
+                'priority', dr.priority
+            )
+         )
+         FROM discount_rules dr
+         WHERE dr.id IN (
+             SELECT DISTINCT d.rule_id
+             FROM discount d
+             WHERE d.productid IN (SELECT id FROM product_data)
+               AND d.discount_percent > 0
+         )
+         AND dr.is_active
+         AND dr.starts_at <= NOW()
+         AND (dr.ends_at IS NULL OR dr.ends_at > NOW())
+        ),
+        '[]'::jsonb
+    ) AS discount_rules;
+
+
+-- name: GetAggregatedFilters :one
+WITH product_data AS (
+    SELECT * FROM tmp_product_ids
+),
+aggregated AS (
+    SELECT
+        (SELECT jsonb_object_agg(bodytype::text, cnt)
+         FROM (SELECT bodytype, COUNT(*) cnt FROM product_data GROUP BY bodytype) s) AS bodytypes,
+        (SELECT jsonb_object_agg(firm, cnt)
+         FROM (SELECT b.name AS firm, COUNT(*) cnt
+               FROM product_data pd
+               JOIN brands b ON pd.brand_id = b.id
+               GROUP BY b.name) s) AS firms,
+        (SELECT jsonb_agg(type)
+         FROM (SELECT type, COUNT(*) FROM product_data GROUP BY type) s) AS product_types,
+        (SELECT MIN(minprice) FROM product_data) AS min_price,
+        (SELECT MAX(maxprice) FROM product_data) AS max_price
+),
+sizes_agg AS (
+    SELECT jsonb_object_agg(size_key, cnt) AS sizes
+    FROM (
+        SELECT size_key, COUNT(*) AS cnt
+        FROM product_sizes
+        WHERE product_id IN (SELECT id FROM product_data)
+          AND price > 0
+        GROUP BY size_key
+    ) s
+),
+discount_rules_agg AS (
+    SELECT COALESCE(
+        jsonb_agg(
+            jsonb_build_object(
+                'id', dr.id,
+                'name', dr.name,
+                'discount_type', dr.discount_type,
+                'discount_value', dr.discount_value,
+                'priority', dr.priority
+            )
+        ),
+        '[]'::jsonb
+    ) AS discount_rules
+    FROM discount_rules dr
+    WHERE dr.id IN (
+        SELECT DISTINCT d.rule_id
+        FROM discount d
+        WHERE d.productid IN (SELECT id FROM product_data)
+          AND d.discount_percent > 0
+    )
+    AND dr.is_active
+    AND dr.starts_at <= NOW()
+    AND (dr.ends_at IS NULL OR dr.ends_at > NOW())
+)
+SELECT
+    (SELECT sizes FROM sizes_agg) AS sizes,
+    (SELECT bodytypes FROM aggregated) AS bodytypes,
+    (SELECT min_price FROM aggregated) AS min_price,
+    (SELECT max_price FROM aggregated) AS max_price,
+    (SELECT firms FROM aggregated) AS firms,
+    (SELECT product_types FROM aggregated) AS product_types,
+    (SELECT discount_rules FROM discount_rules_agg) AS discount_rules;
+
 -- name: GetCountIdByName :many
 SELECT b.name as firm,
     COUNT(p.id) count
@@ -407,12 +738,15 @@ GROUP BY p.id,
     b.name,
     bl.name;
 -- name: GetSoloCollection :many
-SELECT COALESCE(d.minprice, p.minprice) AS minprice,
+SELECT 
+    COALESCE(d.min_price, p.minprice) AS minprice,
     p.id,
     p.image_path,
     p.name,
     b.name as firm,
-    d.maxdiscprice
+    d.discount_percent,
+    d.original_price,
+    d.discounted_price
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
     JOIN brands b ON p.brand_id = b.id
@@ -426,13 +760,17 @@ WHERE (
     AND p.status = 'active'
 LIMIT $3 OFFSET $4;
 -- name: GetProductsWithDiscount :many
-SELECT p.type,
-    p.minprice,
+SELECT 
+    p.type,
+    COALESCE(d.min_price, p.minprice) AS min_price,
+    COALESCE(d.max_price, p.maxprice) AS max_price,
     p.id,
     p.image_path,
     p.name,
     b.name as firm,
-    d.maxdiscprice,
+    d.discount_percent,
+    d.original_price,
+    d.discounted_price,
     d.value AS discount_value
 FROM products p
     JOIN discount d ON p.id = d.productid
@@ -452,12 +790,15 @@ WHERE (
     )
     AND p.status = 'active';
 -- name: GetSoloCollectionWithCount :many    
-SELECT COALESCE(d.minprice, p.minprice) AS minprice,
+SELECT 
+    COALESCE(d.min_price, p.minprice) AS minprice,
     p.id,
     p.image_path,
     p.name,
     b.name as firm,
-    d.maxdiscprice,
+    d.discount_percent,
+    d.original_price,
+    d.discounted_price,
     COUNT(*) OVER () AS total_count
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
@@ -470,13 +811,16 @@ WHERE b.name = @firm
     AND p.status = 'active'
 LIMIT @limitVal OFFSET @offsetVal;
 -- name: GetFullProductsInfoByIds :many
-SELECT p.minprice,
-    p.maxprice,
+SELECT
+    COALESCE(d.min_price, p.minprice) AS min_price,
+    COALESCE(d.max_price, p.maxprice) AS max_price,
     p.id as global_id,
     p.image_path,
     p.name,
     b.name as firm,
-    d.maxdiscprice,
+     d.discount_percent,
+    d.original_price,
+    d.discounted_price,
     p.type,
     p.sizes as sizes_jsonb
 FROM products p
@@ -488,7 +832,9 @@ ORDER BY p.minprice ASC;
 -- name: GetProductsByFiltersNewTest :many
 SELECT p.id,
     p.name,
-    d.maxdiscprice,
+     d.discount_percent,
+    d.original_price,
+    d.discounted_price,
     p.image_path
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
@@ -643,11 +989,12 @@ SELECT p.id,
     p.name,
     p.image_path,
     b.name as firm,
-    p.minprice,
-    p.maxprice,
+    COALESCE(d.min_price, p.minprice) AS min_price,
+    COALESCE(d.max_price, p.maxprice) AS max_price,
     p.status,
-    COALESCE(d.maxdiscprice, 0) as maxdiscprice,
-    COALESCE(dr.discount_value, 0) as discount_percent
+    COALESCE(d.discount_percent, 0) as discount_percent,
+    COALESCE(d.original_price, 0) as original_price,
+    COALESCE(d.discounted_price, 0) as discounted_price
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
     LEFT JOIN store_house sh ON p.id = sh.productid
@@ -770,140 +1117,6 @@ LIMIT CASE
         WHEN @offsetVal::integer > 0 THEN @offsetVal::integer
         ELSE 0
     END;
--- name: GetProductsByFilters :many
-SELECT p.id,
-    p.name,
-    p.image_path,
-    b.name as firm,
-    p.minprice,
-    p.maxprice,
-    p.status,
-    COALESCE(d.maxdiscprice, 0) as maxdiscprice,
-    COALESCE(dr.discount_value, 0) as discount_percent,
-    COUNT(*) OVER() AS total_count
-FROM products p
-    LEFT JOIN discount d ON p.id = d.productid
-    LEFT JOIN store_house sh ON p.id = sh.productid
-    JOIN brands b ON p.brand_id = b.id
-    LEFT JOIN brand_lines bl ON p.line_id = bl.id
-    LEFT JOIN LATERAL (
-        SELECT dr2.discount_value,
-            dr2.name
-        FROM discount_rule_items dri
-            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
-            AND dr2.is_active = true
-            AND dr2.starts_at <= NOW()
-            AND (
-                dr2.ends_at IS NULL
-                OR dr2.ends_at >= NOW()
-            )
-        WHERE (
-                dri.item_type = 'brand'
-                AND dri.item_id = p.brand_id
-            )
-            OR (
-                dri.item_type = 'line'
-                AND dri.item_id = p.line_id
-            )
-            OR (
-                dri.item_type = 'product'
-                AND dri.item_id = p.id
-            )
-            AND d.id IS NULL
-        ORDER BY dr2.priority DESC
-        LIMIT 1
-    ) dr ON true
-WHERE (
-        COALESCE(array_length(@sizes::text [], 1), 0) = 0
-        OR EXISTS (
-            SELECT 1
-            FROM jsonb_object_keys(p.sizes) AS size_key
-            WHERE size_key = ANY(@sizes::text [])
-                AND (p.sizes->size_key->>'price')::numeric > 0
-        )
-    )
-    AND (
-        @status::text IS NULL
-        OR @status::text = ''
-        OR p.status = @status::text
-    )
-    AND (
-        @name::text IS NULL
-        OR @name::text = ''
-        OR p.name ILIKE '%' || @name::text || '%'
-        OR p.article ILIKE '%' || @name::text || '%'
-    )
-    AND (
-        COALESCE(array_length(@categories::int [], 1), 0) = 0
-        OR p.category = ANY(@categories::int [])
-    )
-    AND (
-        COALESCE(array_length(@product_types::int [], 1), 0) = 0
-        OR p.type = ANY(@product_types::int [])
-    )
-    AND (
-        COALESCE(array_length(@firms::int [], 1), 0) = 0
-        OR p.brand_id = ANY(@firms::int [])
-    )
-    AND (
-        COALESCE(array_length(@lines::int [], 1), 0) = 0
-        OR p.line_id = ANY(@lines::int [])
-    )
-    AND (
-        COALESCE(array_length(@bodytypes::text [], 1), 0) = 0
-        OR p.bodytype = ANY(@bodytypes::body_enum [])
-    )
-    AND (
-        sqlc.narg('minprice')::int IS NULL
-        OR p.maxprice >= sqlc.narg('minprice')::int
-    )
-    AND (
-        sqlc.narg('maxprice')::int IS NULL
-        OR p.minprice <= sqlc.narg('maxprice')::int
-    )
-    AND (
-        @has_discount::boolean IS NULL
-        OR @has_discount::boolean = false
-        OR d.id IS NOT NULL
-        OR dr.discount_value IS NOT NULL
-    )
-    AND (
-        @in_store::boolean IS NULL
-        OR @in_store::boolean = false
-        OR (
-            sh.id IS NOT NULL
-            AND sh.quantity > 0
-        )
-    )
-    AND (
-        @with_price::boolean IS NULL
-        OR @with_price::boolean = false
-        OR p.minprice > 0
-    )
-ORDER BY CASE
-        WHEN @sort_type::int = 1 THEN p.name
-    END ASC,
-    CASE
-        WHEN @sort_type::int = 2 THEN p.name
-    END DESC,
-    CASE
-        WHEN @sort_type::int = 3 THEN p.minprice
-    END ASC,
-    CASE
-        WHEN @sort_type::int = 4 THEN p.minprice
-    END DESC,
-    CASE
-        WHEN @sort_type::int NOT IN (1, 2, 3, 4) THEN p.name
-    END ASC,
-    p.id ASC
-LIMIT CASE
-        WHEN @limitVal::integer > 0 THEN @limitVal::integer
-        ELSE 50
-    END OFFSET CASE
-        WHEN @offsetVal::integer > 0 THEN @offsetVal::integer
-        ELSE 0
-    END;
-
 
 
 -- ============================================================
@@ -987,11 +1200,19 @@ OFFSET CASE WHEN @offsetval::integer > 0 THEN @offsetval::integer ELSE 0 END;
 
 -- name: GetProductsByFiltersPaginateWithDiscount :many
 -- Только со скидками (LATERAL + discount)
-SELECT p.id, p.name, p.image_path,
-       b.name as firm,
-       p.minprice, p.maxprice, p.status,
-       COALESCE(d.maxdiscprice, 0) as maxdiscprice,
-       COALESCE(dr.discount_value, 0) as discount_percent
+SELECT 
+    p.id, 
+    p.name, 
+    p.image_path,
+    b.name as firm,
+    p.status,
+    -- 🔥 Данные о скидке из таблицы discount
+    COALESCE(d.discount_percent, 0) AS discount_percent,
+    COALESCE(d.original_price, 0) AS original_price,
+    COALESCE(d.discounted_price, p.minprice) AS discounted_price,
+    COALESCE(d.min_price, p.minprice) AS min_price,
+    COALESCE(d.max_price, p.maxprice) AS max_price,
+    d.id IS NOT NULL AS has_discount
 FROM products p
 INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
 LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
@@ -1181,12 +1402,20 @@ OFFSET CASE WHEN @offsetval::integer > 0 THEN @offsetval::integer ELSE 0 END;
 
 -- name: GetProductsByFiltersPaginateFull :many
 -- Всё вместе: и скидки, и склад
-SELECT p.id, p.name, p.image_path,
-       b.name as firm,
-       p.minprice, p.maxprice, p.status,
-       COALESCE(d.maxdiscprice, 0) as maxdiscprice,
-       COALESCE(dr.discount_value, 0) as discount_percent,
-       (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
+SELECT 
+p.id, 
+    p.name, 
+    p.image_path,
+    b.name as firm,
+    -- 🔥 Данные о скидке из таблицы discount
+    COALESCE(d.discount_percent, 0) AS discount_percent,
+    COALESCE(d.original_price, 0) AS original_price,
+    COALESCE(d.discounted_price, p.minprice) AS discounted_price,
+    COALESCE(d.min_price, p.minprice) AS min_price,
+    COALESCE(d.max_price, p.maxprice) AS max_price,
+    d.id IS NOT NULL AS has_discount,
+    -- Наличие на складе
+    (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
 FROM products p
 INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
 LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
@@ -1643,17 +1872,7 @@ WHERE
 -- name: DeleteDiscount :exec
 DELETE FROM discount
 WHERE productid = $1;
--- name: BulkInsertDiscounts :exec
-INSERT INTO discount (productid, value, minprice, maxdiscprice)
-SELECT unnest(@product_ids::integer []),
-    unnest(@discount_values::jsonb []),
-    unnest(@min_prices::integer []),
-    unnest(@max_disc_prices::integer []) ON CONFLICT (productid) DO
-UPDATE
-SET value = EXCLUDED.value,
-    minprice = EXCLUDED.minprice,
-    maxdiscprice = EXCLUDED.maxdiscprice,
-    updated_at = NOW();
+
 -- name: GetProductsBasicInfo :many
 SELECT id,
     minprice,
@@ -1779,33 +1998,48 @@ ORDER BY dr.priority DESC,
 -- name: ClearDiscounts :exec
 DELETE FROM discount;
 -- name: GetDiscounts :many
-SELECT d.productid,
+SELECT 
+    d.productid,
     p.name AS product_name,
     p.article,
+    p.image_path,
+    p.status AS product_status,
     d.value,
-    d.minprice,
-    d.maxdiscprice,
+    d.discount_percent,
+    d.original_price,
+    d.discounted_price,
+    d.min_price,
+    d.max_price,
     d.created_at,
-    d.updated_at
+    d.updated_at,
+    true AS has_discount
 FROM discount d
-    JOIN products p ON d.productid = p.id
+JOIN products p ON d.productid = p.id
 ORDER BY d.created_at DESC
 LIMIT $1 OFFSET $2;
 -- name: GetDiscountsCount :one
 SELECT COUNT(*)
 FROM discount;
 -- name: GetDiscountByProductID :one
-SELECT d.productid,
+SELECT 
+    d.productid,
     p.name AS product_name,
     p.article,
+    p.image_path,
     d.value,
-    d.minprice,
-    d.maxdiscprice,
+    d.discount_percent,
+    d.original_price,
+    d.discounted_price,
+    d.min_price,
+    d.max_price,
     d.created_at,
-    d.updated_at
+    d.updated_at,
+    -- Флаг наличия скидки (всегда true, т.к. запись есть)
+    true AS has_discount
 FROM discount d
-    JOIN products p ON d.productid = p.id
-WHERE d.productid = $1;
+JOIN products p ON d.productid = p.id
+WHERE d.productid = $1
+  AND p.status = 'active';
 -- name: GetMainPageInfo :many
 SELECT p.category,
     COUNT(*) OVER (PARTITION BY p.category) as category_product_count,
@@ -3218,18 +3452,40 @@ ORDER BY product_id, dr.priority DESC, dr.discount_value DESC;
 
 
 -- name: BulkUpsertDiscount :exec
-INSERT INTO discount (productid, value, minprice, maxdiscprice)
-SELECT
-    unnest(@product_ids::int[]),
-    unnest(@values::jsonb[]),
-    unnest(@min_prices::int[]),
-    unnest(@max_disc_prices::int[])
-ON CONFLICT (productid) DO UPDATE SET
+INSERT INTO discount (
+    productid, 
+    value, 
+    discount_percent, 
+    original_price, 
+    discounted_price, 
+    min_price, 
+    max_price,
+    updated_at,
+    rule_id
+)
+SELECT 
+    unnest(@product_ids::int[]) as productid,
+    unnest(@values::jsonb[]) as value,
+    unnest(@discount_percents::int[]) as discount_percent,
+    unnest(@original_prices::int[]) as original_price,
+    unnest(@discounted_prices::int[]) as discounted_price,
+    unnest(@min_prices::int[]) as min_price,
+    unnest(@max_prices::int[]) as max_price,
+    NOW() as updated_at,
+    unnest(@rule_ids::int[]) as rule_id
+ON CONFLICT (productid) DO UPDATE 
+SET 
     value = EXCLUDED.value,
-    minprice = EXCLUDED.minprice,
-    maxdiscprice = EXCLUDED.maxdiscprice,
-    updated_at = NOW();
-
+    discount_percent = EXCLUDED.discount_percent,
+    original_price = EXCLUDED.original_price,
+    discounted_price = EXCLUDED.discounted_price,
+    min_price = EXCLUDED.min_price,
+    max_price = EXCLUDED.max_price,
+    updated_at = EXCLUDED.updated_at,
+    rule_id = CASE 
+        WHEN EXCLUDED.rule_id = 0 THEN NULL 
+        ELSE EXCLUDED.rule_id 
+    END;
 -- name: DeleteAllRuleBasedDiscounts :exec
 DELETE FROM discount
 WHERE value::text LIKE '%"rule_id"%';
