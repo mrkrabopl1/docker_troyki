@@ -52,8 +52,9 @@ func NewServer(config util.Config, store db.Store, taskDistributor worker.TaskDi
 
 func (s *Server) setupRouter() {
 	router := gin.Default()
-	// router.Use(render.SetContentType(render.ContentTypeJSON))
+
 	fmt.Println(s.config.AllowedOrigins, "ыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыError while creating server")
+
 	corsConfig := cors.Config{
 		AllowOrigins:     s.config.AllowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -62,176 +63,163 @@ func (s *Server) setupRouter() {
 		MaxAge:           12 * time.Hour,
 	}
 	router.Use(cors.New(corsConfig))
+
 	router.Use(func(c *gin.Context) {
 		fmt.Printf("Request: %s %s\n", c.Request.Method, c.Request.URL.Path)
 		start := time.Now()
-
 		c.Next()
-
 		fmt.Printf("Response: %d, Duration: %v\n", c.Writer.Status(), time.Since(start))
 	})
-	// Apply CORS middleware
-	// s.router.Use(corsOptions.Handler)
-	// s.router.Use(loggingMiddleware)
-	// s.router.With(querySelectionMiddleware("name")).Get("/snickersByFirm", s.handleGetSnickersByFirmName)
-	// s.router.With(querySelectionMiddleware("name")).Get("/snickersByLine", s.handleGetSnickersByLineName)
 
-	// s.router.With(querySelectionMiddleware("id")).Get("/ProductsInfo", s.handleGetProductsInfoById)
-	// router.GET("/sizeTable", s.handleGetSizes)
-	// router.GET("/firms", s.handleGetFirms)
-	//s.router.Get("/mainPage", s.handleGetMainPage)
-
-	//s.router.Get("/faq", s.handleFAQ)
-
-	snickersRoute := router.Group("/")
-	snickersRoute.Use(CachedMiddleware(s))
-	snickersRoute.GET("/productsInfo", s.handleGetProductsInfoById)
-
-	rateLimiter := NewRateLimiter(3, 3) // 3 запроса в секунду, burst 3
-
-	newsletterGroup := router.Group("/newsletter")
-	newsletterGroup.Use(RateLimitMiddleware(rateLimiter))
+	// ==================== ГРУППА /api ====================
+	api := router.Group("/api")
 	{
-		newsletterGroup.POST("/subscribe", s.handleSubscribeNewsletter)
-		newsletterGroup.GET("/verify/:token", s.handleVerifyNewsletter)
-		newsletterGroup.POST("/unsubscribe", s.handleUnsubscribeNewsletter)
-	}
+		// Snickers routes
+		snickersRoute := api.Group("/")
+		snickersRoute.Use(CachedMiddleware(s))
+		snickersRoute.GET("/productsInfo", s.handleGetProductsInfoById)
 
-	bannerRoute := router.Group("/")
-	bannerRoute.Use(CachedBannersMiddleware(s))
-	bannerRoute.GET("/getMainBanners", s.handleGetMainBanners)
-
-	router.POST("/searchProducts", s.handleSearchProducts)
-	router.POST("/getProductsAndFiltersByNameCategoryAndType", s.handleSearchSnickersAndFiltersByNameCategoryAndType)
-	router.POST("/getProductsByString", s.handleSearchProductsByString)
-	router.POST("/collection", s.handleGetSoloCollection)
-	router.POST("/disconts", s.handleGetDiscounts)
-	router.GET("/setUniqueCustomer", s.handleSetUniqueCustomer)
-	router.POST("/createPreorder", s.handleCreatePreorder)
-	router.POST("/createOrder", s.handleCreateOrder)
-	router.POST("/updatePreorder", s.handleUpdatePreorder)
-	router.GET("/getCartCount", s.handleGetCartCount)
-	router.GET("/getCartData", s.handleGetCart)
-	router.GET("/getCartDataFromOrder", s.handleGetCartFromOrder)
-	router.GET("/getOrderDataByHash", s.handleGetOrderDataByHash)
-	router.POST("/getOrderDataByMail", s.handleGetOrderDataByMail)
-	router.POST("/deleteCartData", s.handleDeleteCartData)
-	router.GET("/historyInfo", s.handleGetHistory)
-	router.POST("/registerUser", s.handleRegisterUser)
-	router.POST("/login", s.handleLogin)
-	router.GET("/unlogin", s.handleUnlogin)
-	router.GET("/categoriesWithTypes", s.handleGetCategoriesWithTypes)
-	router.GET("/pasetoAutorise", s.handlePasetoAutorise)
-	router.GET("/getUserData", s.handleGetUserData)
-	router.POST("/verify", s.handleVerifyUser)
-	router.POST("/changePass", s.handleChangePass)
-	router.GET("/forgetPass", s.handleForgetPass)
-	router.POST("/verifyChangePass", s.handleVerifyForgetPass)
-	router.POST("/changeForgetPass", s.handleChangeForgetPass)
-	router.POST("/getDataByCategoriesAndFilters", s.handleSearchProductByCategoriesAndFilters)
-	router.GET("/getMainPage", s.handleGetMainPage)
-	router.GET("/getMainInfo", s.handleGetMainInfo)
-	router.GET("/checkCustomerData", s.handleCheckCustomerData)
-
-	router.POST("/admin/auth/login", s.handleAdminLogin)
-	router.POST("/admin/auth/forgot-password", s.handleAdminForgotPass)
-	router.POST("/admin/auth/refresh", s.handleAdminRefreshToken)
-	router.POST("/admin/auth/reset-password", s.handleAdminResetPassword)
-
-	router.GET("/admin/verify-invite", s.handleAdminVerifyInvite)
-	router.POST("/admin/accept-invite", s.handleAdminAcceptInvite)
-
-	adminGroup := router.Group("/admin")
-
-	adminGroup.Use(s.AdminAuthMiddleware()) // Только админский middleware!
-	{
-		adminGroup.GET("/dashboard/stats", s.handleAdminGetDashboardStats)
-		// Управление товарами (доступно admin и superadmin)
-		adminGroup.POST("/products", s.handleAdminCreateProduct)
-		adminGroup.GET("/productsAndFilters", s.handleAdminGetProductsAndFilters)
-		adminGroup.POST("/products/search", s.handleAdminGetProducts)
-		adminGroup.PUT("/products/:id", s.handleAdminUpdateProduct)
-		adminGroup.GET("/products/:id", s.handleAdminGetProductById)
-		adminGroup.DELETE("/products/:id", s.handleAdminHardDeleteProduct)
-		adminGroup.POST("/products/:id/image", s.handleAdminUploadProductImage)
-		adminGroup.PATCH("/products/bulk-status", s.handleAdminBulkUpdateProductStatus)
-		adminGroup.PATCH("/products/bulk-price", s.handleBulkUpdateProductPrice)
-		adminGroup.PATCH("/products/:id/status", s.handleAdminUpdateProductStatus)
-		adminGroup.DELETE("/products/:id/image", s.handleAdminDeleteProductImage)
-
-		adminGroup.POST("/tempImage/:id", s.handleAdminUploadTempImage)
-		adminGroup.GET("/tempImage/:id", s.handleAdminGetTempImages)
-
-		adminGroup.GET("/brandsWithLines", s.handleGetAllBrandsWithLines)
-		adminGroup.POST("/firms", s.handleAdminCreateFirm)
-		adminGroup.GET("/brands/:id", s.handleAdminGetBrandById)
-		adminGroup.POST("/brands/:id", s.handleAdminUpdateBrand)
-		adminGroup.PUT("/brands/bulk-sort-order", s.handleAdminBulkUpdateSortOrder)
-		adminGroup.PUT("/brands/bulk-active", s.handleAdminBulkUpdateBrandActive)
-		adminGroup.GET("/firms/stats", s.handleAdminGetFirmsStats)
-
-		adminGroup.POST("/sql/execute", s.handleAdminExecuteSQL)
-
-		// Управление скидками
-		adminGroup.POST("/sales", s.handleAdminCreateSale)
-		adminGroup.PUT("/sales/:id", s.handleAdminUpdateSale)
-		adminGroup.DELETE("/sales/:id", s.handleAdminDeleteSale)
-		adminGroup.GET("/sales", s.handleAdminGetSales)
-
-		// Управление заказами
-		adminGroup.GET("/orders", s.handleAdminGetOrders)
-		adminGroup.GET("/orders/:id", s.handleAdminGetOrderDetails)
-		adminGroup.PUT("/orders/:id/status", s.handleAdminUpdateOrderStatus)
-
-		// Управление баннерами
-		adminGroup.GET("/banners/filters", s.handleAdminGetBannersAndFilters)
-		adminGroup.GET("/banners", s.handleAdminGetBanners)
-		adminGroup.POST("/banners", s.handleAdminCreateBanner)
-		adminGroup.PUT("/banners/:id", s.handleAdminUpdateBanner)
-		adminGroup.DELETE("/banners/:id", s.handleAdminDeleteBanner)
-
-		adminGroup.GET("/page-blocks", s.handleAdminGetPageWidgets)
-		adminGroup.POST("/page-blocks", s.handleAdminCreatePageWidget)
-		adminGroup.PUT("/page-blocks/:id", s.handleAdminUpdatePageWidget)
-		adminGroup.DELETE("/page-blocks/:id", s.handleAdminDeletePageWidget)
-		adminGroup.PATCH("/page-blocks/reorder", s.handleAdminReorderPageWidgets)
-
-		discountRules := adminGroup.Group("/discount-rules")
+		// Newsletter
+		rateLimiter := NewRateLimiter(3, 3)
+		newsletterGroup := api.Group("/newsletter")
+		newsletterGroup.Use(RateLimitMiddleware(rateLimiter))
 		{
-			discountRules.POST("", s.handleAdminCreateDiscountRule)
-			discountRules.GET("", s.handleAdminGetDiscountRules)
-			discountRules.GET("active", s.handleAdminGetDiscountActiveRules)
-			discountRules.GET("/by-entity", s.handleAdminGetDiscountRulesByEntity)
-			discountRules.GET("/:id", s.handleAdminGetDiscountRule)
-			discountRules.PUT("/:id", s.handleAdminUpdateDiscountRule)
-			discountRules.DELETE("/:id", s.handleAdminDeleteDiscountRule)
-			discountRules.POST("/:id/items", s.handleAdminAddRuleItems)
-			discountRules.PATCH("/products", s.handleBulkUpdateProductDiscount)
-			discountRules.DELETE("/:id/items", s.handleAdminRemoveRuleItem)
-			discountRules.POST("/:id/toggle", s.handleAdminToggleRule)
+			newsletterGroup.POST("/subscribe", s.handleSubscribeNewsletter)
+			newsletterGroup.GET("/verify/:token", s.handleVerifyNewsletter)
+			newsletterGroup.POST("/unsubscribe", s.handleUnsubscribeNewsletter)
 		}
 
-		adminGroup.GET("/auth/me", s.handleAdminGetMe)
-		// // Управление пользователями
-		// adminGroup.GET("/users", s.handleAdminGetUsers)
-		// adminGroup.PUT("/users/:id/role", s.handleAdminUpdateUserRole)
+		// Banners
+		bannerRoute := api.Group("/")
+		bannerRoute.Use(CachedBannersMiddleware(s))
+		bannerRoute.GET("/getMainBanners", s.handleGetMainBanners)
 
-		// Статистика
+		// Основные API маршруты
+		api.POST("/searchProducts", s.handleSearchProducts)
+		api.POST("/getProductsAndFiltersByNameCategoryAndType", s.handleSearchSnickersAndFiltersByNameCategoryAndType)
+		api.POST("/getProductsByString", s.handleSearchProductsByString)
+		api.POST("/collection", s.handleGetSoloCollection)
+		api.POST("/disconts", s.handleGetDiscounts)
+		api.GET("/setUniqueCustomer", s.handleSetUniqueCustomer)
+		api.POST("/createPreorder", s.handleCreatePreorder)
+		api.POST("/createOrder", s.handleCreateOrder)
+		api.POST("/updatePreorder", s.handleUpdatePreorder)
+		api.GET("/getCartCount", s.handleGetCartCount)
+		api.GET("/getCartData", s.handleGetCart)
+		api.GET("/getCartDataFromOrder", s.handleGetCartFromOrder)
+		api.GET("/getOrderDataByHash", s.handleGetOrderDataByHash)
+		api.POST("/getOrderDataByMail", s.handleGetOrderDataByMail)
+		api.POST("/deleteCartData", s.handleDeleteCartData)
+		api.GET("/historyInfo", s.handleGetHistory)
+		api.POST("/registerUser", s.handleRegisterUser)
+		api.POST("/login", s.handleLogin)
+		api.GET("/unlogin", s.handleUnlogin)
+		api.GET("/categoriesWithTypes", s.handleGetCategoriesWithTypes)
+		api.GET("/pasetoAutorise", s.handlePasetoAutorise)
+		api.GET("/getUserData", s.handleGetUserData)
+		api.POST("/verify", s.handleVerifyUser)
+		api.POST("/changePass", s.handleChangePass)
+		api.GET("/forgetPass", s.handleForgetPass)
+		api.POST("/verifyChangePass", s.handleVerifyForgetPass)
+		api.POST("/changeForgetPass", s.handleChangeForgetPass)
+		api.POST("/getDataByCategoriesAndFilters", s.handleSearchProductByCategoriesAndFilters)
+		api.GET("/getMainPage", s.handleGetMainPage)
+		api.GET("/getMainInfo", s.handleGetMainInfo)
+		api.GET("/checkCustomerData", s.handleCheckCustomerData)
 
-		// ========== ТОЛЬКО SUPERADMIN ==========
-		superAdminGroup := adminGroup.Group("/")
-		superAdminGroup.Use(s.SuperAdminMiddleware())
+		// Admin auth (без middleware)
+		api.POST("/admin/auth/login", s.handleAdminLogin)
+		api.POST("/admin/auth/forgot-password", s.handleAdminForgotPass)
+		api.POST("/admin/auth/refresh", s.handleAdminRefreshToken)
+		api.POST("/admin/auth/reset-password", s.handleAdminResetPassword)
+		api.GET("/admin/verify-invite", s.handleAdminVerifyInvite)
+		api.POST("/admin/accept-invite", s.handleAdminAcceptInvite)
+
+		// Admin group с middleware
+		adminGroup := api.Group("/admin")
+		adminGroup.Use(s.AdminAuthMiddleware())
 		{
-			superAdminGroup.GET("/admins", s.handleAdminGetAdmins)
-			superAdminGroup.POST("/admins", s.handleAdminCreateAdmin)
-			superAdminGroup.PUT("/admins/:id", s.handleAdminUpdateAdmin)
-			superAdminGroup.DELETE("/admins/:id", s.handleAdminDeleteAdmin)
+			adminGroup.GET("/dashboard/stats", s.handleAdminGetDashboardStats)
 
-			superAdminGroup.POST("/invites", s.handleAdminInviteAdmin)
-			// superAdminGroup.GET("/invites", s.handleAdminGetInvites) // Список приглашений
-			// // Создать приглашение
-			// superAdminGroup.DELETE("/invites/:id", s.handleAdminCancelInvite)
-			superAdminGroup.GET("/logs", s.handleAdminGetLogs)
+			// Управление товарами
+			adminGroup.POST("/products", s.handleAdminCreateProduct)
+			adminGroup.GET("/productsAndFilters", s.handleAdminGetProductsAndFilters)
+			adminGroup.POST("/products/search", s.handleAdminGetProducts)
+			adminGroup.PUT("/products/:id", s.handleAdminUpdateProduct)
+			adminGroup.GET("/products/:id", s.handleAdminGetProductById)
+			adminGroup.DELETE("/products/:id", s.handleAdminHardDeleteProduct)
+			adminGroup.POST("/products/:id/image", s.handleAdminUploadProductImage)
+			adminGroup.PATCH("/products/bulk-status", s.handleAdminBulkUpdateProductStatus)
+			adminGroup.PATCH("/products/bulk-price", s.handleBulkUpdateProductPrice)
+			adminGroup.PATCH("/products/:id/status", s.handleAdminUpdateProductStatus)
+			adminGroup.DELETE("/products/:id/image", s.handleAdminDeleteProductImage)
+
+			adminGroup.POST("/tempImage/:id", s.handleAdminUploadTempImage)
+			adminGroup.GET("/tempImage/:id", s.handleAdminGetTempImages)
+
+			adminGroup.GET("/brandsWithLines", s.handleGetAllBrandsWithLines)
+			adminGroup.POST("/firms", s.handleAdminCreateFirm)
+			adminGroup.GET("/brands/:id", s.handleAdminGetBrandById)
+			adminGroup.POST("/brands/:id", s.handleAdminUpdateBrand)
+			adminGroup.PUT("/brands/bulk-sort-order", s.handleAdminBulkUpdateSortOrder)
+			adminGroup.PUT("/brands/bulk-active", s.handleAdminBulkUpdateBrandActive)
+			adminGroup.GET("/firms/stats", s.handleAdminGetFirmsStats)
+
+			adminGroup.POST("/sql/execute", s.handleAdminExecuteSQL)
+
+			// Управление скидками
+			adminGroup.POST("/sales", s.handleAdminCreateSale)
+			adminGroup.PUT("/sales/:id", s.handleAdminUpdateSale)
+			adminGroup.DELETE("/sales/:id", s.handleAdminDeleteSale)
+			adminGroup.GET("/sales", s.handleAdminGetSales)
+
+			// Управление заказами
+			adminGroup.GET("/orders", s.handleAdminGetOrders)
+			adminGroup.GET("/orders/:id", s.handleAdminGetOrderDetails)
+			adminGroup.PUT("/orders/:id/status", s.handleAdminUpdateOrderStatus)
+
+			// Управление баннерами
+			adminGroup.GET("/banners/filters", s.handleAdminGetBannersAndFilters)
+			adminGroup.GET("/banners", s.handleAdminGetBanners)
+			adminGroup.POST("/banners", s.handleAdminCreateBanner)
+			adminGroup.PUT("/banners/:id", s.handleAdminUpdateBanner)
+			adminGroup.DELETE("/banners/:id", s.handleAdminDeleteBanner)
+
+			adminGroup.GET("/page-blocks", s.handleAdminGetPageWidgets)
+			adminGroup.POST("/page-blocks", s.handleAdminCreatePageWidget)
+			adminGroup.PUT("/page-blocks/:id", s.handleAdminUpdatePageWidget)
+			adminGroup.DELETE("/page-blocks/:id", s.handleAdminDeletePageWidget)
+			adminGroup.PATCH("/page-blocks/reorder", s.handleAdminReorderPageWidgets)
+
+			// Discount rules
+			discountRules := adminGroup.Group("/discount-rules")
+			{
+				discountRules.POST("", s.handleAdminCreateDiscountRule)
+				discountRules.GET("", s.handleAdminGetDiscountRules)
+				discountRules.GET("/active", s.handleAdminGetDiscountActiveRules)
+				discountRules.GET("/by-entity", s.handleAdminGetDiscountRulesByEntity)
+				discountRules.GET("/:id", s.handleAdminGetDiscountRule)
+				discountRules.PUT("/:id", s.handleAdminUpdateDiscountRule)
+				discountRules.DELETE("/:id", s.handleAdminDeleteDiscountRule)
+				discountRules.POST("/:id/items", s.handleAdminAddRuleItems)
+				discountRules.PATCH("/products", s.handleBulkUpdateProductDiscount)
+				discountRules.DELETE("/:id/items", s.handleAdminRemoveRuleItem)
+				discountRules.POST("/:id/toggle", s.handleAdminToggleRule)
+			}
+
+			adminGroup.GET("/auth/me", s.handleAdminGetMe)
+
+			// ========== ТОЛЬКО SUPERADMIN ==========
+			superAdminGroup := adminGroup.Group("/")
+			superAdminGroup.Use(s.SuperAdminMiddleware())
+			{
+				superAdminGroup.GET("/admins", s.handleAdminGetAdmins)
+				superAdminGroup.POST("/admins", s.handleAdminCreateAdmin)
+				superAdminGroup.PUT("/admins/:id", s.handleAdminUpdateAdmin)
+				superAdminGroup.DELETE("/admins/:id", s.handleAdminDeleteAdmin)
+				superAdminGroup.POST("/invites", s.handleAdminInviteAdmin)
+				superAdminGroup.GET("/logs", s.handleAdminGetLogs)
+			}
 		}
 	}
 
