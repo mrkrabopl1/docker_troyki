@@ -203,14 +203,14 @@ const ProductsInfo: React.FC = () => {
 
 
     const renderImagePresentation = useCallback(() => {
-        if (merchInfo.image_count > 1) {
+        if (merchInfo.image_count > 0) {
             return widthProps
                 ? <ContentSlider content={imageContent} />
                 : <ImagePresantation onClick={(ind) => {
                     setActiveProductsModal(true)
                 }} image_count={merchInfo.image_count} image_path={merchInfo.image_path}  extansion={merchInfo.image_extansion}/>;
         }
-        return <ImagePresantationBlock image={merchInfo.image_path + "/img1" + "."+merchInfo.image_extansion} />;
+        // return <ImagePresantationBlock image={merchInfo.image_path + "/img1" + "."+merchInfo.image_extansion} />;
     }, [merchInfo.image_path, widthProps]);
 
     useEffect(() => {
