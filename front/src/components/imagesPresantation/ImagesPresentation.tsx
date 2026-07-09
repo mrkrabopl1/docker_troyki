@@ -7,7 +7,7 @@ import { isDeepEqual } from 'src/global';
 type ImagePresentationProps = {
     image_count: number;
     image_path: string,
-    extansion:stirn,
+    extansion:string,
     onClick?: (ind: number) => void;
 };
 
