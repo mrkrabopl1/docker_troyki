@@ -37,7 +37,8 @@ interface ProductInfo {
     producttype: ProductType;
     minprice?: number;
     article: string;
-    line_products?: any[]
+    line_products?: any[],
+    image_extansion: string;
 }
 
 interface SizeTable {
@@ -55,7 +56,7 @@ const ProductsInfo: React.FC = () => {
     const dispatch = useAppDispatch();
  
 
-    const [merchInfo, setMerchInfo] = useState<ProductInfo>({ article: "", image_path: "", image_count: 0, name: "", info: {}, producttype: "snickers" });
+    const [merchInfo, setMerchInfo] = useState<ProductInfo>({ article: "", image_path: "", image_count: 0, name: "", info: {}, producttype: "snickers", image_extansion: "webp" });
     console.log("render ProductsInfo", merchInfo);
     const [tableInfo, setTableInfo] = useState<SizeTable>({
         sizes: {},
