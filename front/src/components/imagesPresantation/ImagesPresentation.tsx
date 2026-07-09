@@ -7,19 +7,21 @@ import { isDeepEqual } from 'src/global';
 type ImagePresentationProps = {
     image_count: number;
     image_path: string,
+    extansion:stirn,
     onClick?: (ind: number) => void;
 };
 
 const ImagePresentation: React.FC<ImagePresentationProps> = ({ 
     image_count, 
     image_path, 
+    extansion,
     onClick
 }) => {
     const presentationRef = useRef<HTMLDivElement>(null);
     const [mainImage, setMainImage] = useState<string>("");
 
     const cratePath = useCallback((i: number) => {
-        return image_path +  i + ".png";
+        return image_path + "/img"+ i + "."+extansion;
     }, [image_path]);
 
     useEffect(() => {

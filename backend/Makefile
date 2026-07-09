@@ -113,6 +113,6 @@ update_db_file:
 		echo "❌ Укажите файл: make update_db_file file=full_update_2026-03-18T10-21-59.sql"; \
 		exit 1; \
 	fi
-	@echo "🚀 Применяем файл: $(SQL_DIR)$(file)"
-	@psql "$(DB_URL)" -f "$(SQL_DIR)$(file)"
-	@echo "✅ Обновление завершено!"	
+	@echo "🚀 Применяем файл: $(file)"
+	@PGPASSWORD=$(DB_PASSWORD) psql -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d $(DB_NAME) -f "$(file)"
+	@echo "✅ Обновление завершено!"

@@ -521,6 +521,7 @@ const setFiltersFromUrl = useCallback(() => {
   const stickyTopRef = useRef(20);
 
   useEffect(() => {
+    if(!rightBlockRef.current) return;
     let rafId: number | null = null;
     let lastScrollY = window.scrollY;
 
@@ -607,7 +608,7 @@ const setFiltersFromUrl = useCallback(() => {
       resizeObserver.disconnect();
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [isSticky]);
+  }, [isSticky , rightBlockRef.current]);
 
   return (
     <div ref={pageWrap}>

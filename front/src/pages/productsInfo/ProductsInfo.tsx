@@ -207,9 +207,9 @@ const ProductsInfo: React.FC = () => {
                 ? <ContentSlider content={imageContent} />
                 : <ImagePresantation onClick={(ind) => {
                     setActiveProductsModal(true)
-                }} image_count={merchInfo.image_count} image_path={merchInfo.image_path} />;
+                }} image_count={merchInfo.image_count} image_path={merchInfo.image_path}  extansion={merchInfo.image_extansion}/>;
         }
-        return <ImagePresantationBlock image={merchInfo.image_path + "1.png"} />;
+        return <ImagePresantationBlock image={merchInfo.image_path + "/img1" + "."+merchInfo.image_extansion} />;
     }, [merchInfo.image_path, widthProps]);
 
     useEffect(() => {

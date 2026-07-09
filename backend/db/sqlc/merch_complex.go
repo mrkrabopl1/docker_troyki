@@ -45,6 +45,7 @@ type ProductsInfoResponse struct {
 	ImageCount   int32                  `json:"image_count"`
 	ImagePath    string                 `json:"image_path"`
 	Id           int32                  `json:"id"`
+	ImageExtansion string				`json:"image_extansion"`
 }
 
 type ProductsResponseD struct {
@@ -216,8 +217,9 @@ func (store *SQLStore) buildProductsInfoResponse(snInfo GetProductsInfoByIdRow) 
 		Category:    snInfo.Category,
 		Article:     snInfo.Article,
 		Store:       snInfo.StoreInfo,
-		ImagePath:   store.ImagePathBuilder.GetProductMainImage(snInfo.ImagePath),
+		ImagePath:   snInfo.ImagePath,
 		Id:          snInfo.ID,
+		ImageExtansion: "webp",
 	}
 }
 
