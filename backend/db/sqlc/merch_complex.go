@@ -32,20 +32,20 @@ type RespProductsByStringStruct struct {
 }
 
 type ProductsInfoResponse struct {
-	Name         string                 `json:"name"`
-	Info         map[string]interface{} `json:"info"`
-	Discount     map[string]interface{} `json:"discount"`
-	ProductType  int32                  `json:"type_id"`
-	Category     int32                  `json:"category_id"`
-	Article      string                 `json:"article"`
-	Store        interface{}            `json:"store"`
-	Firm         string                 `json:"firm"`
-	Line         string                 `json:"line"`
-	LineProducts []LineProductResponse  `json:"line_products"`
-	ImageCount   int32                  `json:"image_count"`
-	ImagePath    string                 `json:"image_path"`
-	Id           int32                  `json:"id"`
-	ImageExtansion string				`json:"image_extansion"`
+	Name           string                 `json:"name"`
+	Info           map[string]interface{} `json:"info"`
+	Discount       map[string]interface{} `json:"discount"`
+	ProductType    int32                  `json:"type_id"`
+	Category       int32                  `json:"category_id"`
+	Article        string                 `json:"article"`
+	Store          interface{}            `json:"store"`
+	Firm           string                 `json:"firm"`
+	Line           string                 `json:"line"`
+	LineProducts   []LineProductResponse  `json:"line_products"`
+	ImageCount     int32                  `json:"image_count"`
+	ImagePath      string                 `json:"image_path"`
+	Id             int32                  `json:"id"`
+	ImageExtansion string                 `json:"image_extansion"`
 }
 
 type ProductsResponseD struct {
@@ -207,18 +207,18 @@ func (store *SQLStore) buildProductsInfoResponse(snInfo GetProductsInfoByIdRow) 
 
 	fmt.Println(snInfo, "teaaaaaaaaaaast")
 	return ProductsInfoResponse{
-		Name:        snInfo.Name,
-		ImageCount:  snInfo.ImageCount,
-		Firm:        snInfo.Firm,
-		Line:        snInfo.Line.String,
-		Info:        jsonData,
-		Discount:    discount,
-		ProductType: snInfo.Type,
-		Category:    snInfo.Category,
-		Article:     snInfo.Article,
-		Store:       snInfo.StoreInfo,
-		ImagePath:   snInfo.ImagePath,
-		Id:          snInfo.ID,
+		Name:           snInfo.Name,
+		ImageCount:     snInfo.ImageCount,
+		Firm:           snInfo.Firm,
+		Line:           snInfo.Line.String,
+		Info:           jsonData,
+		Discount:       discount,
+		ProductType:    snInfo.Type,
+		Category:       snInfo.Category,
+		Article:        snInfo.Article,
+		Store:          snInfo.StoreInfo,
+		ImagePath:      store.ImagePathBuilder.GetImageURLFromPath(snInfo.ImagePath),
+		Id:             snInfo.ID,
 		ImageExtansion: "webp",
 	}
 }
