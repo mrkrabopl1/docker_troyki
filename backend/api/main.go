@@ -30,9 +30,6 @@ func (s *Server) handleGetMainBanners(ctx *gin.Context) {
 		}
 	}
 
-	// Теперь здесь будет полный URL
-	fmt.Println(resp[1].ImageUrl)
-
 	s.taskProcessor.SetBanners(ctx, params)
 	ctx.JSON(http.StatusOK, resp)
 }
