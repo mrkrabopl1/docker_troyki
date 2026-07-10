@@ -241,7 +241,7 @@ const setFiltersFromUrl = useCallback(() => {
     const checkBoxPropsData: CheckBoxType[] = []
 
     // Обработка размеров одежды
-    if (resData.sizes) {
+    if (resData.sizes && Object.entries(resData.sizes).length > 1) {
       Object.entries(resData.sizes).forEach(([size, count]) => {
         activeSizes.current.push(size)
         const active = filtersInfo.current.sizes.includes(size)
@@ -256,7 +256,7 @@ const setFiltersFromUrl = useCallback(() => {
 
     // Обработка типов товара
     const checkBoxPropsTypeData: CheckBoxType[] = []
-    if (resData.types) {
+    if (resData.types && resData.types.length > 1) {
       resData.types.forEach((typeId) => {
         let typeDescr = typesValRef.current[typeId];
         if (!typeDescr) {
@@ -312,7 +312,7 @@ const setFiltersFromUrl = useCallback(() => {
         id: firm.slug, // ← теперь slug, а не имя
         enable: true,
         activeData: active,
-        name: `${firmName} (${count})`
+        name: `${firmName}`
       });
     });
 
@@ -349,7 +349,7 @@ const setFiltersFromUrl = useCallback(() => {
           id: line.slug,
           enable: true,
           activeData: active,
-          name: `${lineName} (${count})`
+          name: `${lineName}`
         });
       });
     }

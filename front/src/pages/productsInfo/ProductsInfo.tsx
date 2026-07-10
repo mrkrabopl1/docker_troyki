@@ -48,13 +48,13 @@ interface SizeTable {
 }
 
 const ProductsInfo: React.FC = () => {
-    const { show, sticky, typesVal, categories } = useAppSelector(state => state.menuReducer);
+    const { show, sticky, typesVal, categories, firmMap } = useAppSelector(state => state.menuReducer);
      const router = useRouter();
     const product = router.query.product as string;
     const { widthProps } = useAppSelector(state => state.resizeReducer);
     const { cartCount } = useAppSelector(state => state.menuReducer);
     const dispatch = useAppDispatch();
- 
+    
 
     const [merchInfo, setMerchInfo] = useState<ProductInfo>({ article: "", image_path: "", image_count: 0, name: "", info: {}, producttype: "snickers", image_extansion: "webp" });
     console.log("render ProductsInfo", merchInfo);
@@ -253,7 +253,8 @@ const ProductsInfo: React.FC = () => {
                 <div className={widthProps ? s.topPart : s.leftPart} style={widthProps ? { width: "100%" } : {}}>
                     {renderImagePresentation()}
                     {widthProps ? null : <div onClick={() => {
-                        router.push(`/search?firm=${merchInfo.firm}`);
+                        const firm = Object.values(firmMap).find(f => f.name === merchInfo.firm);
+                        router.push(`/search?brand=${firm.slug}`);
                     }} className={s.firmInfoHolder}>
                         <img className={s.firmImage} src={"/images/brandLogos/" + merchInfo.firm + "/image.png"} alt="" />
                         <span className={s.firmName}>{merchInfo.firm}</span>

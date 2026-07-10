@@ -18,16 +18,20 @@ func (s *Server) handleGetMainBanners(ctx *gin.Context) {
 		return
 	}
 
-	// Конвертируем в CreateBannerParams
 	params := make([]db.CreateBannerParams, len(resp))
 	for i, banner := range resp {
-		fmt.Println("Banner from DB:", s.imageService.ImagePathBuilder.GetImageURLFromPath(banner.ImageUrl))
+		fullURL := s.imageService.ImagePathBuilder.GetImageURLFromPath(banner.ImageUrl)
+		fmt.Println("Banner from DB:", fullURL)
+		resp[i].ImageUrl = fullURL // <-- ОБНОВЛЯЕМ ИСХОДНЫЙ СЛАЙС
 		params[i] = db.CreateBannerParams{
 			Title:    pgtype.Text{String: banner.Title.String, Valid: banner.Title.Valid},
-			ImageUrl: s.imageService.ImagePathBuilder.GetImageURLFromPath(banner.ImageUrl),
+			ImageUrl: fullURL,
 			LinkUrl:  banner.LinkUrl,
 		}
 	}
+
+	// Теперь здесь будет полный URL
+	fmt.Println(resp[1].ImageUrl)
 
 	s.taskProcessor.SetBanners(ctx, params)
 	ctx.JSON(http.StatusOK, resp)
