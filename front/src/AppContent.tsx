@@ -3,14 +3,14 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { useAppDispatch } from 'src/store/hooks/redux';
 import { useRouteChange } from 'src/store/hooks/redux';
 import { cartCountAction, setDiscountRules, setSizeTables } from 'src/store/reducers/menuSlice';
-import { show, sticky, types, categories, setFirmMap, setFirms, collections,setLineMap } from 'src/store/reducers/menuSlice';
+import { show, sticky, types, categories, setFirmMap, setFirms, collections, setLineMap } from 'src/store/reducers/menuSlice';
 import { setFooter } from 'src/store/reducers/dispetcherSlice';
 import { setWidthProps } from 'src/store/reducers/resizeSlice';
 import { getCookie } from './global';
 import { setUniqueCustomer } from './providers/userProvider';
 import { getCartCount } from './providers/shopProvider';
 import { getMainInfo } from './providers/shopProvider';
-
+import { addImageToLoad, imageLoaded} from 'src/store/reducers/loadingSlice'
 // Components (общие для всех страниц)
 import ScrollToTop from './scrollToTop';
 import Preloader from './components/preloader/Preloader';
@@ -20,7 +20,7 @@ import StickyDispetcherButton from 'src/modules/stickyDispetcherButton/StickyDis
 import Footer from './modules/footer/Footer';
 
 
-import { Firm,Line } from "src/types/modules"
+import { Firm, Line } from "src/types/modules"
 interface AppContentProps {
   children: React.ReactNode;
 }
@@ -110,6 +110,18 @@ const AppContent: React.FC<AppContentProps> = ({ children }) => {
             types: {},
           };
         }
+      });
+      const imageUrls = data.categories.map(cat => "/" + cat.image_path);
+      dispatch(addImageToLoad(imageUrls.length));
+      imageUrls.forEach(url => {
+        const img = new Image();
+        img.onload = () => {
+          dispatch(imageLoaded()); // ← УМЕНЬШАЕМ СЧЕТЧИК
+        };
+        img.onerror = () => {
+          dispatch(imageLoaded()); // ← ДАЖЕ ПРИ ОШИБКЕ
+        };
+        img.src = url;
       });
       dispatch(types(typesVal));
       dispatch(categories(categoriesVal));

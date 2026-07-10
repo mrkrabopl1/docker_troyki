@@ -16,7 +16,7 @@ import VideoWallpaper from 'src/components/styledWalpapers/videoWalpaper/VideoWa
 import InfiniteRecursionViewport from 'src/components/styledWalpapers/doubleBacground/InfiniteRecursionViewport';
 import BlobBackground from 'src/components/styledWalpapers/blobBackground/BlobBackground';
 import ImageSlider from 'src/modules/imageSlider/ImageSlider';
-import { finishLoading, startLoading } from 'src/store/reducers/loadingSlice';
+import { finishLoading, startLoading , addImageToLoad, imageLoaded} from 'src/store/reducers/loadingSlice';
 
 import FirmsScroller from 'src/modules/firmsScroller/FirmsScroller';
 interface BannerData {
@@ -57,6 +57,19 @@ useEffect(() => {
         getMainBanners()
       ]);
       setMainData({ pageInfo, banners });
+            const bannerUrls = banners.map(b => b.image_url);
+      dispatch(addImageToLoad(bannerUrls.length));
+      
+      bannerUrls.forEach(url => {
+        const img = new Image();
+        img.onload = () => {
+          dispatch(imageLoaded());
+        };
+        img.onerror = () => {
+          dispatch(imageLoaded());
+        };
+        img.src = url;
+      });
       dispatch(finishLoading());
     } catch (error) {
       console.error('Failed to load data:', error);

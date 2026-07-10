@@ -3,9 +3,9 @@ import React from 'react';
 import s from './style.module.css';
 import { useAppSelector } from 'src/store/hooks/redux';
 const Preloader: React.FC = () => {
-    const isLoading = useAppSelector(state => state.loadingReducer.isLoading);
+    const {isLoading, totalImages, loadedCount} = useAppSelector(state => state.loadingReducer);
 
-    if (!isLoading) return null;
+    if (!isLoading && (totalImages<=loadedCount)) return null;
     return (
         <div className={s.preloaderWrapper}>
             <div className={s.preloaderContainer}>
