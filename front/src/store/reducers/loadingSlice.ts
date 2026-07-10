@@ -31,7 +31,6 @@ export const loadingSlice = createSlice({
         },
         finishLoading: (state) => {
             state.isLoading = false;
-            state.loadedCount = state.totalImages;
         },
         resetLoading: (state) => {
             state.isLoading = true;
