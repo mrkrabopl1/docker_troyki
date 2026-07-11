@@ -36,7 +36,20 @@
 body {
     background-color: #fff;
 }
-
+.preloader-wrapper {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #ffffff !important;
+    z-index: 999999 !important;
+}
 .link {
     text-decoration: none;
     padding-left: 10px;
