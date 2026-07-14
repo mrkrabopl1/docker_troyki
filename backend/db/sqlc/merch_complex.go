@@ -1055,26 +1055,27 @@ func (store *SQLStore) getProductsByFilters(
 	switch {
 	case !needDiscount && !needStore:
 		// Базовая пагинация и count
+
+		if mainFilter.Category.Valid {
+			filters.Categories = []int32{mainFilter.Category.Int32}
+		}
+		if mainFilter.Type.Valid {
+			filters.Types = []int32{mainFilter.Type.Int32}
+		}
 		params := GetProductsByFiltersPaginateBaseParams{
 			Limitval:     int32(size),
 			Offsetval:    int32(offset),
 			Sizes:        filters.Sizes,
 			Firms:        filters.Firms,
 			Bodytypes:    filters.Bodytypes,
-			ProductTypes: nil,
+			ProductTypes: filters.Types,
 			SortType:     int32(orderedType),
 			Lines:        filters.Lines,
 
 			WithPrice: filters.WithPrice,
 			// Название и категории
 			Name:       mainFilter.Name.String,
-			Categories: nil,
-		}
-		if mainFilter.Category.Valid {
-			filters.Categories = []int32{mainFilter.Category.Int32}
-		}
-		if mainFilter.Type.Valid {
-			filters.Types = []int32{mainFilter.Type.Int32}
+			Categories: filters.Categories,
 		}
 		if mainFilter.Name.Valid {
 			params.Name = mainFilter.Name.String
@@ -1113,29 +1114,31 @@ func (store *SQLStore) getProductsByFilters(
 		total, err = store.CountProductsByFiltersBase(ctx, countParams)
 
 	case needDiscount && !needStore:
+
+		if mainFilter.Category.Valid {
+			filters.Categories = []int32{mainFilter.Category.Int32}
+		}
+
+		if mainFilter.Type.Valid {
+			filters.Types = []int32{mainFilter.Type.Int32}
+		}
 		params := GetProductsByFiltersPaginateWithDiscountParams{
 			Limitval:     int32(size),
 			Offsetval:    int32(offset),
 			Sizes:        filters.Sizes,
 			Firms:        filters.Firms,
 			Bodytypes:    filters.Bodytypes,
-			ProductTypes: nil,
+			ProductTypes: filters.Types,
 			SortType:     int32(orderedType),
 			Lines:        filters.Lines,
 
 			WithPrice:  filters.WithPrice,
 			Name:       "",
-			Categories: nil,
+			Categories: filters.Categories,
 			RuleIds:    filters.RuleIDs,
-		}
-		if mainFilter.Category.Valid {
-			params.Categories = []int32{mainFilter.Category.Int32}
 		}
 		if mainFilter.Name.Valid {
 			params.Name = mainFilter.Name.String
-		}
-		if mainFilter.Type.Valid {
-			filters.Types = []int32{mainFilter.Type.Int32}
 		}
 		if usePriceFilter && len(filters.Price) == 2 {
 			params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
@@ -1169,28 +1172,30 @@ func (store *SQLStore) getProductsByFilters(
 		total, err = store.CountProductsByFiltersWithDiscount(ctx, countParams)
 
 	case !needDiscount && needStore:
+
+		if mainFilter.Category.Valid {
+			filters.Categories = []int32{mainFilter.Category.Int32}
+		}
+
+		if mainFilter.Type.Valid {
+			filters.Types = []int32{mainFilter.Type.Int32}
+		}
 		params := GetProductsByFiltersPaginateWithStoreParams{
 			Limitval:     int32(size),
 			Offsetval:    int32(offset),
 			Sizes:        filters.Sizes,
 			Firms:        filters.Firms,
 			Bodytypes:    filters.Bodytypes,
-			ProductTypes: nil,
+			ProductTypes: filters.Types,
 			SortType:     int32(orderedType),
 			Lines:        filters.Lines,
 
 			WithPrice:  filters.WithPrice,
 			Name:       "",
-			Categories: nil,
-		}
-		if mainFilter.Category.Valid {
-			filters.Categories = []int32{mainFilter.Category.Int32}
+			Categories: filters.Categories,
 		}
 		if mainFilter.Name.Valid {
 			params.Name = mainFilter.Name.String
-		}
-		if mainFilter.Type.Valid {
-			filters.Types = []int32{mainFilter.Type.Int32}
 		}
 		if usePriceFilter && len(filters.Price) == 2 {
 			params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
@@ -1223,29 +1228,31 @@ func (store *SQLStore) getProductsByFilters(
 		total, err = store.CountProductsByFiltersWithStore(ctx, countParams)
 
 	case needDiscount && needStore:
+
+		if mainFilter.Category.Valid {
+			filters.Categories = []int32{mainFilter.Category.Int32}
+		}
+
+		if mainFilter.Type.Valid {
+			filters.Types = []int32{mainFilter.Type.Int32}
+		}
 		params := GetProductsByFiltersPaginateFullParams{
 			Limitval:     int32(size),
 			Offsetval:    int32(offset),
 			Sizes:        filters.Sizes,
 			Firms:        filters.Firms,
 			Bodytypes:    filters.Bodytypes,
-			ProductTypes: nil,
+			ProductTypes: filters.Types,
 			SortType:     int32(orderedType),
 			Lines:        filters.Lines,
 
 			WithPrice:  filters.WithPrice,
 			Name:       "",
-			Categories: nil,
+			Categories: filters.Categories,
 			RuleIds:    filters.RuleIDs,
-		}
-		if mainFilter.Category.Valid {
-			filters.Categories = []int32{mainFilter.Category.Int32}
 		}
 		if mainFilter.Name.Valid {
 			params.Name = mainFilter.Name.String
-		}
-		if mainFilter.Type.Valid {
-			filters.Types = []int32{mainFilter.Type.Int32}
 		}
 		if usePriceFilter && len(filters.Price) == 2 {
 			params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
