@@ -1071,10 +1071,10 @@ func (store *SQLStore) getProductsByFilters(
 			Categories: nil,
 		}
 		if mainFilter.Category.Valid {
-			params.Categories = []int32{mainFilter.Category.Int32}
+			filters.Categories = []int32{mainFilter.Category.Int32}
 		}
 		if mainFilter.Type.Valid {
-			params.ProductTypes = []int32{mainFilter.Type.Int32}
+			filters.Types = []int32{mainFilter.Type.Int32}
 		}
 		if mainFilter.Name.Valid {
 			params.Name = mainFilter.Name.String
@@ -1099,12 +1099,12 @@ func (store *SQLStore) getProductsByFilters(
 			Sizes:        filters.Sizes,
 			Firms:        filters.Firms,
 			Bodytypes:    filters.Bodytypes,
-			ProductTypes: params.ProductTypes,
+			ProductTypes: filters.Types,
 			Lines:        filters.Lines,
 
 			WithPrice:  filters.WithPrice,
 			Name:       params.Name,
-			Categories: params.Categories,
+			Categories: filters.Categories,
 		}
 		if usePriceFilter && len(filters.Price) == 2 {
 			countParams.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
@@ -1135,7 +1135,7 @@ func (store *SQLStore) getProductsByFilters(
 			params.Name = mainFilter.Name.String
 		}
 		if mainFilter.Type.Valid {
-			params.ProductTypes = []int32{mainFilter.Type.Int32}
+			filters.Types = []int32{mainFilter.Type.Int32}
 		}
 		if usePriceFilter && len(filters.Price) == 2 {
 			params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
@@ -1154,12 +1154,12 @@ func (store *SQLStore) getProductsByFilters(
 			Sizes:        filters.Sizes,
 			Firms:        filters.Firms,
 			Bodytypes:    filters.Bodytypes,
-			ProductTypes: params.ProductTypes,
+			ProductTypes: filters.Types,
 			Lines:        filters.Lines,
 
 			WithPrice:  filters.WithPrice,
 			Name:       params.Name,
-			Categories: params.Categories,
+			Categories: filters.Categories,
 			RuleIds:    filters.RuleIDs,
 		}
 		if usePriceFilter && len(filters.Price) == 2 {
@@ -1184,13 +1184,13 @@ func (store *SQLStore) getProductsByFilters(
 			Categories: nil,
 		}
 		if mainFilter.Category.Valid {
-			params.Categories = []int32{mainFilter.Category.Int32}
+			filters.Categories = []int32{mainFilter.Category.Int32}
 		}
 		if mainFilter.Name.Valid {
 			params.Name = mainFilter.Name.String
 		}
 		if mainFilter.Type.Valid {
-			params.ProductTypes = []int32{mainFilter.Type.Int32}
+			filters.Types = []int32{mainFilter.Type.Int32}
 		}
 		if usePriceFilter && len(filters.Price) == 2 {
 			params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
@@ -1209,12 +1209,12 @@ func (store *SQLStore) getProductsByFilters(
 			Sizes:        filters.Sizes,
 			Firms:        filters.Firms,
 			Bodytypes:    filters.Bodytypes,
-			ProductTypes: params.ProductTypes,
+			ProductTypes: filters.Types,
 			Lines:        filters.Lines,
 
 			WithPrice:  filters.WithPrice,
 			Name:       params.Name,
-			Categories: params.Categories,
+			Categories: filters.Categories,
 		}
 		if usePriceFilter && len(filters.Price) == 2 {
 			countParams.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
@@ -1239,13 +1239,13 @@ func (store *SQLStore) getProductsByFilters(
 			RuleIds:    filters.RuleIDs,
 		}
 		if mainFilter.Category.Valid {
-			params.Categories = []int32{mainFilter.Category.Int32}
+			filters.Categories = []int32{mainFilter.Category.Int32}
 		}
 		if mainFilter.Name.Valid {
 			params.Name = mainFilter.Name.String
 		}
 		if mainFilter.Type.Valid {
-			params.ProductTypes = []int32{mainFilter.Type.Int32}
+			filters.Types = []int32{mainFilter.Type.Int32}
 		}
 		if usePriceFilter && len(filters.Price) == 2 {
 			params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
@@ -1264,12 +1264,12 @@ func (store *SQLStore) getProductsByFilters(
 			Sizes:        filters.Sizes,
 			Firms:        filters.Firms,
 			Bodytypes:    filters.Bodytypes,
-			ProductTypes: params.ProductTypes,
+			ProductTypes: filters.Types,
 			Lines:        filters.Lines,
 			Status:       filters.Status,
 			WithPrice:    filters.WithPrice,
 			Name:         params.Name,
-			Categories:   params.Categories,
+			Categories:   filters.Categories,
 			RuleIds:      filters.RuleIDs,
 		}
 		if usePriceFilter && len(filters.Price) == 2 {

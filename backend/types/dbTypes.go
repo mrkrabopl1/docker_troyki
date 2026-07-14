@@ -19,6 +19,7 @@ type ProductsFilterStruct struct {
 	WithPrice   bool      `json:"withPrice"`
 	Status      string    `json:"status"`
 	RuleIDs     []int32   `json:"rule_ids"`
+	Categories  []int32   `json:"categories"`
 }
 
 type ProductsForAdminFilterStruct struct {

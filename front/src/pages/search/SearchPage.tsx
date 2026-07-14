@@ -20,6 +20,7 @@ interface FiltersInfoRequest {
   sizes: string[]
   price: number[]
   firms: number[],
+  categories:number[],
   bodytypes?: string[],
   lines?: number[],
   types: number[],
@@ -52,6 +53,7 @@ const SearchPage: React.FC = () => {
   const { typesVal, categories, discountRules, firmMap, lineMap } = useAppSelector(state => state.menuReducer);
   // Refs для хранения изменяемых данных без перерисовки
   const filtersInfo = useRef<FiltersInfoRequest>({
+    categories:[],
     sizes: [],
     price: [],
     firms: [],
@@ -95,6 +97,7 @@ const setFiltersFromUrl = useCallback(() => {
     filtersInfo.current.sizes = [];
     filtersInfo.current.firms = [];
     filtersInfo.current.types = [];
+    filtersInfo.current.categories = [];
     filtersInfo.current.rule_ids = [];
     typeRef.current = 0;
     categoryRef.current = 0;
@@ -199,12 +202,12 @@ const setFiltersFromUrl = useCallback(() => {
       params["name"] = searchData
     }
 
-    if (categoryRef.current) {
-      params["category"] = categoryRef.current
+    if (categoryRef.current && !filtersInfo.current.categories.includes(categoryRef.current)) {
+       filtersInfo.current.categories.push(categoryRef.current)
     }
 
-    if (typeRef.current) {
-      params["type"] = typeRef.current
+    if (typeRef.current && !filtersInfo.current.types.includes(typeRef.current)) {
+      filtersInfo.current.types.push(typeRef.current)
     }
 
 
@@ -421,6 +424,7 @@ const setFiltersFromUrl = useCallback(() => {
 
   const resetFilters = useCallback(() => {
     filtersInfo.current = {
+      categories:[],
       sizes: [],
       price: [],
       firms: [],

@@ -6,14 +6,15 @@ const Preloader: React.FC = () => {
     const { isLoading, totalImages, loadedCount } = useAppSelector(state => state.loadingReducer);
     const [isHidden, setIsHidden] = useState(false);
     
-    useEffect(() => {
-        if (!isLoading && totalImages > 0 && loadedCount >= totalImages) {
-            const timer = setTimeout(() => setIsHidden(true), 300);
-            return () => clearTimeout(timer);
-        }
-    }, [isLoading, totalImages, loadedCount]);
+    // useEffect(() => {
+    //     if (!isLoading && totalImages > 0 && loadedCount >= totalImages) {
+    //         setIsHidden(true)
+    //     }else{
+    //         setIsHidden(false)
+    //     }
+    // }, [isLoading, totalImages, loadedCount]);
     
-    if (isHidden) return null;
+    if (!isLoading &&  loadedCount >= totalImages) return null;
     
     // ⚡ ВСЕ СТИЛИ ИНЛАЙН — РАБОТАЮТ МГНОВЕННО
     return (

@@ -176,7 +176,7 @@ func (s *Server) handleSearchProductByCategoriesAndFilters(ctx *gin.Context) {
 	//fmt.Println(postData.Filters.Price, "postData postData postData postData postData postData postData postData ")
 	fmt.Println(postData.Filters.Types, "postData postData postData postData postData postData postData postData ")
 	postData.Filters.Status = "active"
-	resp, err := s.store.GetProductsByFiltersComplex(ctx, "", postData.Page, postData.Size, postData.Filters, postData.SortType)
+	resp, err := s.store.GetProductsByFiltersComplex(ctx, postData.Name, postData.Page, postData.Size, postData.Filters, postData.SortType)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

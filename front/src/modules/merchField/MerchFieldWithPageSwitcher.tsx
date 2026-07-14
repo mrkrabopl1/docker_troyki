@@ -64,11 +64,11 @@ const MerchFieldWithPageSwitcher: React.FC<MerchFieldProps> = ({
             <div className={s.globalMerchField}>
                 {rows}
             </div>
-            <PageController 
+            {pages>1?<PageController 
                 currentPosition={currentPage} 
                 positions={pages} 
                 callback={onChange} 
-            />
+            />:null}
         </div>
     );
 };
