@@ -30,7 +30,7 @@ const nextConfig = {
   webpack: (config) => {
     config.plugins.push(
       new webpack.DefinePlugin({
-        API_URL: JSON.stringify(process.env.API_URL || '/api/'),
+        API_URL: JSON.stringify(process.env.API_URL || 'http://localhost:8100/api'),
       })
     );
     

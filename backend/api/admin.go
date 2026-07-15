@@ -910,8 +910,8 @@ func (s *Server) handleAdminUploadTempImage(c *gin.Context) {
 		return
 	}
 
-	_, err1 := s.imageService.SaveTempImage(sessionID, file)
-	if err1 != nil {
+	_, err = s.imageService.SaveTempImage(sessionID, file)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
