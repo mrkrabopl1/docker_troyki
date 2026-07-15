@@ -298,7 +298,7 @@ const BannersManager: React.FC = () => {
             // filters.firms - массив ID, нужно получить имена для URL
             filters.firms.forEach((firmId: number) => {
                 const firm = Object.values(firmMap).find(f => f.id === firmId);
-                if (firm) params.append('firm', firm.slug) // ← используем slug
+                if (firm) params.append('brand', firm.slug) // ← используем slug
             })
         }
 

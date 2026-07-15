@@ -5,7 +5,10 @@ import s from "./style.module.css";
 import ContentSliderWithSwitcher from 'src/components/contentSlider/ContentSliderWithSwitcher';
 import CarouselSlider from 'src/components/contentSlider/CarouselSlider';
 
-const FirmsScroller: React.FC = () => {
+interface IFirmsScrollerProps {
+    onChange?: (slug: string) => void;
+}
+const FirmsScroller: React.FC<IFirmsScrollerProps> = ({onChange}) => {
     const router = useRouter();
     const { firms } = useAppSelector(state => state.menuReducer);
     
@@ -16,7 +19,7 @@ const FirmsScroller: React.FC = () => {
 
         return firms.map(value => {
             return <img 
-                onClick={() => router.push(`/collections/${value}`)} 
+                onClick={()=>onChange(value)} 
                 style={{ "height": "100%", cursor: "pointer" }} 
                 src={`/images/brandLogos/${value}/image.png`} 
                 alt="" 
