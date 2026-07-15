@@ -155,6 +155,7 @@ func (s *Server) setupRouter() {
 			adminGroup.DELETE("/products/:id/image", s.handleAdminDeleteProductImage)
 
 			adminGroup.POST("/tempImage/:id", s.handleAdminUploadTempImage)
+			adminGroup.DELETE("/tempImage/:id", s.handleAdminDeleteTempImage)
 			adminGroup.GET("/tempImage/:id", s.handleAdminGetTempImages)
 
 			adminGroup.GET("/brandsWithLines", s.handleGetAllBrandsWithLines)

@@ -156,6 +156,22 @@ export const uploadTempImage = async (
     throw error;
   }
 };
+
+export const deleteTempImage = async (
+  sessionID: string,
+  filename: string,
+  callback: (response: { images: string[], temp_id: string, message: string }) => void
+): Promise<void> => {
+  try {
+    const response = await adminApi.delete(`/admin/tempImage/${sessionID}`, {
+      params: { filename }
+    });
+    callback(response.data);
+  } catch (error) {
+    console.error('Error deleting image:', error);
+    throw error;
+  }
+};
 // Получение справочных данных (категории, типы, бренды)
 const getProductDictionary = async (
   callback: (data: {

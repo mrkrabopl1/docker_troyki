@@ -926,13 +926,72 @@ func (s *Server) handleAdminUploadTempImage(c *gin.Context) {
 				continue
 			}
 			// Добавляем все существующие файлы
-			existingURL := fmt.Sprintf("/temp/products/%s/%s", sessionID, f.Name())
+			existingURL := s.imageService.ImagePathBuilder.GetImageURLFromPath(fmt.Sprintf("temp/%s/%s", sessionID, f.Name()))
 			allImages = append(allImages, existingURL)
 		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"images":  allImages, // все изображения в сессии
+		"temp_id": sessionID,
+	})
+}
+
+func (s *Server) handleAdminDeleteTempImage(c *gin.Context) {
+	sessionID := c.Param("id")
+	filename := c.Query("filename")
+	if filename == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Filename is required"})
+		return
+	}
+
+	// Проверка на безопасность - не даем удалить файлы вне директории
+	if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid filename"})
+		return
+	}
+
+	// Формируем путь к файлу
+	tempDir := filepath.Join(s.imageService.BaseDir, "temp", sessionID)
+	filePath := filepath.Join(tempDir, filename)
+
+	// Проверяем существование файла
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return
+	}
+
+	// Удаляем файл
+	if err := os.Remove(filePath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete file"})
+		return
+	}
+
+	// Получаем обновленный список файлов
+	allImages := []string{}
+	files, err := os.ReadDir(tempDir)
+	if err == nil {
+		for _, f := range files {
+			if f.IsDir() {
+				continue
+			}
+			existingURL := s.imageService.ImagePathBuilder.GetImageURLFromPath(fmt.Sprintf("temp/%s/%s", sessionID, f.Name()))
+			allImages = append(allImages, existingURL)
+		}
+	}
+
+	// Если файлов больше нет - удаляем папку
+	if len(allImages) == 0 {
+		if err := os.Remove(tempDir); err != nil {
+			// Если не удалось удалить - просто логируем, не фатально
+			// Но можно и вернуть ошибку, если хотите
+			_ = err
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "File deleted successfully",
+		"images":  allImages,
 		"temp_id": sessionID,
 	})
 }

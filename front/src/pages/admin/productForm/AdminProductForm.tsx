@@ -22,7 +22,8 @@ import {
     createFirm,
     getBrandsWithLines,
     deleteAdminProduct,
-    uploadTempImage
+    uploadTempImage,
+    deleteTempImage
 } from 'src/providers/adminProductsProvider';
 import s from './style.module.css';
 import { ReactComponent as AddIcon } from '/public/add.svg';
@@ -41,7 +42,7 @@ interface SizePrice {
 }
 
 const AdminProductForm: React.FC = () => {
-   const router = useRouter();
+    const router = useRouter();
     const { id } = router.query;
     const isEdit = !!id && id !== 'create';
     const { typesVal, categories, firms, firmMap, collections } = useAppSelector(state => state.menuReducer);
@@ -99,13 +100,13 @@ const AdminProductForm: React.FC = () => {
 
     // Данные для комбобоксов
     const brandsData = useMemo(() => {
-         return firms.reduce((acc, name) => {
-        const firm = firmMap[name]; // 👈 теперь это объект Firm
-        if (firm) {
-            acc[firm.id] = name;    // 👈 берём id из объекта
-        }
-        return acc;
-    }, {} as Record<number, string>);
+        return firms.reduce((acc, name) => {
+            const firm = firmMap[name]; // 👈 теперь это объект Firm
+            if (firm) {
+                acc[firm.id] = name;    // 👈 берём id из объекта
+            }
+            return acc;
+        }, {} as Record<number, string>);
     }, [firms, firmMap]);
 
     const linesData = useMemo(() => {
@@ -318,7 +319,7 @@ const AdminProductForm: React.FC = () => {
             const payload = {
                 name: formData.name,
                 article: formData.article,
-                brand_id: firmMap[formData.firm] || selectedBrandId,
+                brand_id: firmMap[formData.firm].id || selectedBrandId,
                 line_id: null,
                 line_name: formData.line,
                 category_id: formData.category_id,
@@ -408,7 +409,7 @@ const AdminProductForm: React.FC = () => {
                 await uploadFn(file, (response: any) => {
                     setFormData(prev => ({
                         ...prev,
-                        images: [...prev.images, response.image_path]
+                        images: [ ...response.images]
                     }));
                     // Сбрасываем ошибку изображений, если она была
                     setValidationErrors(prev => ({ ...prev, images: false }));
@@ -430,10 +431,14 @@ const AdminProductForm: React.FC = () => {
                 }));
             });
         } else {
-            setFormData(prev => ({
-                ...prev,
-                images: prev.images.filter((_, i) => i !== index)
-            }));
+            let imageArr = formData.images[index].split("/");
+            let imageName  = imageArr[imageArr.length-1]
+            await deleteTempImage(sessionId, imageName, (resp) => {
+                setFormData(prev => ({
+                    ...prev,
+                    images: [...resp.images]
+                }));
+            })
         }
     };
 
