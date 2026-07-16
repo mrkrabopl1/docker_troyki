@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gosimple/slug"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -2420,9 +2421,8 @@ func (s *Server) handleAdminCreateBanner(c *gin.Context) {
 }
 
 type UpdateBannerRequest struct {
-	Title    *string `json:"title"`
-	LinkURL  *string `json:"link_url"`
-	IsActive *bool   `json:"is_active"`
+	Title   *string `json:"title"`
+	LinkURL *string `json:"url"`
 }
 
 func (s *Server) handleAdminUpdateBanner(c *gin.Context) {
@@ -2442,57 +2442,64 @@ func (s *Server) handleAdminUpdateBanner(c *gin.Context) {
 		return
 	}
 
-	// Обрабатываем обновление полей (JSON или form-data)
-	var title *string
-	var linkURL *string
-	var isActive *bool
+	// Получаем данные из form-data (как в CreateBanner)
+	title := c.PostForm("title")
+	linkURL := c.PostForm("url") // обратите внимание: в форме используется "url", а не "link_url"
+	isActiveStr := c.PostForm("active")
+
+	fmt.Println(linkURL, "fffffffffffffffffffffffffeeeeeeeeeeeeeee")
+
+	// Проверяем, есть ли новый файл
 	var newImageURL string
-
-	// Пробуем как JSON
-	if c.GetHeader("Content-Type") == "application/json" {
-		var req UpdateBannerRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	file, err := c.FormFile("image")
+	if err == nil {
+		// Сохраняем новое изображение
+		newImageURL, err = s.imageService.SaveBannerImage(file)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
-		}
-		title = req.Title
-		linkURL = req.LinkURL
-		isActive = req.IsActive
-	} else {
-		// Или как form-data
-		if t := c.PostForm("title"); t != "" {
-			title = &t
-		}
-		if l := c.PostForm("link_url"); l != "" {
-			linkURL = &l
-		}
-		if a := c.PostForm("is_active"); a != "" {
-			active := a == "true"
-			isActive = &active
-		}
-
-		// Проверяем, есть ли новый файл
-		file, err := c.FormFile("image")
-		if err == nil {
-			// Сохраняем новое изображение
-			newImageURL, err = s.imageService.SaveBannerImage(file)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
-			}
 		}
 	}
 
-	// Обновляем баннер
-	err = s.store.UpdateBanner(c.Request.Context(), db.UpdateBannerParams{
-		ID:       int32(bannerID),
-		Title:    pgtype.Text{String: *title, Valid: title != nil},
-		ImageUrl: newImageURL,
-		LinkUrl:  *linkURL,
-		IsActive: *isActive,
-	})
+	// Подготавливаем параметры обновления
+	updateParams := db.UpdateBannerParams{
+		ID: int32(bannerID),
+	}
+
+	// Обновляем title, если передан
+	if title != "" {
+		updateParams.Title = pgtype.Text{String: title, Valid: true}
+	} else {
+		// Если не передан, оставляем существующий
+		updateParams.Title = existingBanner.Title
+	}
+
+	// Обновляем link_url, если передан
+	if linkURL != "" {
+		updateParams.LinkUrl = linkURL
+	} else {
+		updateParams.LinkUrl = existingBanner.LinkUrl
+	}
+
+	// Обновляем is_active, если передан
+	if isActiveStr != "" {
+		updateParams.IsActive = isActiveStr == "true"
+	} else {
+		updateParams.IsActive = existingBanner.IsActive
+	}
+
+	// Обновляем image_url, если загружено новое изображение
+	if newImageURL != "" {
+		updateParams.ImageUrl = newImageURL
+	} else {
+		updateParams.ImageUrl = existingBanner.ImageUrl
+	}
+
+	// Обновляем баннер в БД
+	err = s.store.UpdateBanner(c.Request.Context(), updateParams)
+	fmt.Println(err, updateParams, "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq")
 	if err != nil {
-		// Если загрузили новое изображение, удаляем его
+		// Если ошибка БД и загружено новое изображение, удаляем его
 		if newImageURL != "" {
 			s.imageService.DeleteBannerImage(newImageURL)
 		}
@@ -2505,7 +2512,17 @@ func (s *Server) handleAdminUpdateBanner(c *gin.Context) {
 		s.imageService.DeleteBannerImage(existingBanner.ImageUrl)
 	}
 
-	// Логируем
+	// 🟢 ОЧИСТИТЬ КЭШ БАННЕРОВ В REDIS (как в CreateBanner)
+	go func() {
+		ctx := context.Background()
+		if err := s.taskProcessor.ClearBannersCache(ctx); err != nil {
+			fmt.Printf("[Redis] Failed to clear banners cache: %v\n", err)
+		} else {
+			fmt.Println("[Redis] Banners cache cleared after update")
+		}
+	}()
+
+	// Логируем (как в CreateBanner)
 	go func() {
 		ctx := context.Background()
 		var ipAddr *netip.Addr
@@ -2526,7 +2543,11 @@ func (s *Server) handleAdminUpdateBanner(c *gin.Context) {
 		_ = s.store.CreateAdminLog(ctx, params)
 	}()
 
-	c.JSON(http.StatusOK, gin.H{"message": "Banner updated successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "Banner updated successfully",
+		"id":        bannerID,
+		"image_url": newImageURL,
+	})
 }
 
 func (s *Server) handleAdminDeleteBanner(c *gin.Context) {
@@ -3347,17 +3368,7 @@ func (s *Server) handleGetAllBrandsWithLines(ctx *gin.Context) {
 }
 
 func GenerateSlug(name string) string {
-	// Приводим к нижнему регистру
-	slug := strings.ToLower(name)
-
-	// Заменяем все не буквенно-цифровые символы на дефис
-	reg := regexp.MustCompile(`[^a-z0-9]+`)
-	slug = reg.ReplaceAllString(slug, "-")
-
-	// Удаляем дефисы в начале и конце
-	slug = strings.Trim(slug, "-")
-
-	return slug
+	return slug.Make(name)
 }
 
 func (s *Server) handleAdminCreateFirm(c *gin.Context) {

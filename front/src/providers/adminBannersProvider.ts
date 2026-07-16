@@ -26,12 +26,15 @@ export const getBanners = async () => {
 
 export const updateAdminBanner = async (
   id: number,
-  data: BannerFormData,
-  callback: (response: { message: string }) => void
+  data: BannerFormData
 ): Promise<void> => {
   try {
-    const response = await adminApi.put(`/admin/banners/${id}`, data);
-    callback(response.data);
+    const response = await adminApi.put(`/banners/${id}`, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data', // Явно указываем
+      }
+    });
+    return response.data;
   } catch (error) {
     console.error('Error updating banner:', error);
     throw error;

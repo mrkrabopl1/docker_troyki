@@ -23,6 +23,7 @@ interface FirmFormProps {
     onCancel: () => void;
     isLoading?: boolean;
     onValid?: (isValid: boolean) => void;
+    errorText?: string
 }
 
 const FirmForm: React.FC<FirmFormProps> = ({
@@ -30,7 +31,8 @@ const FirmForm: React.FC<FirmFormProps> = ({
     onSubmit,
     onCancel,
     isLoading = false,
-    onValid
+    onValid,
+    errorText
 }) => {
 
 
@@ -219,6 +221,7 @@ const FirmForm: React.FC<FirmFormProps> = ({
                         onDrop={handleDrop}
                         onClick={() => fileInputRef.current?.click()}
                     >
+                       
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -255,6 +258,11 @@ const FirmForm: React.FC<FirmFormProps> = ({
                 {/* Основная информация */}
                 <div className={s.infoSection}>
                     <div className={s.formGroup}>
+                         {errorText && (
+                            <div className={s.serverError}>
+                                {errorText}
+                            </div>
+                        )}
                         <label className={s.label}>
                             Название бренда <span className={s.required}>*</span>
                         </label>

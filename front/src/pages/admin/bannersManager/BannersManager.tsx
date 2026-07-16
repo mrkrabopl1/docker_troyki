@@ -10,7 +10,8 @@ import { types } from 'src/store/reducers/menuSlice';
 import { finishLoading } from 'src/store/reducers/loadingSlice'
 import Modal from 'src/components/modal/Modal';
 import { CheckBoxType } from 'src/types/modules';
-
+import deleteIconUrl from '/public/delete.svg';
+import CloseButton from 'src/components/button/CloseButton';
 interface Banner {
     id: number;
     title: string;
@@ -41,7 +42,7 @@ const BannersManager: React.FC = () => {
     const router = useRouter();
     const { typesVal, firmMap, discountRules } = useAppSelector(state => state.menuReducer)
     const dispatch = useAppDispatch();
-    
+
     // Фильтры - храним ID для фирм
     const filtersInfo = useRef<any>({
         sizes: [],
@@ -66,7 +67,7 @@ const BannersManager: React.FC = () => {
         withPrice: true,
         is_active: undefined
     })
-    
+
     const [banners, setBanners] = useState<Banner[]>([])
     const [loading, setLoading] = useState(false)
     const [showFiltersPanel, setShowFiltersPanel] = useState(false)
@@ -148,12 +149,12 @@ const BannersManager: React.FC = () => {
                 console.warn(`Firm "${firmName}" not found in firmMap`);
                 return;
             }
-            
+
             firms.current.push(firmName); // сохраняем имя для UI
-            
+
             // Проверяем, активна ли фирма в текущих фильтрах (по ID)
             const active = filtersInfo.current.firms?.includes(firm.id) || false;
-            
+
             checkBoxPropsFirmData.push({
                 id: firm.slug, // ← используем slug как id для UI
                 enable: true,
@@ -266,7 +267,7 @@ const BannersManager: React.FC = () => {
                 if (filter.data && filter.data.length > 0) {
                     const activeItem = filter.data.find((item: CheckBoxType) => item.id === 'active');
                     const inactiveItem = filter.data.find((item: CheckBoxType) => item.id === 'inactive');
-                    
+
                     if (activeItem?.activeData) {
                         filtersInfo.current.is_active = true;
                     } else if (inactiveItem?.activeData) {
@@ -354,7 +355,11 @@ const BannersManager: React.FC = () => {
                 url: generateUrlFromFilters(filtersInfo.current),
                 active: true,
             }
-            await createAdminBanner(bannerData)
+            if (editingBanner) {
+                await updateAdminBanner(editingBanner.id, bannerData)
+            } else {
+                await createAdminBanner(bannerData)
+            }
             loadBanners()
             setShowModal(false)
             setImageFile(null)
@@ -489,7 +494,7 @@ const BannersManager: React.FC = () => {
             <div className={s.header}>
                 <h2>Управление баннерами</h2>
                 <div className={s.headerButtons}>
-                    <Button text="Назад" onClick={() => router.push('/admin')} />
+                    
                     {canAddMore && (
                         <Button text="+ Добавить баннер" onClick={() => openModal()} />
                     )}
@@ -519,12 +524,13 @@ const BannersManager: React.FC = () => {
                     </div>
                 ))}
             </div>
-            
+
             <Modal active={showModal} onChange={setShowModal}>
                 <div className={s.modalContent} onClick={e => e.stopPropagation()}>
                     <div className={s.modalHeader}>
                         <h3>{editingBanner ? 'Редактировать баннер' : 'Новый баннер'}</h3>
-                        <button onClick={() => setShowModal(false)}>✕</button>
+
+                        <button className={s.closeBtn} onClick={() => setShowModal(false)}>✕</button>
                     </div>
 
                     <div className={s.formGroup}>
@@ -543,10 +549,15 @@ const BannersManager: React.FC = () => {
                             {imagePreview ? (
                                 <div className={s.imagePreview}>
                                     <img src={imagePreview} alt="Preview" />
-                                    <button onClick={() => {
-                                        setImagePreview('')
-                                        setImageFile(null)
-                                    }}>✕</button>
+                                    <button
+                                        className={s.deleteImageBtn}
+                                        onClick={(e) => {
+                                            setImagePreview('')
+                                            setImageFile(null)
+                                        }}
+                                    >
+                                        <img src={deleteIconUrl} alt="delete" style={{ width: '18px', height: '18px' }} />
+                                    </button>
                                 </div>
                             ) : (
                                 <div>
@@ -605,15 +616,16 @@ const BannersManager: React.FC = () => {
                     </div>
 
                     <div className={s.modalActions}>
-                        <Button text="Отмена" onClick={() => setShowModal(false)} />
+                        <Button className={"btnStyle"} text="Отмена" onClick={() => setShowModal(false)} />
                         <Button
+                            className={"btnStyle"}
                             text={uploading ? 'Сохранение...' : 'Сохранить'}
                             onClick={handleSaveBanner}
                             disabled={uploading}
                         />
                     </div>
                 </div>
-                
+
                 {showFiltersPanel && (
                     <div className={s.modalOverlay} onClick={() => setShowFiltersPanel(false)}>
                         <div className={s.modalPanel} onClick={e => e.stopPropagation()}>

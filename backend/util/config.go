@@ -40,6 +40,7 @@ func LoadConfig(path string) (config Config, err error) {
 	// 1. Устанавливаем имена файла и пути
 	viper.SetConfigName("app")
 	viper.SetConfigType("env")
+	fmt.Println(path)
 	viper.AddConfigPath(path)
 
 	// 2. Включаем автоматическое чтение переменных окружения

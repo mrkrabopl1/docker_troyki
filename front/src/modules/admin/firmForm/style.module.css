@@ -30,7 +30,16 @@
 .required {
     color: #e74c3c;
 }
-
+.serverError {
+    background-color: #ffebee;
+    color: #c62828;
+    padding: 12px 16px;
+    border-radius: 4px;
+    border: 1px solid #ef9a9a;
+    margin-bottom: 16px;
+    font-size: 14px;
+    width: 100%;
+}
 .dropZone {
     border: 2px dashed #ddd;
     border-radius: 8px;

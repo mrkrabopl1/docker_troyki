@@ -100,13 +100,11 @@ const AdminProductForm: React.FC = () => {
 
     // Данные для комбобоксов
     const brandsData = useMemo(() => {
-        return firms.reduce((acc, name) => {
-            const firm = firmMap[name]; // 👈 теперь это объект Firm
-            if (firm) {
-                acc[firm.id] = name;    // 👈 берём id из объекта
-            }
-            return acc;
-        }, {} as Record<number, string>);
+        let acc = {}
+        Object.values(firmMap).forEach(val=>{
+            acc[val.id] = val.name 
+        })
+        return acc;
     }, [firms, firmMap]);
 
     const linesData = useMemo(() => {
@@ -141,7 +139,7 @@ const AdminProductForm: React.FC = () => {
     const [globalQuantityValue, setGlobalQuantityValue] = useState(0);
     const [enableDiscountToAll, setEnableDiscountToAll] = useState(false);
     const [discountPercent, setDiscountPercent] = useState(0);
-
+    const [firmErrorText, setFirmErrorText] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const [showFirmModal, setShowFirmModal] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -227,9 +225,17 @@ const AdminProductForm: React.FC = () => {
             await createFirm(formData, (newFirm) => {
                 // TODO: добавить новый бренд в Redux через dispatch
                 setShowFirmModal(false);
+                setFirmErrorText('');
                 console.log('Firm created successfully:', newFirm);
             });
         } catch (error) {
+             if (error.response?.status === 409) {
+            // The firm already exists
+            setFirmErrorText('Фирма с таким названием уже существует');
+        } else {
+            // Handle other errors
+            setFirmErrorText('Ошибка при создании фирмы. Попробуйте позже.');
+        }
             console.error('Error creating firm:', error);
         }
     };
@@ -949,7 +955,7 @@ const AdminProductForm: React.FC = () => {
             <Modal active={showFirmModal} onChange={setShowFirmModal}>
                 <Scroller onlyVertical={true} className={s.scrollStyle}>
                     <div className={s.firmModalContent}>
-                        <FirmForm onSubmit={handleCreateFirm} onCancel={() => setShowFirmModal(false)} />
+                        <FirmForm errorText={firmErrorText} onSubmit={handleCreateFirm} onCancel={() => setShowFirmModal(false)} />
                     </div>
                 </Scroller>
             </Modal>

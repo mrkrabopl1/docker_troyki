@@ -285,7 +285,21 @@ input:checked + .slider:before {
 .modalHeader h3 {
   margin: 0;
 }
-
+.deleteImageBtn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(255, 77, 79, 0.85);
+    border: none;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
 .closeBtn {
   background: none;
   border: none;

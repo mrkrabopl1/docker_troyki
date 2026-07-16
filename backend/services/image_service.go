@@ -344,6 +344,7 @@ func (s *ImageService) SaveBannerImage(file *multipart.FileHeader) (string, erro
 // ========== ВАЛИДАЦИЯ ==========
 
 func (s *ImageService) validateFile(file *multipart.FileHeader) error {
+	fmt.Println(s.maxSize, file.Size, "sizing,dskamdkasdasmdp")
 	if file.Size > s.maxSize {
 		return fmt.Errorf("file too large: max %d MB", s.maxSize/(1024*1024))
 	}

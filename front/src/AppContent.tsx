@@ -134,14 +134,11 @@ const AppContent: React.FC<AppContentProps> = ({ children }) => {
         // ============================================================
         // ФИРМЫ (как было)
         // ============================================================
-        const firmSlug = row.firm.toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '');
-
-        firmMap[firmSlug] = {
+        
+        firmMap[row.brand_slug] = {
           id: row.brand_id,
           name: row.firm,
-          slug: firmSlug,
+          slug: row.brand_slug,
         };
 
         // Коллекции (оставляем как есть)
@@ -154,16 +151,13 @@ const AppContent: React.FC<AppContentProps> = ({ children }) => {
         // ЛИНИИ (НОВОЕ! заполняем из тех же данных)
         // ============================================================
         if (row.collection_name && row.line_id) {
-          const lineSlug = row.collection_name.toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-|-$/g, '');
-
+        
           // Сохраняем линию, если её ещё нет в lineMap
-          if (!lineMap[lineSlug]) {
-            lineMap[lineSlug] = {
+          if (!lineMap[row.collection_slug]) {
+            lineMap[row.collection_slug] = {
               id: row.line_id,
               name: row.collection_name,
-              slug: lineSlug,
+              slug: row.collection_slug,
               brand_id: row.brand_id,
             };
           }
