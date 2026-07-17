@@ -1,4 +1,4 @@
-import React, { ReactElement, useEffect, useRef, useState, memo,useCallback } from 'react'
+import React, { ReactElement, useEffect, useRef, useState, memo, useCallback } from 'react'
 import SendForm from "src/modules/sendForm/SendForm"
 import { getCartData } from 'src/providers/shopProvider'
 import s from "./style.module.css"
@@ -150,7 +150,7 @@ const FormPage: React.FC = () => {
             },
             preorderHash: hash
         };
-    },[hash]);
+    }, [hash]);
 
     const getForm = () => {
         switch (formId.current) {
@@ -356,50 +356,52 @@ const FormPage: React.FC = () => {
         <div className={s.mainHolder + ' dependFlex'}>
             <div className={s.fieldHolder}>
                 {getFullForm()}
-                <div className={s.buttonHolder}>
-                    {formId.current ? (
-                        <LinkButton
-                            icon={"arrowLeft"}
-                            className={s.backBtn}
-                            text={BACK_ROUTE[delivery.current][formId.current - 1]}
-                            onChange={() => {
-                                if (formId.current === 0) return;
-                                formId.current = formId.current - 1;
-                                setRefresh(prev => !prev);
-                            }}
-                        />
-                    ) : null}
-                   
+                <div>
 
-                        <div className={s.buttonWithPrivacy}>
-                            <Button
-                                className={"btnStyle dark " + s.mainButton}
-                                text={BUY_ROUTE[delivery.current][formId.current]}
-                                onClick={() => {
-                                    if (formId.current === BUY_ROUTE[delivery.current].length - 1) {
-                                        createOrder(respData.current, (data) => {
-                                            dispatch(cartCountAction(0))
-                                            router.push('/order/' + data.hash);
-                                        });
-                                    } else {
-                                        if (validSendForm.current) {
-                                            formId.current = formId.current + 1;
-                                        } else {
-                                            memoSendForm.current = !memoSendForm.current;
-                                        }
-                                    }
-                                    checkValid.current = true;
+
+                    <div className={s.buttonHolder}>
+                        {formId.current ? (
+                            <LinkButton
+                                icon={"arrowLeft"}
+                                className={s.backBtn}
+                                text={BACK_ROUTE[delivery.current][formId.current - 1]}
+                                onChange={() => {
+                                    if (formId.current === 0) return;
+                                    formId.current = formId.current - 1;
                                     setRefresh(prev => !prev);
                                 }}
                             />
-                            <p className={s.privacyText}>
-                                Нажимая кнопку, вы соглашаетесь с{' '}
-                                <a href="/privacy-policy" target="_blank" className={s.privacyLink}>
-                                    политикой обработки персональных данных
-                                </a>
-                            </p>
-                        </div>
-                  
+                        ) : null}
+
+
+
+                        <Button
+                            className={"btnStyle dark " + s.mainButton}
+                            text={BUY_ROUTE[delivery.current][formId.current]}
+                            onClick={() => {
+                                if (formId.current === BUY_ROUTE[delivery.current].length - 1) {
+                                    createOrder(respData.current, (data) => {
+                                        dispatch(cartCountAction(0))
+                                        router.push('/order/' + data.hash);
+                                    });
+                                } else {
+                                    if (validSendForm.current) {
+                                        formId.current = formId.current + 1;
+                                    } else {
+                                        memoSendForm.current = !memoSendForm.current;
+                                    }
+                                }
+                                checkValid.current = true;
+                                setRefresh(prev => !prev);
+                            }}
+                        />
+                    </div>
+                    <p className={s.privacyText}>
+                        Нажимая кнопку, вы соглашаетесь с{' '}
+                        <a href="/privacy-policy" target="_blank" className={s.privacyLink}>
+                            политикой обработки персональных данных
+                        </a>
+                    </p>
                 </div>
             </div>
             <div className={s.buyMerchFieldHolder} >

@@ -294,6 +294,7 @@ const PhoneInputWithValidation: React.FC<PhoneInputProps> = ({
                 className={inputClasses}
                 placeholder={''}
                 type="tel"
+                onChange={()=>{}}
                 onKeyDown={handleKeyDown}
                 onFocus={handleFocus}
                 onBlur={handleBlur}

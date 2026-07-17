@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/cespare/xxhash"
@@ -275,6 +276,7 @@ type GetOrderData struct {
 	State        string
 	SnickersCart []GetOrderDataByIdRow
 	OrderId      int
+	DeliveryType DeliveryEnum
 	Address      GetOrderAddressByIdRow
 }
 
@@ -286,6 +288,9 @@ func (store *SQLStore) GetOrderData(ctx context.Context, hash string) (GetOrderD
 		return GetOrderData{}, err
 	} else {
 		snickers, err := store.GetOrderDataById(ctx, orderInfo.ID)
+		for i, _ := range snickers {
+			snickers[i].ImagePath = filepath.Join(snickers[i].ImagePath, "img1.webp")
+		}
 		if err != nil {
 			fmt.Println(err, "error in GetOrderDataById")
 			return GetOrderData{}, err
@@ -311,6 +316,7 @@ func (store *SQLStore) GetOrderData(ctx context.Context, hash string) (GetOrderD
 				UserInfo:     unregData,
 				SnickersCart: snickers,
 				OrderId:      int(orderInfo.ID),
+				DeliveryType: orderInfo.Deliverytype,
 				Address:      address,
 			}, nil
 
@@ -335,7 +341,7 @@ func (store *SQLStore) GetCartData(ctx context.Context, hash string) ([]GetPreor
 	// ✅ Правильный способ - используем индекс
 	for i := range prData {
 		fmt.Println(prData[i].ImagePath, "item.ImagePath")
-		prData[i].ImagePath = store.ImagePathBuilder.GetProductMainImage(prData[i].ImagePath)
+		prData[i].ImagePath = filepath.Join(prData[i].ImagePath, "img1.webp")
 		fmt.Println(prData[i].ImagePath, "item.ImagePathssssssssssssssssssssss")
 	}
 

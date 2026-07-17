@@ -251,11 +251,12 @@ type FullCartRespone struct {
 	FullPice int                      `json:"fullPrice"`
 }
 type OrderDataResp struct {
-	UserInfo types.UnregisterCustomerResponse `json:"userInfo"`
-	State    string                           `json:"state"`
-	OrderId  int                              `json:"orderId"`
-	Address  db.GetOrderAddressByIdRow        `json:"address"`
-	CartData []db.GetOrderDataByIdRow         `json:"cartData"`
+	UserInfo     types.UnregisterCustomerResponse `json:"userInfo"`
+	State        string                           `json:"state"`
+	OrderId      int                              `json:"orderId"`
+	Address      db.GetOrderAddressByIdRow        `json:"address"`
+	CartData     []db.GetOrderDataByIdRow         `json:"cartData"`
+	DeliveryType db.DeliveryEnum                  `json:"deliverytype"`
 }
 
 func orderResponseFunc(orderData db.GetOrderData) OrderDataResp {
@@ -275,6 +276,7 @@ func orderResponseFunc(orderData db.GetOrderData) OrderDataResp {
 	orderResponse.CartData = cartData
 	orderResponse.OrderId = orderData.OrderId
 	orderResponse.Address = orderAddress
+	orderResponse.DeliveryType = orderData.DeliveryType
 	return orderResponse
 }
 
@@ -303,7 +305,7 @@ func (s *Server) handleGetOrderDataByMail(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	myCookie, _ := s.tokenMaker.CreateCookie(hash, hash, 360000, true, true)
+	myCookie, _ := s.tokenMaker.CreateCookie(hash, hash, 360000, false, true)
 	ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
 	//log.Log.Info().Interface("orders", orderResponse)
 	ctx.JSON(http.StatusOK, orderResponse)
