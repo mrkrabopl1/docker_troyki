@@ -1,44 +1,52 @@
-.mainElem{
-    transition: 1s;
-    padding: 5px;
-    cursor: pointer;
-    white-space: nowrap;
+.mainElem {
+  transition: 1s;
+  padding: 5px;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .mainElem:hover:after,
 .mainElem:focus:after {
-    width: 100%;
+  width: 100%;
 }
+
 .mainElem:after {
-    margin: auto;
-    background-color: black;
-    display: block;
-    content: "";
-    height: 2px;
-    width: 0%;
-    -webkit-transition: width .3s ease-in-out;
-    -moz--transition: width .3s ease-in-out;
-    transition: width .3s ease-in-out;
+  margin: auto;
+  background-color: black;
+  display: block;
+  content: "";
+  height: 2px;
+  width: 0%;
+  -webkit-transition: width .3s ease-in-out;
+  -moz--transition: width .3s ease-in-out;
+  transition: width .3s ease-in-out;
 }
-.complexDrop{
-    display: flex;
-    position: relative;
-    border-top: solid 1px black ;
-    border-bottom: solid 1px black ;
-    background-color: #fff;
-    width:100%
+
+.complexDrop {
+  display: flex;
+  position: relative;
+  border-top: solid 1px black;
+  border-bottom: solid 1px black;
+  background-color: #fff;
+  width: 100%
 }
+
 .complexDropVertical {
-    position: relative;
-    display: inline-flex;
-    width:200px;
-    z-index: 201;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  display: inline-flex;
+  width: 200px;
+  z-index: 201;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.backPointer{
-    cursor: pointer;
-    padding:5px;
-    color: gray;
+@media (max-width:430px) {
+  .complexDropVertical{
+    width: 150px;
+  }
+}
+.backPointer {
+  cursor: pointer;
+  padding: 5px;
+  color: gray;
 }
 
 .dropField {
@@ -52,7 +60,7 @@
   cursor: pointer;
   z-index: 1000;
   background: #ffffff;
-  box-shadow: 
+  box-shadow:
     0 4px 20px rgba(0, 0, 0, 0.12),
     0 2px 8px rgba(0, 0, 0, 0.08),
     0 0 0 1px rgba(0, 0, 0, 0.05),
@@ -89,6 +97,7 @@
     opacity: 0;
     transform: scale(0.95) translateY(-8px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -106,14 +115,14 @@
   font-size: 14px;
   font-weight: 500;
   color: #2a2a2a;
-  box-shadow: 
+  box-shadow:
     0 0 0 1px transparent,
     inset 0 0 0 1px transparent;
 }
 
 .dropItem:hover {
   background: rgba(42, 42, 42, 0.05);
-  box-shadow: 
+  box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.06),
     inset 0 1px 2px rgba(255, 255, 255, 0.8);
   transform: translateY(-1px);
@@ -131,29 +140,31 @@
 }
 
 .dropFieldVertical {
-    display: block;
-    left: 0;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    top: 0;
-    position: absolute;
-    border-radius: 8px;
-    height: 200px;
-    cursor: pointer;
-    z-index: 200;
-    background-color: #ffffff;
-    overflow: hidden;
-    border-left: 1px solid #f0f0f0;
-    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
+  display: block;
+  left: 0;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  top: 0;
+  position: absolute;
+  border-radius: 8px;
+  height: 200px;
+  cursor: pointer;
+  z-index: 200;
+  background-color: #ffffff;
+  overflow: hidden;
+  border-left: 1px solid #f0f0f0;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
 }
 
 .show {
-    width: 100%;
-    transform: translateX(+100%);
-    opacity: 1;
+  width: 100%;
+  transform: translateX(+100%);
+  opacity: 1;
 }
 
 .hide {
-    width: 0;
-    transform: translateX(0);
-    opacity: 0;
+  width: 0;
+  transform: translateX(0);
+  opacity: 0;
 }
+
+

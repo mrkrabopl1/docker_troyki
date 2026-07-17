@@ -8,11 +8,13 @@
   z-index: 5;
   background-color: #fff;
 }
+
 .loupe {
   width: 36px;
   height: 36px;
   cursor: pointer;
 }
+
 .menuWrapWithList {
   width: 100%;
   left: 0;
@@ -63,6 +65,11 @@
 
 }
 
+@media (max-width:430px) {
+  .complexDropVertical {
+    width: 150px;
+  }
+}
 
 .cartModalWrap {
   position: absolute;

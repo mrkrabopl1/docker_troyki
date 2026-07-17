@@ -53,7 +53,8 @@ const BannersManager: React.FC = () => {
         store: false,
         discount: false,
         withPrice: true,
-        is_active: undefined
+        is_active: undefined,
+        rule_ids: [],
     })
 
     const allFilters = useRef<any>({
@@ -95,6 +96,7 @@ const BannersManager: React.FC = () => {
             dataRight: filtersInfo.current.price?.[1] || resData.price?.[1] || 100000
         }
         allFilters.current = resData
+        const discountsList = resData.discounts || []
         activeSizes.current = []
         firms.current = []
         const checkBoxPropsData: CheckBoxType[] = []
@@ -162,7 +164,12 @@ const BannersManager: React.FC = () => {
                 name: firmName
             });
         })
-
+        const checkBoxPropsDiscountData: CheckBoxType[] = discountsList.map((discount: any) => ({
+            id: discount.id,
+            enable: true,
+            activeData: filtersInfo.current.rule_ids?.includes(discount.id) || false,
+            name: discount.name
+        }))
         // Solo чекбоксы
         const soloDataProps: CheckBoxType[] = [
             {
@@ -185,7 +192,8 @@ const BannersManager: React.FC = () => {
                 { id: "sizes", name: "Размеры", props: checkBoxPropsData },
                 { id: "firms", name: "Фирмы", props: checkBoxPropsFirmData },
                 { id: "type", name: "Типы товара", props: checkBoxPropsProductsData },
-                { id: "bodytypes", name: "Форма тела", props: checkBoxBodyTypesData }
+                { id: "bodytypes", name: "Форма тела", props: checkBoxBodyTypesData },
+                { id: "discounts", name: "Скидки", props: checkBoxPropsDiscountData }
             ],
             soloDataProps
         }
@@ -258,6 +266,9 @@ const BannersManager: React.FC = () => {
                 break
             case "type":
                 filtersInfo.current.product_types = filter.data || []
+                break
+            case "discounts":
+                filtersInfo.current.rule_ids = filter.data || []
                 break
             case "bodytypes":
                 filtersInfo.current.bodytypes = filter.data || []
@@ -333,6 +344,7 @@ const BannersManager: React.FC = () => {
             (filtersInfo.current.firms && filtersInfo.current.firms.length > 0) ||
             (filtersInfo.current.product_types && filtersInfo.current.product_types.length > 0) ||
             (filtersInfo.current.sizes && filtersInfo.current.sizes.length > 0) ||
+            (filtersInfo.current.rule_ids && filtersInfo.current.rule_ids.length > 0) ||
             (filtersInfo.current.bodytypes && filtersInfo.current.bodytypes.length > 0) ||
             (filtersInfo.current.price && filtersInfo.current.price[0] > 0) ||
             filtersInfo.current.discount
@@ -371,6 +383,7 @@ const BannersManager: React.FC = () => {
                 firms: [],
                 product_types: [],
                 bodytypes: [],
+                rule_ids:[],
                 store: false,
                 discount: false,
                 withPrice: true,
@@ -411,6 +424,7 @@ const BannersManager: React.FC = () => {
             product_types: [] as number[],
             bodytypes: [] as string[],
             store: false,
+            rule_ids:[],
             discount: false,
             withPrice: true,
             is_active: undefined
@@ -443,8 +457,6 @@ const BannersManager: React.FC = () => {
                 ]
             }
 
-            filters.discount = params.get('discount') === 'true'
-
             const types = params.getAll('type')
             if (types.length) {
                 const typeIds = types.map(typeKey => {
@@ -472,6 +484,7 @@ const BannersManager: React.FC = () => {
             filtersInfo.current = {
                 sizes: [],
                 price: [],
+                rule_ids:[],
                 firms: [],
                 product_types: [],
                 bodytypes: [],
@@ -494,7 +507,7 @@ const BannersManager: React.FC = () => {
             <div className={s.header}>
                 <h2>Управление баннерами</h2>
                 <div className={s.headerButtons}>
-                    
+
                     {canAddMore && (
                         <Button text="+ Добавить баннер" onClick={() => openModal()} />
                     )}

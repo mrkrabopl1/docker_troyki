@@ -11,6 +11,7 @@ import { ReactComponent as FoureGrid } from '/public/foureGrid.svg'
 import { ReactComponent as SixGrid } from '/public/sixGrid.svg'
 import RadioGroup from 'src/components/radio/RadioGroup'
 import { ReactComponent as Filter } from '/public/filter.svg'
+import { ReactComponent as Sort } from '/public/sort.svg'
 import { set } from 'ol/transform';
 import Combobox from 'src/components/combobox/Combobox';
 import { finishLoading } from 'src/store/reducers/loadingSlice';
@@ -20,7 +21,7 @@ interface FiltersInfoRequest {
   sizes: string[]
   price: number[]
   firms: number[],
-  categories:number[],
+  categories: number[],
   bodytypes?: string[],
   lines?: number[],
   types: number[],
@@ -53,12 +54,12 @@ const SearchPage: React.FC = () => {
   const { typesVal, categories, discountRules, firmMap, lineMap } = useAppSelector(state => state.menuReducer);
   // Refs для хранения изменяемых данных без перерисовки
   const filtersInfo = useRef<FiltersInfoRequest>({
-    categories:[],
+    categories: [],
     sizes: [],
     price: [],
     firms: [],
     types: [],
-    lines:[],
+    lines: [],
     store: false,
     discount: false,
     withPrice: true,
@@ -93,7 +94,7 @@ const SearchPage: React.FC = () => {
     checboxsProps: [],
     soloDataProps: []
   })
-const setFiltersFromUrl = useCallback(() => {
+  const setFiltersFromUrl = useCallback(() => {
     filtersInfo.current.sizes = [];
     filtersInfo.current.firms = [];
     filtersInfo.current.types = [];
@@ -118,7 +119,7 @@ const setFiltersFromUrl = useCallback(() => {
     const type = searchParams.type || "";
     if (type) {
       for (let key in typesVal) {
-        if (typesVal[key].type_key === type && typesVal[key].category_key === category) {
+        if (typesVal[key].type_key === type && (typesVal[key].category_key === category || !category)) {
           typeId = Number(key)
           break;
         }
@@ -176,7 +177,7 @@ const setFiltersFromUrl = useCallback(() => {
       settingsModuleMemo.current = !settingsModuleMemo.current
       setMerchFieldData(respData.products)
     }
-  }, [firmMap,setFiltersFromUrl,searchParams])
+  }, [firmMap, setFiltersFromUrl, searchParams])
 
   const updatMerch = useCallback((respData: any) => {
     pages.current = Math.ceil(respData.totalCount / pageSize.current);
@@ -203,7 +204,7 @@ const setFiltersFromUrl = useCallback(() => {
     }
 
     if (categoryRef.current && !filtersInfo.current.categories.includes(categoryRef.current)) {
-       filtersInfo.current.categories.push(categoryRef.current)
+      filtersInfo.current.categories.push(categoryRef.current)
     }
 
     if (typeRef.current && !filtersInfo.current.types.includes(typeRef.current)) {
@@ -274,7 +275,7 @@ const setFiltersFromUrl = useCallback(() => {
           id: typeId,
           enable: true,
           activeData: active,
-          name: `${typeDescr.name}(${resData.firmsCount[typeDescr.name] || 0})`
+          name: `${typeDescr.name}`//"(${resData.firmsCount[typeDescr.name] || 0})"`
         })
       })
     }
@@ -408,6 +409,75 @@ const setFiltersFromUrl = useCallback(() => {
       default:
         break;
     }
+    setFilters(prevState => {
+      // Создаем копию текущего состояния
+      const newState = { ...prevState };
+
+      // Обновляем priceProps
+      newState.priceProps = {
+        ...newState.priceProps,
+        dataLeft: filtersInfo.current.price[0] || newState.priceProps.min,
+        dataRight: filtersInfo.current.price[1] || newState.priceProps.max
+      };
+
+      // Обновляем все чекбоксы
+      newState.checboxsProps = newState.checboxsProps.map(section => {
+        const newSection = { ...section };
+
+        switch (section.id) {
+          case "sizes":
+            newSection.props = section.props.map(item => ({
+              ...item,
+              activeData: filtersInfo.current.sizes.includes(String(item.id))
+            }));
+            break;
+          case "firms":
+            newSection.props = section.props.map(item => {
+              const firm = Object.values(firmMap).find(f => f.slug === item.id);
+              return {
+                ...item,
+                activeData: firm ? filtersInfo.current.firms.includes(firm.id) : false
+              };
+            });
+            break;
+          case "lines":
+            newSection.props = section.props.map(item => {
+              const line = Object.values(lineMap).find(l => l.slug === item.id);
+              return {
+                ...item,
+                activeData: line ? filtersInfo.current.lines.includes(line.id) : false
+              };
+            });
+            break;
+          case "type":
+            newSection.props = section.props.map(item => ({
+              ...item,
+              activeData: filtersInfo.current.types.includes(Number(item.id))
+            }));
+            break;
+          case "discounts":
+            newSection.props = section.props.map(item => ({
+              ...item,
+              activeData: filtersInfo.current.rule_ids.includes(Number(item.id))
+            }));
+            break;
+          default:
+            break;
+        }
+
+        return newSection;
+      });
+
+      // Обновляем soloDataProps
+      newState.soloDataProps = newState.soloDataProps.map(item => ({
+        ...item,
+        activeData: item.id === 'withPrice'
+          ? (filtersInfo.current.withPrice ?? true)
+          : (filtersInfo.current.store ?? false)
+      }));
+
+      return newState;
+    });
     // после изменения фильтров делаем поиск
     searchCallback(searchWord.current);
   }, [searchCallback, firmMap]);
@@ -424,7 +494,7 @@ const setFiltersFromUrl = useCallback(() => {
 
   const resetFilters = useCallback(() => {
     filtersInfo.current = {
-      categories:[],
+      categories: [],
       sizes: [],
       price: [],
       firms: [],
@@ -474,7 +544,7 @@ const setFiltersFromUrl = useCallback(() => {
     searchData()
   }, [searchParams, typesVal, categories, firmMap]);
 
-  
+
   const searchData = useCallback(() => {
     if (searchWord.current) {
       getProductsAndFiltersByString(
@@ -499,7 +569,7 @@ const setFiltersFromUrl = useCallback(() => {
         filtersInfo.current
       )
     }
-  }, [getProductsAndFiltersByString, getProductsAndFiltersByCategoryAndType, firmMap,setFiltersFromUrl])
+  }, [getProductsAndFiltersByString, getProductsAndFiltersByCategoryAndType, firmMap, setFiltersFromUrl])
 
 
   const handleMouseEnter = useCallback(() => setHoverSettings(true), []);
@@ -525,7 +595,7 @@ const setFiltersFromUrl = useCallback(() => {
   const stickyTopRef = useRef(20);
 
   useEffect(() => {
-    if(!rightBlockRef.current) return;
+    if (!rightBlockRef.current) return;
     let rafId: number | null = null;
     let lastScrollY = window.scrollY;
 
@@ -612,7 +682,7 @@ const setFiltersFromUrl = useCallback(() => {
       resizeObserver.disconnect();
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [isSticky , rightBlockRef.current]);
+  }, [isSticky, rightBlockRef.current]);
 
   return (
     <div ref={pageWrap}>
@@ -627,7 +697,7 @@ const setFiltersFromUrl = useCallback(() => {
           gap: "10px"
         }}>
           <div style={{ margin: "auto", width: "30%", padding: "5px" }}>
-            {widthProps ? <Filter style={{
+            {widthProps ? <Sort style={{
               color: hoverSettings ? 'white' : 'black',
               fill: hoverSettings ? 'white' : 'white',
               stroke: hoverSettings ? 'white' : 'black'
@@ -653,10 +723,9 @@ const setFiltersFromUrl = useCallback(() => {
             searchCallback={searchNameCallback}
             selectList={(data) => { router.push('/product/' + data); }}
           />
-          {widthProps ? <div style={{ margin: "auto", width: "30%" }}>
-            <Button
+          {widthProps ? <div style={{ margin: "auto", width: "30%", padding: "5px" }}>
+            <Filter
               className={s.filterBtn}
-              text={''}
               onClick={() => setShowFiltersPanel(true)}
             />
           </div> : <div style={{ margin: "auto", width: "30%" }} />}

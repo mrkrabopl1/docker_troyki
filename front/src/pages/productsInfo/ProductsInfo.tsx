@@ -128,7 +128,7 @@ const ProductsInfo: React.FC = () => {
             size: String(currentSize.current),
             price: currentPrice,
             name: merchInfo.name,
-            image_path: merchInfo.image_path + "1.png"
+            image_path: merchInfo.image_path 
         };
 
         createPreorder(data, (hash) => {
@@ -144,7 +144,7 @@ const ProductsInfo: React.FC = () => {
             size: currentSize.current,
             price: currentPrice,
             name: merchInfo.name,
-            image_path: merchInfo.image_path + "1.png"
+            image_path: merchInfo.image_path 
         };
 
         if (cart) {
@@ -163,7 +163,7 @@ const ProductsInfo: React.FC = () => {
         let content = [];
         while (count <= merchInfo.image_count) {
             content.push(<div style={{ width: "100%", flexShrink: 0, height: "100%" }}>
-                <ImagePresantationBlock image={merchInfo.image_path + count + ".png"} />
+                <ImagePresantationBlock image={merchInfo.image_path + "/img"+ count + "."+merchInfo.image_extansion} />
             </div>)
             count++
         }

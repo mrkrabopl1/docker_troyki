@@ -100,9 +100,10 @@
     width: 32px;
     height: 32px;
     right:-32px;
-    background:no-repeat center url("/public/sort.svg");
+    background:no-repeat center url("/public/filter.svg");
     background-size: contain;
     z-index: 1000;
+    float:right
 }
 
 .filterBtn:active, 

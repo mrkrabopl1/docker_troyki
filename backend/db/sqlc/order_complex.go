@@ -320,21 +320,27 @@ func (store *SQLStore) GetOrderData(ctx context.Context, hash string) (GetOrderD
 	}
 }
 func (store *SQLStore) GetCartData(ctx context.Context, hash string) ([]GetPreorderDataByIdRow, error) {
-
 	prId, err := store.GetPreorderIdByHashUrl(ctx, hash)
 	if err != nil {
 		fmt.Println("Error getting preorder ID:", err)
 		return nil, err
-	} else {
-		prData, err := store.GetPreorderDataById(ctx, prId)
-
-		if err != nil {
-			fmt.Println("Error getting preorder data:", err)
-			return nil, err
-		}
-		return prData, nil
-
 	}
+
+	prData, err := store.GetPreorderDataById(ctx, prId)
+	if err != nil {
+		fmt.Println("Error getting preorder data:", err)
+		return nil, err
+	}
+
+	// ✅ Правильный способ - используем индекс
+	for i := range prData {
+		fmt.Println(prData[i].ImagePath, "item.ImagePath")
+		prData[i].ImagePath = store.ImagePathBuilder.GetProductMainImage(prData[i].ImagePath)
+		fmt.Println(prData[i].ImagePath, "item.ImagePathssssssssssssssssssssss")
+	}
+
+	fmt.Println(prData, "eeeeeeeeeeeeeeeeeeee")
+	return prData, nil
 }
 
 func (store *SQLStore) GetCartDataFromOrderByHash(ctx context.Context, hash string) ([]GetOrderDataByIdRow, error) {
