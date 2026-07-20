@@ -117,7 +117,7 @@ const SearchableCheckboxColumn: React.FC<SearchableCheckboxColumnProps> = ({
             <div style={{ padding: "15px 15px 15px 0" }}>
                 <Search
                     val={searchTerm}
-                    onDataRecieve={() => {}}
+                    // onDataRecieve={() => {}}
                     searchCallback={handleSearchCallback}
                     onChange={handleSearchChange}
                     placeholder={searchPlaceholder}
