@@ -3904,8 +3904,8 @@ func (s *Server) handleAdminExecuteSQL(ctx *gin.Context) {
 		return
 	}
 
-	adminRole, _ := ctx.Get("admin_role")
-	role := adminRole.(string)
+	admin, _ := ctx.Get("admin")
+	role := admin.(db.GetAdminByIDRow).Role
 
 	fmt.Println("========================================")
 	fmt.Printf("[SQL] 🚀 ВЫПОЛНЕНИЕ SQL (роль: %s)\n", role)
@@ -3919,7 +3919,7 @@ func (s *Server) handleAdminExecuteSQL(ctx *gin.Context) {
 	fmt.Printf("[SQL] 📝 Найдено %d запросов\n", len(parsedQueries))
 
 	// 2. Валидируем
-	validation := util.ValidateSQL(parsedQueries, role)
+	validation := util.ValidateSQL(parsedQueries, string(role))
 
 	// 3. Проверяем ошибки
 	if !validation.Valid {

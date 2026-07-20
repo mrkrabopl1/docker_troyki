@@ -1,11 +1,9 @@
 import React, { useRef, useCallback,useState } from 'react'
-import { searchNames } from "src/providers/searchProvider"
 import Input from '../input/Input'
 import { ReactComponent as LoupeIcon } from "/public/loupe.svg"
 import s from "./style.module.css"
 
 type Props = {
-    onDataRecieve: (...args: any) => void,
     searchCallback: (...args: any) => void,
     onChange?: (...args: any) => void,
     onFocus?: (...args: any) => void,
@@ -18,14 +16,12 @@ type Props = {
 const Search: React.FC<Props> = ({
     val = "",
     className,
-    onDataRecieve,
     searchCallback, 
     onChange,
     onBlur,
     onFocus,
     placeholder = "Search..."
 }) => {
-    const trottlingTimerId = useRef<ReturnType<typeof setTimeout> | null>(null)
     const text = useRef<string>(val)
     const [isFocused, setIsFocused] = useState(false)
     
@@ -40,15 +36,7 @@ const Search: React.FC<Props> = ({
     const createSearchRequest = useCallback((val: string) => {
         onChange?.(val)
         text.current = val
-        
-        if (trottlingTimerId.current) {
-            clearTimeout(trottlingTimerId.current)
-        }
-        
-        trottlingTimerId.current = setTimeout(() => {
-            searchNames(val, 5, onDataRecieve)
-        }, 1000)
-    }, [onChange, onDataRecieve])
+    }, [onChange])
 
     const handleSearchClick = useCallback(() => {
         searchCallback(text.current)

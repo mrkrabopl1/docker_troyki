@@ -1,0 +1,731 @@
+/* pages/admin/SizeManagement/style.module.css */
+.container {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #f7f8fa;
+    min-height: 100vh;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.header h2 {
+    margin: 0;
+    font-size: 24px;
+    color: #1e293b;
+}
+
+.searchWrapper {
+    width: 300px;
+}
+
+.stats {
+    display: flex;
+    gap: 24px;
+    padding: 16px 20px;
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    font-size: 14px;
+    color: #475569;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    flex-wrap: wrap;
+}
+
+.stats strong {
+    color: #1e293b;
+}
+
+.tableWrapper {
+    overflow-x: auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+}
+
+.sizesTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.sizesTable th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+    background: #f9fafb;
+    white-space: nowrap;
+
+}
+
+.sizesTable td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+     white-space: nowrap;
+}
+
+.sizeRow {
+    transition: background 0.2s;
+}
+
+.sizeRow:hover {
+    background: #f8fafc;
+}
+
+.sizeKey {
+    font-weight: 600;
+    font-size: 16px;
+    color: #1e293b;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.viewBtn,
+.renameBtn,
+.deleteBtn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.viewBtn {
+    background: #e3f0ff;
+    color: #0066cc;
+}
+
+.viewBtn:hover {
+    background: #cce4ff;
+}
+
+.renameBtn {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.renameBtn:hover {
+    background: #ffe69c;
+}
+
+.deleteBtn {
+    background: #fee;
+    color: #cc0000;
+}
+
+.deleteBtn:hover {
+    background: #fdd;
+}
+
+.loadingCell,
+.emptyCell {
+    text-align: center;
+    padding: 40px;
+    color: #94a3b8;
+}
+
+/* Пагинация */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 0;
+}
+
+.pagination button {
+    padding: 8px 16px;
+    border: 1px solid #d9d9d9;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #334155;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.pagination button:hover:not(:disabled) {
+    background: #f0f0f0;
+    border-color: #4f46e5;
+}
+
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination span {
+    font-size: 14px;
+    color: #475569;
+}
+
+/* Modal */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modalPanel {
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s ease;
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #eee;
+}
+
+.modalHeader h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.modalHeader button {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #64748b;
+    padding: 4px 8px;
+}
+
+.modalHeader button:hover {
+    color: #0f172a;
+}
+
+.sizeInfo {
+    display: flex;
+    gap: 24px;
+    padding: 16px 24px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    color: #475569;
+    flex-wrap: wrap;
+}
+
+.sizeInfo strong {
+    color: #1e293b;
+}
+
+.productList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 24px;
+}
+
+.productItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #f0f0f0;
+    gap: 8px;
+}
+
+.productItem:hover {
+    background: #f8f9fa;
+}
+
+.productInfo {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    flex-wrap: wrap;
+}
+
+.productName {
+    font-weight: 500;
+    color: #1e293b;
+    flex: 1;
+    min-width: 120px;
+}
+
+.productArticle {
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.productFirm {
+    color: #64748b;
+    font-size: 13px;
+}
+
+.productPrice {
+    font-weight: 600;
+    color: #0066cc;
+    min-width: 100px;
+}
+
+.productQuantity {
+    color: #64748b;
+}
+
+.productStock {
+    padding: 2px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.inStock {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.outOfStock {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.removeSizeBtn {
+    background: none;
+    border: none;
+    color: #cc0000;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.removeSizeBtn:hover {
+    background: #fee;
+}
+
+.confirmModal {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 500px;
+    width: 90%;
+    animation: slideUp 0.3s ease;
+}
+
+.confirmModal h3 {
+    margin: 0 0 16px 0;
+    color: #cc0000;
+}
+
+.warning {
+    background: #fff3cd;
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 4px solid #ffc107;
+    margin: 16px 0;
+    color: #856404;
+}
+
+.confirmActions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    justify-content: flex-end;
+}
+
+.confirmDeleteBtn,
+.cancelBtn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.confirmDeleteBtn {
+    background: #cc0000;
+    color: white;
+}
+
+.confirmDeleteBtn:hover:not(:disabled) {
+    background: #aa0000;
+}
+
+.confirmDeleteBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.cancelBtn {
+    background: #f0f0f0;
+    color: #555;
+}
+
+.cancelBtn:hover {
+    background: #e0e0e0;
+}
+
+.emptyList {
+    text-align: center;
+    padding: 40px;
+    color: #94a3b8;
+}
+
+/* Модалка переименования */
+.renameModal {
+    background: white;
+    border-radius: 16px;
+    padding: 0;
+    max-width: 500px;
+    width: 90%;
+    animation: slideUp 0.3s ease;
+    overflow: hidden;
+}
+
+.renameContent {
+    padding: 24px;
+}
+
+.renameField {
+    margin-bottom: 16px;
+}
+
+.renameField label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #475569;
+    margin-bottom: 4px;
+}
+
+.renameField input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.renameField input:focus {
+    outline: none;
+    border-color: #0066cc;
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.oldNameInput {
+    background: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.newNameInput {
+    background: white;
+}
+
+.renameError {
+    color: #cc0000;
+    font-size: 14px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #fee;
+    border-radius: 6px;
+}
+
+.renameInfo {
+    margin-top: 12px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #64748b;
+}
+
+.renameInfo strong {
+    color: #1a1a1a;
+}
+
+.renameActions {
+    display: flex;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid #eee;
+    justify-content: flex-end;
+}
+
+.renameConfirmBtn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    background: #0066cc;
+    color: white;
+    transition: background 0.2s;
+}
+
+.renameConfirmBtn:hover:not(:disabled) {
+    background: #0055aa;
+}
+
+.renameConfirmBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ===== Адаптивная карточная вёрстка для мобильных устройств ===== */
+@media (max-width: 600px) {
+    .container {
+        padding: 12px;
+    }
+
+    .header {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 16px;
+    }
+
+    .header h2 {
+        font-size: 20px;
+    }
+
+    .searchWrapper {
+        width: 100%;
+    }
+
+    .stats {
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 16px;
+        font-size: 13px;
+    }
+
+    /* Превращаем таблицу в карточки */
+    .sizesTable thead {
+        display: none;
+    }
+
+    .sizesTable,
+    .sizesTable tbody,
+    .sizesTable tr,
+    .sizesTable td {
+        display: block;
+        width: 100%;
+    }
+
+    .sizesTable tr {
+        margin-bottom: 16px;
+        border: 1px solid #e2e5ea;
+        border-radius: 12px;
+        background: white;
+        padding: 12px 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        transition: box-shadow 0.2s;
+    }
+
+    .sizesTable tr:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .sizesTable td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 14px;
+        background: transparent;
+    }
+
+    .sizesTable td:last-child {
+        border-bottom: none;
+    }
+
+
+
+    .sizeKey {
+        font-size: 16px;
+    }
+
+    .actions {
+        justify-content: flex-end;
+        width: 100%;
+    }
+
+    .actions button {
+        font-size: 12px;
+        padding: 4px 10px;
+    }
+
+    /* Модалки на мобильных */
+    .modalPanel {
+        width: 95%;
+        max-height: 95vh;
+    }
+
+    .modalHeader {
+        padding: 16px 18px;
+    }
+
+    .modalHeader h3 {
+        font-size: 16px;
+    }
+
+    .sizeInfo {
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 18px;
+        font-size: 13px;
+    }
+
+    .productList {
+        padding: 12px 16px;
+    }
+
+    .productItem {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 12px;
+        gap: 8px;
+    }
+
+    .productInfo {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        width: 100%;
+    }
+
+    .productName {
+        width: 100%;
+        font-size: 14px;
+    }
+
+    .productPrice {
+        font-size: 14px;
+    }
+
+    .removeSizeBtn {
+        align-self: flex-end;
+    }
+
+    /* Модалка подтверждения */
+    .confirmModal {
+        padding: 24px;
+        width: 95%;
+    }
+
+    .confirmModal h3 {
+        font-size: 18px;
+    }
+
+    .confirmActions {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .confirmActions button {
+        width: 100%;
+    }
+
+    /* Модалка переименования */
+    .renameModal {
+        width: 95%;
+    }
+
+    .renameContent {
+        padding: 18px;
+    }
+
+    .renameActions {
+        flex-direction: column-reverse;
+        gap: 8px;
+        padding: 12px 18px;
+    }
+
+    .renameActions button {
+        width: 100%;
+    }
+}
+
+/* Планшеты */
+@media (max-width: 768px) and (min-width: 601px) {
+    .header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .searchWrapper {
+        width: 100%;
+    }
+
+    .productInfo {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .actions button {
+        font-size: 12px;
+        padding: 5px 10px;
+    }
+}
+
+/* ===== Важно для data-label атрибутов в карточках ===== */
+/* Добавляем data-label ко всем td в JSX */

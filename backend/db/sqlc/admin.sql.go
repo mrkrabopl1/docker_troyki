@@ -46,6 +46,22 @@ func (q *Queries) BulkUpdateBrandSortOrder(ctx context.Context, arg BulkUpdateBr
 	return err
 }
 
+const checkSizeExists = `-- name: CheckSizeExists :one
+SELECT EXISTS (
+    SELECT 1 
+    FROM products p
+    WHERE p.sizes ? $1::text
+) AS exists
+`
+
+// Проверяем, существует ли размер
+func (q *Queries) CheckSizeExists(ctx context.Context, oldSizeKey string) (bool, error) {
+	row := q.db.QueryRow(ctx, checkSizeExists, oldSizeKey)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const countPageWidgets = `-- name: CountPageWidgets :one
 SELECT COUNT(*) FROM page_widgets
 `
@@ -345,6 +361,46 @@ WHERE id = $1
 
 func (q *Queries) DeletePageWidget(ctx context.Context, id int32) error {
 	_, err := q.db.Exec(ctx, deletePageWidget, id)
+	return err
+}
+
+const deleteSizeFromAllProducts = `-- name: DeleteSizeFromAllProducts :exec
+WITH products_with_size AS (
+    -- Находим все товары с этим размером
+    SELECT 
+        p.id,
+        p.sizes,
+        (SELECT COUNT(*) FROM jsonb_object_keys(p.sizes)) AS size_count
+    FROM products p
+    WHERE p.sizes ? $1::text
+),
+updated_products AS (
+    SELECT 
+        pws.id,
+        CASE 
+            -- Если это единственный размер - заменяем на no_size
+            WHEN pws.size_count = 1 THEN
+                jsonb_build_object('no_size', jsonb_build_object(
+                    'price', 0,
+                    'discount', 0,
+                    'quantity', 0,
+                    'in_stock', false
+                ))
+            -- Иначе удаляем размер
+            ELSE
+                pws.sizes - $1::text
+        END AS new_sizes
+    FROM products_with_size pws
+)
+UPDATE products p
+SET sizes = up.new_sizes
+FROM updated_products up
+WHERE p.id = up.id
+`
+
+// Удаляем размер у всех товаров с защитой от удаления последнего размера
+func (q *Queries) DeleteSizeFromAllProducts(ctx context.Context, dollar_1 string) error {
+	_, err := q.db.Exec(ctx, deleteSizeFromAllProducts, dollar_1)
 	return err
 }
 
@@ -1450,6 +1506,77 @@ func (q *Queries) GetAllProductsForAdmin(ctx context.Context, arg GetAllProducts
 			&i.TypeName,
 			&i.TotalQuantity,
 			&i.Discount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllSizesStats = `-- name: GetAllSizesStats :many
+
+WITH size_stats AS (
+    SELECT 
+        ps.size_key,
+        COUNT(DISTINCT ps.product_id)::INTEGER AS product_count,
+        SUM(ps.quantity)::INTEGER AS total_quantity,
+        ROUND(AVG(ps.price))::INTEGER AS avg_price,
+        COALESCE(MIN(ps.price), 0)::INTEGER AS min_price,
+        COALESCE(MAX(ps.price), 0)::INTEGER AS max_price
+    FROM product_sizes ps
+    JOIN products p ON p.id = ps.product_id
+    WHERE ($3::text = '' OR ps.size_key ILIKE '%' || $3::text || '%')
+    GROUP BY ps.size_key
+)
+SELECT 
+    size_key,
+    product_count,
+    total_quantity,
+    avg_price,
+    min_price,
+    max_price
+FROM size_stats
+ORDER BY product_count DESC, size_key
+LIMIT $2
+OFFSET $1
+`
+
+type GetAllSizesStatsParams struct {
+	OffsetVal int32  `json:"offset_val"`
+	LimitVal  int32  `json:"limit_val"`
+	Search    string `json:"search"`
+}
+
+type GetAllSizesStatsRow struct {
+	SizeKey       string `json:"size_key"`
+	ProductCount  int32  `json:"product_count"`
+	TotalQuantity int32  `json:"total_quantity"`
+	AvgPrice      int32  `json:"avg_price"`
+	MinPrice      int32  `json:"min_price"`
+	MaxPrice      int32  `json:"max_price"`
+}
+
+// -----SIZES
+func (q *Queries) GetAllSizesStats(ctx context.Context, arg GetAllSizesStatsParams) ([]GetAllSizesStatsRow, error) {
+	rows, err := q.db.Query(ctx, getAllSizesStats, arg.OffsetVal, arg.LimitVal, arg.Search)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllSizesStatsRow
+	for rows.Next() {
+		var i GetAllSizesStatsRow
+		if err := rows.Scan(
+			&i.SizeKey,
+			&i.ProductCount,
+			&i.TotalQuantity,
+			&i.AvgPrice,
+			&i.MinPrice,
+			&i.MaxPrice,
 		); err != nil {
 			return nil, err
 		}
@@ -2997,6 +3124,53 @@ func (q *Queries) GetRecentOrders(ctx context.Context) ([]GetRecentOrdersRow, er
 	return items, nil
 }
 
+const getSizeStatsByKey = `-- name: GetSizeStatsByKey :one
+SELECT 
+    COUNT(DISTINCT ps.product_id) AS product_count,
+    SUM(ps.quantity) AS total_quantity,
+    ROUND(AVG(ps.price)) AS avg_price,
+    MIN(ps.price) AS min_price,
+    MAX(ps.price) AS max_price
+FROM product_sizes ps
+JOIN products p ON p.id = ps.product_id
+WHERE ps.size_key = $1
+`
+
+type GetSizeStatsByKeyRow struct {
+	ProductCount  int64       `json:"product_count"`
+	TotalQuantity int64       `json:"total_quantity"`
+	AvgPrice      float64     `json:"avg_price"`
+	MinPrice      interface{} `json:"min_price"`
+	MaxPrice      interface{} `json:"max_price"`
+}
+
+func (q *Queries) GetSizeStatsByKey(ctx context.Context, sizeKey string) (GetSizeStatsByKeyRow, error) {
+	row := q.db.QueryRow(ctx, getSizeStatsByKey, sizeKey)
+	var i GetSizeStatsByKeyRow
+	err := row.Scan(
+		&i.ProductCount,
+		&i.TotalQuantity,
+		&i.AvgPrice,
+		&i.MinPrice,
+		&i.MaxPrice,
+	)
+	return i, err
+}
+
+const getSizesCount = `-- name: GetSizesCount :one
+SELECT COUNT(DISTINCT ps.size_key)::INTEGER AS total
+FROM product_sizes ps
+JOIN products p ON p.id = ps.product_id
+WHERE ($1::text = '' OR ps.size_key ILIKE '%' || $1::text || '%')
+`
+
+func (q *Queries) GetSizesCount(ctx context.Context, dollar_1 string) (int32, error) {
+	row := q.db.QueryRow(ctx, getSizesCount, dollar_1)
+	var total int32
+	err := row.Scan(&total)
+	return total, err
+}
+
 const getUnregisterCustomersCount = `-- name: GetUnregisterCustomersCount :one
 SELECT COUNT(*)
 FROM unregistercustomer
@@ -3193,6 +3367,33 @@ WHERE id = ANY($1::int[])
 
 func (q *Queries) MarkProductsAsDeleted(ctx context.Context, dollar_1 []int32) error {
 	_, err := q.db.Exec(ctx, markProductsAsDeleted, dollar_1)
+	return err
+}
+
+const renameSize = `-- name: RenameSize :exec
+WITH products_with_size AS (
+    SELECT 
+        p.id,
+        p.sizes
+    FROM products p
+    WHERE p.sizes ? $1::text
+)
+UPDATE products p
+SET sizes = 
+    -- Удаляем старый ключ и добавляем новый с теми же данными
+    (p.sizes - $1::text) || 
+    jsonb_build_object($2::text, p.sizes->$1::text)
+WHERE p.id IN (SELECT id FROM products_with_size)
+`
+
+type RenameSizeParams struct {
+	OldSizeKey string `json:"old_size_key"`
+	NewSizeKey string `json:"new_size_key"`
+}
+
+// Переименовываем размер у всех товаров
+func (q *Queries) RenameSize(ctx context.Context, arg RenameSizeParams) error {
+	_, err := q.db.Exec(ctx, renameSize, arg.OldSizeKey, arg.NewSizeKey)
 	return err
 }
 

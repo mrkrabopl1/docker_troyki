@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, memo } from 'react';
-import Search from '../../components/search/Search';
-import DropDownList from '../../components/dropComponents/DropDownList';
-import MerchLine from '../merchField/MerchLine';
+import Search from 'src/components/search/Search';
+import DropDownList from 'src/components/dropComponents/DropDownList';
+import MerchLine from 'src/modules/merchField/MerchLine';
 import s from './style.module.css';
 
 interface SearchWithListProps {
@@ -93,7 +93,6 @@ const SearchWithList: React.FC<SearchWithListProps> = memo(({
                     onChange={onChange}
                     onFocus={handleFocus}
                     searchCallback={handleSearch}
-                    onDataRecieve={createDropList}
                 />
                 {(activeList && dropDownListData.length) ? <DropDownList
                     className={className.dropList}

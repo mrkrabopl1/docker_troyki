@@ -186,6 +186,10 @@ func (s *Server) setupRouter() {
 			adminGroup.PUT("/banners/:id", s.handleAdminUpdateBanner)
 			adminGroup.DELETE("/banners/:id", s.handleAdminDeleteBanner)
 
+			adminGroup.GET("/sizes", s.handleAdminGetSizes)
+			adminGroup.DELETE("/sizes", s.handleAdminBulkDeleteSize)
+			adminGroup.PUT("/sizes", s.handleAdminRenameSize)
+
 			adminGroup.GET("/page-blocks", s.handleAdminGetPageWidgets)
 			adminGroup.POST("/page-blocks", s.handleAdminCreatePageWidget)
 			adminGroup.PUT("/page-blocks/:id", s.handleAdminUpdatePageWidget)

@@ -35,6 +35,8 @@ type Querier interface {
 	CheckProductExistsById(ctx context.Context, id int32) (bool, error)
 	CheckProductInOrders(ctx context.Context, productid int32) (bool, error)
 	CheckProductInPreorders(ctx context.Context, productid int32) (bool, error)
+	// Проверяем, существует ли размер
+	CheckSizeExists(ctx context.Context, oldSizeKey string) (bool, error)
 	CheckTypeExists(ctx context.Context, arg CheckTypeExistsParams) (bool, error)
 	CheckTypeExistsByIds(ctx context.Context, arg CheckTypeExistsByIdsParams) (bool, error)
 	ClearDiscounts(ctx context.Context) error
@@ -83,6 +85,8 @@ type Querier interface {
 	DeleteOldPasswordResetTokenByEmail(ctx context.Context, email string) error
 	DeleteOldPasswordResetTokens(ctx context.Context) error
 	DeletePageWidget(ctx context.Context, id int32) error
+	// Удаляем размер у всех товаров с защитой от удаления последнего размера
+	DeleteSizeFromAllProducts(ctx context.Context, dollar_1 string) error
 	DeleteVerification(ctx context.Context, id int32) error
 	DraftProduct(ctx context.Context, id int32) error
 	GetActiveBanners(ctx context.Context) ([]GetActiveBannersRow, error)
@@ -115,6 +119,8 @@ type Querier interface {
 	GetAllFiltersForAdmin(ctx context.Context) (GetAllFiltersForAdminRow, error)
 	GetAllPageWidgets(ctx context.Context) ([]PageWidget, error)
 	GetAllProductsForAdmin(ctx context.Context, arg GetAllProductsForAdminParams) ([]GetAllProductsForAdminRow, error)
+	//-----SIZES
+	GetAllSizesStats(ctx context.Context, arg GetAllSizesStatsParams) ([]GetAllSizesStatsRow, error)
 	GetBannerByID(ctx context.Context, id int32) (GetBannerByIDRow, error)
 	GetBaseCustomerData(ctx context.Context, mail string) (GetBaseCustomerDataRow, error)
 	// Скидка на конкретный товар (самый высокий приоритет)
@@ -225,6 +231,8 @@ type Querier interface {
 	GetRecentOrders(ctx context.Context) ([]GetRecentOrdersRow, error)
 	GetRuleItems(ctx context.Context, ruleID int32) ([]GetRuleItemsRow, error)
 	GetRuleItemsByType(ctx context.Context, arg GetRuleItemsByTypeParams) ([]DiscountRuleItem, error)
+	GetSizeStatsByKey(ctx context.Context, sizeKey string) (GetSizeStatsByKeyRow, error)
+	GetSizesCount(ctx context.Context, dollar_1 string) (int32, error)
 	GetSnickersByFirmName(ctx context.Context, name string) ([]GetSnickersByFirmNameRow, error)
 	GetSoloCollection(ctx context.Context, arg GetSoloCollectionParams) ([]GetSoloCollectionRow, error)
 	GetSoloCollectionWithCount(ctx context.Context, arg GetSoloCollectionWithCountParams) ([]GetSoloCollectionWithCountRow, error)
@@ -247,6 +255,8 @@ type Querier interface {
 	MarkInviteAsUsed(ctx context.Context, arg MarkInviteAsUsedParams) error
 	MarkProductsAsDeleted(ctx context.Context, dollar_1 []int32) error
 	RemoveRuleItem(ctx context.Context, arg RemoveRuleItemParams) error
+	// Переименовываем размер у всех товаров
+	RenameSize(ctx context.Context, arg RenameSizeParams) error
 	ReorderPageWidgets(ctx context.Context, arg ReorderPageWidgetsParams) error
 	RestoreBrand(ctx context.Context, id int32) error
 	RestoreBrandLine(ctx context.Context, id int32) error

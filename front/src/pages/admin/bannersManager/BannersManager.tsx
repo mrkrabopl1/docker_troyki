@@ -42,7 +42,7 @@ const BannersManager: React.FC = () => {
     const router = useRouter();
     const { typesVal, firmMap, discountRules } = useAppSelector(state => state.menuReducer)
     const dispatch = useAppDispatch();
-
+    const fileInputRef = useRef<HTMLInputElement>(null);
     // Фильтры - храним ID для фирм
     const filtersInfo = useRef<any>({
         sizes: [],
@@ -383,7 +383,7 @@ const BannersManager: React.FC = () => {
                 firms: [],
                 product_types: [],
                 bodytypes: [],
-                rule_ids:[],
+                rule_ids: [],
                 store: false,
                 discount: false,
                 withPrice: true,
@@ -408,13 +408,16 @@ const BannersManager: React.FC = () => {
     }
 
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
+        console.log('File selected:', e.target.files); // Для отладки
+        const file = e.target.files?.[0];
         if (file) {
-            setImageFile(file)
-            setImagePreview(URL.createObjectURL(file))
-            setErrors(prev => ({ ...prev, image: false }))
+            setImageFile(file);
+            setImagePreview(URL.createObjectURL(file));
+            setErrors(prev => ({ ...prev, image: false }));
         }
-    }
+        // ОЧЕНЬ ВАЖНО: очищаем input для мобильных устройств
+        e.target.value = '';
+    };
 
     const parseUrlToFilters = (url: string): any => {
         const filters = {
@@ -424,7 +427,7 @@ const BannersManager: React.FC = () => {
             product_types: [] as number[],
             bodytypes: [] as string[],
             store: false,
-            rule_ids:[],
+            rule_ids: [],
             discount: false,
             withPrice: true,
             is_active: undefined
@@ -484,7 +487,7 @@ const BannersManager: React.FC = () => {
             filtersInfo.current = {
                 sizes: [],
                 price: [],
-                rule_ids:[],
+                rule_ids: [],
                 firms: [],
                 product_types: [],
                 bodytypes: [],
@@ -564,18 +567,53 @@ const BannersManager: React.FC = () => {
                                     <img src={imagePreview} alt="Preview" />
                                     <button
                                         className={s.deleteImageBtn}
-                                        onClick={(e) => {
-                                            setImagePreview('')
-                                            setImageFile(null)
+                                        onClick={() => {
+                                            setImagePreview('');
+                                            setImageFile(null);
+                                            // Очищаем input
+                                            if (fileInputRef.current) {
+                                                fileInputRef.current.value = '';
+                                            }
                                         }}
                                     >
                                         <img src={deleteIconUrl} alt="delete" style={{ width: '18px', height: '18px' }} />
                                     </button>
                                 </div>
                             ) : (
-                                <div>
-                                    <input type="file" accept="image/*" onChange={handleImageSelect} id="imageUpload" />
-                                    <label htmlFor="imageUpload">Выбрать изображение</label>
+                                <div style={{ position: 'relative', width: '100%' }}>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleImageSelect}
+                                        id="imageUpload"
+                                        style={{
+                                            position: 'absolute',
+                                            opacity: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                            cursor: 'pointer',
+                                            zIndex: 10,
+                                            top: 0,
+                                            left: 0
+                                        }}
+                                    />
+                                    <label
+                                        htmlFor="imageUpload"
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            padding: '30px',
+                                            background: '#f5f5f5',
+                                            border: '2px dashed #ccc',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            minHeight: '150px'
+                                        }}
+                                    >
+                                        Выбрать изображение
+                                    </label>
                                 </div>
                             )}
                         </div>

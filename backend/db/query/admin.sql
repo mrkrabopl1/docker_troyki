@@ -1492,3 +1492,112 @@ WHERE brand_id = $1;
 -- name: GetProductIDsByLineForAdmin :many
 SELECT id FROM products
 WHERE line_id = $1;  
+
+
+
+
+-------SIZES
+
+-- name: GetAllSizesStats :many
+WITH size_stats AS (
+    SELECT 
+        ps.size_key,
+        COUNT(DISTINCT ps.product_id)::INTEGER AS product_count,
+        SUM(ps.quantity)::INTEGER AS total_quantity,
+        ROUND(AVG(ps.price))::INTEGER AS avg_price,
+        COALESCE(MIN(ps.price), 0)::INTEGER AS min_price,
+        COALESCE(MAX(ps.price), 0)::INTEGER AS max_price
+    FROM product_sizes ps
+    JOIN products p ON p.id = ps.product_id
+    WHERE (@search::text = '' OR ps.size_key ILIKE '%' || @search::text || '%')
+    GROUP BY ps.size_key
+)
+SELECT 
+    size_key,
+    product_count,
+    total_quantity,
+    avg_price,
+    min_price,
+    max_price
+FROM size_stats
+ORDER BY product_count DESC, size_key
+LIMIT @limit_val
+OFFSET @offset_val;
+
+-- name: GetSizesCount :one
+SELECT COUNT(DISTINCT ps.size_key)::INTEGER AS total
+FROM product_sizes ps
+JOIN products p ON p.id = ps.product_id
+WHERE ($1::text = '' OR ps.size_key ILIKE '%' || $1::text || '%');
+
+-- name: DeleteSizeFromAllProducts :exec
+-- Удаляем размер у всех товаров с защитой от удаления последнего размера
+WITH products_with_size AS (
+    -- Находим все товары с этим размером
+    SELECT 
+        p.id,
+        p.sizes,
+        (SELECT COUNT(*) FROM jsonb_object_keys(p.sizes)) AS size_count
+    FROM products p
+    WHERE p.sizes ? $1::text
+),
+updated_products AS (
+    SELECT 
+        pws.id,
+        CASE 
+            -- Если это единственный размер - заменяем на no_size
+            WHEN pws.size_count = 1 THEN
+                jsonb_build_object('no_size', jsonb_build_object(
+                    'price', 0,
+                    'discount', 0,
+                    'quantity', 0,
+                    'in_stock', false
+                ))
+            -- Иначе удаляем размер
+            ELSE
+                pws.sizes - $1::text
+        END AS new_sizes
+    FROM products_with_size pws
+)
+UPDATE products p
+SET sizes = up.new_sizes
+FROM updated_products up
+WHERE p.id = up.id;
+
+
+
+-- name: GetSizeStatsByKey :one
+SELECT 
+    COUNT(DISTINCT ps.product_id) AS product_count,
+    SUM(ps.quantity) AS total_quantity,
+    ROUND(AVG(ps.price)) AS avg_price,
+    MIN(ps.price) AS min_price,
+    MAX(ps.price) AS max_price
+FROM product_sizes ps
+JOIN products p ON p.id = ps.product_id
+WHERE ps.size_key = $1;
+  
+
+-- name: RenameSize :exec
+-- Переименовываем размер у всех товаров
+WITH products_with_size AS (
+    SELECT 
+        p.id,
+        p.sizes
+    FROM products p
+    WHERE p.sizes ? sqlc.arg('old_size_key')::text
+)
+UPDATE products p
+SET sizes = 
+    -- Удаляем старый ключ и добавляем новый с теми же данными
+    (p.sizes - sqlc.arg('old_size_key')::text) || 
+    jsonb_build_object(sqlc.arg('new_size_key')::text, p.sizes->sqlc.arg('old_size_key')::text)
+WHERE p.id IN (SELECT id FROM products_with_size);
+
+-- name: CheckSizeExists :one
+-- Проверяем, существует ли размер
+SELECT EXISTS (
+    SELECT 1 
+    FROM products p
+    WHERE p.sizes ? @old_size_key::text
+) AS exists;  
