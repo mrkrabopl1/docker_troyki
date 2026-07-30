@@ -1,6 +1,6 @@
 export interface BannerFormData {
     id?: number;
     image: File;
-    url: string;
+    collection_id: number;
     active: boolean;
 }

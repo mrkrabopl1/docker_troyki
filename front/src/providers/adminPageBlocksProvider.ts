@@ -1,4 +1,8 @@
+// providers/adminPageWidgetsProvider.ts
 import axios from 'axios';
+import { PageWidget } from 'src/types/modules';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 const adminApi = axios.create({
     baseURL: `${API_URL}/admin`,
@@ -6,57 +10,39 @@ const adminApi = axios.create({
     headers: { 'Content-Type': 'application/json' }
 });
 
-export interface PageBlock {
-    id?: number;
-    name: string;
-    sort_order: number;
-    is_active: boolean;
-    filters: {
-        sizes: string[];
-        firms: number[];
-        types: number[];
-        price: [number, number];
-        rule_ids: number[];
-        in_store:boolean
-    };
-    min_items: number;
-    max_items: number;
-    type:string
-}
-
-// GET /admin/page-blocks
-export const getPageBlocks = async (): Promise<PageBlock[]> => {
-    const response = await adminApi.get('/page-blocks');
+// GET /admin/page-widgets
+export const getPageWidgets = async (): Promise<PageWidget[]> => {
+    const response = await adminApi.get('/page-widgets');
     return response.data;
 };
 
-// POST /admin/page-blocks
-export const createPageBlock = async (data: Omit<PageBlock, 'id'>): Promise<PageBlock> => {
-    const response = await adminApi.post('/page-blocks', data);
+// POST /admin/page-widgets
+export const createPageWidget = async (data: Omit<PageWidget, 'id' | 'created_at' | 'updated_at'>): Promise<PageWidget> => {
+    const response = await adminApi.post('/page-widgets', data);
     return response.data;
 };
 
-// PUT /admin/page-blocks/:id
-export const updatePageBlock = async (id: number, data: Partial<PageBlock>): Promise<PageBlock> => {
-    const response = await adminApi.put(`/page-blocks/${id}`, data);
+// PUT /admin/page-widgets/:id
+export const updatePageWidget = async (
+    id: number,
+    data: Partial<Omit<PageWidget, 'id' | 'created_at' | 'updated_at'>>
+): Promise<PageWidget> => {
+    const response = await adminApi.put(`/page-widgets/${id}`, data);
     return response.data;
 };
 
-// DELETE /admin/page-blocks/:id
-export const deletePageBlock = async (id: number): Promise<void> => {
-    await adminApi.delete(`/page-blocks/${id}`);
+// DELETE /admin/page-widgets/:id
+export const deletePageWidget = async (id: number): Promise<void> => {
+    await adminApi.delete(`/page-widgets/${id}`);
 };
 
-// POST /admin/page-blocks/reorder
-export const reorderPageBlocks = async (blockIds: number[]): Promise<void> => {
-    await adminApi.post('/page-blocks/reorder', { block_ids: blockIds });
+// POST /admin/page-widgets/reorder
+export const reorderPageWidgets = async (order: number[]): Promise<void> => {
+    await adminApi.post('/page-widgets/reorder', { order });
 };
 
-// POST /admin/page-blocks/preview
-export const previewProductsByFilters = async (
-    filters: PageBlock['filters'],
-    limit?: number
-): Promise<any[]> => {
-    const response = await adminApi.post('/page-blocks/preview', { filters, limit });
+// GET /admin/page-widgets/:id
+export const getPageWidget = async (id: number): Promise<PageWidget> => {
+    const response = await adminApi.get(`/page-widgets/${id}`);
     return response.data;
 };

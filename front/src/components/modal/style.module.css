@@ -13,8 +13,8 @@
     backdrop-filter: blur(10px);
     /* Размытие фона за элементом */
     -webkit-backdrop-filter: blur(10px);
-    /* Для поддержки в Safari */
-    padding: 2rem;
+   
+    
     border-radius: 16px;
     /* Скругленные углы */
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);

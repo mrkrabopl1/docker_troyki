@@ -1,42 +1,31 @@
 // pages/admin/PageBlocks/PageBlocksManager.tsx
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
-import { useRouter } from 'next/router'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import Button from 'src/components/Button'
 import Modal from 'src/components/modal/Modal'
-import ProductsFilters from 'src/modules/settingsPanels/ProductsFilters'
-import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux'
-
-import { getAdminProductsAndFilters, getAdminProducts } from 'src/providers/adminProductsProvider'
-import {
-  getPageBlocks,
-  createPageBlock,
-  updatePageBlock,
-  deletePageBlock,
-  reorderPageBlocks,
-  PageBlock
-} from 'src/providers/adminPageBlocksProvider'
+import { useAppDispatch } from 'src/store/hooks/redux'
 import { finishLoading } from 'src/store/reducers/loadingSlice'
-import { CheckBoxType } from 'src/types/modules'
+import { Collection, PageWidget } from 'src/types/modules'
 import s from './style.module.css'
 
-interface FiltersState {
-  priceProps: {
-    max: number
-    min: number
-    dataLeft?: number
-    dataRight?: number
-  }
-  soloDataProps: CheckBoxType[]
-  checboxsProps: {
-    name: string
-    id: string
-    props: CheckBoxType[]
-  }[]
-}
+// API функции
+import {
+  getPageWidgets,
+  createPageWidget,
+  updatePageWidget,
+  deletePageWidget
+} from 'src/providers/adminPageBlocksProvider'
+
+import {
+  getCollections,
+  createCollection,
+} from 'src/providers/adminCollectionProvider'
+
+// Компоненты
+import CollectionSelector from 'src/modules/admin/collectionSelector/CollectionSelector'
+import CollectionForm from 'src/modules/admin/collectionForm/CollectionForm'
 
 const PageBlocksManager: React.FC = () => {
   const dispatch = useAppDispatch();
-  const [filtersVersion, setFiltersVersion] = useState(0)
   
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -44,52 +33,35 @@ const PageBlocksManager: React.FC = () => {
     }, 0);
     return () => clearTimeout(timer);
   }, [dispatch]);
-  
-  const router = useRouter()
-  const { typesVal, firmMap } = useAppSelector(state => state.menuReducer)
 
   // Список блоков
-  const [blocks, setBlocks] = useState<PageBlock[]>([])
+  const [blocks, setBlocks] = useState<PageWidget[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // Список коллекций
+  const [collections, setCollections] = useState<Collection[]>([])
+  const [collectionsLoading, setCollectionsLoading] = useState(false)
 
-  // Модалка редактирования
+  // Модалки
   const [showModal, setShowModal] = useState(false)
-  const [showFiltersPanel, setShowFiltersPanel] = useState(false)
-  const [editingBlock, setEditingBlock] = useState<PageBlock | null>(null)
+  const [showCollectionSelector, setShowCollectionSelector] = useState(false)
+  const [showCollectionForm, setShowCollectionForm] = useState(false)
+  const [editingBlock, setEditingBlock] = useState<PageWidget | null>(null)
 
+  // Форма
   const [blockName, setBlockName] = useState('')
-  const [minItems, setMinItems] = useState(6)
-  const [maxItems, setMaxItems] = useState(20)
+  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
+  const [blockType, setBlockType] = useState<'products_slider' | 'banner_slider' | 'brands_scroller'>('products_slider')
   const [isActive, setIsActive] = useState(true)
 
-  // Фильтры - используем useRef для хранения текущих значений
-  const filtersInfo = useRef<PageBlock['filters']>({
-    sizes: [],
-    firms: [], // ← здесь хранятся ID фирм
-    types: [],
-    price: [0, 100000],
-    rule_ids: [],
-    in_store: false
-  })
-
-  // Состояния фильтров для ProductsFilters
-  const [filtersState, setFiltersState] = useState<FiltersState>({
-    priceProps: { min: 0, max: 100000, dataLeft: 0, dataRight: 100000 },
-    checboxsProps: [],
-    soloDataProps: []
-  })
-
-  // Предпросмотр товаров
-  const [previewProducts, setPreviewProducts] = useState<any[]>([])
-  const [previewTotal, setPreviewTotal] = useState(0)
-  const [previewLoading, setPreviewLoading] = useState(false)
-  const [errors, setErrors] = useState<{ filters?: boolean }>({})
+  // Состояния для CollectionSelector
+  const [collectionsError, setCollectionsError] = useState<string | null>(null)
 
   // Загрузка всех блоков
   const loadBlocks = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await getPageBlocks()
+      const data = await getPageWidgets()
       setBlocks(data)
     } catch (error) {
       console.error('Error loading blocks:', error)
@@ -98,253 +70,58 @@ const PageBlocksManager: React.FC = () => {
     }
   }, [])
 
+  // Загрузка коллекций
+  const loadCollections = useCallback(async () => {
+    setCollectionsLoading(true)
+    setCollectionsError(null)
+    try {
+      const data = await getCollections()
+      setCollections(data)
+    } catch (error) {
+      console.error('Error loading collections:', error)
+      setCollectionsError('Ошибка загрузки коллекций')
+    } finally {
+      setCollectionsLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     loadBlocks()
-  }, [loadBlocks])
-
-  // Конвертация фильтров для ProductsFilters (ИСПРАВЛЕНО)
-  const convertFiltersData = useCallback((resData: any) => {
-    if (!resData) return
-
-    const priceProps = {
-      min: resData.price?.[0] || 0,
-      max: resData.price?.[1] || 100000,
-      dataLeft: filtersInfo.current.price?.[0] || resData.price?.[0] || 0,
-      dataRight: filtersInfo.current.price?.[1] || resData.price?.[1] || 100000
-    }
-
-    // Получаем списки для чекбоксов
-    const sizesList = resData.sizes ? Object.keys(resData.sizes) : []
-    const firmsList = resData.firmsCount ? Object.keys(resData.firmsCount) : [] // ← названия фирм
-    const typesList = resData.types || []
-    const discountsList = resData.discounts || []
-
-    // Создаем чекбоксы для размеров
-    const checkBoxPropsData: CheckBoxType[] = sizesList.map(size => ({
-      id: size,
-      enable: true,
-      activeData: filtersInfo.current.sizes?.includes(size) || false,
-      name: size
-    }))
-
-    // Создаем чекбоксы для типов
-    const checkBoxPropsTypeData: CheckBoxType[] = typesList.map((typeId: number) => ({
-      id: typeId,
-      enable: true,
-      activeData: filtersInfo.current.types?.includes(typeId) || false,
-      name: typesVal[typeId]?.name || `Тип ${typeId}`
-    }))
-
-    // Создаем чекбоксы для фирм (ИСПРАВЛЕНО)
-    const checkBoxPropsFirmData: CheckBoxType[] = firmsList
-      .map((firmName: string) => {
-        // Ищем фирму по имени в firmMap
-        const firm = Object.values(firmMap).find(f => f.name === firmName);
-        if (!firm) {
-          console.warn(`Firm "${firmName}" not found in firmMap`);
-          return null;
-        }
-        
-        // Проверяем, активна ли фирма в текущих фильтрах (по ID)
-        const active = filtersInfo.current.firms?.includes(firm.id) || false;
-        
-        return {
-          id: firm.slug, // ← используем slug как id для UI
-          enable: true,
-          activeData: active,
-          name: firmName
-        };
-      })
-      .filter(Boolean) as CheckBoxType[]; // убираем null
-
-    // Создаем чекбоксы для скидок
-    const checkBoxPropsDiscountData: CheckBoxType[] = discountsList.map((discount: any) => ({
-      id: discount.id,
-      enable: true,
-      activeData: filtersInfo.current.rule_ids?.includes(discount.id) || false,
-      name: discount.name
-    }))
-
-    // Solo чекбоксы
-    const soloDataProps: CheckBoxType[] = [
-      {
-        id: 'in_store',
-        enable: true,
-        activeData: filtersInfo.current.in_store || false,
-        name: "На витрине"
-      }
-    ]
-
-    // Собираем все группы чекбоксов
-    const checboxsProps = [
-      { id: "sizes", name: "Размеры", props: checkBoxPropsData },
-      { id: "firms", name: "Фирмы", props: checkBoxPropsFirmData },
-      { id: "type", name: "Типы товара", props: checkBoxPropsTypeData }
-    ]
-
-    if (discountsList.length > 0) {
-      checboxsProps.push({ id: "discounts", name: "Скидки", props: checkBoxPropsDiscountData })
-    }
-
-    setFiltersState({
-      priceProps,
-      checboxsProps,
-      soloDataProps
-    })
-  }, [typesVal, firmMap])
-
-  // Загрузка фильтров
-  const loadFilters = useCallback(async () => {
-    try {
-      await getAdminProductsAndFilters(
-        (data: any) => {
-          if (data.filters) {
-            convertFiltersData(data.filters)
-          }
-          if (data.products) {
-            setPreviewProducts(data.products?.slice(0, maxItems) || [])
-            setPreviewTotal(data.totalCount || 0)
-          }
-        },
-        1,
-        20,
-        0
-      )
-    } catch (error) {
-      console.error('Error loading filters:', error)
-    }
-  }, [convertFiltersData, maxItems])
-
-  // Обновление предпросмотра
-  const updatePreview = useCallback(async () => {
-    setPreviewLoading(true)
-    try {
-      const params = {
-        sizes: filtersInfo.current.sizes || [],
-        firms: filtersInfo.current.firms || [], // ← здесь уже ID
-        types: filtersInfo.current.types || [],
-        price: filtersInfo.current.price || [0, 100000],
-        rule_ids: filtersInfo.current.rule_ids || [],
-        in_store: filtersInfo.current.in_store || false,
-        withPrice: true
-      }
-
-      await getAdminProducts(
-        (data: any) => {
-          setPreviewProducts(data.products?.slice(0, maxItems) || [])
-          setPreviewTotal(data.totalCount || 0)
-        },
-        1,
-        maxItems,
-        params,
-        0,
-        ''
-      )
-    } catch (error) {
-      console.error('Preview error:', error)
-    } finally {
-      setPreviewLoading(false)
-    }
-  }, [maxItems])
-
-  // Обработчик изменения фильтров из ProductsFilters (ИСПРАВЛЕНО)
-  const onFiltersChange = useCallback((filter: any) => {
-    switch (filter.id) {
-      case "sizes":
-        filtersInfo.current.sizes = filter.data || []
-        break
-      case "firms":
-        // filter.data - массив slug'ов от чекбоксов
-        // Преобразуем slug'и в ID для запроса к API
-        filtersInfo.current.firms = (filter.data || [])
-          .map((slug: string) => firmMap[slug]?.id)
-          .filter(Boolean) as number[];
-        break
-      case "type":
-        filtersInfo.current.types = filter.data || []
-        break
-      case "discounts":
-        filtersInfo.current.rule_ids = filter.data || []
-        break
-      case "price":
-        filtersInfo.current.price = filter.data || [0, 100000]
-        break
-      case "solo":
-        if (filter.data && filter.data.length > 0) {
-          const inStoreItem = filter.data.find((item: CheckBoxType) => item.id === 'in_store')
-          filtersInfo.current.in_store = inStoreItem ? inStoreItem.activeData : false
-        }
-        break
-      default:
-        break
-    }
-    setFiltersVersion(prev => prev + 1)
-    setErrors(prev => ({ ...prev, filters: false }))
-    // Обновляем предпросмотр
-    updatePreview()
-  }, [updatePreview, firmMap])
-
-  // Обновляем предпросмотр при открытии модалки
-  useEffect(() => {
-    if (showModal) {
-      updatePreview()
-    }
-  }, [showModal, updatePreview])
+    loadCollections()
+  }, [loadBlocks, loadCollections])
 
   // Валидация
   const validateForm = (): boolean => {
-    const newErrors: { filters?: boolean } = {}
-
-    const hasFilters =
-      (filtersInfo.current.firms && filtersInfo.current.firms.length > 0) ||
-      (filtersInfo.current.types && filtersInfo.current.types.length > 0) ||
-      (filtersInfo.current.sizes && filtersInfo.current.sizes.length > 0) ||
-      (filtersInfo.current.rule_ids && filtersInfo.current.rule_ids.length > 0) ||
-      (filtersInfo.current.price && filtersInfo.current.price[0] > 0) ||
-      filtersInfo.current.in_store
-
-    if (!hasFilters) {
-      newErrors.filters = true
+    if (!blockName.trim()) {
+      alert('Введите название блока')
+      return false
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    if (!selectedCollection) {
+      alert('Выберите коллекцию')
+      return false
+    }
+
+    return true
   }
 
   // Сохранение
   const handleSave = async () => {
-    if (!blockName.trim()) {
-      alert('Введите название блока')
-      return
-    }
+    if (!validateForm()) return
 
-    if (!validateForm()) {
-      alert('Выберите хотя бы одно условие для показа товаров')
-      return
-    }
-
-    const blockData: Omit<PageBlock, 'id'> = {
+    const blockData = {
       name: blockName,
+      type: blockType,
       sort_order: editingBlock?.sort_order ?? blocks.length,
       is_active: isActive,
-      filters: {
-        sizes: filtersInfo.current.sizes || [],
-        firms: filtersInfo.current.firms || [], // ← здесь ID
-        types: filtersInfo.current.types || [],
-        price: filtersInfo.current.price || [0, 100000],
-        rule_ids: filtersInfo.current.rule_ids || [],
-        in_store: filtersInfo.current.in_store || false
-      },
-      min_items: minItems,
-      max_items: maxItems,
-      type: "products_slider"
+      collection_id: selectedCollection?.id
     }
 
     try {
       if (editingBlock?.id) {
-        await updatePageBlock(editingBlock.id, blockData)
+        await updatePageWidget(editingBlock.id, blockData)
       } else {
-        await createPageBlock(blockData)
+        await createPageWidget(blockData)
       }
       await loadBlocks()
       setShowModal(false)
@@ -358,101 +135,99 @@ const PageBlocksManager: React.FC = () => {
   const resetForm = () => {
     setEditingBlock(null)
     setBlockName('')
-    filtersInfo.current = {
-      sizes: [],
-      firms: [],
-      types: [],
-      price: [0, 100000],
-      rule_ids: [],
-      in_store: false
-    }
-    setMinItems(6)
-    setMaxItems(20)
+    setSelectedCollection(null)
+    setBlockType('products_slider')
     setIsActive(true)
-    setPreviewProducts([])
-    setPreviewTotal(0)
-    setErrors({})
-    setFiltersVersion(prev => prev + 1)
   }
 
-  const openModal = (block?: PageBlock) => {
+  const openModal = (block?: PageWidget) => {
     if (block) {
       setEditingBlock(block)
       setBlockName(block.name)
-      filtersInfo.current = {
-        sizes: block.filters?.sizes || [],
-        firms: block.filters?.firms || [], // ← здесь уже ID из БД
-        types: block.filters?.types || [],
-        price: block.filters?.price || [0, 100000],
-        rule_ids: block.filters?.rule_ids || [],
-        in_store: block.filters?.in_store || false
-      }
-      setMinItems(block.min_items || 6)
-      setMaxItems(block.max_items || 20)
+      setBlockType(block.type || 'products_slider')
       setIsActive(block.is_active ?? true)
+      
+      // Находим коллекцию по ID
+      const collection = collections.find(c => c.id === block.collection_id)
+      setSelectedCollection(collection || null)
     } else {
       resetForm()
     }
     setShowModal(true)
-    // Загружаем фильтры для отображения
-    loadFilters()
   }
 
   const handleDelete = async (id: number) => {
     if (!confirm('Удалить блок?')) return
     try {
-      await deletePageBlock(id)
+      await deletePageWidget(id)
       await loadBlocks()
     } catch (error) {
       console.error('Delete error:', error)
     }
   }
 
-  // Формируем текст условий (ИСПРАВЛЕНО)
-  const getFiltersSummary = useMemo(() => {
+  // ===== Сигналы для CollectionSelector =====
+  
+  // Выбор коллекции
+  const handleSelectCollection = (collection: Collection) => {
+    setSelectedCollection(collection)
+    setShowCollectionSelector(false)
+  }
+
+  // Закрытие CollectionSelector
+  const handleCloseSelector = () => {
+    setShowCollectionSelector(false)
+  }
+
+  // ===== Сигналы для CollectionForm =====
+  
+  // Открытие формы создания коллекции
+  const handleOpenCreateCollection = () => {
+    setShowCollectionSelector(false)
+    setShowCollectionForm(true)
+  }
+
+  // Сохранение коллекции
+  const handleSaveCollection = async (data: any) => {
+    try {
+      const newCollection = await createCollection(data)
+      await loadCollections()
+      setSelectedCollection(newCollection)
+      setShowCollectionForm(false)
+    } catch (error) {
+      console.error('Error creating collection:', error)
+      alert('Ошибка при создании коллекции')
+    }
+  }
+
+  // Отмена создания коллекции
+  const handleCancelCollection = () => {
+    setShowCollectionForm(false)
+  }
+
+  // Получение названия коллекции для отображения
+  const getCollectionDisplayName = useCallback((collectionId: number) => {
+    const collection = collections.find(c => c.id === collectionId)
+    return collection?.name || collection?.slug || 'Не выбрана'
+  }, [collections])
+
+  // Формируем текст сводки
+  const getWidgetSummary = useMemo(() => {
     const parts: string[] = []
-
-    if (filtersInfo.current.types && filtersInfo.current.types.length > 0) {
-      const typeNames = filtersInfo.current.types
-        .map(typeId => typesVal[typeId]?.name)
-        .filter(Boolean)
-        .join(', ')
-      if (typeNames) parts.push(`Тип: ${typeNames}`)
+    
+    if (selectedCollection) {
+      parts.push(`Коллекция: ${selectedCollection.name}`)
     }
 
-    if (filtersInfo.current.firms && filtersInfo.current.firms.length > 0) {
-      // Ищем названия фирм по ID
-      const firmNames = filtersInfo.current.firms
-        .map(firmId => {
-          const firm = Object.values(firmMap).find(f => f.id === firmId);
-          return firm?.name || null;
-        })
-        .filter(Boolean)
-        .join(', ')
-      if (firmNames) parts.push(`Фирмы: ${firmNames}`)
+    const typeLabels = {
+      'products_slider': 'Слайдер товаров',
+      'banner_slider': 'Слайдер баннеров',
+      'brands_scroller': 'Скроллер брендов'
     }
+    parts.push(`Тип: ${typeLabels[blockType] || blockType}`)
 
-    if (filtersInfo.current.sizes && filtersInfo.current.sizes.length > 0) {
-      parts.push(`Размеры: ${filtersInfo.current.sizes.join(', ')}`)
-    }
-
-    if (filtersInfo.current.rule_ids && filtersInfo.current.rule_ids.length > 0) {
-      parts.push(`Скидки: ${filtersInfo.current.rule_ids.length} правил`)
-    }
-
-    if (filtersInfo.current.price && filtersInfo.current.price[0] > 0) {
-      parts.push(`Цена от ${filtersInfo.current.price[0]}`)
-    }
-    if (filtersInfo.current.price && filtersInfo.current.price[1] < 100000) {
-      parts.push(`до ${filtersInfo.current.price[1]}`)
-    }
-
-    if (filtersInfo.current.in_store) {
-      parts.push('Только на витрине')
-    }
-
-    return parts.length > 0 ? parts.join('; ') : 'Условия не выбраны'
-  }, [filtersVersion, typesVal, firmMap])
+    return parts.length > 0 ? parts.join('; ') : 'Не настроен'
+  }, [selectedCollection, blockType])
 
   return (
     <div className={s.container}>
@@ -473,23 +248,18 @@ const PageBlocksManager: React.FC = () => {
                 <h3 className={s.blockTitle}>{block.name}</h3>
                 <div className={s.blockMeta}>
                   <span>Порядок: {block.sort_order}</span>
-                  <span>Товаров: {block.min_items}–{block.max_items}</span>
+                  <span className={s.typeTag}>{block.type}</span>
                   <span className={block.is_active ? s.active : s.inactive}>
                     {block.is_active ? 'Активен' : 'Неактивен'}
                   </span>
                 </div>
                 <div className={s.blockFilters}>
-                  {block.filters?.types?.length > 0 && (
-                    <span className={s.filterTag}>Типы: {block.filters.types.map(id => typesVal[id]?.name).filter(Boolean).join(', ')}</span>
-                  )}
-                  {block.filters?.firms?.length > 0 && (
-                    <span className={s.filterTag}>Бренды: {block.filters.firms.length}</span>
-                  )}
-                  {block.filters?.rule_ids?.length > 0 && (
-                    <span className={s.filterTag}>Скидки: {block.filters.rule_ids.length}</span>
-                  )}
-                  {!block.filters?.types?.length && !block.filters?.firms?.length && !block.filters?.rule_ids?.length && (
-                    <span className={s.emptyFilters}>Без условий</span>
+                  {block.collection_id ? (
+                    <span className={s.filterTag}>
+                      📁 Коллекция: {getCollectionDisplayName(block.collection_id)}
+                    </span>
+                  ) : (
+                    <span className={s.emptyFilters}>Коллекция не выбрана</span>
                   )}
                 </div>
               </div>
@@ -502,7 +272,7 @@ const PageBlocksManager: React.FC = () => {
         </div>
       )}
 
-      {/* Модалка редактирования */}
+      {/* Модалка редактирования блока */}
       <Modal active={showModal} onChange={setShowModal}>
         <div onClick={e => e.stopPropagation()} className={s.modalContent}>
           <div className={s.modalHeader}>
@@ -517,29 +287,33 @@ const PageBlocksManager: React.FC = () => {
               value={blockName}
               onChange={e => setBlockName(e.target.value)}
               placeholder="Новинки, Хиты продаж..."
+              className={s.input}
             />
           </div>
 
-          <div className={s.formRow}>
-            <div className={s.formGroup}>
-              <label>Мин. товаров (6–20) *</label>
-              <input
-                type="number"
-                min={6}
-                max={20}
-                value={minItems}
-                onChange={e => setMinItems(Number(e.target.value))}
-              />
-            </div>
-            <div className={s.formGroup}>
-              <label>Макс. товаров (6–20) *</label>
-              <input
-                type="number"
-                min={6}
-                max={20}
-                value={maxItems}
-                onChange={e => setMaxItems(Number(e.target.value))}
-              />
+          <div className={s.formGroup}>
+            <label>Тип блока *</label>
+            <select 
+              value={blockType} 
+              onChange={e => setBlockType(e.target.value as any)}
+              className={s.select}
+            >
+              <option value="products_slider">Слайдер товаров</option>
+              <option value="banner_slider">Слайдер баннеров</option>
+              <option value="brands_scroller">Скроллер брендов</option>
+            </select>
+          </div>
+
+          <div className={s.formGroup}>
+            <label>Коллекция *</label>
+            <div 
+              className={`${s.collectionSelector} ${!selectedCollection ? s.errorBorder : ''}`}
+              onClick={() => setShowCollectionSelector(true)}
+            >
+              <div className={s.collectionDisplay}>
+                {selectedCollection?.name || selectedCollection?.slug || 'Выберите коллекцию'}
+              </div>
+              <span className={s.editHint}>✏️ нажмите чтобы выбрать</span>
             </div>
           </div>
 
@@ -554,51 +328,11 @@ const PageBlocksManager: React.FC = () => {
             </label>
           </div>
 
-          <div className={s.formGroup}>
-            <label>Условия показа товаров <span className={s.required}>*</span></label>
-
-            <div
-              className={`${s.urlPreview} ${errors.filters ? s.errorBorder : ''}`}
-              onClick={() => setShowFiltersPanel(true)}
-              style={{ cursor: 'pointer' }}
-            >
-              <div className={s.filtersSummary}>
-                {getFiltersSummary}
-              </div>
-              <span className={s.editHint}>✏️ нажмите чтобы настроить</span>
-            </div>
-
-            {errors.filters && <div className={s.errorText}>Выберите хотя бы один фильтр</div>}
-          </div>
-
           <div className={s.previewSection}>
-            <h4>Предпросмотр товаров</h4>
-            {previewLoading ? (
-              <div className={s.loader}>Загрузка...</div>
-            ) : (
-              <>
-                <div className={s.previewStats}>
-                  Найдено: <strong>{previewTotal}</strong>
-                  {previewTotal < minItems && (
-                    <span className={s.errorText}> (меньше минимума)</span>
-                  )}
-                  {previewTotal > maxItems && (
-                    <span className={s.warningText}> (показано {maxItems} из {previewTotal})</span>
-                  )}
-                </div>
-                <div className={s.productsGrid}>
-                  {previewProducts.slice(0, 8).map(p => (
-                    <div key={p.id} className={s.previewProduct}>
-                      {p.images && p.images.length > 0 && (
-                        <img src={p.images[0]} alt={p.name} />
-                      )}
-                      <div className={s.productName}>{p.name}</div>
-                    </div>
-                  ))}
-                  {previewTotal > 8 && <div className={s.more}>+ ещё {previewTotal - 8}</div>}
-                </div>
-              </>
-            )}
+            <h4>Сводка</h4>
+            <div className={s.summaryBox}>
+              {getWidgetSummary}
+            </div>
           </div>
 
           <div className={s.modalActions}>
@@ -607,21 +341,46 @@ const PageBlocksManager: React.FC = () => {
           </div>
         </div>
 
-        {/* ПАНЕЛЬ ФИЛЬТРОВ ВНУТРИ МОДАЛКИ */}
-        {showFiltersPanel && (
-          <div className={s.modalOverlay} onClick={() => setShowFiltersPanel(false)}>
+        {/* Модалка выбора коллекции */}
+        {showCollectionSelector && (
+          <div className={s.modalOverlay} onClick={() => setShowCollectionSelector(false)}>
             <div className={s.modalPanel} onClick={e => e.stopPropagation()}>
               <div className={s.modalHeader}>
-                <h3>Выберите условия показа</h3>
-                <button onClick={() => setShowFiltersPanel(false)}>✕</button>
+                <h3>Выберите коллекцию</h3>
+                <button onClick={() => setShowCollectionSelector(false)}>✕</button>
               </div>
-              <ProductsFilters
-                onChange={onFiltersChange}
-                {...filtersState}
+              
+              <CollectionSelector
+                collections={collections}
+                loading={collectionsLoading}
+                selectedId={selectedCollection?.id}
+                onSelect={handleSelectCollection}
+                onClose={handleCloseSelector}
               />
+              
               <div className={s.modalFooter}>
-                <Button text="Готово" onClick={() => setShowFiltersPanel(false)} />
+                <Button text="+ Создать коллекцию" onClick={handleOpenCreateCollection} />
+                <Button text="Закрыть" onClick={() => setShowCollectionSelector(false)} />
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Модалка создания коллекции */}
+        {showCollectionForm && (
+          <div className={s.modalOverlay} onClick={() => setShowCollectionForm(false)}>
+            <div className={s.modalPanel} onClick={e => e.stopPropagation()}>
+              <div className={s.modalHeader}>
+                <h3>Создать коллекцию</h3>
+                <button onClick={() => setShowCollectionForm(false)}>✕</button>
+              </div>
+              
+              <CollectionForm
+                initialData={null}
+                onSave={handleSaveCollection}
+                onCancel={handleCancelCollection}
+                onClose={() => setShowCollectionForm(false)}
+              />
             </div>
           </div>
         )}

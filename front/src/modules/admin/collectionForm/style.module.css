@@ -1,0 +1,517 @@
+/* modules/admin/collectionForm/style.module.css */
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 700px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+
+.header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.closeBtn:hover {
+  color: #333;
+}
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.footer {
+  padding: 16px 24px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+  background: #fafafa;
+  border-radius: 0 0 16px 16px;
+}
+
+/* Форма */
+.formGroup {
+  margin-bottom: 16px;
+}
+
+.formGroup label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+.formGroup input,
+.formGroup select,
+.formGroup textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+  background: white;
+  font-family: inherit;
+}
+
+.formGroup input:focus,
+.formGroup select:focus,
+.formGroup textarea:focus {
+  border-color: #4caf50;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+}
+
+.formGroup input::placeholder,
+.formGroup textarea::placeholder {
+  color: #bbb;
+}
+
+.formGroup textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* Фильтры preview */
+.filtersPreview {
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #f9f9f9;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 44px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filtersPreview:hover {
+  border-color: #4caf50;
+  background: #f0f7f0;
+}
+
+.filtersPreview.errorBorder {
+  border-color: #f44336;
+  background: #fff2f0;
+}
+
+.filtersSummary {
+  font-size: 14px;
+  color: #333;
+  flex: 1;
+}
+
+.filtersSummary:empty::before {
+  content: 'Фильтры не выбраны';
+  color: #bbb;
+}
+
+.editHint {
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
+}
+
+.errorText {
+  color: #f44336;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Предпросмотр */
+.previewSection {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.previewSection h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+}
+
+.previewStats {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.previewStats strong {
+  color: #1a1a1a;
+}
+
+.productsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+}
+
+.previewProduct {
+  background: white;
+  border-radius: 6px;
+  overflow: hidden;
+  padding: 8px;
+  text-align: center;
+  border: 1px solid #eee;
+}
+
+.previewProduct img {
+  width: 100%;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.previewProduct .productName {
+  font-size: 11px;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #333;
+}
+
+.more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f0f0;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #999;
+  min-height: 80px;
+}
+
+.selectedCount {
+  font-size: 13px;
+  color: #666;
+  margin-top: 8px;
+  text-align: right;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 400 !important;
+}
+
+.checkboxLabel input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #4caf50;
+  cursor: pointer;
+}
+
+.loader {
+  padding: 40px 20px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+}
+
+/* Анимации */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Скроллбар */
+.body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.body::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 3px;
+}
+
+.body::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 3px;
+}
+
+.body::-webkit-scrollbar-thumb:hover {
+  background: #ccc;
+}
+
+/* Адаптив */
+@media (max-width: 768px) {
+  .modal {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .header {
+    padding: 16px 20px;
+  }
+
+  .header h3 {
+    font-size: 18px;
+  }
+
+  .body {
+    padding: 16px 20px;
+  }
+
+  .footer {
+    padding: 12px 20px;
+  }
+
+  .productsGrid {
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  }
+
+  .previewProduct img {
+    height: 50px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 12px 16px;
+  }
+
+  .header h3 {
+    font-size: 16px;
+  }
+
+  .body {
+    padding: 12px 16px;
+  }
+
+  .footer {
+    flex-direction: column;
+    padding: 12px 16px;
+  }
+
+  .footer button {
+    width: 100%;
+  }
+
+  .filtersPreview {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .editHint {
+    text-align: center;
+  }
+
+  .productsGrid {
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+  }
+
+  .previewProduct img {
+    height: 40px;
+  }
+}
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+}
+
+.modalPanel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 500px;
+    max-width: 90vw;
+    height: 100vh;
+    background: white;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+    background: white;
+}
+
+.modalHeader h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.modalHeader button {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #999;
+    padding: 0 4px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.modalHeader button:hover {
+    color: #333;
+}
+
+.modalPanel :global(.productsFilters) {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+}
+
+.modalFooter {
+    padding: 16px 24px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background: white;
+    flex-shrink: 0;
+}
+
+/* ===== Адаптив ===== */
+@media (max-width: 768px) {
+    .modalPanel {
+        width: 100%;
+        max-width: 100%;
+        right: 0;
+    }
+
+    .modalHeader {
+        padding: 16px 20px;
+    }
+
+    .modalHeader h3 {
+        font-size: 18px;
+    }
+
+    .modalPanel :global(.productsFilters) {
+        padding: 16px 20px;
+    }
+
+    .modalFooter {
+        padding: 12px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .modalHeader {
+        padding: 12px 16px;
+    }
+
+    .modalHeader h3 {
+        font-size: 16px;
+    }
+
+    .modalPanel :global(.productsFilters) {
+        padding: 12px 16px;
+    }
+
+    .modalFooter {
+        padding: 10px 16px;
+        flex-direction: column;
+    }
+
+    .modalFooter button {
+        width: 100%;
+    }
+}

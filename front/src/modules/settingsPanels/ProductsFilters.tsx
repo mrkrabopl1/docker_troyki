@@ -1,11 +1,11 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState, useEffect } from 'react';
 import DoubleInfoDrop from 'src/components/doubleInfoDrop/DoubleInfoDrop';
 import CheckBoxColumn from 'src/components/checkBoxForm/CheckBoxForm';
 import SearchableCheckboxColumn from 'src/modules/columnWithSerch/SearchableCheckboxColumn';
 import ZoneSliderValueSetter from 'src/modules/sliderValueSetter/ZoneSliderValueSetter';
 import DatePicker from 'src/components/input/DatePicker';
 import s from './style.module.css';
-import {CheckBoxType} from 'src/types/modules';
+import { CheckBoxType } from 'src/types/modules';
 
 interface PriceProps {
     max: number;
@@ -15,7 +15,6 @@ interface PriceProps {
     onChange?: (arg: any) => void;
 }
 
-// Теперь props — это массив CheckBoxType с полем id
 interface CheckboxProps {
     name: string;
     id: string;
@@ -28,8 +27,22 @@ interface TimeProps {
     value: string;
 }
 
+// Новая структура для вариационных фильтров
+interface VariationFilterGroup {
+    id: string; // уникальный идентификатор группы
+    name: string; // название группы
+    options: VariationOption[]; // массив опций
+}
+
+interface VariationOption {
+    id: string; // уникальный идентификатор опции
+    name: string; // название опции
+    props: CheckBoxType[]; // чекбоксы внутри опции
+}
+
 interface ProductsFiltersProps {
     priceProps: PriceProps;
+    variationGroups?: VariationFilterGroup[]; // изменено с variationCheckboxsProps
     checboxsProps: CheckboxProps[];
     soloDataProps: CheckBoxType[];
     timeProps?: TimeProps[];
@@ -46,13 +59,28 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
     checboxsProps,
     soloDataProps,
     timeProps,
+    variationGroups = [],
 }) => {
+    // Состояние для хранения выбранных вариаций
+    const [selectedVariations, setSelectedVariations] = useState<Record<string, string>>({});
+
+    // Инициализация выбранных вариаций (по умолчанию первая опция)
+    useEffect(() => {
+        const initialSelected: Record<string, string> = {};
+        variationGroups.forEach(group => {
+            if (group.options.length > 0) {
+                initialSelected[group.id] = group.options[0].id;
+            }
+        });
+        setSelectedVariations(initialSelected);
+    }, [variationGroups]);
+
     const handlePriceChange = useCallback((data: any) => {
         onChange?.({ id: "price", data });
     }, [onChange]);
 
     const handleCheckboxChange = useCallback((id: string, data: any) => {
-        onChange?.({ id, data }); // data — массив id
+        onChange?.({ id, data });
     }, [onChange]);
 
     const handlSoloDataChange = useCallback((id: string, data: any) => {
@@ -63,6 +91,115 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
         onChange?.({ id, data });
     }, [onChange]);
 
+    // Обработчик выбора вариации (радио-кнопка)
+    const handleVariationSelect = useCallback((groupId: string, optionId: string) => {
+        setSelectedVariations(prev => ({
+            ...prev,
+            [groupId]: optionId
+        }));
+
+        // Отправляем сигнал о смене вариации
+        onChange?.({
+            id: `variation_${groupId}`,
+            data: {
+                selectedOptionId: optionId,
+                groupId: groupId
+            }
+        });
+    }, [onChange]);
+
+    // Обработчик изменения чекбоксов внутри выбранной вариации
+    const handleVariationCheckboxChange = useCallback((groupId: string, optionId: string, data: any) => {
+        onChange?.({
+            id: `variation_checkbox_${groupId}`,
+            data: {
+                optionId: optionId,
+                selectedCheckboxes: data,
+                groupId: groupId
+            }
+        });
+    }, [onChange]);
+
+    // Рендер группы вариаций (радио-группа)
+ const renderVariationGroup = useCallback((group: VariationFilterGroup) => {
+        if (!group.options || group.options.length === 0) return null;
+
+        const selectedOptionId = selectedVariations[group.id] || group.options[0]?.id;
+        const selectedOption = group.options.find(o => o.id === selectedOptionId);
+
+        return (
+            <div key={group.id} style={{ padding: "5px", marginBottom: "10px" }}>
+                <DoubleInfoDrop info={group.name}>
+                    <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+                        {/* Кнопки-переключатели */}
+                        <div style={{ 
+                            display: "flex", 
+                            gap: "4px", 
+                            marginBottom: "16px",
+                            backgroundColor: "#f0f0f0",
+                            padding: "4px",
+                            borderRadius: "8px",
+                            border: "1px solid #e0e0e0"
+                        }}>
+                            {group.options.map(option => (
+                                <button
+                                    key={option.id}
+                                    onClick={() => handleVariationSelect(group.id, option.id)}
+                                    style={{
+                                        flex: 1,
+                                        padding: "8px 16px",
+                                        borderRadius: "6px",
+                                        border: "none",
+                                        backgroundColor: selectedOptionId === option.id ? "#007bff" : "transparent",
+                                        color: selectedOptionId === option.id ? "white" : "#333",
+                                        cursor: "pointer",
+                                        fontSize: "14px",
+                                        fontWeight: selectedOptionId === option.id ? "bold" : "normal",
+                                        transition: "all 0.2s",
+                                    }}
+                                >
+                                    {option.name}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Чекбоксы для выбранной опции */}
+                        {selectedOption && selectedOption.props.length > 0 && (
+                            <div>
+                                <div style={{ 
+                                    fontSize: "13px", 
+                                    color: "#888", 
+                                    marginBottom: "8px",
+                                    fontWeight: "bold"
+                                }}>
+                                    {selectedOption.name}:
+                                </div>
+                                <SearchableCheckboxColumn
+                                    onChange={(data) => handleVariationCheckboxChange(
+                                        group.id,
+                                        selectedOptionId,
+                                        data
+                                    )}
+                                    data={selectedOption.props}
+                                />
+                            </div>
+                        )}
+                        
+                        {/* Если нет чекбоксов */}
+                        {selectedOption && selectedOption.props.length === 0 && (
+                            <div style={{ 
+                                textAlign: "center", 
+                                color: "#999", 
+                                padding: "20px 0" 
+                            }}>
+                                Нет доступных чекбоксов для {selectedOption.name}
+                            </div>
+                        )}
+                    </div>
+                </DoubleInfoDrop>
+            </div>
+        );
+    }, [selectedVariations, handleVariationSelect, handleVariationCheckboxChange]);
     const renderCheckboxGroup = useCallback((checkboxProps: CheckboxProps) => (
         checkboxProps.props.length > 0 &&
         <div style={{ padding: "5px" }} key={checkboxProps.id}>
@@ -93,7 +230,6 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
             </div>
         </div>
     ), [handleTimeChange]);
-
     return (
         <div onScroll={(e) => e.stopPropagation()} className={s.wrapper}>
             {soloDataProps && (
@@ -104,7 +240,9 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
                     />
                 </div>
             )}
+
             {renderTimeGroup(timeProps)}
+
             <div style={{ padding: "5px" }}>
                 <DoubleInfoDrop info="Цена">
                     <ZoneSliderValueSetter
@@ -113,7 +251,11 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
                     />
                 </DoubleInfoDrop>
             </div>
+
             {checboxsProps.map(renderCheckboxGroup)}
+
+            {/* Рендер групп вариаций */}
+            {variationGroups.map(renderVariationGroup)}
         </div>
     );
 });

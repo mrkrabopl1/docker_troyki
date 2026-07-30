@@ -16,7 +16,7 @@ import { set } from 'ol/transform';
 import Combobox from 'src/components/combobox/Combobox';
 import { finishLoading } from 'src/store/reducers/loadingSlice';
 import { CheckBoxType } from 'src/types/modules';
-
+import { BODY_TYPES } from 'src/constants/bodytypes'
 interface FiltersInfoRequest {
   sizes: string[]
   price: number[]
@@ -60,6 +60,7 @@ const SearchPage: React.FC = () => {
     firms: [],
     types: [],
     lines: [],
+    bodytypes: [],
     store: false,
     discount: false,
     withPrice: true,
@@ -228,6 +229,7 @@ const SearchPage: React.FC = () => {
     avalible: boolean,
     firmsCount: { [key: string]: string },
     linesData: { [key: string]: string },
+    bodytypes: { [key: string]: string },
     sizes: { [key: string]: string }
     types?: number[]
     store?: boolean,
@@ -357,12 +359,26 @@ const SearchPage: React.FC = () => {
         });
       });
     }
+    const checkBoxPropsBodyData: CheckBoxType[] = []
+    if (resData.bodytypes) {
+      Object.entries(resData.bodytypes).forEach(([body, count]) => {
+        const active = filtersInfo.current.bodytypes.includes(body);
+
+        checkBoxPropsBodyData.push({
+          id: body,
+          enable: true,
+          activeData: active,
+          name: `${BODY_TYPES[body]}`
+        });
+      });
+    }
     return {
       priceProps,
       checboxsProps: [
         { id: "sizes", name: "Размеры", props: checkBoxPropsData },
         { id: "firms", name: "Фирмы", props: checkBoxPropsFirmData },
         { id: "lines", name: "Линейки", props: checkBoxPropsLineData },
+        { id: "bodytypes", name: "Телосложение", props: checkBoxPropsBodyData },
 
         { id: "type", name: "Типы товара", props: checkBoxPropsTypeData },
         { id: "discounts", name: "Скидки", props: checkBoxPropsDiscountData },
@@ -397,6 +413,9 @@ const SearchPage: React.FC = () => {
         break;
       case "price":
         filtersInfo.current.price = filter.data;
+        break;
+      case "bodytypes":
+        filtersInfo.current.bodytypes = filter.data;
         break;
       case "solo":
         if (filter.data && filter.data.length >= 2) {
@@ -461,6 +480,12 @@ const SearchPage: React.FC = () => {
               activeData: filtersInfo.current.rule_ids.includes(Number(item.id))
             }));
             break;
+          case "bodytypes":
+            newSection.props = section.props.map(item => ({
+              ...item,
+              activeData: filtersInfo.current.bodytypes.includes(String(item.id))
+            }));
+            break;
           default:
             break;
         }
@@ -501,7 +526,8 @@ const SearchPage: React.FC = () => {
       types: [],
       withPrice: true,
       store: false,
-      rule_ids: []
+      rule_ids: [],
+      bodytypes: []
     }
     searchData()
   }, [updatMerch])

@@ -68,23 +68,49 @@ type collectionType = {
     page: number,
     size: number
 }
+const api = axios.create({
+    baseURL: API_URL,
+    withCredentials: true,
+    headers: { 'Content-Type': 'application/json' }
+})
 
-const getCollection = function (reqData: { name: string, page: number, size: number }, callback: (val: any) => void) {
+
+export const getCollectionBySlug = async (slug: string) => {
+    const response = await api.get(`/collections/${slug}`)
+    return response.data
+}
+export const getCollectionProducts = function(
+    slug: string,
+    params: {
+        page: number,
+        size: number,
+        sortType: number,
+        search?: string,
+        filters?: any
+    },
+    callback: (val: any) => void
+) {
     axios({
         method: 'post',
-        url: `${API_URL}/collection`,
+        url: `${API_URL}/collections/${slug}/products`,
         headers: {
             'Content-Type': 'application/json'
         },
-        data: reqData
-    }
-    ).then((res: any) => {
+        data: JSON.stringify({
+            page: params.page,
+            size: params.size,
+            sortType: params.sortType,
+            search: params.search || '',
+            filters: params.filters || {}
+        })
+    }).then((res: any) => {
+        console.debug(res.data)
         callback(res.data)
-    },  (error: any) => {
+    }).catch((error) => {
         console.warn(error)
+        callback(null)
     })
 }
-
 
 const getCollections = function (reqData: { names: string[], page: number, size: number }, callback: (val: any) => void) {
     axios({
@@ -155,4 +181,4 @@ const getMainPage = async function (): Promise<any> {
     throw error; // Пробрасываем ошибку для обработки в fetchData
   }
 };
-export { getMerchInfo, getSizeTable, getMainInfo, getCollections, getFirms, getHistoryInfo, getDiscontInfo, getCollection,getCategoriesAndTypes, getMainPage }
+export { getMerchInfo, getSizeTable, getMainInfo, getCollections, getFirms, getHistoryInfo, getDiscontInfo,getCategoriesAndTypes, getMainPage }

@@ -86,6 +86,12 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, isMobile, onClose }
                         Управление размерами
                     </NavLink>
                 )}
+                {user?.role === 'superadmin' && (
+                    <NavLink href="/admin/collections">
+                        <span className={s.icon}>⭐</span>
+                        Коллекции
+                    </NavLink>
+                )}
                  {user?.role === 'superadmin' && (
                     <NavLink href="/admin/sqlConsole">
                         <span className={s.icon}>💻</span>

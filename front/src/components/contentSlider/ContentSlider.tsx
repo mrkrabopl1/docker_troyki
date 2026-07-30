@@ -60,7 +60,7 @@ const ContentSlider: React.FC<SliderProps> = ({
     }
 
     const itemWidth = Math.round(trackWidth / currentContent.length);
-    const visibleItems = Math.floor(containerWidth / itemWidth);
+    const visibleItems = Math.floor(containerWidth / itemWidth) || 1;
     const hiddenItems = Math.max(0, currentContent.length - visibleItems);
     const newTotalSteps = Math.max(1, hiddenItems + 1);
     const newStepSize = hiddenItems > 0 

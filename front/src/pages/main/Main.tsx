@@ -46,8 +46,8 @@ const Main: React.FC = memo(() => {
   }, [categories]);
   const [merchHistoryFieldData, setMerchHistoryFieldData] = useState<any[]>([]);
 
-  const handleBannerClick = useCallback((url) => {
-    router.push(url);
+  const handleBannerClick = useCallback((slug) => {
+    router.push("collections/"+slug);
   }, [router]);
   useEffect(() => {
     const fetchData = async () => {
@@ -106,7 +106,7 @@ const Main: React.FC = memo(() => {
         key={i}
         className={{ main: s.mainBanner, button: s.buttonBanner, contentHolder: s.contentHolder }}
         btnText={btnVal.button_text}
-        onChange={() => handleBannerClick(btnVal.link_url)}
+        onChange={() => handleBannerClick(btnVal.collection_slug)}
         title={btnVal.title}
         img={btnVal.image_url}
       />

@@ -15,6 +15,7 @@ export interface ScrollerRef {
     scrollToBottom: () => void;
     scrollTo: (position: number) => void;
     getCurrentPosition: () => number;
+   
 }
 
 type ScrollType = {
@@ -24,6 +25,7 @@ type ScrollType = {
     maxHeight?: number;
     top?: number;
     left?: number;
+    transparentThumb?:boolean
 };
 
 const Scroller = forwardRef<ScrollerRef, ScrollType>(({ 
@@ -32,7 +34,8 @@ const Scroller = forwardRef<ScrollerRef, ScrollType>(({
     onlyVertical = false, 
     maxHeight, 
     top, 
-    left 
+    left ,
+    transparentThumb
 }, ref) => {
     const [contTop, setContTop] = useState(0);
     const [contLeft, setContLeft] = useState(0);
@@ -373,6 +376,7 @@ const Scroller = forwardRef<ScrollerRef, ScrollType>(({
                     isVertical={true}
                     kSize={scrollMetrics.current.vertSize}
                     kPos={thumbVertPos}
+                    transparent={transparentThumb}
                 />
             )}
 

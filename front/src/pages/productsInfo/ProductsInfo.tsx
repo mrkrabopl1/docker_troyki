@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback, memo, useMemo } from '
 import { useRouter } from 'next/router';
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux';
 import { cartCountAction } from 'src/store/reducers/menuSlice';
-import { getMerchInfo, getSizeTable } from "src/providers/merchProvider";
+import { getMerchInfo } from "src/providers/merchProvider";
 import { createPreorder, updatePreorder } from 'src/providers/orderProvider';
 import { getCookie } from 'src/global';
 import { toPrice } from 'src/global';
@@ -18,11 +18,14 @@ import ContentSlider from 'src/components/contentSlider/ContentSliderWithLinks';
 import MerchComplexSliderField from 'src/modules/merchField/MerchComplexSliderField';
 import s from "./style.module.css"
 import { ReactComponent as CopySvg } from "/public/copy.svg";
+import { ReactComponent as Shoe } from "/public/shoe_size.svg";
+import { ReactComponent as Clothes } from "/public/clothes_size.svg";
 import SVGIcon from 'src/components/svgIcon/SvgIcon';
 import AbstractInfo from './pageBlocks/AbstractInfo';
 import merchType from 'src/types/merchType';
 import { finishLoading, startLoading } from 'src/store/reducers/loadingSlice';
-type ProductType = "snickers" | "clothes" | "solomerch";
+import { SIZE_TABLES } from 'src/constants/sizeTables';
+
 
 interface ProductInfo {
     image_count: number;
@@ -30,15 +33,16 @@ interface ProductInfo {
     name: string;
     line?: string,
     info: merchType;
-    discount?: Record<string, {value:number}>;
+    discount?: Record<string, { value: number }>;
     store?: Record<string, number>;
     firm?: string;
     id?: string;
-    producttype: ProductType;
+    type_id: number;
     minprice?: number;
     article: string;
     line_products?: any[],
     image_extansion: string;
+    bodytype: string
 }
 
 interface SizeTable {
@@ -49,20 +53,15 @@ interface SizeTable {
 
 const ProductsInfo: React.FC = () => {
     const { show, sticky, typesVal, categories, firmMap } = useAppSelector(state => state.menuReducer);
-     const router = useRouter();
+    const router = useRouter();
     const product = router.query.product as string;
     const { widthProps } = useAppSelector(state => state.resizeReducer);
     const { cartCount } = useAppSelector(state => state.menuReducer);
     const dispatch = useAppDispatch();
-    
 
-    const [merchInfo, setMerchInfo] = useState<ProductInfo>({ article: "", image_path: "", image_count: 0, name: "", info: {}, producttype: "snickers", image_extansion: "webp" });
+
+    const [merchInfo, setMerchInfo] = useState<ProductInfo>({ bodytype: "man", article: "", image_path: "", image_count: 0, name: "", info: {}, type_id: 0, image_extansion: "webp" });
     console.log("render ProductsInfo", merchInfo);
-    const [tableInfo, setTableInfo] = useState<SizeTable>({
-        sizes: {},
-        table: [{ table: [], title: "" }],
-        comboTable: [{ table: [], title: "" }]
-    });
     const [activeModal, setActiveModal] = useState(false);
     const [activeProductsModal, setActiveProductsModal] = useState(false);
     const [local] = useState("ru");
@@ -71,16 +70,35 @@ const ProductsInfo: React.FC = () => {
     const [emptyPage, setEmptyPage] = useState(false);
     const currentSize = useRef<string>("");
     const currentDiscount = useRef<number>(0);
+    const bodytype = useRef<string>("man");
     const currentPriceDiscount = useRef<number>(0);
     const pricesArr = useRef<merchType>({});
-    const merchType = useRef<string>("snickers");
+    const merchType = useRef<string>("");
 
     const setMerchInfoHandler = useCallback((val: ProductInfo) => {
-        merchType.current = typesVal[val.producttype]?.category_key;
+        bodytype.current = val.bodytype
+        if (bodytype.current === "unisex") {
+            bodytype.current = "man"
+        }
+        merchType.current = typesVal[val.type_id]?.category_key;
         processProducts(val);
     }, [typesVal, categories]);
 
+    const tableInfo = useMemo(() => {
+        let data = SIZE_TABLES[merchType.current];
+        if(data){
+            data = data[bodytype.current] || SIZE_TABLES[merchType.current]
+        }
 
+        if (!data) {
+            return {
+                sizes: {},
+                table: [{ table: [], title: "" }],
+                comboTable: [{ table: [], title: "" }]
+            };
+        }
+        return data;
+    }, [merchType.current, bodytype.current]);
 
     const processProducts = useCallback((val: ProductInfo) => {
         if (Object.keys(val.info).length === 0) {
@@ -102,7 +120,7 @@ const ProductsInfo: React.FC = () => {
             setEmptyPage(false);
             currentDiscount.current = discount;
             currentPriceDiscount.current = price;
-            setCurrentPrice(price - price*discount/100 || price);
+            setCurrentPrice(price - price * discount / 100 || price);
             setMerchInfo(val);
         }
     }, [typesVal, categories]);
@@ -111,7 +129,7 @@ const ProductsInfo: React.FC = () => {
     const priceChangeHandler = useCallback((index: string) => {
         const priceBlock = pricesArr.current[index];
         setCurrentPrice(priceBlock.price - (priceBlock.discount ?? 0));
-        currentDiscount.current = pricesArr.current[index].discount?? 0;
+        currentDiscount.current = pricesArr.current[index].discount ?? 0;
         currentSize.current = index;
         // if (local === "ru") {
         //     currentSize.current = String(
@@ -128,7 +146,7 @@ const ProductsInfo: React.FC = () => {
             size: String(currentSize.current),
             price: currentPrice,
             name: merchInfo.name,
-            image_path: merchInfo.image_path 
+            image_path: merchInfo.image_path
         };
 
         createPreorder(data, (hash) => {
@@ -144,7 +162,7 @@ const ProductsInfo: React.FC = () => {
             size: currentSize.current,
             price: currentPrice,
             name: merchInfo.name,
-            image_path: merchInfo.image_path 
+            image_path: merchInfo.image_path
         };
 
         if (cart) {
@@ -163,7 +181,7 @@ const ProductsInfo: React.FC = () => {
         let content = [];
         while (count <= merchInfo.image_count) {
             content.push(<div style={{ width: "100%", flexShrink: 0, height: "100%" }}>
-                <ImagePresantationBlock image={merchInfo.image_path + "/img"+ count + "."+merchInfo.image_extansion} />
+                <ImagePresantationBlock image={merchInfo.image_path + "/img" + count + "." + merchInfo.image_extansion} />
             </div>)
             count++
         }
@@ -208,7 +226,7 @@ const ProductsInfo: React.FC = () => {
                 ? <ContentSlider content={imageContent} />
                 : <ImagePresantation onClick={(ind) => {
                     setActiveProductsModal(true)
-                }} image_count={merchInfo.image_count} image_path={merchInfo.image_path}  extansion={merchInfo.image_extansion}/>;
+                }} image_count={merchInfo.image_count} image_path={merchInfo.image_path} extansion={merchInfo.image_extansion} />;
         }
         // return <ImagePresantationBlock image={merchInfo.image_path + "/img1" + "."+merchInfo.image_extansion} />;
     }, [merchInfo.image_path, widthProps]);
@@ -223,10 +241,6 @@ const ProductsInfo: React.FC = () => {
     }, [product, setMerchInfoHandler]);
 
     useEffect(() => {
-        getSizeTable(merchType.current, setTableInfo);
-    }, [merchType.current]);
-
-    useEffect(() => {
         if (Object.entries(typesVal).length === 0) {
             return;
         }
@@ -235,15 +249,10 @@ const ProductsInfo: React.FC = () => {
     }, [typesVal, categories]);
     const tableIcon = useMemo(() => {
         switch (merchType.current) {
-            case "sneackers":
-                return <div onClick={() => setActiveModal(true)} className={s.sizeLabel}>
-                    <SVGIcon spritePath='public/shoe_size' />
-                </div>
-
+            case "sneakers":
+                return <Shoe className={s.sizeLabel} onClick={() => setActiveModal(true)} />
             case "clothes":
-                return <div onClick={() => setActiveModal(true)} className={s.sizeLabel}>
-                    <SVGIcon spritePath='public/clothes_size' />
-                </div>
+                return <Clothes className={s.sizeLabel} onClick={() => setActiveModal(true)} />
             default: return null;
         }
     }, [merchType.current]);
@@ -293,22 +302,25 @@ const ProductsInfo: React.FC = () => {
                         emptyPage ? <div className={s.buttonGroup}>
                             Товар отсутствует
                         </div> : <div className={s.buttonGroup}>
+
                             <div className={s.articleHolder}>
                                 <div className={s.article} title={"Размеры"}>
                                     <span className={s.articleText}>{merchInfo.article}</span>
                                     <CopySvg className={s.articleBtn} />
                                 </div>
-                            </div>
-                            <div style={{ display: "flex" }}>
-                                {widthProps ? <div onClick={() => {
-                                    router.push(`/search?firm=${merchInfo.firm}`);
-                                }} className={s.firmInfoHolder}>
-                                    <img className={s.firmImage} src={"/images/brandLogos/" + merchInfo.firm + "/image.png"} alt="" />
-                                    <span className={s.firmName}>{merchInfo.firm}</span>
-                                </div> : null}
 
-                                {tableIcon}
+                                <div style={{ display: "flex" }}>
+                                    {widthProps ? <div onClick={() => {
+                                        router.push(`/search?firm=${merchInfo.firm}`);
+                                    }} className={s.firmInfoHolder}>
+                                        <img className={s.firmImage} src={"/images/brandLogos/" + merchInfo.firm + "/image.png"} alt="" />
+                                        <span className={s.firmName}>{merchInfo.firm}</span>
+                                    </div> : null}
+
+                                    {tableIcon}
+                                </div>
                             </div>
+
                             <Button
                                 text="Купить"
                                 className={`btnStyle ${s.buyMerch}`}
@@ -328,7 +340,7 @@ const ProductsInfo: React.FC = () => {
 
                 <Modal onChange={setActiveModal} active={activeModal}>
                     <div className={s.scrollContainer}>
-                        <Scroller onlyVertical={true} className={s.scrollStyle}>
+                        <Scroller transparentThumb={true} onlyVertical={true} className={s.scrollStyle}>
                             <TableWithComboboxColumn
                                 className={s.modalTable}
                                 {...tableInfo}

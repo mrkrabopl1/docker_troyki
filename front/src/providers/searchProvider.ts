@@ -115,8 +115,6 @@ const getProductsByCategoriesAndFilters = function(params:any,callback:(val:any)
     })
 }
 const getProductsAndFiltersByString = function (searchName:string,callback:(val:any)=>void, page:number,size:number, category:any,type:any, orderType:number){
-
-    
     axios({
         method: 'post',
         url: `${API_URL}/getProductsAndFiltersByNameCategoryAndType`,

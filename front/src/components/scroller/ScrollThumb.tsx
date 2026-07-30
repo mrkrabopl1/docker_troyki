@@ -5,13 +5,15 @@ type ScrollerThumbProps = {
     kSize: number;
     isVertical: boolean;
     kPos: number;
+    transparent?:boolean
 };
 
 const ScrollerThumb: React.FC<ScrollerThumbProps> = ({
     callback,
     kSize,
     isVertical,
-    kPos
+    kPos,
+    transparent
 }) => {
     const [thumbPos, setThumbPos] = useState(0);
     const [thumbSize, setThumbSize] = useState(0);
@@ -162,7 +164,7 @@ const ScrollerThumb: React.FC<ScrollerThumbProps> = ({
 
     const thumbStyle = {
         position: "absolute" as const,
-        backgroundColor: isDragging ? "rgba(0, 0, 0, 0.6)" : "rgba(0, 0, 0, 0.3)",
+        backgroundColor: transparent?"transparent":isDragging ? "rgba(0, 0, 0, 0.6)" : "rgba(0, 0, 0, 0.3)",
         borderRadius: "4px",
         cursor: isVertical ? 'ns-resize' : 'ew-resize',
         transition: isDragging ? "none" : "background-color 0.2s",
