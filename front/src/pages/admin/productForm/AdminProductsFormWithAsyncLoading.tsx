@@ -42,7 +42,7 @@ const AdminProductForm: React.FC = () => {
     const router = useRouter();
     const { id } = router.query;
     const isEdit = !!id && id !== 'create';
-    const { typesVal, categories, firms } = useAppSelector(state => state.menuReducer);
+    const { typesVal, categories, firms } = useAppSelector(state => state.menu);
     const sessionId = useMemo(() => {
         if (!isEdit) {
             return `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

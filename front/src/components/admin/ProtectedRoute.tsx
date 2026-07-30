@@ -18,7 +18,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
     const router = useRouter();
     const dispatch = useAppDispatch();
-    const { isAuthenticated, user, isLoading, isInitialized } = useAppSelector(state => state.adminReducer);
+    const { isAuthenticated, user, isLoading, isInitialized } = useAppSelector(state => state.admin);
     
     useEffect(() => {
         if (!isInitialized) {

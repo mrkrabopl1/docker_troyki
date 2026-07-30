@@ -4,7 +4,7 @@ import { ReactComponent as Cart } from "/public/cart.svg";
 import s from "./style.module.css"
 
 const BuyButton: React.FC<any> = ({ onClick }) => {
-    const { cartCount } = useAppSelector(state => state.menuReducer)
+    const { cartCount } = useAppSelector(state => state.menu)
     
     return (
         <div 

@@ -14,19 +14,22 @@ func (s *Server) handleGetMainBanners(ctx *gin.Context) {
 	fmt.Println("handleGetMainBanners")
 	resp, err := s.store.GetActiveBanners(ctx)
 	if err != nil {
+		fmt.Println("Error fetching active banners:", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	params := make([]db.CreateBannerParams, len(resp))
+	params := make([]db.GetActiveBannersRow, len(resp))
 	for i, banner := range resp {
 		fullURL := s.imageService.ImagePathBuilder.GetImageURLFromPath(banner.ImageUrl)
 		fmt.Println("Banner from DB:", fullURL)
 		resp[i].ImageUrl = fullURL // <-- ОБНОВЛЯЕМ ИСХОДНЫЙ СЛАЙС
-		params[i] = db.CreateBannerParams{
-			Title:    pgtype.Text{String: banner.Title.String, Valid: banner.Title.Valid},
-			ImageUrl: fullURL,
-			LinkUrl:  banner.LinkUrl,
+		fmt.Println(banner.CollectionSlug, "sndlnljnndskajnd")
+		params[i] = db.GetActiveBannersRow{
+			Title:          pgtype.Text{String: banner.Title.String, Valid: banner.Title.Valid},
+			ImageUrl:       fullURL,
+			CollectionID:   banner.CollectionID,
+			CollectionSlug: banner.CollectionSlug,
 		}
 	}
 

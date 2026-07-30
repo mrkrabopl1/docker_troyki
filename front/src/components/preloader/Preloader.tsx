@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { useAppSelector } from 'src/store/hooks/redux';
 
 const Preloader: React.FC = () => {
-    const { isLoading, totalImages, loadedCount } = useAppSelector(state => state.loadingReducer);
+    const { isLoading, totalImages, loadedCount } = useAppSelector(state => state.loading);
     const [isHidden, setIsHidden] = useState(false);
     useEffect(() => {
-        if (!isLoading  && loadedCount >= totalImages) {
+        if (loadedCount >= totalImages) {
             const timer = setTimeout(() => setIsHidden(true), 300);
             return () => clearTimeout(timer);
         }else{

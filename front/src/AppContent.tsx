@@ -10,7 +10,7 @@ import { getCookie } from './global';
 import { setUniqueCustomer } from './providers/userProvider';
 import { getCartCount } from './providers/shopProvider';
 import { getMainInfo } from './providers/shopProvider';
-import { addImageToLoad, imageLoaded} from 'src/store/reducers/loadingSlice'
+import { addImageToLoad, imageLoaded } from 'src/store/reducers/loadingSlice'
 // Components (общие для всех страниц)
 import ScrollToTop from './scrollToTop';
 import Preloader from './components/preloader/Preloader';
@@ -19,17 +19,19 @@ import ComplexDropMenuWithRequest from './modules/menu/ComplexDropMenuWithReques
 import StickyDispetcherButton from 'src/modules/stickyDispetcherButton/StickyDispetcherButton';
 import Footer from './modules/footer/Footer';
 
-
 import { Firm, Line } from "src/types/modules"
+
 interface AppContentProps {
   children: React.ReactNode;
+  initialMainInfo?: any; // 🔥 Добавляем пропс для SSR данных
 }
 
-const AppContent: React.FC<AppContentProps> = ({ children }) => {
+const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo }) => {
   const dispatch = useAppDispatch();
   const contRef = useRef<HTMLDivElement>(null);
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const animationFrameRef = useRef<number>();
+  const isHydrated = useRef(false); // 🔥 Флаг, чтобы не дублировать инициализацию
 
   useRouteChange();
 
@@ -56,146 +58,153 @@ const AppContent: React.FC<AppContentProps> = ({ children }) => {
     }, 100);
   }, [dispatch]);
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        // Пробуем взять из localStorage (с TTL)
-        const cached = localStorage.getItem('mainInfoCache');
-        if (cached) {
-          const { data, timestamp } = JSON.parse(cached);
-          if (Date.now() - timestamp < 60 * 60 * 1000) { // 1 час
-            applyDataToRedux(data);
-            return;
-          }
-        }
-
-        // Иначе запрашиваем с сервера
-        const data = await getMainInfo();
-        applyDataToRedux(data);
-        localStorage.setItem('mainInfoCache', JSON.stringify({
-          data,
-          timestamp: Date.now(),
-        }));
-      } catch (error) {
-        console.error('Failed to load main info', error);
+  // 🔥 Выносим applyDataToRedux в useCallback для переиспользования
+  const applyDataToRedux = useCallback((data: any) => {
+    // 1. Категории и типы
+    const categoriesVal: any = {};
+    const typesVal: any = {};
+    data.categories.forEach((d: any) => {
+      if (categoriesVal[d.category_key]) {
+        categoriesVal[d.category_key].types[d.type_key] = d.type_id;
+        typesVal[d.type_id] = {
+          name: d.type_name,
+          categoryName: d.category_name,
+          category_key: d.category_key,
+          type_key: d.type_key,
+          category_id: d.category_id,
+        };
+      } else {
+        typesVal[d.type_id] = {
+          name: d.type_name,
+          categoryName: d.category_name,
+          category_key: d.category_key,
+          type_key: d.type_key,
+          category_id: d.category_id,
+        };
+        categoriesVal[d.category_key] = {
+          id: d.category_id,
+          image_path: d.image_path,
+          category_name: d.category_name,
+          types: {},
+        };
       }
-    };
-
-    const applyDataToRedux = (data: any) => {
-      // 1. Категории и типы (как было в getCategoriesAndTypes)
-      const categoriesVal: any = {};
-      const typesVal: any = {};
-      data.categories.forEach((d: any) => {
-        if (categoriesVal[d.category_key]) {
-          categoriesVal[d.category_key].types[d.type_key] = d.type_id;
-          typesVal[d.type_id] = {
-            name: d.type_name,
-            categoryName: d.category_name,
-            category_key: d.category_key,
-            type_key: d.type_key,
-            category_id: d.category_id,
-          };
-        } else {
-          typesVal[d.type_id] = {
-            name: d.type_name,
-            categoryName: d.category_name,
-            category_key: d.category_key,
-            type_key: d.type_key,
-            category_id: d.category_id,
-          };
-          categoriesVal[d.category_key] = {
-            id: d.category_id,
-            image_path: d.image_path,
-            category_name: d.category_name,
-            types: {},
-          };
-        }
-      });
-      const imageUrls = data.categories.map(cat => "/" + cat.image_path);
+    });
+    
+    // Загрузка изображений (только на клиенте)
+    if (typeof window !== 'undefined') {
+      const imageUrls = data.categories.map((cat: any) => "/" + cat.image_path);
       dispatch(addImageToLoad(imageUrls.length));
-      imageUrls.forEach(url => {
+      imageUrls.forEach((url: string) => {
         const img = new Image();
         img.onload = () => {
-          dispatch(imageLoaded()); // ← УМЕНЬШАЕМ СЧЕТЧИК
+          dispatch(imageLoaded());
         };
         img.onerror = () => {
-          dispatch(imageLoaded()); // ← ДАЖЕ ПРИ ОШИБКЕ
+          dispatch(imageLoaded());
         };
         img.src = url;
       });
-      dispatch(types(typesVal));
-      dispatch(categories(categoriesVal));
+    }
+    
+    dispatch(types(typesVal));
+    dispatch(categories(categoriesVal));
 
-      // 2. Фирмы и коллекции (как было в getFirms)
-      const fieldData: Record<string, Record<string, string>> = {};
-      const firmMap: Record<string, Firm> = {}; // ← теперь объект, а не number
-      const lineMap: Record<string, Line> = {};
-      data.firms.forEach((row: any) => {
-        // ============================================================
-        // ФИРМЫ (как было)
-        // ============================================================
-        
-        firmMap[row.brand_slug] = {
-          id: row.brand_id,
-          name: row.firm,
-          slug: row.brand_slug,
-        };
+    // 2. Фирмы и коллекции
+    const fieldData: Record<string, Record<string, string>> = {};
+    const firmMap: Record<string, Firm> = {};
+    const lineMap: Record<string, Line> = {};
+    data.firms.forEach((row: any) => {
+      firmMap[row.brand_slug] = {
+        id: row.brand_id,
+        name: row.firm,
+        slug: row.brand_slug,
+      };
 
-        // Коллекции (оставляем как есть)
-        if (!fieldData[row.firm]) fieldData[row.firm] = {};
-        if (row.collection_name) {
-          fieldData[row.firm][row.line_id] = row.collection_name;
-        }
-
-        // ============================================================
-        // ЛИНИИ (НОВОЕ! заполняем из тех же данных)
-        // ============================================================
-        if (row.collection_name && row.line_id) {
-        
-          // Сохраняем линию, если её ещё нет в lineMap
-          if (!lineMap[row.collection_slug]) {
-            lineMap[row.collection_slug] = {
-              id: row.line_id,
-              name: row.collection_name,
-              slug: row.collection_slug,
-              brand_id: row.brand_id,
-            };
-          }
-        }
-      });
-
-      dispatch(setFirms(Object.keys(fieldData)));
-      dispatch(setFirmMap(firmMap)); // ← теперь передаем объект с Firm
-      dispatch(collections(fieldData));
-      dispatch(setLineMap(lineMap));
-
-      // 3. Скидки (добавляем)
-      const activeDiscounts = (data.discounts || [])
-        .filter((rule: any) => rule.is_active)
-        .map((rule: any) => ({
-          id: rule.id,
-          name: rule.name,
-          discount_type: rule.discount_type,
-          discount_value: rule.discount_value,
-        }));
-      dispatch(setDiscountRules(activeDiscounts));
-
-
-      if (data.sizeTables) {
-        // сохранить в redux или в localStorage
-        dispatch(setSizeTables(data.sizeTables));
+      if (!fieldData[row.firm]) fieldData[row.firm] = {};
+      if (row.collection_name) {
+        fieldData[row.firm][row.line_id] = row.collection_name;
       }
-    };
 
-    fetchInitialData();
+      if (row.collection_name && row.line_id) {
+        if (!lineMap[row.collection_slug]) {
+          lineMap[row.collection_slug] = {
+            id: row.line_id,
+            name: row.collection_name,
+            slug: row.collection_slug,
+            brand_id: row.brand_id,
+          };
+        }
+      }
+    });
+
+    dispatch(setFirms(Object.keys(fieldData)));
+    dispatch(setFirmMap(firmMap));
+    dispatch(collections(fieldData));
+    dispatch(setLineMap(lineMap));
+
+    // 3. Скидки
+    const activeDiscounts = (data.discounts || [])
+      .filter((rule: any) => rule.is_active)
+      .map((rule: any) => ({
+        id: rule.id,
+        name: rule.name,
+        discount_type: rule.discount_type,
+        discount_value: rule.discount_value,
+      }));
+    dispatch(setDiscountRules(activeDiscounts));
+
+    if (data.sizeTables) {
+      dispatch(setSizeTables(data.sizeTables));
+    }
   }, [dispatch]);
 
+  // 🔥 Загрузка данных на клиенте (fallback)
+  const loadMainInfo = useCallback(async () => {
+    try {
+      // Пробуем взять из localStorage (с TTL)
+      const cached = localStorage.getItem('mainInfoCache');
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < 60 * 60 * 1000) { // 1 час
+          applyDataToRedux(data);
+          return;
+        }
+      }
+
+      // Иначе запрашиваем с сервера
+      const data = await getMainInfo();
+      applyDataToRedux(data);
+      localStorage.setItem('mainInfoCache', JSON.stringify({
+        data,
+        timestamp: Date.now(),
+      }));
+    } catch (error) {
+      console.error('Failed to load main info', error);
+    }
+  }, [applyDataToRedux]);
+
+  // 🔥 Инициализация Redux из SSR данных или загрузка на клиенте
+  useEffect(() => {
+    if (isHydrated.current) return; // Уже инициализировали
+
+    if (initialMainInfo) {
+      console.log('🔥 Redux initialized from SSR data');
+      applyDataToRedux(initialMainInfo);
+      isHydrated.current = true;
+    } else {
+      // Если нет SSR данных - загружаем на клиенте
+      loadMainInfo();
+      isHydrated.current = true;
+    }
+  }, [initialMainInfo, applyDataToRedux, loadMainInfo]);
+
+  // Остальные эффекты без изменений
   useEffect(() => {
     handleResize();
     window.addEventListener("resize", handleResize);
 
     if (!getCookie("unique")) {
-      setUniqueCustomer(() => { });
+      setUniqueCustomer(() => {});
     }
 
     const cartCookie = getCookie("cart");
@@ -297,7 +306,7 @@ const AppContent: React.FC<AppContentProps> = ({ children }) => {
       >
         <ComplexDropMenuWithRequest />
         <StickyDispetcherButton top="10%" left="10%" />
-        {children}  {/* ← Сюда Next.js вставляет страницу */}
+        {children}
         <Footer />
       </div>
     </>

@@ -23,33 +23,33 @@ func (q *Queries) CountActiveBanners(ctx context.Context) (int64, error) {
 }
 
 const createBanner = `-- name: CreateBanner :one
-INSERT INTO banners (title, image_url, link_url, is_active)
+INSERT INTO banners (title, image_url, collection_id, is_active)
 VALUES ($1, $2, $3, $4)
-RETURNING id, title, image_url, link_url, is_active, created_at, updated_at
+RETURNING id, title, image_url, collection_id, is_active, created_at, updated_at
 `
 
 type CreateBannerParams struct {
-	Title    pgtype.Text `json:"title"`
-	ImageUrl string      `json:"image_url"`
-	LinkUrl  string      `json:"link_url"`
-	IsActive bool        `json:"is_active"`
+	Title        pgtype.Text `json:"title"`
+	ImageUrl     string      `json:"image_url"`
+	CollectionID int32       `json:"collection_id"`
+	IsActive     bool        `json:"is_active"`
 }
 
 type CreateBannerRow struct {
-	ID        int32              `json:"id"`
-	Title     pgtype.Text        `json:"title"`
-	ImageUrl  string             `json:"image_url"`
-	LinkUrl   string             `json:"link_url"`
-	IsActive  bool               `json:"is_active"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID           int32              `json:"id"`
+	Title        pgtype.Text        `json:"title"`
+	ImageUrl     string             `json:"image_url"`
+	CollectionID int32              `json:"collection_id"`
+	IsActive     bool               `json:"is_active"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) CreateBanner(ctx context.Context, arg CreateBannerParams) (CreateBannerRow, error) {
 	row := q.db.QueryRow(ctx, createBanner,
 		arg.Title,
 		arg.ImageUrl,
-		arg.LinkUrl,
+		arg.CollectionID,
 		arg.IsActive,
 	)
 	var i CreateBannerRow
@@ -57,7 +57,7 @@ func (q *Queries) CreateBanner(ctx context.Context, arg CreateBannerParams) (Cre
 		&i.ID,
 		&i.Title,
 		&i.ImageUrl,
-		&i.LinkUrl,
+		&i.CollectionID,
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -75,17 +75,24 @@ func (q *Queries) DeleteBanner(ctx context.Context, id int32) error {
 }
 
 const getActiveBanners = `-- name: GetActiveBanners :many
-SELECT id, title, image_url, link_url
-FROM banners
-WHERE is_active = true
-ORDER BY id ASC
+SELECT 
+    b.id,
+    b.title,
+    b.image_url,
+    b.collection_id,
+    c.slug as collection_slug
+FROM banners b
+INNER JOIN collections c ON b.collection_id = c.id
+WHERE b.is_active = true
+ORDER BY b.sort_order ASC, b.id ASC
 `
 
 type GetActiveBannersRow struct {
-	ID       int32       `json:"id"`
-	Title    pgtype.Text `json:"title"`
-	ImageUrl string      `json:"image_url"`
-	LinkUrl  string      `json:"link_url"`
+	ID             int32       `json:"id"`
+	Title          pgtype.Text `json:"title"`
+	ImageUrl       string      `json:"image_url"`
+	CollectionID   int32       `json:"collection_id"`
+	CollectionSlug string      `json:"collection_slug"`
 }
 
 func (q *Queries) GetActiveBanners(ctx context.Context) ([]GetActiveBannersRow, error) {
@@ -101,7 +108,8 @@ func (q *Queries) GetActiveBanners(ctx context.Context) ([]GetActiveBannersRow, 
 			&i.ID,
 			&i.Title,
 			&i.ImageUrl,
-			&i.LinkUrl,
+			&i.CollectionID,
+			&i.CollectionSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -114,19 +122,29 @@ func (q *Queries) GetActiveBanners(ctx context.Context) ([]GetActiveBannersRow, 
 }
 
 const getAllBanners = `-- name: GetAllBanners :many
-SELECT id, title, image_url, link_url, is_active, created_at, updated_at
-FROM banners
-ORDER BY id DESC
+SELECT 
+    b.id,
+    b.title,
+    b.image_url,
+    b.collection_id,
+    b.is_active,
+    b.created_at,
+    b.updated_at,
+    c.slug as collection_slug
+FROM banners b
+INNER JOIN collections c ON b.collection_id = c.id
+ORDER BY b.sort_order ASC, b.id ASC
 `
 
 type GetAllBannersRow struct {
-	ID        int32              `json:"id"`
-	Title     pgtype.Text        `json:"title"`
-	ImageUrl  string             `json:"image_url"`
-	LinkUrl   string             `json:"link_url"`
-	IsActive  bool               `json:"is_active"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID             int32              `json:"id"`
+	Title          pgtype.Text        `json:"title"`
+	ImageUrl       string             `json:"image_url"`
+	CollectionID   int32              `json:"collection_id"`
+	IsActive       bool               `json:"is_active"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	CollectionSlug string             `json:"collection_slug"`
 }
 
 func (q *Queries) GetAllBanners(ctx context.Context) ([]GetAllBannersRow, error) {
@@ -142,10 +160,11 @@ func (q *Queries) GetAllBanners(ctx context.Context) ([]GetAllBannersRow, error)
 			&i.ID,
 			&i.Title,
 			&i.ImageUrl,
-			&i.LinkUrl,
+			&i.CollectionID,
 			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CollectionSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -158,19 +177,29 @@ func (q *Queries) GetAllBanners(ctx context.Context) ([]GetAllBannersRow, error)
 }
 
 const getBannerByID = `-- name: GetBannerByID :one
-SELECT id, title, image_url, link_url, is_active, created_at, updated_at
-FROM banners
-WHERE id = $1
+SELECT 
+    b.id,
+    b.title,
+    b.image_url,
+    b.collection_id,
+    b.is_active,
+    b.created_at,
+    b.updated_at,
+    c.slug as collection_slug
+FROM banners b
+INNER JOIN collections c ON b.collection_id = c.id
+WHERE b.id = $1
 `
 
 type GetBannerByIDRow struct {
-	ID        int32              `json:"id"`
-	Title     pgtype.Text        `json:"title"`
-	ImageUrl  string             `json:"image_url"`
-	LinkUrl   string             `json:"link_url"`
-	IsActive  bool               `json:"is_active"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID             int32              `json:"id"`
+	Title          pgtype.Text        `json:"title"`
+	ImageUrl       string             `json:"image_url"`
+	CollectionID   int32              `json:"collection_id"`
+	IsActive       bool               `json:"is_active"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	CollectionSlug string             `json:"collection_slug"`
 }
 
 func (q *Queries) GetBannerByID(ctx context.Context, id int32) (GetBannerByIDRow, error) {
@@ -180,10 +209,11 @@ func (q *Queries) GetBannerByID(ctx context.Context, id int32) (GetBannerByIDRow
 		&i.ID,
 		&i.Title,
 		&i.ImageUrl,
-		&i.LinkUrl,
+		&i.CollectionID,
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CollectionSlug,
 	)
 	return i, err
 }
@@ -193,18 +223,18 @@ UPDATE banners
 SET 
     title = COALESCE($2, title),
     image_url = COALESCE($3, image_url),
-    link_url = COALESCE($4, link_url),
+    collection_id = COALESCE($4, collection_id),
     is_active = COALESCE($5, is_active),
     updated_at = NOW()
 WHERE id = $1
 `
 
 type UpdateBannerParams struct {
-	ID       int32       `json:"id"`
-	Title    pgtype.Text `json:"title"`
-	ImageUrl string      `json:"image_url"`
-	LinkUrl  string      `json:"link_url"`
-	IsActive bool        `json:"is_active"`
+	ID           int32       `json:"id"`
+	Title        pgtype.Text `json:"title"`
+	ImageUrl     string      `json:"image_url"`
+	CollectionID int32       `json:"collection_id"`
+	IsActive     bool        `json:"is_active"`
 }
 
 func (q *Queries) UpdateBanner(ctx context.Context, arg UpdateBannerParams) error {
@@ -212,7 +242,7 @@ func (q *Queries) UpdateBanner(ctx context.Context, arg UpdateBannerParams) erro
 		arg.ID,
 		arg.Title,
 		arg.ImageUrl,
-		arg.LinkUrl,
+		arg.CollectionID,
 		arg.IsActive,
 	)
 	return err

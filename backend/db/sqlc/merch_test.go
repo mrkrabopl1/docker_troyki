@@ -182,6 +182,87 @@ func TestGetSoloCollection(t *testing.T) {
 	require.NotEmpty(t, snickers)
 }
 
+// db/sqlc/collections_test.go
+
+func TestGetFullFiltersForCollection(t *testing.T) {
+	ctx := context.Background()
+
+	collections, err := testStore.GetAllCollections(ctx)
+	require.NoError(t, err)
+
+	if len(collections) == 0 {
+		t.Skip("No collections found")
+	}
+
+	collection := collections[0]
+
+	filtersParams := GetFullFiltersForCollectionParams{
+		CollectionID:        collection.ID,
+		CollectionTypeIds:   []int32{},
+		CollectionBrandIds:  []int32{},
+		CollectionSizes:     []string{},
+		CollectionBodyTypes: []string{"child"},
+	}
+
+	filters, err := testStore.GetFullFiltersForCollection(ctx, filtersParams)
+	require.NoError(t, err)
+
+	fmt.Printf("\n=== FILTERS RESULT ===\n")
+	fmt.Printf("Sizes: %v\n", filters.Sizes)
+	fmt.Printf("Bodytypes: %v\n", filters.Bodytypes)
+	fmt.Printf("Min price: %d\n", filters.MinPrice)
+	fmt.Printf("Max price: %d\n", filters.MaxPrice)
+	fmt.Printf("Firms: %v\n", filters.Firms)
+	fmt.Printf("Product types: %v\n", filters.ProductTypes)
+	fmt.Printf("Categories: %v\n", filters.Categories)
+	fmt.Printf("Discount rules: %v\n", filters.DiscountRules)
+
+	// Приводим interface{} к []byte и парсим
+	if filters.Sizes != nil {
+		sizesBytes, ok := filters.Sizes.([]byte)
+		if ok && len(sizesBytes) > 0 {
+			var sizes map[string]int64
+			err = json.Unmarshal(sizesBytes, &sizes)
+			if err == nil {
+				fmt.Printf("\nParsed sizes: %+v\n", sizes)
+			}
+		}
+	}
+
+	if filters.Firms != nil {
+		firmsBytes, ok := filters.Firms.([]byte)
+		if ok && len(firmsBytes) > 0 {
+			var firms map[string]int64
+			err = json.Unmarshal(firmsBytes, &firms)
+			if err == nil {
+				fmt.Printf("Parsed firms: %+v\n", firms)
+			}
+		}
+	}
+
+	if filters.Bodytypes != nil {
+		bodytypesBytes, ok := filters.Bodytypes.([]byte)
+		if ok && len(bodytypesBytes) > 0 {
+			var bodytypes map[string]int64
+			err = json.Unmarshal(bodytypesBytes, &bodytypes)
+			if err == nil {
+				fmt.Printf("Parsed bodytypes: %+v\n", bodytypes)
+			}
+		}
+	}
+
+	if filters.ProductTypes != nil {
+		productTypesBytes, ok := filters.ProductTypes.([]byte)
+		if ok && len(productTypesBytes) > 0 {
+			var productTypes []int64
+			err = json.Unmarshal(productTypesBytes, &productTypes)
+			if err == nil {
+				fmt.Printf("Parsed product types: %+v\n", productTypes)
+			}
+		}
+	}
+}
+
 func TestGetSoloCollectionWithCount(t *testing.T) {
 	snickers, err := testStore.GetSoloCollectionWithCount(context.Background(), GetSoloCollectionWithCountParams{
 		Firm:      "nike",

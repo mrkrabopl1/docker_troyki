@@ -232,14 +232,14 @@ type AdminPasswordReset struct {
 }
 
 type Banner struct {
-	ID        int32              `json:"id"`
-	Title     pgtype.Text        `json:"title"`
-	ImageUrl  string             `json:"image_url"`
-	LinkUrl   string             `json:"link_url"`
-	IsActive  bool               `json:"is_active"`
-	SortOrder pgtype.Int4        `json:"sort_order"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID           int32              `json:"id"`
+	Title        pgtype.Text        `json:"title"`
+	ImageUrl     string             `json:"image_url"`
+	CollectionID int32              `json:"collection_id"`
+	IsActive     bool               `json:"is_active"`
+	SortOrder    pgtype.Int4        `json:"sort_order"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Brand struct {
@@ -283,6 +283,24 @@ type BrandsStat struct {
 	ToysCount        pgtype.Int4      `json:"toys_count"`
 	LinesCount       pgtype.Int4      `json:"lines_count"`
 	UpdatedAt        pgtype.Timestamp `json:"updated_at"`
+}
+
+type Collection struct {
+	ID          int32            `json:"id"`
+	Slug        string           `json:"slug"`
+	Name        string           `json:"name"`
+	Description pgtype.Text      `json:"description"`
+	Type        string           `json:"type"`
+	Settings    []byte           `json:"settings"`
+	IsActive    pgtype.Bool      `json:"is_active"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+type CollectionProduct struct {
+	CollectionID int32            `json:"collection_id"`
+	ProductID    int32            `json:"product_id"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
 }
 
 type Color struct {
@@ -420,13 +438,14 @@ type Orderitem struct {
 }
 
 type PageWidget struct {
-	ID        int32       `json:"id"`
-	Name      string      `json:"name"`
-	Type      string      `json:"type"`
-	SortOrder int32       `json:"sort_order"`
-	IsActive  pgtype.Bool `json:"is_active"`
-	Settings  []byte      `json:"settings"`
-	LinkUrl   string      `json:"link_url"`
+	ID           int32            `json:"id"`
+	Name         string           `json:"name"`
+	Type         string           `json:"type"`
+	SortOrder    int32            `json:"sort_order"`
+	IsActive     pgtype.Bool      `json:"is_active"`
+	CollectionID int32            `json:"collection_id"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
 }
 
 type PasswordReset struct {

@@ -21,7 +21,7 @@ const DISCOUNT_SIZE = 10;
 
 const MerchComplexSliderFieldComponent: React.FC = () => {
   const router = useRouter();
-  const { collections } = useAppSelector(state => state.menuReducer);
+  const { collections } = useAppSelector(state => state.menu);
   
   const [slidersData, setSlidersData] = useState<SliderData>({});
   const [merchHistoryFieldData, setMerchHistoryFieldData] = useState<any[]>([]);

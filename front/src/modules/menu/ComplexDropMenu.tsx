@@ -24,7 +24,7 @@ const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
     complexDropData,
 }) => {
     const router = useRouter();
-    const { show, sticky, typesVal, categories, firms } = useAppSelector(state => state.menuReducer);
+    const { show, sticky, typesVal, categories, firms } = useAppSelector(state => state.menu);
     const [showMenu, setShowMenu] = useState(false);
 
 

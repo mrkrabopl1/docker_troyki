@@ -52,11 +52,11 @@ interface SizeTable {
 }
 
 const ProductsInfo: React.FC = () => {
-    const { show, sticky, typesVal, categories, firmMap } = useAppSelector(state => state.menuReducer);
+    const { show, sticky, typesVal, categories, firmMap } = useAppSelector(state => state.menu);
     const router = useRouter();
     const product = router.query.product as string;
-    const { widthProps } = useAppSelector(state => state.resizeReducer);
-    const { cartCount } = useAppSelector(state => state.menuReducer);
+    const { widthProps } = useAppSelector(state => state.resize);
+    const { cartCount } = useAppSelector(state => state.menu);
     const dispatch = useAppDispatch();
 
 

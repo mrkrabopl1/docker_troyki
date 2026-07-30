@@ -99,6 +99,7 @@ func (s *Server) setupRouter() {
 		api.POST("/getProductsAndFiltersByNameCategoryAndType", s.handleSearchSnickersAndFiltersByNameCategoryAndType)
 		api.POST("/getProductsByString", s.handleSearchProductsByString)
 		api.POST("/collection", s.handleGetSoloCollection)
+		api.GET("/collections/:slug", s.handleGetCollectionBySlug)
 		api.POST("/disconts", s.handleGetDiscounts)
 		api.GET("/setUniqueCustomer", s.handleSetUniqueCustomer)
 		api.POST("/createPreorder", s.handleCreatePreorder)
@@ -195,6 +196,12 @@ func (s *Server) setupRouter() {
 			adminGroup.PUT("/page-blocks/:id", s.handleAdminUpdatePageWidget)
 			adminGroup.DELETE("/page-blocks/:id", s.handleAdminDeletePageWidget)
 			adminGroup.PATCH("/page-blocks/reorder", s.handleAdminReorderPageWidgets)
+
+			adminGroup.GET("/collections", s.handleAdminGetCollections)
+			adminGroup.GET("/collections/:id", s.handleAdminGetCollection)
+			adminGroup.POST("/collections", s.handleAdminCreateCollection)
+			adminGroup.PUT("/collections/:id", s.handleAdminUpdateCollection)
+			adminGroup.DELETE("/collections/:id", s.handleAdminDeleteCollection)
 
 			// Discount rules
 			discountRules := adminGroup.Group("/discount-rules")

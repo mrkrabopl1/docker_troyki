@@ -13,7 +13,7 @@ interface AdminSidebarProps {
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, isMobile, onClose }) => {
     const router = useRouter();
-    const { user } = useAppSelector(state => state.adminReducer);
+    const { user } = useAppSelector(state => state.admin);
 
     const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
         const isActive = router.pathname === href || router.pathname.startsWith(href + '/');

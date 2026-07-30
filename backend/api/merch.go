@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -351,11 +352,125 @@ type DiscountsData struct {
 
 // 	}
 
-// 	err1 := s.store.CreateDiscounts(ctx, discountsData)
-// 	if err1 != nil {
-// 		//log.WithCaller().Err(err1).Msg("")
-// 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-// 		return
-// 	}
-// 	ctx.JSON(http.StatusOK, 0)
-// }
+//		err1 := s.store.CreateDiscounts(ctx, discountsData)
+//		if err1 != nil {
+//			//log.WithCaller().Err(err1).Msg("")
+//			ctx.JSON(http.StatusBadRequest, errorResponse(err))
+//			return
+//		}
+//		ctx.JSON(http.StatusOK, 0)
+//	}
+func toJSONRawMessage(v interface{}, defaultVal string) json.RawMessage {
+	if v == nil {
+		return json.RawMessage(defaultVal)
+	}
+
+	switch val := v.(type) {
+	case []byte:
+		return json.RawMessage(val)
+	case string:
+		return json.RawMessage(val)
+	case json.RawMessage:
+		return val
+	default:
+		// Пробуем сериализовать
+		data, err := json.Marshal(v)
+		if err != nil {
+			return json.RawMessage(defaultVal)
+		}
+		return json.RawMessage(data)
+	}
+}
+
+// handleGetCollectionBySlug - получение коллекции по slug
+func (s *Server) handleGetCollectionBySlug(c *gin.Context) {
+	slug := c.Param("slug")
+	ctx := c.Request.Context()
+
+	// // 1. Пытаемся получить из кэша
+	// cached, err := s.taskProcessor.GetCollection(ctx, slug)
+	// if err == nil && len(cached) > 0 {
+	// 	c.Data(http.StatusOK, "application/json", cached)
+	// 	c.Header("X-Cache", "HIT")
+	// 	return
+	// }
+
+	// 2. Получаем коллекцию из БД
+	collection, err := s.store.GetCollectionBySlug(ctx, slug)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Collection not found"})
+		return
+	}
+
+	// 3. Парсим фильтры из коллекции
+	var filtersParams db.GetFullFiltersForCollectionParams
+	filtersParams.CollectionID = collection.ID
+
+	if len(collection.Settings) > 0 {
+		var settings types.CollectionSettings
+		if err := json.Unmarshal(collection.Settings, &settings); err == nil && settings.Filters != nil {
+			filtersParams.CollectionTypeIds = settings.Filters.Types
+			filtersParams.CollectionCategoryIds = settings.Filters.Categories
+			filtersParams.CollectionBrandIds = settings.Filters.Firms
+			filtersParams.CollectionLineIds = settings.Filters.Lines
+			filtersParams.CollectionBodyTypes = settings.Filters.Bodytypes
+			filtersParams.CollectionPriceMin = int32(settings.Filters.Price[0])
+			filtersParams.CollectionPriceMax = int32(settings.Filters.Price[1])
+			filtersParams.CollectionSizes = settings.Filters.Sizes
+			filtersParams.CollectionInStore = settings.Filters.InStore
+			filtersParams.CollectionRuleIds = settings.Filters.RuleIDs
+		}
+	}
+	fmt.Println(filtersParams, "filtersParamsfiltersParamsfiltersParamsfiltersParamsfiltersParamsfiltersParamsfiltersParamsfiltersParams")
+	// 4. Получаем полный набор фильтров
+	filters, err := s.store.GetFullFiltersForCollection(ctx, filtersParams)
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get filters"})
+		return
+	}
+	fmt.Println(filters, "qqqqqqqqqqqqqqqqqqqqmmm")
+	// 5. Получаем товары коллекции (первая страница)
+	products, total, err := s.store.GetCollectionProducts(ctx, collection, filtersParams, 1, 20)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get products"})
+		return
+	}
+
+	// 6. Формируем ответ
+	response := gin.H{
+		"collection": gin.H{
+			"id":          collection.ID,
+			"slug":        collection.Slug,
+			"name":        collection.Name,
+			"description": collection.Description.String,
+			"type":        collection.Type,
+			"is_active":   collection.IsActive.Bool,
+		},
+		"filters": gin.H{
+			"sizes":          toJSONRawMessage(filters.Sizes, "{}"),
+			"bodytypes":      toJSONRawMessage(filters.Bodytypes, "{}"),
+			"min_price":      filters.MinPrice,
+			"max_price":      filters.MaxPrice,
+			"firms":          toJSONRawMessage(filters.Firms, "{}"),
+			"product_types":  toJSONRawMessage(filters.ProductTypes, "[]"),
+			"categories":     toJSONRawMessage(filters.Categories, "[]"),
+			"discount_rules": toJSONRawMessage(filters.DiscountRules, "[]"),
+		},
+		"products": products,
+		"total":    total,
+		"page":     1,
+		"limit":    20,
+	}
+
+	// 7. Сохраняем в кэш
+	go func() {
+		bgCtx := context.Background()
+		data, _ := json.Marshal(response)
+		s.taskProcessor.SetCollection(bgCtx, slug, data)
+	}()
+
+	c.JSON(http.StatusOK, response)
+}
+
+// ============ MANUAL ============

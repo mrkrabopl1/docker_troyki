@@ -38,7 +38,7 @@ const AdminLogs: React.FC = () => {
         date_from: '',
         date_to: ''
     });
-    const { user } = useAppSelector(state => state.adminReducer);
+    const { user } = useAppSelector(state => state.admin);
     const isMobile = useMediaQuery('(max-width: 768px)');
 
     useEffect(() => {

@@ -17,7 +17,7 @@ type TableType = {
 
 const MerchTable: React.FC<TableType> = memo(({ tableData, onChange, className,onDelete }) => {
     const dispatch = useAppDispatch();
-    const { cartCount } = useAppSelector(state => state.menuReducer);
+    const { cartCount } = useAppSelector(state => state.menu);
     const cartCountRef = useRef<number>(cartCount);
 
     // Update ref when cartCount changes

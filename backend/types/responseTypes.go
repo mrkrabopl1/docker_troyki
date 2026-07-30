@@ -1,5 +1,10 @@
 package types
 
+import (
+	"encoding/json"
+	"time"
+)
+
 type FirmResponse map[string][]string
 
 type SnickersLineResponse map[string][]SnickersResponse
@@ -135,4 +140,35 @@ type OrderDataResp struct {
 	CartResponse FullCartRespone            `json:"cartResponse"`
 	OrderId      int                        `json:"orderId"`
 	Address      AddressTypeResp            `json:"address"`
+}
+
+type ProductResponse struct {
+	Name            string      `json:"name"`
+	Id              int32       `json:"id"`
+	Image           []string    `json:"imgs"`
+	Discount        interface{} `json:"discount"`
+	Price           int         `json:"price"`
+	Status          string      `json:"status"`
+	DiscountPercent int32       `json:"discount_percent"`
+}
+
+type CollectionResponse struct {
+	ID           int32           `json:"id"`
+	Slug         string          `json:"slug"`
+	Name         string          `json:"name"`
+	Description  string          `json:"description"`
+	Type         string          `json:"type"`
+	Settings     json.RawMessage `json:"settings"`
+	IsActive     bool            `json:"is_active"`
+	SortOrder    int32           `json:"sort_order"`
+	CreatedAt    time.Time       `json:"created_at"`
+	UpdatedAt    time.Time       `json:"updated_at"`
+	ProductCount int32           `json:"product_count,omitempty"`
+}
+
+// CollectionDetailResponse - детальный ответ с товарами
+type CollectionDetailResponse struct {
+	Collection CollectionResponse `json:"collection"`
+	Products   []ProductResponse  `json:"products"`
+	Total      int64              `json:"total"`
 }

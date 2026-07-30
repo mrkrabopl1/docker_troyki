@@ -1,7 +1,7 @@
 import axios from "axios";
 
 
-
+const isServer = () => typeof window === 'undefined';
 const getMerchInfo = function (id: string, callback: (val: any) => void) {
     axios({
         withCredentials: true,
@@ -128,18 +128,7 @@ const getCollections = function (reqData: { names: string[], page: number, size:
     })
 }
 
-const getMainInfo = function (callback: (val: any) => void) {
-    axios({
-        method: 'get',
-        url: `${API_URL}/mainPage`,
-        headers: {}
-    }
-    ).then((res: any) => {
-        callback(res.data)
-    },  (error: any) => {
-        console.warn(error)
-    })
-}
+
 
 const getCategoriesAndTypes = function (callback: (val: any) => void) {
     axios({
@@ -168,17 +157,35 @@ const getSizeTable = function (category: string, callback: (val: any) => void) {
 }
 
 
-const getMainPage = async function (): Promise<any> {
-  try {
-    const res = await axios({
-      method: 'get',
-      url: `${API_URL}/getMainPage`,
-      headers: {}
+export async function getMainPage(): Promise<any> {
+  if (isServer()) {
+    // Сервер: используем fetch
+    const res = await fetch(`${API_URL}/getMainPage`, {
+      headers: { 'Content-Type': 'application/json' }
     });
-    return res.data;
-  } catch (error) {
-    console.warn(error);
-    throw error; // Пробрасываем ошибку для обработки в fetchData
+    if (!res.ok) throw new Error(`Failed to fetch main page: ${res.status}`);
+    return res.json();
   }
-};
-export { getMerchInfo, getSizeTable, getMainInfo, getCollections, getFirms, getHistoryInfo, getDiscontInfo,getCategoriesAndTypes, getMainPage }
+  
+  // Клиент: используем axios
+  const res = await axios.get(`${API_URL}/getMainPage`);
+  return res.data;
+}
+
+// 🔥 getMainBanners - для SSR
+
+
+// 🔥 getMainInfo - для SSR
+export async function getMainInfo(): Promise<any> {
+  if (isServer()) {
+    const res = await fetch(`${API_URL}/getMainInfo`, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) throw new Error(`Failed to fetch main info: ${res.status}`);
+    return res.json();
+  }
+  
+  const res = await axios.get(`${API_URL}/getMainInfo`);
+  return res.data;
+}
+export { getMerchInfo, getSizeTable,  getCollections, getFirms, getHistoryInfo, getDiscontInfo,getCategoriesAndTypes }

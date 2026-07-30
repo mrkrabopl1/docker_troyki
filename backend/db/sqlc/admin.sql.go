@@ -260,21 +260,19 @@ INSERT INTO page_widgets (
     type,
     sort_order,
     is_active,
-    settings,
-    link_url
+    collection_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5
 )
-RETURNING id, name, type, sort_order, is_active, settings, link_url
+RETURNING id, name, type, sort_order, is_active, collection_id, created_at, updated_at
 `
 
 type CreatePageWidgetParams struct {
-	Name      string      `json:"name"`
-	Type      string      `json:"type"`
-	SortOrder int32       `json:"sort_order"`
-	IsActive  pgtype.Bool `json:"is_active"`
-	Settings  []byte      `json:"settings"`
-	LinkUrl   string      `json:"link_url"`
+	Name         string      `json:"name"`
+	Type         string      `json:"type"`
+	SortOrder    int32       `json:"sort_order"`
+	IsActive     pgtype.Bool `json:"is_active"`
+	CollectionID int32       `json:"collection_id"`
 }
 
 func (q *Queries) CreatePageWidget(ctx context.Context, arg CreatePageWidgetParams) (PageWidget, error) {
@@ -283,8 +281,7 @@ func (q *Queries) CreatePageWidget(ctx context.Context, arg CreatePageWidgetPara
 		arg.Type,
 		arg.SortOrder,
 		arg.IsActive,
-		arg.Settings,
-		arg.LinkUrl,
+		arg.CollectionID,
 	)
 	var i PageWidget
 	err := row.Scan(
@@ -293,8 +290,9 @@ func (q *Queries) CreatePageWidget(ctx context.Context, arg CreatePageWidgetPara
 		&i.Type,
 		&i.SortOrder,
 		&i.IsActive,
-		&i.Settings,
-		&i.LinkUrl,
+		&i.CollectionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -405,28 +403,53 @@ func (q *Queries) DeleteSizeFromAllProducts(ctx context.Context, dollar_1 string
 }
 
 const getActivePageWidgets = `-- name: GetActivePageWidgets :many
-SELECT id, name, type, sort_order, is_active, settings, link_url FROM page_widgets
-WHERE is_active = true
-ORDER BY sort_order ASC, id ASC
+SELECT 
+    w.id,
+    w.name,
+    w.type,
+    w.sort_order,
+    w.is_active,
+    w.collection_id,
+    w.created_at,
+    w.updated_at,
+    c.slug as collection_slug
+FROM page_widgets w
+INNER JOIN collections c ON w.collection_id = c.id
+WHERE w.is_active = true
+ORDER BY w.sort_order ASC, w.id ASC
 `
 
-func (q *Queries) GetActivePageWidgets(ctx context.Context) ([]PageWidget, error) {
+type GetActivePageWidgetsRow struct {
+	ID             int32            `json:"id"`
+	Name           string           `json:"name"`
+	Type           string           `json:"type"`
+	SortOrder      int32            `json:"sort_order"`
+	IsActive       pgtype.Bool      `json:"is_active"`
+	CollectionID   int32            `json:"collection_id"`
+	CreatedAt      pgtype.Timestamp `json:"created_at"`
+	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
+	CollectionSlug string           `json:"collection_slug"`
+}
+
+func (q *Queries) GetActivePageWidgets(ctx context.Context) ([]GetActivePageWidgetsRow, error) {
 	rows, err := q.db.Query(ctx, getActivePageWidgets)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PageWidget
+	var items []GetActivePageWidgetsRow
 	for rows.Next() {
-		var i PageWidget
+		var i GetActivePageWidgetsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.Type,
 			&i.SortOrder,
 			&i.IsActive,
-			&i.Settings,
-			&i.LinkUrl,
+			&i.CollectionID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CollectionSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -439,22 +462,29 @@ func (q *Queries) GetActivePageWidgets(ctx context.Context) ([]PageWidget, error
 }
 
 const getAdminBanners = `-- name: GetAdminBanners :many
-SELECT id,
-    title,
-    image_url,
-    link_url,
-    is_active,
-    created_at
-FROM banners
+SELECT 
+    b.id,
+    b.title,
+    b.image_url,
+    b.collection_id,
+    b.is_active,
+    b.created_at,
+    b.updated_at,
+    c.slug as collection_slug
+FROM banners b
+INNER JOIN collections c ON b.collection_id = c.id
+ORDER BY b.sort_order ASC, b.id ASC
 `
 
 type GetAdminBannersRow struct {
-	ID        int32              `json:"id"`
-	Title     pgtype.Text        `json:"title"`
-	ImageUrl  string             `json:"image_url"`
-	LinkUrl   string             `json:"link_url"`
-	IsActive  bool               `json:"is_active"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID             int32              `json:"id"`
+	Title          pgtype.Text        `json:"title"`
+	ImageUrl       string             `json:"image_url"`
+	CollectionID   int32              `json:"collection_id"`
+	IsActive       bool               `json:"is_active"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	CollectionSlug string             `json:"collection_slug"`
 }
 
 func (q *Queries) GetAdminBanners(ctx context.Context) ([]GetAdminBannersRow, error) {
@@ -470,9 +500,11 @@ func (q *Queries) GetAdminBanners(ctx context.Context) ([]GetAdminBannersRow, er
 			&i.ID,
 			&i.Title,
 			&i.ImageUrl,
-			&i.LinkUrl,
+			&i.CollectionID,
 			&i.IsActive,
 			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CollectionSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -1361,27 +1393,52 @@ func (q *Queries) GetAllFiltersForAdmin(ctx context.Context) (GetAllFiltersForAd
 }
 
 const getAllPageWidgets = `-- name: GetAllPageWidgets :many
-SELECT id, name, type, sort_order, is_active, settings, link_url FROM page_widgets
-ORDER BY sort_order ASC, id ASC
+SELECT 
+    w.id,
+    w.name,
+    w.type,
+    w.sort_order,
+    w.is_active,
+    w.collection_id,
+    w.created_at,
+    w.updated_at,
+    c.slug as collection_slug
+FROM page_widgets w
+INNER JOIN collections c ON w.collection_id = c.id
+ORDER BY w.sort_order ASC, w.id ASC
 `
 
-func (q *Queries) GetAllPageWidgets(ctx context.Context) ([]PageWidget, error) {
+type GetAllPageWidgetsRow struct {
+	ID             int32            `json:"id"`
+	Name           string           `json:"name"`
+	Type           string           `json:"type"`
+	SortOrder      int32            `json:"sort_order"`
+	IsActive       pgtype.Bool      `json:"is_active"`
+	CollectionID   int32            `json:"collection_id"`
+	CreatedAt      pgtype.Timestamp `json:"created_at"`
+	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
+	CollectionSlug string           `json:"collection_slug"`
+}
+
+func (q *Queries) GetAllPageWidgets(ctx context.Context) ([]GetAllPageWidgetsRow, error) {
 	rows, err := q.db.Query(ctx, getAllPageWidgets)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PageWidget
+	var items []GetAllPageWidgetsRow
 	for rows.Next() {
-		var i PageWidget
+		var i GetAllPageWidgetsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.Type,
 			&i.SortOrder,
 			&i.IsActive,
-			&i.Settings,
-			&i.LinkUrl,
+			&i.CollectionID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CollectionSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -2415,21 +2472,46 @@ func (q *Queries) GetOrdersWithFilters(ctx context.Context, arg GetOrdersWithFil
 }
 
 const getPageWidget = `-- name: GetPageWidget :one
-SELECT id, name, type, sort_order, is_active, settings, link_url FROM page_widgets
-WHERE id = $1
+SELECT 
+    w.id,
+    w.name,
+    w.type,
+    w.sort_order,
+    w.is_active,
+    w.collection_id,
+    w.created_at,
+    w.updated_at,
+    c.slug as collection_slug
+FROM page_widgets w
+INNER JOIN collections c ON w.collection_id = c.id
+WHERE w.id = $1
 `
 
-func (q *Queries) GetPageWidget(ctx context.Context, id int32) (PageWidget, error) {
+type GetPageWidgetRow struct {
+	ID             int32            `json:"id"`
+	Name           string           `json:"name"`
+	Type           string           `json:"type"`
+	SortOrder      int32            `json:"sort_order"`
+	IsActive       pgtype.Bool      `json:"is_active"`
+	CollectionID   int32            `json:"collection_id"`
+	CreatedAt      pgtype.Timestamp `json:"created_at"`
+	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
+	CollectionSlug string           `json:"collection_slug"`
+}
+
+func (q *Queries) GetPageWidget(ctx context.Context, id int32) (GetPageWidgetRow, error) {
 	row := q.db.QueryRow(ctx, getPageWidget, id)
-	var i PageWidget
+	var i GetPageWidgetRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Type,
 		&i.SortOrder,
 		&i.IsActive,
-		&i.Settings,
-		&i.LinkUrl,
+		&i.CollectionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CollectionSlug,
 	)
 	return i, err
 }
@@ -3548,20 +3630,26 @@ SET
     type = COALESCE($2::text, type),
     sort_order = COALESCE($3::int, sort_order),
     is_active = COALESCE($4::bool, is_active),
-    settings = COALESCE($5::jsonb, settings),
-    link_url = COALESCE($6::text, link_url)
-WHERE id = $7
-RETURNING id, name, type, sort_order, is_active, settings, link_url
+    collection_id = COALESCE($5::int, collection_id)
+WHERE id = $6
+RETURNING 
+    id,
+    name,
+    type,
+    sort_order,
+    is_active,
+    collection_id,
+    created_at,
+    updated_at
 `
 
 type UpdatePageWidgetParams struct {
-	Name      pgtype.Text `json:"name"`
-	Type      pgtype.Text `json:"type"`
-	SortOrder pgtype.Int4 `json:"sort_order"`
-	IsActive  pgtype.Bool `json:"is_active"`
-	Settings  []byte      `json:"settings"`
-	LinkUrl   pgtype.Text `json:"link_url"`
-	ID        int32       `json:"id"`
+	Name         pgtype.Text `json:"name"`
+	Type         pgtype.Text `json:"type"`
+	SortOrder    pgtype.Int4 `json:"sort_order"`
+	IsActive     pgtype.Bool `json:"is_active"`
+	CollectionID pgtype.Int4 `json:"collection_id"`
+	ID           int32       `json:"id"`
 }
 
 func (q *Queries) UpdatePageWidget(ctx context.Context, arg UpdatePageWidgetParams) (PageWidget, error) {
@@ -3570,8 +3658,7 @@ func (q *Queries) UpdatePageWidget(ctx context.Context, arg UpdatePageWidgetPara
 		arg.Type,
 		arg.SortOrder,
 		arg.IsActive,
-		arg.Settings,
-		arg.LinkUrl,
+		arg.CollectionID,
 		arg.ID,
 	)
 	var i PageWidget
@@ -3581,8 +3668,9 @@ func (q *Queries) UpdatePageWidget(ctx context.Context, arg UpdatePageWidgetPara
 		&i.Type,
 		&i.SortOrder,
 		&i.IsActive,
-		&i.Settings,
-		&i.LinkUrl,
+		&i.CollectionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

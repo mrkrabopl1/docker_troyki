@@ -50,8 +50,8 @@ const CollectionPage: React.FC = () => {
     const dispatch = useAppDispatch()
     const { collection } = router.query // ← collection, не slug!
     
-    const { typesVal, categories, discountRules, firmMap, lineMap } = useAppSelector(state => state.menuReducer)
-    const { widthProps } = useAppSelector(state => state.resizeReducer)
+    const { typesVal, categories, discountRules, firmMap, lineMap } = useAppSelector(state => state.menu)
+    const { widthProps } = useAppSelector(state => state.resize)
 
     // Рефы
     const filtersInfo = useRef<FiltersInfoRequest>({

@@ -1,88 +1,50 @@
-import React, { memo, useEffect, useState, useCallback, useMemo } from 'react';
+// src/pages/main/Main.tsx
+import React, { memo, useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux';
-import { getHistoryInfo } from 'src/providers/merchProvider';
 import MerchBanner from 'src/modules/merchBanner/MerchBanner';
-import ContentSliderWithSwitcher from 'src/components/contentSlider/ContentSliderWithSwitcher';
-import MerchComplexSliderField from 'src/modules/merchField/MerchComplexSliderField';
-import s from "./s.module.css";
-import { categories } from 'src/store/reducers/menuSlice';
-
 import MerchSliderField from 'src/modules/merchField/MerchSliderField';
-import { getMainPage } from 'src/providers/merchProvider';
 import ContentSliderWithLinks from 'src/components/contentSlider/ContentSliderWithLinks';
-import { getMainBanners } from 'src/providers/shopProvider';
-import VideoWallpaper from 'src/components/styledWalpapers/videoWalpaper/VideoWalpaper';
-import InfiniteRecursionViewport from 'src/components/styledWalpapers/doubleBacground/InfiniteRecursionViewport';
-import BlobBackground from 'src/components/styledWalpapers/blobBackground/BlobBackground';
-import ImageSlider from 'src/modules/imageSlider/ImageSlider';
-import { finishLoading, startLoading, addImageToLoad, imageLoaded } from 'src/store/reducers/loadingSlice';
-
 import FirmsScroller from 'src/modules/firmsScroller/FirmsScroller';
-interface BannerData {
-  btnText: string;
-  image: string;
-  name: string;
-  id: string;
+import { addImageToLoad, imageLoaded } from 'src/store/reducers/loadingSlice';
+import s from "./s.module.css";
+
+interface MainProps {
+  initialData: {
+    pageInfo: any;
+    banners: any[];
+    mainInfo: any;
+  };
 }
 
-
-const Main: React.FC = memo(() => {
+const Main: React.FC<MainProps> = memo(({ initialData }) => {
   const dispatch = useAppDispatch();
   const router = useRouter();
-  const { chousenName } = useAppSelector(state => state.complexDropReducer);
-  const { categories, firmMap } = useAppSelector(state => state.menuReducer);
-  const [mainData, setMainData] = useState({
-    pageInfo: {},
-    banners: []
+  const { firmMap } = useAppSelector(state => state.menu);
+  
+  // Используем данные с сервера
+  const [mainData] = useState({
+    pageInfo: initialData?.pageInfo || {},
+    banners: initialData?.banners || []
   });
-  let categoriesVal: any = useCallback(() => {
-    let val = {}
-    Object.entries(categories).forEach(([id, data]) => {
-      val[data.id] = { name: data.category_name, enum: id }
-    })
-    return val
-
-  }, [categories]);
-  const [merchHistoryFieldData, setMerchHistoryFieldData] = useState<any[]>([]);
 
   const handleBannerClick = useCallback((slug) => {
-    router.push("collections/"+slug);
+    router.push("collections/" + slug);
   }, [router]);
+
+  // Загружаем изображения (клиент)
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [pageInfo, banners] = await Promise.all([
-          getMainPage(),
-          getMainBanners()
-        ]);
-        setMainData({ pageInfo, banners });
-        const bannerUrls = banners.map(b => b.image_url);
-        dispatch(addImageToLoad(bannerUrls.length));
-
-        bannerUrls.forEach(url => {
-          const img = new Image();
-          img.onload = () => {
-            dispatch(imageLoaded());
-          };
-          img.onerror = () => {
-            dispatch(imageLoaded());
-          };
-          img.src = url;
-        });
-        dispatch(finishLoading());
-      } catch (error) {
-        console.error('Failed to load data:', error);
-      }
-    };
-    fetchData();
-
-    return () => {
-      console.debug("destroy")
+    if (mainData.banners.length > 0) {
+      const bannerUrls = mainData.banners.map(b => b.image_url);
+      dispatch(addImageToLoad(bannerUrls.length));
+      bannerUrls.forEach(url => {
+        const img = new Image();
+        img.onload = () => dispatch(imageLoaded());
+        img.onerror = () => dispatch(imageLoaded());
+        img.src = url;
+      });
     }
-  }, []);
-
-
+  }, [mainData.banners, dispatch]);
 
   const handleMainPageInfo = useMemo(() => {
     return Object.entries(mainData.pageInfo).map(([key, value]: [string, any]) => (
@@ -93,13 +55,15 @@ const Main: React.FC = memo(() => {
         onClick={() => router.push(`/search?${value.link_url}&type=""`)}
       />
     ));
-  }, [mainData.pageInfo, categories, router]);
+  }, [mainData.pageInfo, router]);
+
   const onFirmClicked = useCallback((firmName) => {
     const firm = Object.values(firmMap).find(f => f.name === firmName);
     if (firm) {
       router.push(`/search?brand=${firm.slug}`);
     }
   }, [firmMap]);
+
   const createBanners = useCallback(() => {
     return mainData.banners.map((btnVal, i) => (
       <MerchBanner
@@ -113,24 +77,11 @@ const Main: React.FC = memo(() => {
     ));
   }, [mainData.banners, handleBannerClick]);
 
-  // useEffect(() => {
-  //   getHistoryInfo(setMerchHistoryFieldData);
-  // }, []);
-
   return (
     <div style={{ position: "relative" }}>
-      {/* <ImageSlider images={["1.jpg","2.jpg","1.jpg","1.jpg","2.jpg","1.jpg"]}/>
-      <BlobBackground/>
-      <InfiniteRecursionViewport/> */}
-      {/* <VideoWallpaper  src={"1.mp4"} /> */}
-      <ContentSliderWithLinks
-
-        content={createBanners()}
-      />
+      <ContentSliderWithLinks content={createBanners()} />
       <FirmsScroller onChange={onFirmClicked} />
-      <div>
-        {handleMainPageInfo}
-      </div>
+      <div>{handleMainPageInfo}</div>
     </div>
   );
 });

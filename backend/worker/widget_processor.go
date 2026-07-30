@@ -2,65 +2,16 @@ package worker
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
-	db "github.com/mrkrabopl1/go_db/db/sqlc"
 	"github.com/mrkrabopl1/go_db/types"
-	"github.com/rs/zerolog/log"
 )
 
 // ============================================
 // ГЕНЕРАЦИЯ LINK_URL
 // ============================================
-
-func (processor *RedisTaskProcessor) generateWidgetLink(ctx context.Context, widgetID int32) error {
-	// 1. Получаем виджет из БД
-	widget, err := processor.store.GetPageWidget(ctx, widgetID)
-	if err != nil {
-		return fmt.Errorf("failed to get widget: %w", err)
-	}
-
-	// 2. Парсим фильтры из settings
-	var filters types.ProductsFilterStruct
-	if err := json.Unmarshal(widget.Settings, &filters); err != nil {
-		return fmt.Errorf("failed to parse filters: %w", err)
-	}
-
-	// 3. Генерируем link_url
-	linkURL, err := processor.buildLinkURL(ctx, filters)
-	if err != nil {
-		return fmt.Errorf("failed to build link URL: %w", err)
-	}
-
-	// 4. Обновляем ТОЛЬКО link_url в БД
-	_, err = processor.store.UpdatePageWidget(ctx, db.UpdatePageWidgetParams{
-		ID:        widgetID,
-		Name:      pgtype.Text{Valid: false},
-		Type:      pgtype.Text{Valid: false},
-		SortOrder: pgtype.Int4{Valid: false},
-		IsActive:  pgtype.Bool{Valid: false},
-		Settings:  nil,
-		LinkUrl:   pgtype.Text{String: linkURL, Valid: true},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to update widget: %w", err)
-	}
-
-	// 5. Обновляем кэш ТОЛЬКО если он существует
-	exists, _ := processor.redisClient.Exists(ctx, "mainpage:widgets:v1").Result()
-	if exists == 1 {
-		if err := processor.RefreshSingleWidgetCache(ctx, widgetID); err != nil {
-			log.Error().Err(err).Int32("widget_id", widgetID).Msg("failed to refresh single widget cache")
-		}
-	}
-
-	log.Info().Int32("widget_id", widgetID).Str("link_url", linkURL).Msg("widget link generated")
-	return nil
-}
 
 func (processor *RedisTaskProcessor) buildLinkURL(ctx context.Context, filters types.ProductsFilterStruct) (string, error) {
 	params := url.Values{}

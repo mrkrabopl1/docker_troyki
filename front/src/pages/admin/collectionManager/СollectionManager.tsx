@@ -49,7 +49,7 @@ interface VariationOption {
 }
 
 const CollectionsManager: React.FC = () => {
-    const { typesVal, firmMap, lineMap } = useAppSelector(state => state.menuReducer)
+    const { typesVal, firmMap, lineMap } = useAppSelector(state => state.menu)
     const dispatch = useAppDispatch();
     const [filtersVersion, setFiltersVersion] = useState(0)
 

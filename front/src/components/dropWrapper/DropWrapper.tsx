@@ -11,7 +11,7 @@ type propsRowType = {
 
 const DropWrapper: React.FC<propsRowType> = (props) => {
     let {className,children,id} = {...props}
-    const data = useAppSelector(state =>state.secondDropReducer)
+    const data = useAppSelector(state =>state.secondDrop)
     return (
         <div style={{height:"100%",position:"relative",overflow: "hidden"}}  >
                {children[0]}

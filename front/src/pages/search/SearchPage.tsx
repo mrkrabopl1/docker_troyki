@@ -51,7 +51,7 @@ const SearchPage: React.FC = () => {
 
   const router = useRouter();
   const searchParams = router.query;
-  const { typesVal, categories, discountRules, firmMap, lineMap } = useAppSelector(state => state.menuReducer);
+  const { typesVal, categories, discountRules, firmMap, lineMap } = useAppSelector(state => state.menu);
   // Refs для хранения изменяемых данных без перерисовки
   const filtersInfo = useRef<FiltersInfoRequest>({
     categories: [],
@@ -89,7 +89,7 @@ const SearchPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false)
   const [showGrid, setShowGrid] = useState(true)
 
-  const { widthProps } = useAppSelector(state => state.resizeReducer);
+  const { widthProps } = useAppSelector(state => state.resize);
   const [filtersState, setFilters] = useState<FiltersState>({
     priceProps: { max: 0, min: 0 },
     checboxsProps: [],

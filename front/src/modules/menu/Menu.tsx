@@ -26,9 +26,9 @@ interface MenuProps {
 const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
     const dispatch = useAppDispatch();
     const router = useRouter();
-    const { isLog } = useAppSelector(state => state.userReducer);
-    const { show, sticky, typesVal, categories } = useAppSelector(state => state.menuReducer);
-    const { isVerified } = useAppSelector(state => state.menuReducer);
+    const { isLog } = useAppSelector(state => state.user);
+    const { show, sticky, typesVal, categories } = useAppSelector(state => state.menu);
+    const { isVerified } = useAppSelector(state => state.menu);
     const menuWrap = useRef<HTMLDivElement>(null);
     const [active, setActive] = useState(false);
     const [activeAlphabet, setActiveAlphabet] = useState(false);

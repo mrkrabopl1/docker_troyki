@@ -12,7 +12,7 @@ const AlphabetNavigation: React.FC<IAlphabetNavigationProps> = ({
     onChange,
 }) => {
     const router = useRouter();
-    const { firmMap } = useAppSelector(state => state.menuReducer);
+    const { firmMap } = useAppSelector(state => state.menu);
     
     // Получаем список фирм из firmMap
     const firms = useMemo(() => {

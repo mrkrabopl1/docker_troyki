@@ -38,7 +38,7 @@ interface RuleItem {
 
 const DiscountRulesManager: React.FC = () => {
     const dispatch = useAppDispatch();
-    const { user } = useAppSelector(state => state.adminReducer);
+    const { user } = useAppSelector(state => state.admin);
     const isMobile = useMediaQuery('(max-width: 768px)');
 
     const [rules, setRules] = useState<DiscountRule[]>([]);

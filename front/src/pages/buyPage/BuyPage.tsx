@@ -35,7 +35,7 @@ const BuyPage: React.FC<BuyMerchFieldProps>  = memo((props) => {
     const { onActivate } = { ...props };
     const router = useRouter();
     const dispatch = useAppDispatch();
-    const { cartCount, shop } = useAppSelector(state => state.menuReducer);
+    const { cartCount, shop } = useAppSelector(state => state.menu);
     const [tableData, setTableData] = useState<CartItem[]>([]);
     const [totalPrice, setTotalPrice] = useState<number>(0);
     const cart = getCookie("cart");

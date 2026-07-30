@@ -561,6 +561,144 @@ SELECT
         '[]'::jsonb
     ) as discount_rules;
 
+
+
+
+-- name: GetFiltersForCollection :one
+WITH collection_products_data AS (
+    -- Берем только товары из коллекции
+    SELECT 
+        p.id,
+        p.brand_id,
+        p.line_id,
+        b.name as firm,
+        p.minprice,
+        p.maxprice,
+        p.bodytype,
+        p.type as product_type_id
+    FROM products p
+    JOIN collection_products cp ON p.id = cp.product_id  -- 👈 ТОЛЬКО ИЗ КОЛЛЕКЦИИ
+    JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+    WHERE cp.collection_id = $1  -- 👈 ID КОЛЛЕКЦИИ
+        AND p.status = 'active'
+        -- Применяем фильтры, если они переданы
+        AND (CASE WHEN $2::int = 0 THEN TRUE ELSE p.type = $2 END)
+        AND (CASE WHEN $3::int = 0 THEN TRUE ELSE p.category = $3 END)
+        AND (CASE WHEN $4::text = '' THEN TRUE ELSE p.name ILIKE '%' || $4 || '%' END)
+        -- Фильтр по брендам
+        AND (CASE WHEN array_length($5::int[], 1) IS NULL OR array_length($5::int[], 1) = 0 
+            THEN TRUE ELSE p.brand_id = ANY($5::int[]) END)
+        -- Фильтр по размерам
+        AND (CASE WHEN array_length($6::text[], 1) IS NULL OR array_length($6::text[], 1) = 0 
+            THEN TRUE ELSE EXISTS (
+                SELECT 1 FROM product_sizes ps 
+                WHERE ps.product_id = p.id 
+                AND ps.size_key = ANY($6::text[])
+                AND ps.price > 0
+            ) END)
+        -- Фильтр по цене
+        AND (CASE WHEN $7::int = 0 THEN TRUE ELSE p.maxprice >= $7 END)
+        AND (CASE WHEN $8::int = 0 THEN TRUE ELSE p.minprice <= $8 END)
+        -- Фильтр по наличию
+        AND (CASE WHEN $9::boolean = false THEN TRUE ELSE EXISTS (
+            SELECT 1 FROM store_house sh 
+            WHERE sh.productid = p.id AND sh.quantity > 0
+        ) END)
+        -- Фильтр по скидкам
+        AND (CASE WHEN array_length($10::int[], 1) IS NULL OR array_length($10::int[], 1) = 0 
+            THEN TRUE ELSE EXISTS (
+                SELECT 1 FROM discount d 
+                WHERE d.productid = p.id 
+                AND d.rule_id = ANY($10::int[])
+                AND d.discount_percent > 0
+            ) END)
+),
+firm_counts AS (
+    SELECT firm, COUNT(*) AS firm_count
+    FROM collection_products_data
+    WHERE firm IS NOT NULL
+    GROUP BY firm
+),
+bodytype_counts AS (
+    SELECT bodytype, COUNT(*) as count
+    FROM collection_products_data
+    GROUP BY bodytype
+),
+price_range AS (
+    SELECT COALESCE(MIN(minprice), 0) AS min_price,
+           COALESCE(MAX(maxprice), 0) AS max_price
+    FROM collection_products_data
+),
+type_data AS (
+    SELECT product_type_id, COUNT(*) as type_count
+    FROM collection_products_data
+    GROUP BY product_type_id
+),
+sizes_agg AS (
+    SELECT jsonb_object_agg(size_key, cnt) AS sizes
+    FROM (
+        SELECT ps.size_key, COUNT(*) AS cnt
+        FROM product_sizes ps
+        WHERE ps.product_id IN (SELECT id FROM collection_products_data)
+          AND ps.price > 0
+        GROUP BY ps.size_key
+    ) s
+),
+discount_rules_applied AS (
+    SELECT DISTINCT
+        dr.id,
+        dr.name,
+        dr.discount_type,
+        dr.discount_value,
+        dr.priority
+    FROM discount_rules dr
+    WHERE dr.is_active = true
+        AND dr.starts_at <= NOW()
+        AND (dr.ends_at IS NULL OR dr.ends_at > NOW())
+        AND dr.id IN (
+            SELECT DISTINCT d.rule_id
+            FROM discount d
+            WHERE d.productid IN (SELECT id FROM collection_products_data)
+              AND d.discount_percent > 0
+        )
+)
+SELECT
+    COALESCE(
+        (SELECT sizes FROM sizes_agg),
+        '{}'::jsonb
+    ) as sizes,
+    COALESCE(
+        (SELECT jsonb_object_agg(bodytype::text, count) FROM bodytype_counts),
+        '{}'::jsonb
+    ) as bodytypes,
+    (SELECT min_price FROM price_range) as min_price,
+    (SELECT max_price FROM price_range) as max_price,
+    COALESCE(
+        (SELECT jsonb_object_agg(COALESCE(firm, 'Unknown'), firm_count) FROM firm_counts),
+        '{}'::jsonb
+    ) as firms,
+    COALESCE(
+        (SELECT jsonb_agg(product_type_id) FROM type_data),
+        '[]'::jsonb
+    ) as product_types,
+    COALESCE(
+        (SELECT jsonb_agg(
+            jsonb_build_object(
+                'id', id,
+                'name', name,
+                'discount_type', discount_type,
+                'discount_value', discount_value,
+                'priority', priority
+            )
+         ) FROM discount_rules_applied),
+        '[]'::jsonb
+    ) as discount_rules;
+
+
+
+
+
+
 -- name: GetAggregatedFiltersFast :one
 WITH product_data AS MATERIALIZED (
     SELECT 
@@ -721,6 +859,7 @@ SELECT p.sizes,
     ) as store_info,
     p.article,
     p.description,
+    p.bodytype,
     bl.name as line,
     p.type,
     p.category,

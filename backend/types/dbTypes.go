@@ -196,11 +196,19 @@ type CachedProduct struct {
 }
 
 type CachedWidget struct {
-	ID        int32           `json:"id"`
-	Name      string          `json:"name"`
-	Type      string          `json:"type"`
-	SortOrder int32           `json:"sort_order"`
-	LinkUrl   string          `json:"link_url"`
-	Settings  json.RawMessage `json:"settings"`
-	Products  []CachedProduct `json:"products,omitempty"`
+	ID             int32           `json:"id"`
+	Name           string          `json:"name"`
+	Type           string          `json:"type"`
+	SortOrder      int32           `json:"sort_order"`
+	CollectionID   int32           `json:"collection_id"`
+	CollectionSlug string          `json:"collection_slug"`
+	Settings       json.RawMessage `json:"settings"`
+	Products       []CachedProduct `json:"products,omitempty"`
+}
+
+type CollectionSettings struct {
+	// Для dynamic и hybrid режимов
+	Filters    *ProductsFilterStruct `json:"filters,omitempty"`
+	ProductIDs []int32               `json:"product_ids,omitempty"`
+	SortBy     string                `json:"sort_by,omitempty"` // 'price_asc', 'price_desc', 'popular', 'newest'
 }

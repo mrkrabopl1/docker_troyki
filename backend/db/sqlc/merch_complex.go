@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mrkrabopl1/go_db/db/query"
 	"github.com/mrkrabopl1/go_db/types"
+	"github.com/rs/zerolog/log"
 )
 
 // ==================== СТРУКТУРЫ ОТВЕТОВ ====================
@@ -46,6 +46,7 @@ type ProductsInfoResponse struct {
 	ImagePath      string                 `json:"image_path"`
 	Id             int32                  `json:"id"`
 	ImageExtansion string                 `json:"image_extansion"`
+	BodyType       BodyEnum               `json:"bodytype"`
 }
 
 type ProductsResponseD struct {
@@ -65,6 +66,7 @@ type FiltersSearchResponse struct {
 	Sizes      interface{} `json:"sizes"`
 	Types      interface{} `json:"types"`
 	Discounts  interface{} `json:"discounts"`
+	BodyTypes  interface{} `json:"bodytypes"`
 }
 
 type RespSearchProductsAndFiltersByString struct {
@@ -220,6 +222,7 @@ func (store *SQLStore) buildProductsInfoResponse(snInfo GetProductsInfoByIdRow) 
 		ImagePath:      store.ImagePathBuilder.GetImageURLFromPath(snInfo.ImagePath),
 		Id:             snInfo.ID,
 		ImageExtansion: "webp",
+		BodyType:       snInfo.Bodytype,
 	}
 }
 
@@ -527,7 +530,7 @@ func (store *SQLStore) GetProductsAndFiltersByNameCategoryAndType(
 	useLines := brandID > 0
 
 	var minPrice, maxPrice int32
-	var sizes, filtersData, types, discounts, linesData json.RawMessage
+	var sizes, filtersData, types, discounts, linesData, bodytypes json.RawMessage
 
 	if useLines {
 		fmt.Println("useLines")
@@ -541,6 +544,7 @@ func (store *SQLStore) GetProductsAndFiltersByNameCategoryAndType(
 			log.Printf("  ❌ [ERROR] GetFiltersByNameCategoryAndTypeNewWithLine: %v", err)
 			return RespSearchProductsAndFiltersByString{}, err
 		}
+		bodytypes = toJSONRawMessage(row.Bodytypes, "{}")
 		minPrice = toInt32(row.MinPrice)
 		maxPrice = toInt32(row.MaxPrice)
 		sizes = toJSONRawMessage(row.Sizes, "{}")
@@ -564,6 +568,7 @@ func (store *SQLStore) GetProductsAndFiltersByNameCategoryAndType(
 		filtersData = toJSONRawMessage(row.Firms, "{}")
 		types = toJSONRawMessage(row.ProductTypes, "[]")
 		discounts = toJSONRawMessage(row.DiscountRules, "[]")
+		bodytypes = toJSONRawMessage(row.Bodytypes, "{}")
 	}
 
 	filtersDuration := time.Since(startFilters)
@@ -591,6 +596,7 @@ func (store *SQLStore) GetProductsAndFiltersByNameCategoryAndType(
 			LinesData:  linesData,
 			Types:      types,
 			Discounts:  discounts,
+			BodyTypes:  bodytypes,
 		},
 	}
 
@@ -1297,6 +1303,7 @@ func (store *SQLStore) getProductsByFilters(
 }
 
 func (store *SQLStore) GetPageWidgetsFromDB(ctx context.Context) ([]types.CachedWidget, error) {
+	// Получаем виджеты с данными коллекции через JOIN
 	widgets, err := store.GetActivePageWidgets(ctx)
 	if err != nil {
 		return nil, err
@@ -1304,19 +1311,22 @@ func (store *SQLStore) GetPageWidgetsFromDB(ctx context.Context) ([]types.Cached
 
 	cachedWidgets := make([]types.CachedWidget, 0, len(widgets))
 	for _, w := range widgets {
+		// w уже содержит collection_slug, collection_name, collection_settings из JOIN
 		cached := types.CachedWidget{
-			ID:        w.ID,
-			Name:      w.Name,
-			Type:      w.Type,
-			SortOrder: w.SortOrder,
-			Settings:  w.Settings,
-			LinkUrl:   w.LinkUrl,
+			ID:             w.ID,
+			Name:           w.Name,
+			Type:           w.Type,
+			SortOrder:      w.SortOrder,
+			CollectionID:   w.CollectionID,
+			CollectionSlug: w.CollectionSlug,
 		}
 
 		if w.Type == "products_slider" {
-			products, err := store.GetProductsForWidgetFromDB(ctx, w)
+			products, err := store.GetProductsForCollectionByID(ctx, w.CollectionID)
 			if err == nil {
 				cached.Products = products
+			} else {
+				log.Error().Err(err).Int32("widget_id", w.ID).Msg("failed to get products for widget")
 			}
 		}
 
@@ -1326,17 +1336,23 @@ func (store *SQLStore) GetPageWidgetsFromDB(ctx context.Context) ([]types.Cached
 	return cachedWidgets, nil
 }
 
-// getProductsForWidgetFromDB - получение товаров для виджета напрямую из БД
-func (store *SQLStore) GetProductsForWidgetFromDB(ctx context.Context, widget PageWidget) ([]types.CachedProduct, error) {
+// GetProductsForCollectionByID - получение товаров для коллекции по ID
+func (store *SQLStore) GetProductsForCollectionByID(ctx context.Context, collectionID int32) ([]types.CachedProduct, error) {
+	// Получаем коллекцию
+	collection, err := store.GetCollectionByID(ctx, collectionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get collection: %w", err)
+	}
+
+	// Получаем настройки из коллекции
 	var settings types.ProductsFilterStruct
-	if err := json.Unmarshal(widget.Settings, &settings); err != nil {
-		return nil, fmt.Errorf("failed to parse settings: %w", err)
+	if err := json.Unmarshal(collection.Settings, &settings); err != nil {
+		return nil, fmt.Errorf("failed to parse collection settings: %w", err)
 	}
 
 	limit := 20
-
 	settings.WithPrice = true
-	fmt.Println("Settttttttttttttings", settings)
+
 	result, err := store.GetProductsByFiltersComplex(
 		ctx,
 		"",
@@ -1345,7 +1361,6 @@ func (store *SQLStore) GetProductsForWidgetFromDB(ctx context.Context, widget Pa
 		settings,
 		0,
 	)
-	fmt.Println("result", result)
 	if err != nil {
 		return nil, err
 	}
@@ -1367,4 +1382,182 @@ func (store *SQLStore) GetProductsForWidgetFromDB(ctx context.Context, widget Pa
 	}
 
 	return cachedProducts, nil
+}
+
+func (store *SQLStore) GetCollectionProducts(
+	ctx context.Context,
+	collection Collection,
+	filtersParams GetFullFiltersForCollectionParams,
+	page, limit int,
+) ([]ProductRow, int32, error) {
+	offset := (page - 1) * limit
+
+	switch collection.Type {
+	case "manual":
+		return store.getManualCollectionProductsPaginated(ctx, collection.ID, limit, offset)
+	case "dynamic":
+		return store.getDynamicCollectionProducts(ctx, collection, filtersParams, limit, offset)
+	case "hybrid":
+		return store.getHybridCollectionProducts(ctx, collection, filtersParams, limit, offset)
+	default:
+		return nil, 0, fmt.Errorf("unknown collection type: %s", collection.Type)
+	}
+}
+
+func (store *SQLStore) getManualCollectionProductsPaginated(
+	ctx context.Context,
+	collectionID int32,
+	limit, offset int,
+) ([]ProductRow, int32, error) {
+	// Общее количество
+	total, err := store.GetCollectionProductCount(ctx, collectionID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if total == 0 {
+		return []ProductRow{}, 0, nil
+	}
+
+	// Получаем товары из БД
+	rows, err := store.GetManualCollectionProducts(ctx, GetManualCollectionProductsParams{
+		CollectionID: collectionID,
+		Limit:        int32(limit),
+		Offset:       int32(offset),
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Конвертируем в types.ProductResponse
+	products := make([]ProductRow, 0, len(rows))
+	for _, row := range rows {
+		products = append(products, ProductRow{
+			ID:              row.GlobalID,
+			Name:            row.Name,
+			ImagePath:       row.ImagePath,
+			Firm:            row.Firm,
+			MinPrice:        row.MinPrice,
+			MaxPrice:        row.MaxPrice,
+			DiscountPercent: float64(row.DiscountPercent.Int32),
+			MaxDiscPrice:    float64(row.DiscountedPrice.Int32),
+			InStore:         row.InStore.Bool,
+		})
+	}
+
+	return products, total, nil
+}
+
+// ============ DYNAMIC ============
+
+func (store *SQLStore) getDynamicCollectionProducts(
+	ctx context.Context,
+	collection Collection,
+	filtersParams GetFullFiltersForCollectionParams,
+	limit, offset int,
+) ([]ProductRow, int32, error) {
+	var settings types.CollectionSettings
+	if err := json.Unmarshal(collection.Settings, &settings); err != nil {
+		return nil, 0, fmt.Errorf("failed to parse settings: %w", err)
+	}
+
+	if settings.Filters == nil {
+		return nil, 0, fmt.Errorf("filters required for dynamic collection")
+	}
+	productsWithCount, err := store.getProductsByFilters(ctx, GetFiltersByNameCategoryAndTypeParamsNew{}, *settings.Filters, limit, offset, 0, true)
+	// Общее количество
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if productsWithCount.TotalCount == 0 {
+		return []ProductRow{}, 0, nil
+	}
+
+	return productsWithCount.Products, int32(productsWithCount.TotalCount), nil
+}
+
+// ============ HYBRID ============
+
+func (store *SQLStore) getHybridCollectionProducts(
+	ctx context.Context,
+	collection Collection,
+	filtersParams GetFullFiltersForCollectionParams,
+	limit, offset int,
+) ([]ProductRow, int32, error) {
+	var settings types.CollectionSettings
+	if err := json.Unmarshal(collection.Settings, &settings); err != nil {
+		return nil, 0, fmt.Errorf("failed to parse settings: %w", err)
+	}
+
+	// Строим параметры для запроса
+	params := GetProductsForCollectionByFiltersPaginateFullParams{
+		CollectionID: collection.ID,
+		Sizes:        []string{},
+		Firms:        []int32{},
+		ProductTypes: []int32{},
+		Categories:   []int32{},
+		Lines:        []int32{},
+		Bodytypes:    []string{},
+		RuleIds:      []int32{},
+		WithPrice:    false,
+		Limitval:     int32(limit),
+		Offsetval:    int32(offset),
+		SortType:     0,
+	}
+
+	// Заполняем фильтры если есть
+	if settings.Filters != nil {
+		params.Sizes = settings.Filters.Sizes
+		params.Firms = settings.Filters.Firms
+		params.ProductTypes = settings.Filters.Types
+		params.Categories = settings.Filters.Categories
+		params.Lines = settings.Filters.Lines
+		params.Bodytypes = settings.Filters.Bodytypes
+		params.RuleIds = settings.Filters.RuleIDs
+		params.WithPrice = true
+	}
+	if len(settings.Filters.Price) == 2 {
+		params.Minprice = pgtype.Int4{Int32: int32(settings.Filters.Price[0]), Valid: true}
+		params.Maxprice = pgtype.Int4{Int32: int32(settings.Filters.Price[1]), Valid: true}
+	}
+	// ОДИН ЗАПРОС для всех товаров (фильтрованные + ручные через OR)
+	rows, err := store.GetProductsForCollectionByFiltersPaginateFull(ctx, params)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Конвертируем в ProductRow
+	products := make([]ProductRow, 0, len(rows))
+	for _, row := range rows {
+		products = append(products, ProductRow{
+			ID:              row.ID,
+			Name:            row.Name,
+			ImagePath:       row.ImagePath,
+			Firm:            row.Firm,
+			MinPrice:        row.MinPrice,
+			MaxPrice:        row.MaxPrice,
+			DiscountPercent: float64(row.DiscountPercent),
+		})
+	}
+
+	// Считаем общее количество
+	total, err := store.CountProductsForCollectionByFiltersFull(ctx, CountProductsForCollectionByFiltersFullParams{
+		CollectionID: collection.ID,
+		Sizes:        params.Sizes,
+		Firms:        params.Firms,
+		ProductTypes: params.ProductTypes,
+		Categories:   params.Categories,
+		Lines:        params.Lines,
+		Bodytypes:    params.Bodytypes,
+		Minprice:     params.Minprice,
+		Maxprice:     params.Maxprice,
+		RuleIds:      params.RuleIds,
+		WithPrice:    params.WithPrice,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return products, total, nil
 }

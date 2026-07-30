@@ -31,7 +31,7 @@ type TaskProcessor interface {
 	// Существующие методы
 	SetProductsInfo(ctx context.Context, ID string, merchant db.ProductsInfoResponse) error
 	GetProductsInfo(ctx context.Context, ID string) (db.ProductsInfoResponse, error)
-	SetBanners(ctx context.Context, banners []db.CreateBannerParams) error
+	SetBanners(ctx context.Context, banners []db.GetActiveBannersRow) error
 	ClearBannersCache(ctx context.Context) error
 	GetBanners(ctx context.Context) ([]db.CreateBannerParams, error)
 
@@ -40,9 +40,15 @@ type TaskProcessor interface {
 	GetPageWidgets(ctx context.Context) ([]byte, error)
 	ClearPageWidgetsCache(ctx context.Context) error
 
-	ProcessTaskGenerateWidgetLink(ctx context.Context, task *asynq.Task) error
+	// ProcessTaskGenerateWidgetLink(ctx context.Context, task *asynq.Task) error
 	RefreshPageWidgetsCache(ctx context.Context) error
 	RefreshSingleWidgetCache(ctx context.Context, widgetID int32) error
+
+	SetCollection(ctx context.Context, slug string, data []byte) error
+	GetCollection(ctx context.Context, slug string) ([]byte, error)
+	ClearCollectionCache(ctx context.Context, slug string) error
+	ClearAllCollectionsCache(ctx context.Context) error
+	RefreshCollectionsCache(ctx context.Context) error
 }
 
 type RedisTaskProcessor struct {
@@ -123,7 +129,7 @@ func (p *RedisTaskProcessor) GetProductsInfo(ctx context.Context, ID string) (db
 	return snickers, nil
 }
 
-func (p *RedisTaskProcessor) SetBanners(ctx context.Context, banners []db.CreateBannerParams) error {
+func (p *RedisTaskProcessor) SetBanners(ctx context.Context, banners []db.GetActiveBannersRow) error {
 	// Конвертируем слайс баннеров в JSON
 	data, err := json.Marshal(banners)
 	if err != nil {
@@ -214,7 +220,7 @@ func (processor *RedisTaskProcessor) Start() error {
 	mux.HandleFunc(TaskSendAdminPasswordReset, processor.ProcessTaskSendAdminPasswordReset)
 	mux.HandleFunc(TaskSendAdminPasswordChanged, processor.ProcessTaskSendAdminPasswordChanged)
 	mux.HandleFunc(TaskSendAdminInvite, processor.ProcessTaskSendAdminInvite)
-	mux.HandleFunc(TaskGenerateWidgetLink, processor.ProcessTaskGenerateWidgetLink)
+	// mux.HandleFunc(TaskGenerateWidgetLink, processor.ProcessTaskGenerateWidgetLink)
 	return processor.server.Start(mux)
 }
 

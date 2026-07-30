@@ -1250,14 +1250,20 @@ FROM admin_logs al
     JOIN admins a ON al.admin_id = a.id
 ORDER BY al.created_at DESC
 LIMIT 20;
+
 -- name: GetAdminBanners :many
-SELECT id,
-    title,
-    image_url,
-    link_url,
-    is_active,
-    created_at
-FROM banners;
+SELECT 
+    b.id,
+    b.title,
+    b.image_url,
+    b.collection_id,
+    b.is_active,
+    b.created_at,
+    b.updated_at,
+    c.slug as collection_slug
+FROM banners b
+INNER JOIN collections c ON b.collection_id = c.id
+ORDER BY b.sort_order ASC, b.id ASC;
 -- name: DeleteBrand :exec
 DELETE FROM brands
 WHERE id = $1;
@@ -1348,25 +1354,57 @@ INSERT INTO page_widgets (
     type,
     sort_order,
     is_active,
-    settings,
-    link_url
+    collection_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5
 )
 RETURNING *;
 
 -- name: GetPageWidget :one
-SELECT * FROM page_widgets
-WHERE id = $1;
+SELECT 
+    w.id,
+    w.name,
+    w.type,
+    w.sort_order,
+    w.is_active,
+    w.collection_id,
+    w.created_at,
+    w.updated_at,
+    c.slug as collection_slug
+FROM page_widgets w
+INNER JOIN collections c ON w.collection_id = c.id
+WHERE w.id = $1;
 
 -- name: GetActivePageWidgets :many
-SELECT * FROM page_widgets
-WHERE is_active = true
-ORDER BY sort_order ASC, id ASC;
+SELECT 
+    w.id,
+    w.name,
+    w.type,
+    w.sort_order,
+    w.is_active,
+    w.collection_id,
+    w.created_at,
+    w.updated_at,
+    c.slug as collection_slug
+FROM page_widgets w
+INNER JOIN collections c ON w.collection_id = c.id
+WHERE w.is_active = true
+ORDER BY w.sort_order ASC, w.id ASC;
 
 -- name: GetAllPageWidgets :many
-SELECT * FROM page_widgets
-ORDER BY sort_order ASC, id ASC;
+SELECT 
+    w.id,
+    w.name,
+    w.type,
+    w.sort_order,
+    w.is_active,
+    w.collection_id,
+    w.created_at,
+    w.updated_at,
+    c.slug as collection_slug
+FROM page_widgets w
+INNER JOIN collections c ON w.collection_id = c.id
+ORDER BY w.sort_order ASC, w.id ASC;
 
 -- name: UpdatePageWidget :one
 UPDATE page_widgets
@@ -1375,10 +1413,17 @@ SET
     type = COALESCE(sqlc.narg('type')::text, type),
     sort_order = COALESCE(sqlc.narg('sort_order')::int, sort_order),
     is_active = COALESCE(sqlc.narg('is_active')::bool, is_active),
-    settings = COALESCE(sqlc.narg('settings')::jsonb, settings),
-    link_url = COALESCE(sqlc.narg('link_url')::text, link_url)
+    collection_id = COALESCE(sqlc.narg('collection_id')::int, collection_id)
 WHERE id = sqlc.arg('id')
-RETURNING *;
+RETURNING 
+    id,
+    name,
+    type,
+    sort_order,
+    is_active,
+    collection_id,
+    created_at,
+    updated_at;
 
 -- name: DeletePageWidget :exec
 DELETE FROM page_widgets

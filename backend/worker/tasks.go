@@ -791,36 +791,36 @@ func (processor *RedisTaskProcessor) ProcessTaskSendAdminInvite(ctx context.Cont
 	return nil
 }
 
-func (processor *RedisTaskProcessor) ProcessTaskGenerateWidgetLink(
-	ctx context.Context,
-	task *asynq.Task,
-) error {
-	var payload PayloadGenerateWidgetLink
-	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal payload: %w", asynq.SkipRetry)
-	}
+// func (processor *RedisTaskProcessor) ProcessTaskGenerateWidgetLink(
+// 	ctx context.Context,
+// 	task *asynq.Task,
+// ) error {
+// 	var payload PayloadGenerateWidgetLink
+// 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+// 		return fmt.Errorf("failed to unmarshal payload: %w", asynq.SkipRetry)
+// 	}
 
-	log.Info().Int32("widget_id", payload.WidgetID).
-		Str("action", payload.Action).
-		Msg("processing generate widget link task")
+// 	log.Info().Int32("widget_id", payload.WidgetID).
+// 		Str("action", payload.Action).
+// 		Msg("processing generate widget link task")
 
-	// 🔥 Здесь вызываем метод, который генерирует link_url
-	// и обновляет Redis кэш
+// 	// 🔥 Здесь вызываем метод, который генерирует link_url
+// 	// и обновляет Redis кэш
 
-	// Вариант 1: если у processor есть доступ к server
-	// processor.server.processWidgetLinkGeneration(ctx, payload.WidgetID)
+// 	// Вариант 1: если у processor есть доступ к server
+// 	// processor.server.processWidgetLinkGeneration(ctx, payload.WidgetID)
 
-	// Вариант 2: если processor сам может генерировать
-	err := processor.generateWidgetLink(ctx, payload.WidgetID)
-	if err != nil {
-		return fmt.Errorf("failed to generate widget link: %w", err)
-	}
+// 	// Вариант 2: если processor сам может генерировать
+// 	err := processor.generateWidgetLink(ctx, payload.WidgetID)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to generate widget link: %w", err)
+// 	}
 
-	log.Info().Int32("widget_id", payload.WidgetID).
-		Msg("widget link generated successfully")
+// 	log.Info().Int32("widget_id", payload.WidgetID).
+// 		Msg("widget link generated successfully")
 
-	return nil
-}
+// 	return nil
+// }
 
 func (processor *RedisTaskProcessor) RefreshPageWidgetsCache(ctx context.Context) error {
 	log.Info().Msg("Refreshing page widgets cache")
@@ -833,17 +833,27 @@ func (processor *RedisTaskProcessor) RefreshPageWidgetsCache(ctx context.Context
 	cachedWidgets := make([]types.CachedWidget, 0, len(widgets))
 
 	for _, w := range widgets {
+		// Получаем коллекцию по slug
+		collection, err := processor.store.GetCollectionBySlug(ctx, w.CollectionSlug)
+		if err != nil {
+			log.Error().Err(err).Str("collection_slug", w.CollectionSlug).Msg("failed to get collection for widget")
+			// Пропускаем виджет если коллекция не найдена
+			continue
+		}
+
 		cached := types.CachedWidget{
 			ID:        w.ID,
 			Name:      w.Name,
 			Type:      w.Type,
 			SortOrder: w.SortOrder,
-			Settings:  w.Settings,
-			LinkUrl:   w.LinkUrl,
+			// Передаем настройки из коллекции
+			CollectionSlug: w.CollectionSlug,
+			Settings:       collection.Settings, // используем settings из коллекции
 		}
 
 		if w.Type == "products_slider" {
-			products, err := processor.store.GetProductsForWidgetFromDB(ctx, w)
+			// Получаем товары на основе настроек коллекции
+			products, err := processor.store.GetProductsForCollectionByID(ctx, collection.ID)
 			if err == nil {
 				cached.Products = products
 			} else {
@@ -888,20 +898,30 @@ func (processor *RedisTaskProcessor) RefreshSingleWidgetCache(ctx context.Contex
 		return processor.RefreshPageWidgetsCache(ctx)
 	}
 
+	// Получаем коллекцию
+	collection, err := processor.store.GetCollectionBySlug(ctx, widget.CollectionSlug)
+	if err != nil {
+		log.Error().Err(err).Str("collection_slug", widget.CollectionSlug).Msg("failed to get collection for widget")
+		// Если коллекция не найдена, удаляем виджет из кэша
+		return processor.RefreshPageWidgetsCache(ctx)
+	}
+
 	// Строим обновленный виджет
 	cached := types.CachedWidget{
-		ID:        widget.ID,
-		Name:      widget.Name,
-		Type:      widget.Type,
-		SortOrder: widget.SortOrder,
-		Settings:  widget.Settings,
-		LinkUrl:   widget.LinkUrl,
+		ID:             widget.ID,
+		Name:           widget.Name,
+		Type:           widget.Type,
+		SortOrder:      widget.SortOrder,
+		CollectionSlug: widget.CollectionSlug,
+		Settings:       collection.Settings, // используем settings из коллекции
 	}
 
 	if widget.Type == "products_slider" {
-		products, err := processor.store.GetProductsForWidgetFromDB(ctx, widget)
+		products, err := processor.store.GetProductsForCollectionByID(ctx, collection.ID)
 		if err == nil {
 			cached.Products = products
+		} else {
+			log.Error().Err(err).Int32("widget_id", widgetID).Msg("failed to get products for widget")
 		}
 	}
 

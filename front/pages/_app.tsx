@@ -18,9 +18,13 @@ export default function App({ Component, pageProps }: AppProps) {
                   !router.pathname.startsWith('/admin/reset-password') &&
                   !router.pathname.startsWith('/admin/accept-invite');
 
+  // 🔥 Берем данные с сервера
+  const initialMainInfo = pageProps.initialData?.mainInfo;
+
   return (
     <Provider store={store}>
-      <AppContent>
+      {/* 🔥 Передаем initialMainInfo в AppContent */}
+      <AppContent initialMainInfo={initialMainInfo}>
         {isAdmin ? (
           <ProtectedRoute>
             <AdminLayout>

@@ -22,8 +22,9 @@ CREATE TABLE page_widgets (
     type VARCHAR(100) NOT NULL,          -- "products_slider", "banner_slider", "brands_scroller"
     sort_order INT NOT NULL DEFAULT 0,   -- порядок на странице
     is_active BOOLEAN DEFAULT true,
-    settings JSONB,                       -- произвольные настройки (тайтл, стили, лимит товаров и т.д.)
-    link_url VARCHAR(500) NOT NULL
+    collection_id INT NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- Типы товаров
 CREATE TABLE IF NOT EXISTS public.product_types (
@@ -304,7 +305,7 @@ CREATE TABLE IF NOT EXISTS public.banners (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255),
     image_url VARCHAR(500) NOT NULL,
-    link_url VARCHAR(500) NOT NULL,
+    collection_id INT NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -533,3 +534,29 @@ CREATE TABLE IF NOT EXISTS public.product_sizes (
 );
 
 
+CREATE TABLE collections (
+    id SERIAL PRIMARY KEY,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    type VARCHAR(50) NOT NULL DEFAULT 'dynamic', -- 'dynamic' | 'manual' | 'hybrid'
+    settings JSONB NOT NULL DEFAULT '{}',
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Связь коллекций с товарами (для ручного режима)
+CREATE TABLE collection_products (
+    collection_id INT REFERENCES collections(id) ON DELETE CASCADE,
+    product_id INT REFERENCES products(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (collection_id, product_id)
+);
+
+-- Индексы для производительности
+CREATE INDEX idx_collections_slug ON collections(slug);
+CREATE INDEX idx_collections_type ON collections(type);
+CREATE INDEX idx_collections_active ON collections(is_active);
+CREATE INDEX idx_collection_products_collection ON collection_products(collection_id);
+CREATE INDEX idx_collection_products_product ON collection_products(product_id);

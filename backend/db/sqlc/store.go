@@ -48,6 +48,12 @@ type Store interface {
 		filters types.ProductsFilterStruct,
 		orderedType int,
 	) (RespSearchProductsAndFiltersByString, error)
+	GetCollectionProducts(
+		ctx context.Context,
+		collection Collection,
+		filtersParams GetFullFiltersForCollectionParams,
+		page, limit int,
+	) ([]ProductRow, int32, error)
 	GetProductsByString(ctx context.Context, name string, page int, size int, filters types.ProductsFilterStruct, orderedType int) (RespSearchProductsByString, error)
 	CreateDiscounts(ctx context.Context, discountData map[int32]DiscountData) error
 	GetProductsByFiltersComplex(ctx context.Context, name string, page int, size int, filters types.ProductsFilterStruct, orderedType int32) (RespProductsByStringStruct, error)
@@ -55,7 +61,7 @@ type Store interface {
 	GetAdminProductsInfoByIdComplex(ctx context.Context, id int32) (ProductsAdminInfoResponse, error)
 	RecalculateAllDiscounts(ctx context.Context) error
 	GetPageWidgetsFromDB(ctx context.Context) ([]types.CachedWidget, error)
-	GetProductsForWidgetFromDB(ctx context.Context, widget PageWidget) ([]types.CachedProduct, error)
+	GetProductsForCollectionByID(ctx context.Context, collectionID int32) ([]types.CachedProduct, error)
 	RecalculateAffectedProducts(ctx context.Context, ruleID int32) error
 	GetFiltersOptimized(ctx context.Context, params FilterParams) (*FiltersResult, error)
 	GetFiltersOptimizedMemo(ctx context.Context, params FilterParams) (*FiltersResult, error)

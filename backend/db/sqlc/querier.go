@@ -13,6 +13,7 @@ import (
 type Querier interface {
 	ActivateBrand(ctx context.Context, id int32) error
 	ActivateBrandLine(ctx context.Context, id int32) error
+	AddProductsToCollection(ctx context.Context, arg AddProductsToCollectionParams) error
 	// ============================================
 	// DISCOUNT RULE ITEMS
 	// ============================================
@@ -39,6 +40,7 @@ type Querier interface {
 	CheckSizeExists(ctx context.Context, oldSizeKey string) (bool, error)
 	CheckTypeExists(ctx context.Context, arg CheckTypeExistsParams) (bool, error)
 	CheckTypeExistsByIds(ctx context.Context, arg CheckTypeExistsByIdsParams) (bool, error)
+	ClearCollectionProducts(ctx context.Context, collectionID int32) error
 	ClearDiscounts(ctx context.Context) error
 	CountActiveBanners(ctx context.Context) (int64, error)
 	CountBrands(ctx context.Context, name string) (CountBrandsRow, error)
@@ -51,6 +53,7 @@ type Querier interface {
 	CountProductsByFiltersFull(ctx context.Context, arg CountProductsByFiltersFullParams) (int64, error)
 	CountProductsByFiltersWithDiscount(ctx context.Context, arg CountProductsByFiltersWithDiscountParams) (int64, error)
 	CountProductsByFiltersWithStore(ctx context.Context, arg CountProductsByFiltersWithStoreParams) (int64, error)
+	CountProductsForCollectionByFiltersFull(ctx context.Context, arg CountProductsForCollectionByFiltersFullParams) (int32, error)
 	CreateAdmin(ctx context.Context, arg CreateAdminParams) (CreateAdminRow, error)
 	CreateAdminInvite(ctx context.Context, arg CreateAdminInviteParams) (AdminInvite, error)
 	CreateAdminLog(ctx context.Context, arg CreateAdminLogParams) error
@@ -58,6 +61,7 @@ type Querier interface {
 	CreateBanner(ctx context.Context, arg CreateBannerParams) (CreateBannerRow, error)
 	CreateBrand(ctx context.Context, arg CreateBrandParams) (CreateBrandRow, error)
 	CreateBrandLine(ctx context.Context, arg CreateBrandLineParams) (CreateBrandLineRow, error)
+	CreateCollection(ctx context.Context, arg CreateCollectionParams) (Collection, error)
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (int32, error)
 	CreateDiscountRule(ctx context.Context, arg CreateDiscountRuleParams) (DiscountRule, error)
 	// query/newsletter.sql
@@ -77,6 +81,7 @@ type Querier interface {
 	DeleteBrand(ctx context.Context, id int32) error
 	DeleteBrandLine(ctx context.Context, id int32) (DeleteBrandLineRow, error)
 	DeleteCartData(ctx context.Context, id int32) error
+	DeleteCollection(ctx context.Context, id int32) error
 	DeleteDiscount(ctx context.Context, productid int32) error
 	DeleteDiscountRule(ctx context.Context, id int32) error
 	DeleteFromVerifivation(ctx context.Context, id int32) error
@@ -92,8 +97,9 @@ type Querier interface {
 	GetActiveBanners(ctx context.Context) ([]GetActiveBannersRow, error)
 	GetActiveBrandLines(ctx context.Context) ([]GetActiveBrandLinesRow, error)
 	GetActiveBrands(ctx context.Context) ([]GetActiveBrandsRow, error)
+	GetActiveCollections(ctx context.Context) ([]Collection, error)
 	GetActiveDiscountRules(ctx context.Context) ([]DiscountRule, error)
-	GetActivePageWidgets(ctx context.Context) ([]PageWidget, error)
+	GetActivePageWidgets(ctx context.Context) ([]GetActivePageWidgetsRow, error)
 	GetAdminBanners(ctx context.Context) ([]GetAdminBannersRow, error)
 	GetAdminByEmail(ctx context.Context, email string) (GetAdminByEmailRow, error)
 	GetAdminByID(ctx context.Context, id int32) (GetAdminByIDRow, error)
@@ -116,8 +122,9 @@ type Querier interface {
 	GetAllBrandLinesByBrandId(ctx context.Context, brandID int32) ([]GetAllBrandLinesByBrandIdRow, error)
 	GetAllBrands(ctx context.Context) ([]GetAllBrandsRow, error)
 	GetAllBrandsWithLines(ctx context.Context) ([]GetAllBrandsWithLinesRow, error)
+	GetAllCollections(ctx context.Context) ([]Collection, error)
 	GetAllFiltersForAdmin(ctx context.Context) (GetAllFiltersForAdminRow, error)
-	GetAllPageWidgets(ctx context.Context) ([]PageWidget, error)
+	GetAllPageWidgets(ctx context.Context) ([]GetAllPageWidgetsRow, error)
 	GetAllProductsForAdmin(ctx context.Context, arg GetAllProductsForAdminParams) ([]GetAllProductsForAdminRow, error)
 	//-----SIZES
 	GetAllSizesStats(ctx context.Context, arg GetAllSizesStatsParams) ([]GetAllSizesStatsRow, error)
@@ -143,6 +150,11 @@ type Querier interface {
 	GetCategories(ctx context.Context) ([]GetCategoriesRow, error)
 	GetCategoriesWithTypes(ctx context.Context) ([]GetCategoriesWithTypesRow, error)
 	GetCategoryAndTypeByIDs(ctx context.Context, arg GetCategoryAndTypeByIDsParams) (GetCategoryAndTypeByIDsRow, error)
+	GetCollectionByID(ctx context.Context, id int32) (Collection, error)
+	GetCollectionBySlug(ctx context.Context, slug string) (Collection, error)
+	GetCollectionProductCount(ctx context.Context, collectionID int32) (int32, error)
+	GetCollectionProductIDs(ctx context.Context, collectionID int32) ([]int32, error)
+	GetCollectionWithProducts(ctx context.Context, id int32) ([]GetCollectionWithProductsRow, error)
 	GetCombinedFiltersByString(ctx context.Context, dollar_1 string) (GetCombinedFiltersByStringRow, error)
 	GetCountIdByName(ctx context.Context, dollar_1 string) ([]GetCountIdByNameRow, error)
 	GetCountOfCollectionsOrFirms(ctx context.Context, arg GetCountOfCollectionsOrFirmsParams) (int64, error)
@@ -166,10 +178,13 @@ type Querier interface {
 	GetFiltersByNameCategoryAndType(ctx context.Context, arg GetFiltersByNameCategoryAndTypeParams) (GetFiltersByNameCategoryAndTypeRow, error)
 	GetFiltersByNameCategoryAndTypeNew(ctx context.Context, arg GetFiltersByNameCategoryAndTypeNewParams) (GetFiltersByNameCategoryAndTypeNewRow, error)
 	GetFiltersByNameCategoryAndTypeNewWithLine(ctx context.Context, arg GetFiltersByNameCategoryAndTypeNewWithLineParams) (GetFiltersByNameCategoryAndTypeNewWithLineRow, error)
+	GetFiltersForCollection(ctx context.Context, arg GetFiltersForCollectionParams) (GetFiltersForCollectionRow, error)
 	GetFirms(ctx context.Context) ([]GetFirmsRow, error)
+	GetFullFiltersForCollection(ctx context.Context, arg GetFullFiltersForCollectionParams) (GetFullFiltersForCollectionRow, error)
 	GetFullPreorderCount(ctx context.Context, orderid int32) (interface{}, error)
 	GetFullProductsInfoByIds(ctx context.Context, dollar_1 []int32) ([]GetFullProductsInfoByIdsRow, error)
 	GetMainPageInfo(ctx context.Context, productsPerCategory int32) ([]GetMainPageInfoRow, error)
+	GetManualCollectionProducts(ctx context.Context, arg GetManualCollectionProductsParams) ([]GetManualCollectionProductsRow, error)
 	GetMerchCollection(ctx context.Context, arg GetMerchCollectionParams) ([]GetMerchCollectionRow, error)
 	GetMerchCollectionWithCount(ctx context.Context, arg GetMerchCollectionWithCountParams) ([]GetMerchCollectionWithCountRow, error)
 	GetMerchCountOfCollectionsOrFirms(ctx context.Context, arg GetMerchCountOfCollectionsOrFirmsParams) (int64, error)
@@ -193,7 +208,7 @@ type Querier interface {
 	GetOrdersCount(ctx context.Context, arg GetOrdersCountParams) (int64, error)
 	GetOrdersWithFilters(ctx context.Context, arg GetOrdersWithFiltersParams) ([]GetOrdersWithFiltersRow, error)
 	GetOrdersWithPagination(ctx context.Context, arg GetOrdersWithPaginationParams) ([]GetOrdersWithPaginationRow, error)
-	GetPageWidget(ctx context.Context, id int32) (PageWidget, error)
+	GetPageWidget(ctx context.Context, id int32) (GetPageWidgetRow, error)
 	GetPassword(ctx context.Context, id int32) ([]byte, error)
 	GetPreorderAddressById(ctx context.Context, orderid int32) (GetPreorderAddressByIdRow, error)
 	GetPreorderDataById(ctx context.Context, orderid int32) ([]GetPreorderDataByIdRow, error)
@@ -222,6 +237,7 @@ type Querier interface {
 	GetProductsByName(ctx context.Context, arg GetProductsByNameParams) ([]GetProductsByNameRow, error)
 	GetProductsByNameCategoryAndType(ctx context.Context, arg GetProductsByNameCategoryAndTypeParams) ([]GetProductsByNameCategoryAndTypeRow, error)
 	GetProductsForAdminByFilters(ctx context.Context, arg GetProductsForAdminByFiltersParams) ([]GetProductsForAdminByFiltersRow, error)
+	GetProductsForCollectionByFiltersPaginateFull(ctx context.Context, arg GetProductsForCollectionByFiltersPaginateFullParams) ([]GetProductsForCollectionByFiltersPaginateFullRow, error)
 	GetProductsInfoById(ctx context.Context, id int32) (GetProductsInfoByIdRow, error)
 	GetProductsWithDiscount(ctx context.Context) ([]GetProductsWithDiscountRow, error)
 	GetProductsWithSizesByIDs(ctx context.Context, productIds []int32) ([]GetProductsWithSizesByIDsRow, error)
@@ -254,6 +270,7 @@ type Querier interface {
 	MarkAdminPasswordResetTokenUsed(ctx context.Context, id int32) error
 	MarkInviteAsUsed(ctx context.Context, arg MarkInviteAsUsedParams) error
 	MarkProductsAsDeleted(ctx context.Context, dollar_1 []int32) error
+	RemoveProductsFromCollection(ctx context.Context, arg RemoveProductsFromCollectionParams) error
 	RemoveRuleItem(ctx context.Context, arg RemoveRuleItemParams) error
 	// Переименовываем размер у всех товаров
 	RenameSize(ctx context.Context, arg RenameSizeParams) error
@@ -281,6 +298,7 @@ type Querier interface {
 	UpdateBannerImage(ctx context.Context, arg UpdateBannerImageParams) error
 	UpdateBrand(ctx context.Context, arg UpdateBrandParams) error
 	UpdateBrandLine(ctx context.Context, arg UpdateBrandLineParams) error
+	UpdateCollection(ctx context.Context, arg UpdateCollectionParams) (Collection, error)
 	UpdateCustomerPass(ctx context.Context, arg UpdateCustomerPassParams) error
 	UpdateDiscountRule(ctx context.Context, arg UpdateDiscountRuleParams) (DiscountRule, error)
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) error

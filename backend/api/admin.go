@@ -2348,8 +2348,12 @@ type CreateBannerRequest struct {
 func (s *Server) handleAdminCreateBanner(c *gin.Context) {
 	// Получаем данные из form-data
 	title := c.PostForm("title")
-	linkURL := c.PostForm("url")
-
+	collectionIDStr := c.PostForm("collection_id") // обратите внимание: в форме используется "collection_id", а не "link_url"
+	collectionID, err := strconv.ParseInt(collectionIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection_id, must be a number"})
+		return
+	}
 	// Получаем файл изображения
 	file, err := c.FormFile("image")
 	if err != nil {
@@ -2370,10 +2374,10 @@ func (s *Server) handleAdminCreateBanner(c *gin.Context) {
 
 	// 2. Создаем баннер в БД
 	banner, err := s.store.CreateBanner(c.Request.Context(), db.CreateBannerParams{
-		Title:    pgtype.Text{String: title, Valid: title != ""},
-		ImageUrl: imageURL,
-		LinkUrl:  linkURL,
-		IsActive: true,
+		Title:        pgtype.Text{String: title, Valid: title != ""},
+		ImageUrl:     imageURL,
+		CollectionID: int32(collectionID),
+		IsActive:     true,
 	})
 	if err != nil {
 		// Если ошибка БД, удаляем сохраненное изображение
@@ -2442,24 +2446,10 @@ func (s *Server) handleAdminUpdateBanner(c *gin.Context) {
 		return
 	}
 
-	// Получаем данные из form-data (как в CreateBanner)
+	// Получаем данные из form-data
 	title := c.PostForm("title")
-	linkURL := c.PostForm("url") // обратите внимание: в форме используется "url", а не "link_url"
+	collectionIDStr := c.PostForm("collection_id")
 	isActiveStr := c.PostForm("active")
-
-	fmt.Println(linkURL, "fffffffffffffffffffffffffeeeeeeeeeeeeeee")
-
-	// Проверяем, есть ли новый файл
-	var newImageURL string
-	file, err := c.FormFile("image")
-	if err == nil {
-		// Сохраняем новое изображение
-		newImageURL, err = s.imageService.SaveBannerImage(file)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-	}
 
 	// Подготавливаем параметры обновления
 	updateParams := db.UpdateBannerParams{
@@ -2469,35 +2459,52 @@ func (s *Server) handleAdminUpdateBanner(c *gin.Context) {
 	// Обновляем title, если передан
 	if title != "" {
 		updateParams.Title = pgtype.Text{String: title, Valid: true}
-	} else {
-		// Если не передан, оставляем существующий
-		updateParams.Title = existingBanner.Title
 	}
 
-	// Обновляем link_url, если передан
-	if linkURL != "" {
-		updateParams.LinkUrl = linkURL
-	} else {
-		updateParams.LinkUrl = existingBanner.LinkUrl
+	// Обновляем collection_id, если передан
+	if collectionIDStr != "" {
+		collectionID64, err := strconv.ParseInt(collectionIDStr, 10, 32)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection_id, must be a number"})
+			return
+		}
+		collectionID := int32(collectionID64)
+
+		// Проверяем существование коллекции
+		_, err = s.store.GetCollectionByID(c.Request.Context(), collectionID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Collection not found"})
+			return
+		}
+
+		updateParams.CollectionID = collectionID
 	}
 
 	// Обновляем is_active, если передан
 	if isActiveStr != "" {
-		updateParams.IsActive = isActiveStr == "true"
-	} else {
-		updateParams.IsActive = existingBanner.IsActive
+		isActive, err := strconv.ParseBool(isActiveStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid active value"})
+			return
+		}
+		updateParams.IsActive = isActive
 	}
 
-	// Обновляем image_url, если загружено новое изображение
-	if newImageURL != "" {
+	// Проверяем, есть ли новый файл изображения
+	var newImageURL string
+	file, err := c.FormFile("image")
+	if err == nil {
+		// Сохраняем новое изображение
+		newImageURL, err = s.imageService.SaveBannerImage(file)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 		updateParams.ImageUrl = newImageURL
-	} else {
-		updateParams.ImageUrl = existingBanner.ImageUrl
 	}
 
 	// Обновляем баннер в БД
 	err = s.store.UpdateBanner(c.Request.Context(), updateParams)
-	fmt.Println(err, updateParams, "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq")
 	if err != nil {
 		// Если ошибка БД и загружено новое изображение, удаляем его
 		if newImageURL != "" {
@@ -2512,7 +2519,7 @@ func (s *Server) handleAdminUpdateBanner(c *gin.Context) {
 		s.imageService.DeleteBannerImage(existingBanner.ImageUrl)
 	}
 
-	// 🟢 ОЧИСТИТЬ КЭШ БАННЕРОВ В REDIS (как в CreateBanner)
+	// Очищаем кэш баннеров в Redis
 	go func() {
 		ctx := context.Background()
 		if err := s.taskProcessor.ClearBannersCache(ctx); err != nil {
@@ -2522,7 +2529,7 @@ func (s *Server) handleAdminUpdateBanner(c *gin.Context) {
 		}
 	}()
 
-	// Логируем (как в CreateBanner)
+	// Логируем
 	go func() {
 		ctx := context.Background()
 		var ipAddr *netip.Addr
@@ -2549,7 +2556,6 @@ func (s *Server) handleAdminUpdateBanner(c *gin.Context) {
 		"image_url": newImageURL,
 	})
 }
-
 func (s *Server) handleAdminDeleteBanner(c *gin.Context) {
 	bannerID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -3568,6 +3574,11 @@ func (s *Server) handleAdminGetBanners(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
+	}
+
+	// Если banners == nil, инициализируем пустым массивом
+	if banners == nil {
+		banners = []db.GetAdminBannersRow{}
 	}
 
 	// Обновляем URL изображений для каждого баннера

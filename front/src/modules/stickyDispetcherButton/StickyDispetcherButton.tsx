@@ -15,7 +15,7 @@ const StickyDispatcherButton: React.FC<StickyDispatcherButtonProps> = memo(({
     top = '100px' 
 }) => {
     const [show, setShow] = useState(false);
-    const { footer } = useAppSelector(state => state.dispetcherReducer);
+    const { footer } = useAppSelector(state => state.dispetcher);
 
     const toggleVisibility = () => setShow(prev => !prev);
 

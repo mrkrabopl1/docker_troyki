@@ -14,7 +14,7 @@ interface AdminHeaderProps {
 const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick, isMobile }) => {
     const router = useRouter();
     const dispatch = useAppDispatch();
-    const { user } = useAppSelector(state => state.adminReducer);
+    const { user } = useAppSelector(state => state.admin);
     
     const handleLogout = () => {
         logoutAdmin(() => {

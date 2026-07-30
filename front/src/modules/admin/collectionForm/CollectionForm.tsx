@@ -52,7 +52,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
     onCancel,
     onClose
 }) => {
-    const { typesVal, firmMap, lineMap } = useAppSelector(state => state.menuReducer)
+    const { typesVal, firmMap, lineMap } = useAppSelector(state => state.menu)
     const [filtersVersion, setFiltersVersion] = useState(0)
 
     // Форма

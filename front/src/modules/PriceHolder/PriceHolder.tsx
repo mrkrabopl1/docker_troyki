@@ -17,7 +17,7 @@ const PriceHolderComponent: React.FC<PriceHolderProps> = ({
     activeInd = 0 
 }) => {
     const [activeState, setActiveState] = useState<number>(activeInd);
-    const priceState = useAppSelector(state => state.priceReducer);
+    const priceState = useAppSelector(state => state.price);
 
     const handleActiveChange = useCallback((size: string, ind: number) => {
         onChange(size);

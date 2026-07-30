@@ -10,7 +10,7 @@ interface IFirmsScrollerProps {
 }
 const FirmsScroller: React.FC<IFirmsScrollerProps> = ({onChange}) => {
     const router = useRouter();
-    const { firms } = useAppSelector(state => state.menuReducer);
+    const { firms } = useAppSelector(state => state.menu);
     
     const firmsLines = useMemo(() => {
         if (!Array.isArray(firms) || firms.length === 0) {

@@ -24,7 +24,7 @@ import {
 
 const AdminProducts: React.FC = () => {
   const router = useRouter();
-  const { typesVal, categories } = useAppSelector(state => state.menuReducer);
+  const { typesVal, categories } = useAppSelector(state => state.menu);
 
   const filtersInfo = useRef({
     sizes: [],

@@ -45,8 +45,8 @@ const AdminProductForm: React.FC = () => {
     const router = useRouter();
     const { id } = router.query;
     const isEdit = !!id && id !== 'create';
-    const { typesVal, categories, firms, firmMap, collections } = useAppSelector(state => state.menuReducer);
-    const { user } = useAppSelector(state => state.adminReducer);
+    const { typesVal, categories, firms, firmMap, collections } = useAppSelector(state => state.menu);
+    const { user } = useAppSelector(state => state.admin);
     const dispatch = useAppDispatch();
     // Фильтруем доступные статусы в зависимости от роли
     const availableStatuses = useMemo(() => {

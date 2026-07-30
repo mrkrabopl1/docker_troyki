@@ -36,7 +36,7 @@ type SelectMode = 'none' | 'page' | 'all'
 
 const AdminProducts: React.FC = () => {
   const router = useRouter()
-  const { typesVal, firmMap, discountRules } = useAppSelector(state => state.menuReducer)
+  const { typesVal, firmMap, discountRules } = useAppSelector(state => state.menu)
 
   // Данные
   const [products, setProducts] = useState<ProductInfo[]>([])
