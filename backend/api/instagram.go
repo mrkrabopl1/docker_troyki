@@ -109,7 +109,7 @@ func (s *Server) handleAdminUploadInstagramPhotos(c *gin.Context) {
 		// Генерируем имя
 		newFilename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), uuid.New().String(), ext)
 		newPath := filepath.Join(instagramDir, newFilename)
-
+		fmt.Println(newPath, "newPath", fileHeader.Filename, "fileHeader.Filename", "instagramDir", instagramDir)
 		// Сохраняем файл
 		out, err := os.Create(newPath)
 		if err != nil {
