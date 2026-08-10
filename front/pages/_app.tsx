@@ -25,7 +25,7 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <Provider store={store}>
       {/* 🔥 Передаем initialMainInfo в AppContent */}
-      <AppContent initialMainInfo={initialMainInfo} initialInstagramPhotos={pageProps.initialData.instagramPosts}>
+      <AppContent initialMainInfo={initialMainInfo} initialInstagramPhotos={pageProps.initialData?.instagramPosts}>
         {isAdmin ? (
           <ProtectedRoute>
             <AdminLayout>
