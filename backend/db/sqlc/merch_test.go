@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mrkrabopl1/go_db/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -194,10 +196,8 @@ func TestGetFullFiltersForCollection(t *testing.T) {
 		t.Skip("No collections found")
 	}
 
-	collection := collections[0]
-
 	filtersParams := GetFullFiltersForCollectionParams{
-		CollectionID:        collection.ID,
+		CollectionID:        1,
 		CollectionTypeIds:   []int32{},
 		CollectionBrandIds:  []int32{},
 		CollectionSizes:     []string{},
@@ -263,6 +263,255 @@ func TestGetFullFiltersForCollection(t *testing.T) {
 	}
 }
 
+func TestGetProductsForCollectionByFiltersPaginateFull(t *testing.T) {
+	// Подготовка
+	ctx := context.Background()
+
+	// ID существующей коллекции (замените на реальный ID)
+	collectionID := int32(7)
+
+	params := GetProductsForCollectionByFiltersPaginateFullParams{
+		Sizes:        []string{},
+		Name:         "",
+		Categories:   []int32{},
+		ProductTypes: []int32{617},
+		Firms:        []int32{},
+		Lines:        []int32{},
+		Bodytypes:    []string{},
+		Minprice:     pgtype.Int4{Int32: 0, Valid: false},
+		Maxprice:     pgtype.Int4{Int32: 0, Valid: false},
+		WithPrice:    false,
+		CollectionID: collectionID,
+		SortType:     0,
+		Offsetval:    0,
+		Limitval:     10,
+	}
+
+	// Выполнение
+	rows, err := testStore.GetProductsForCollectionByFiltersPaginateFull(ctx, params)
+
+	// Проверка
+	require.NoError(t, err)
+	assert.NotNil(t, rows)
+	assert.GreaterOrEqual(t, len(rows), 0, "Должен возвращать список продуктов")
+
+	t.Logf("✅ Найдено %d продуктов", len(rows))
+
+	// Логируем первые 3 продукта
+	for i, p := range rows {
+		if i >= 3 {
+			break
+		}
+		t.Logf("  Product %d: ID=%d, Name=%s, Price=%d", i+1, p.ID, p.Name, p.MinPrice)
+	}
+}
+func TestGetManualCollectionProducts(t *testing.T) {
+	// Подготовка
+	ctx := context.Background()
+
+	// ID существующей manual коллекции (замените на реальный ID из вашей БД)
+	collectionID := int32(7)
+
+	// Параметры пагинации
+	page := 1
+	limit := 10
+
+	// Выполнение
+	products, err := testStore.GetManualCollectionProducts(ctx, GetManualCollectionProductsParams{
+		CollectionID: collectionID,
+		Limit:        int32(limit),
+		Offset:       int32(0),
+	})
+
+	// Проверка
+	require.NoError(t, err)
+	assert.NotNil(t, products)
+	assert.GreaterOrEqual(t, len(products), 0, "Должен возвращать список продуктов")
+
+	t.Logf("✅ Найдено %d продуктов на странице %d", len(products), page)
+
+	// Проверяем структуру первых 3 товаров
+	for i, p := range products {
+		if i >= 3 {
+			break
+		}
+		t.Logf("  Product %d: ID=%d, Name=%s, Price=%d", i+1, p.GlobalID, p.Name, p.MinPrice)
+	}
+}
+func TestGetProductsByFiltersPaginateFullWithSlugs_Base(t *testing.T) {
+	// Подготовка
+	ctx := context.Background()
+	// твоя функция для тестовой БД
+	fmt.Println("eeee")
+	params := GetProductsByFiltersPaginateBaseWithSlugsParams{
+		CategorySlug: "sneakers", // пусто → без фильтра
+		TypeSlug:     "",         // пусто → без фильтра
+		BrandSlug:    "",         // пусто → без фильтра
+		LineSlug:     "",         // пусто → без фильтра
+		Name:         "",
+		Sizes:        []string{},
+		Categories:   []int32{},
+		ProductTypes: []int32{},
+		Firms:        []int32{},
+		Lines:        []int32{},
+		Bodytypes:    []string{},
+		WithPrice:    false,
+		Limitval:     10,
+		Offsetval:    0,
+		SortType:     0,
+	}
+
+	// Выполнение
+	rows, err := testStore.GetProductsByFiltersPaginateBaseWithSlugs(ctx, params)
+
+	// Проверка
+	require.NoError(t, err)
+	assert.NotNil(t, rows)
+	assert.GreaterOrEqual(t, len(rows), 0, "Должен возвращать список продуктов")
+	t.Logf("✅ Найдено %d продуктов", len(rows))
+}
+func TestCountProductsByFiltersPaginateFullWithSlugs(t *testing.T) {
+	// Подготовка
+	ctx := context.Background()
+	// твоя функция для тестовой БД
+	fmt.Println("eeee")
+	params := CountProductsByFiltersBaseWithSlugsParams{
+		CategorySlug: "sneakers", // пусто → без фильтра
+		TypeSlug:     "",         // пусто → без фильтра
+		BrandSlug:    "",         // пусто → без фильтра
+		LineSlug:     "",         // пусто → без фильтра
+		Name:         "",
+		Sizes:        []string{},
+		Categories:   []int32{},
+		ProductTypes: []int32{},
+		Firms:        []int32{},
+		Lines:        []int32{},
+		Bodytypes:    []string{},
+	}
+
+	// Выполнение
+	rows, err := testStore.CountProductsByFiltersBaseWithSlugs(ctx, params)
+
+	// Проверка
+	fmt.Println(rows)
+	require.NoError(t, err)
+	assert.NotNil(t, rows)
+
+}
+func TestCountProductsForCollectionByFiltersFull(t *testing.T) {
+	// Подготовка
+	ctx := context.Background()
+	// твоя функция для тестовой БД
+	fmt.Println("eeee")
+	params := CountProductsForCollectionByFiltersFullParams{
+		CollectionID: 3,
+	}
+
+	// Выполнение
+	rows, err := testStore.CountProductsForCollectionByFiltersFull(ctx, params)
+
+	// Проверка
+	fmt.Println(rows)
+	require.NoError(t, err)
+	assert.NotNil(t, rows)
+
+}
+func TestGetProductsByFiltersPaginateFull_Base(t *testing.T) {
+	// Подготовка
+	ctx := context.Background()
+	// твоя функция для тестовой БД
+
+	params := GetProductsByFiltersPaginateFullParams{
+		ProductTypes: []int32{617},
+	}
+
+	// Выполнение
+	rows, err := testStore.GetProductsByFiltersPaginateFull(ctx, params)
+
+	// Проверка
+	require.NoError(t, err)
+	assert.NotNil(t, rows)
+	assert.GreaterOrEqual(t, len(rows), 0, "Должен возвращать список продуктов")
+	t.Logf("✅ Найдено %d продуктов", len(rows))
+}
+func TestGetProductsByFiltersPaginateDiscount(t *testing.T) {
+	ctx := context.Background()
+
+	// Создаем параметры с пустым массивом rule_ids
+	params := GetProductsByFiltersPaginateWithDiscountParams{
+		RuleIds:   []int32{}, // пустой массив - должны получить все товары со скидкой
+		Limitval:  50,
+		Offsetval: 0,
+		SortType:  1, // или 0 для сортировки по умолчанию
+		// остальные параметры можно оставить nil или пустыми
+	}
+
+	rows, err := testStore.GetProductsByFiltersPaginateWithDiscount(ctx, params)
+
+	require.NoError(t, err)
+	assert.NotNil(t, rows)
+	assert.GreaterOrEqual(t, len(rows), 1, "Должен возвращать продукты со скидкой")
+	t.Logf("✅ Найдено %d продуктов", len(rows))
+}
+func TestGetProductsByFiltersPaginateWithStore(t *testing.T) {
+	// Подготовка
+	ctx := context.Background()
+	// твоя функция для тестовой БД
+
+	params := GetProductsByFiltersPaginateWithStoreParams{
+		Limitval:     24,
+		Offsetval:    0,
+		Sizes:        []string{},
+		Firms:        []int32{},
+		Bodytypes:    []string{},
+		ProductTypes: []int32{},
+		SortType:     0,
+		Lines:        []int32{},
+		WithPrice:    true,
+		Name:         "",
+		Categories:   []int32{2},
+		Minprice:     pgtype.Int4{Valid: false},
+		Maxprice:     pgtype.Int4{Valid: false},
+	}
+
+	// Логирование параметров перед выполнением
+	log.Printf("=== GetProductsByFiltersPaginateWithStore Params ===")
+	log.Printf("Limitval: %d, Offsetval: %d", params.Limitval, params.Offsetval)
+	log.Printf("Sizes: %v", params.Sizes)
+	log.Printf("Firms: %v", params.Firms)
+	log.Printf("Bodytypes: %v", params.Bodytypes)
+	log.Printf("ProductTypes: %v", params.ProductTypes)
+	log.Printf("SortType: %d", params.SortType)
+	log.Printf("Lines: %v", params.Lines)
+	log.Printf("WithPrice: %v", params.WithPrice)
+	log.Printf("Name: '%s'", params.Name)
+	log.Printf("Categories: %v", params.Categories)
+	if params.Minprice.Valid {
+		log.Printf("Minprice: %d", params.Minprice.Int32)
+	} else {
+		log.Printf("Minprice: NULL")
+	}
+	if params.Maxprice.Valid {
+		log.Printf("Maxprice: %d", params.Maxprice.Int32)
+	} else {
+		log.Printf("Maxprice: NULL")
+	}
+	log.Printf("===========================================")
+
+	// Выполнение
+	rows, err := testStore.GetProductsByFiltersPaginateWithStore(ctx, params)
+
+	// Проверка
+	require.NoError(t, err)
+	assert.NotNil(t, rows)
+	assert.GreaterOrEqual(t, len(rows), 0, "Должен возвращать список продуктов")
+	t.Logf("✅ Найдено %d продуктов", len(rows))
+
+	// Дополнительная проверка категории
+	if len(rows) > 0 {
+		t.Logf("✅ Первый продукт: ID=%d, Name=%s", rows[0].ID, rows[0].Name)
+	}
+}
 func TestGetSoloCollectionWithCount(t *testing.T) {
 	snickers, err := testStore.GetSoloCollectionWithCount(context.Background(), GetSoloCollectionWithCountParams{
 		Firm:      "nike",

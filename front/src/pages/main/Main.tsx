@@ -6,6 +6,7 @@ import MerchBanner from 'src/modules/merchBanner/MerchBanner';
 import MerchSliderField from 'src/modules/merchField/MerchSliderField';
 import ContentSliderWithLinks from 'src/components/contentSlider/ContentSliderWithLinks';
 import FirmsScroller from 'src/modules/firmsScroller/FirmsScroller';
+import InstagramScroller from 'src/modules/instagramScroller/InstagramScroller';
 import { addImageToLoad, imageLoaded } from 'src/store/reducers/loadingSlice';
 import s from "./s.module.css";
 
@@ -52,7 +53,7 @@ const Main: React.FC<MainProps> = memo(({ initialData }) => {
         key={key}
         name={value.name}
         merchInfo={value.products}
-        onClick={() => router.push(`/search?${value.link_url}&type=""`)}
+        onClick={() => router.push(`/collections/${value.collection_slug}`)}
       />
     ));
   }, [mainData.pageInfo, router]);
@@ -82,6 +83,7 @@ const Main: React.FC<MainProps> = memo(({ initialData }) => {
       <ContentSliderWithLinks content={createBanners()} />
       <FirmsScroller onChange={onFirmClicked} />
       <div>{handleMainPageInfo}</div>
+      <InstagramScroller />
     </div>
   );
 });

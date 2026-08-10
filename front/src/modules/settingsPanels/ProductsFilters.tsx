@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useState, useEffect } from 'react';
+import React, { memo, useCallback, useState, useEffect, useRef } from 'react';
 import DoubleInfoDrop from 'src/components/doubleInfoDrop/DoubleInfoDrop';
 import CheckBoxColumn from 'src/components/checkBoxForm/CheckBoxForm';
 import SearchableCheckboxColumn from 'src/modules/columnWithSerch/SearchableCheckboxColumn';
@@ -27,22 +27,21 @@ interface TimeProps {
     value: string;
 }
 
-// Новая структура для вариационных фильтров
 interface VariationFilterGroup {
-    id: string; // уникальный идентификатор группы
-    name: string; // название группы
-    options: VariationOption[]; // массив опций
+    id: string;
+    name: string;
+    options: VariationOption[];
 }
 
 interface VariationOption {
-    id: string; // уникальный идентификатор опции
-    name: string; // название опции
-    props: CheckBoxType[]; // чекбоксы внутри опции
+    id: string;
+    name: string;
+    props: CheckBoxType[];
 }
 
 interface ProductsFiltersProps {
     priceProps: PriceProps;
-    variationGroups?: VariationFilterGroup[]; // изменено с variationCheckboxsProps
+    variationGroups?: VariationFilterGroup[];
     checboxsProps: CheckboxProps[];
     soloDataProps: CheckBoxType[];
     timeProps?: TimeProps[];
@@ -61,11 +60,14 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
     timeProps,
     variationGroups = [],
 }) => {
-    // Состояние для хранения выбранных вариаций
     const [selectedVariations, setSelectedVariations] = useState<Record<string, string>>({});
+    const isInitialized = useRef(false); // 🔥 Флаг для предотвращения бесконечного цикла
 
-    // Инициализация выбранных вариаций (по умолчанию первая опция)
+    // 🔥 ИСПРАВЛЕННЫЙ useEffect
     useEffect(() => {
+        // Если уже инициализировали - выходим
+        if (isInitialized.current) return;
+        
         const initialSelected: Record<string, string> = {};
         variationGroups.forEach(group => {
             if (group.options.length > 0) {
@@ -73,7 +75,35 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
             }
         });
         setSelectedVariations(initialSelected);
-    }, [variationGroups]);
+        isInitialized.current = true;
+    }, [variationGroups]); // Зависимость оставляем, но флаг защищает
+
+    // 🔥 Если variationGroups обновились новыми данными - обновляем selection
+    useEffect(() => {
+        // Проверяем, появились ли новые группы
+        const newSelected: Record<string, string> = {};
+        let hasChanges = false;
+        
+        variationGroups.forEach(group => {
+            if (group.options.length > 0) {
+                const currentSelected = selectedVariations[group.id];
+                // Если нет выбранной опции или она не существует - выбираем первую
+                if (!currentSelected || !group.options.find(o => o.id === currentSelected)) {
+                    newSelected[group.id] = group.options[0].id;
+                    hasChanges = true;
+                } else {
+                    newSelected[group.id] = currentSelected;
+                }
+            }
+        });
+
+        if (hasChanges) {
+            setSelectedVariations(prev => ({
+                ...prev,
+                ...newSelected
+            }));
+        }
+    }, [variationGroups]); // Зависимость только от variationGroups
 
     const handlePriceChange = useCallback((data: any) => {
         onChange?.({ id: "price", data });
@@ -91,14 +121,12 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
         onChange?.({ id, data });
     }, [onChange]);
 
-    // Обработчик выбора вариации (радио-кнопка)
     const handleVariationSelect = useCallback((groupId: string, optionId: string) => {
         setSelectedVariations(prev => ({
             ...prev,
             [groupId]: optionId
         }));
 
-        // Отправляем сигнал о смене вариации
         onChange?.({
             id: `variation_${groupId}`,
             data: {
@@ -108,7 +136,6 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
         });
     }, [onChange]);
 
-    // Обработчик изменения чекбоксов внутри выбранной вариации
     const handleVariationCheckboxChange = useCallback((groupId: string, optionId: string, data: any) => {
         onChange?.({
             id: `variation_checkbox_${groupId}`,
@@ -120,8 +147,7 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
         });
     }, [onChange]);
 
-    // Рендер группы вариаций (радио-группа)
- const renderVariationGroup = useCallback((group: VariationFilterGroup) => {
+    const renderVariationGroup = useCallback((group: VariationFilterGroup) => {
         if (!group.options || group.options.length === 0) return null;
 
         const selectedOptionId = selectedVariations[group.id] || group.options[0]?.id;
@@ -130,8 +156,7 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
         return (
             <div key={group.id} style={{ padding: "5px", marginBottom: "10px" }}>
                 <DoubleInfoDrop info={group.name}>
-                    <div style={{ maxHeight: "400px", overflowY: "auto" }}>
-                        {/* Кнопки-переключатели */}
+                    <div style={{ maxHeight: "400px"}}>
                         <div style={{ 
                             display: "flex", 
                             gap: "4px", 
@@ -163,7 +188,6 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
                             ))}
                         </div>
 
-                        {/* Чекбоксы для выбранной опции */}
                         {selectedOption && selectedOption.props.length > 0 && (
                             <div>
                                 <div style={{ 
@@ -185,7 +209,6 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
                             </div>
                         )}
                         
-                        {/* Если нет чекбоксов */}
                         {selectedOption && selectedOption.props.length === 0 && (
                             <div style={{ 
                                 textAlign: "center", 
@@ -200,6 +223,7 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
             </div>
         );
     }, [selectedVariations, handleVariationSelect, handleVariationCheckboxChange]);
+
     const renderCheckboxGroup = useCallback((checkboxProps: CheckboxProps) => (
         checkboxProps.props.length > 0 &&
         <div style={{ padding: "5px" }} key={checkboxProps.id}>
@@ -230,6 +254,7 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
             </div>
         </div>
     ), [handleTimeChange]);
+
     return (
         <div onScroll={(e) => e.stopPropagation()} className={s.wrapper}>
             {soloDataProps && (
@@ -254,10 +279,11 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
 
             {checboxsProps.map(renderCheckboxGroup)}
 
-            {/* Рендер групп вариаций */}
             {variationGroups.map(renderVariationGroup)}
         </div>
     );
 });
+
+ProductsFilters.displayName = 'ProductsFilters';
 
 export default ProductsFilters;

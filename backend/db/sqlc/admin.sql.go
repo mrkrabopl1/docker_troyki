@@ -984,7 +984,7 @@ SELECT p.sizes,
     p.type,
     p.category,
     p.date,
-    b.name as firm,
+    b.slug as firm,
     p.status,
     p.image_count
 FROM products p
@@ -995,7 +995,7 @@ FROM products p
 WHERE p.id = $1
 GROUP BY p.id,
     d.value,
-    b.name,
+    b.slug,
     bl.name
 `
 
@@ -2755,6 +2755,13 @@ SELECT p.id,
         ),
         0
     ) AS discount_percent,
+    -- В наличии: есть ли хотя бы один размер в store_house с quantity > 0
+    EXISTS (
+        SELECT 1 
+        FROM store_house sh 
+        WHERE sh.productid = p.id 
+        AND sh.quantity > 0
+    ) AS in_stock,
     COUNT(*) FILTER (
         WHERE p.status = 'active'
     ) OVER() AS active_count,
@@ -2825,13 +2832,15 @@ WHERE p.status != 'deleted' -- Статус
         $13::boolean IS NULL
         OR $13::boolean = false
         OR d.productid IS NOT NULL
-    ) -- В наличии
+    ) -- В наличии (фильтр по store_house)
     AND (
         $14::boolean IS NULL
         OR $14::boolean = false
-        OR (
-            sh.id IS NOT NULL
-            AND sh.quantity > 0
+        OR EXISTS (
+            SELECT 1 
+            FROM store_house sh2 
+            WHERE sh2.productid = p.id 
+            AND sh2.quantity > 0
         )
     ) -- Цена > 0
     AND (
@@ -2900,6 +2909,23 @@ ORDER BY -- Сортировка по имени
     CASE
         WHEN $16::int = 14 THEN p.status
     END DESC,
+    -- Сортировка по наличию (in_stock)
+    CASE
+        WHEN $16::int = 15 THEN EXISTS (
+            SELECT 1 
+            FROM store_house sh3 
+            WHERE sh3.productid = p.id 
+            AND sh3.quantity > 0
+        )::int
+    END ASC,
+    CASE
+        WHEN $16::int = 16 THEN EXISTS (
+            SELECT 1 
+            FROM store_house sh4 
+            WHERE sh4.productid = p.id 
+            AND sh4.quantity > 0
+        )::int
+    END DESC,
     -- Вторичная сортировка по id для стабильности
     p.id ASC
 LIMIT CASE
@@ -2944,6 +2970,7 @@ type GetProductsForAdminByFiltersRow struct {
 	Status          string             `json:"status"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 	DiscountPercent interface{}        `json:"discount_percent"`
+	InStock         bool               `json:"in_stock"`
 	ActiveCount     int64              `json:"active_count"`
 	TotalCount      int64              `json:"total_count"`
 }
@@ -2988,9 +3015,98 @@ func (q *Queries) GetProductsForAdminByFilters(ctx context.Context, arg GetProdu
 			&i.Status,
 			&i.UpdatedAt,
 			&i.DiscountPercent,
+			&i.InStock,
 			&i.ActiveCount,
 			&i.TotalCount,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProductsLight = `-- name: GetProductsLight :many
+SELECT 
+    p.article,
+    p.name,
+    p.updated_at
+FROM products p
+WHERE p.status != 'deleted'
+ORDER BY p.id
+LIMIT COALESCE($2::int, 1000)
+OFFSET COALESCE($1::int, 0)
+`
+
+type GetProductsLightParams struct {
+	OffsetVal pgtype.Int4 `json:"offset_val"`
+	LimitVal  pgtype.Int4 `json:"limit_val"`
+}
+
+type GetProductsLightRow struct {
+	Article   string             `json:"article"`
+	Name      string             `json:"name"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetProductsLight(ctx context.Context, arg GetProductsLightParams) ([]GetProductsLightRow, error) {
+	rows, err := q.db.Query(ctx, getProductsLight, arg.OffsetVal, arg.LimitVal)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductsLightRow
+	for rows.Next() {
+		var i GetProductsLightRow
+		if err := rows.Scan(&i.Article, &i.Name, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProductsLightSince = `-- name: GetProductsLightSince :many
+SELECT 
+    p.article,
+    p.name,
+    p.updated_at
+FROM products p
+WHERE p.status != 'deleted'
+  AND p.updated_at >= COALESCE($1::timestamptz, '1970-01-01')
+ORDER BY p.updated_at, p.id
+LIMIT COALESCE($3::int, 1000)
+OFFSET COALESCE($2::int, 0)
+`
+
+type GetProductsLightSinceParams struct {
+	Since     pgtype.Timestamptz `json:"since"`
+	OffsetVal pgtype.Int4        `json:"offset_val"`
+	LimitVal  pgtype.Int4        `json:"limit_val"`
+}
+
+type GetProductsLightSinceRow struct {
+	Article   string             `json:"article"`
+	Name      string             `json:"name"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetProductsLightSince(ctx context.Context, arg GetProductsLightSinceParams) ([]GetProductsLightSinceRow, error) {
+	rows, err := q.db.Query(ctx, getProductsLightSince, arg.Since, arg.OffsetVal, arg.LimitVal)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductsLightSinceRow
+	for rows.Next() {
+		var i GetProductsLightSinceRow
+		if err := rows.Scan(&i.Article, &i.Name, &i.UpdatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

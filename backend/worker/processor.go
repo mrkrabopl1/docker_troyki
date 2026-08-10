@@ -44,7 +44,7 @@ type TaskProcessor interface {
 	RefreshPageWidgetsCache(ctx context.Context) error
 	RefreshSingleWidgetCache(ctx context.Context, widgetID int32) error
 
-	SetCollection(ctx context.Context, slug string, data []byte) error
+	SetCollection(ctx context.Context, id int32, data []byte) error
 	GetCollection(ctx context.Context, slug string) ([]byte, error)
 	ClearCollectionCache(ctx context.Context, slug string) error
 	ClearAllCollectionsCache(ctx context.Context) error

@@ -605,6 +605,161 @@ func (q *Queries) CountProductsByFiltersBase(ctx context.Context, arg CountProdu
 	return count, err
 }
 
+const countProductsByFiltersBaseWithSlugs = `-- name: CountProductsByFiltersBaseWithSlugs :one
+WITH 
+brand_id AS (
+    SELECT id FROM brands WHERE slug = $1::text
+),
+category_id AS (
+    SELECT id FROM product_categories WHERE enum_key = $2::text
+),
+type_id AS (
+    SELECT id FROM product_types WHERE enum_key = $3::text
+),
+line_id AS (
+    SELECT id FROM brand_lines WHERE slug = $4::text
+)
+SELECT COUNT(*)
+FROM products p
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+LEFT JOIN discount d ON p.id = d.productid
+WHERE 
+    -- Только активные товары
+    p.status = 'active'
+    
+    -- Если есть линия - она должна быть активна
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    
+    -- 🔥 Фильтры по SLUG'ам
+    AND (
+        COALESCE($1, '') = '' 
+        OR p.brand_id = (SELECT id FROM brand_id)
+    )
+    AND (
+        COALESCE($2, '') = '' 
+        OR p.category = (SELECT id FROM category_id)
+    )
+    AND (
+        COALESCE($3, '') = '' 
+        OR p.type = (SELECT id FROM type_id)
+    )
+    AND (
+        COALESCE($4, '') = '' 
+        OR p.line_id = (SELECT id FROM line_id)
+    )
+    
+    -- Размеры (если переданы)
+    AND (
+        COALESCE(array_length($5::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($5::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    
+    -- Поиск по имени/артикулу
+    AND (
+        COALESCE($6, '') = ''
+        OR p.name ILIKE '%' || $6 || '%'
+        OR p.article ILIKE '%' || $6 || '%'
+    )
+    
+    -- Категории (если переданы ID)
+    AND (
+        COALESCE(array_length($7::int[], 1), 0) = 0
+        OR p.category = ANY($7::int[])
+    )
+    
+    -- Типы продуктов (если переданы ID)
+    AND (
+        COALESCE(array_length($8::int[], 1), 0) = 0
+        OR p.type = ANY($8::int[])
+    )
+    
+    -- Бренды (если переданы ID)
+    AND (
+        COALESCE(array_length($9::int[], 1), 0) = 0
+        OR p.brand_id = ANY($9::int[])
+    )
+    
+    -- Линии (если переданы ID)
+    AND (
+        COALESCE(array_length($10::int[], 1), 0) = 0
+        OR p.line_id = ANY($10::int[])
+    )
+    
+    -- Bodytype (если передан)
+    AND (
+        COALESCE(array_length($11::text[], 1), 0) = 0
+        OR p.bodytype = ANY($11::body_enum[])
+    )
+    
+    -- Цена (мин/макс)
+    AND (
+        $12::int IS NULL 
+        OR p.maxprice >= $12::int
+    )
+    AND (
+        $13::int IS NULL 
+        OR p.minprice <= $13::int
+    )
+    
+    -- Только товары с ценой > 0
+    AND (
+        $14::boolean IS NULL 
+        OR $14::boolean = false 
+        OR p.minprice > 0
+    )
+    AND (
+        $15::boolean = false 
+        OR ($15::boolean = true AND d.id IS NOT NULL)
+    )
+`
+
+type CountProductsByFiltersBaseWithSlugsParams struct {
+	BrandSlug    interface{} `json:"brand_slug"`
+	CategorySlug interface{} `json:"category_slug"`
+	TypeSlug     interface{} `json:"type_slug"`
+	LineSlug     interface{} `json:"line_slug"`
+	Sizes        []string    `json:"sizes"`
+	Name         interface{} `json:"name"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	WithPrice    bool        `json:"with_price"`
+	HasDiscount  bool        `json:"has_discount"`
+}
+
+func (q *Queries) CountProductsByFiltersBaseWithSlugs(ctx context.Context, arg CountProductsByFiltersBaseWithSlugsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countProductsByFiltersBaseWithSlugs,
+		arg.BrandSlug,
+		arg.CategorySlug,
+		arg.TypeSlug,
+		arg.LineSlug,
+		arg.Sizes,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.WithPrice,
+		arg.HasDiscount,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countProductsByFiltersFull = `-- name: CountProductsByFiltersFull :one
 SELECT COUNT(*)
 FROM products p
@@ -746,6 +901,187 @@ func (q *Queries) CountProductsByFiltersFull(ctx context.Context, arg CountProdu
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const countProductsByFiltersFullWithSlugs = `-- name: CountProductsByFiltersFullWithSlugs :one
+WITH 
+brand_id AS (
+    SELECT id FROM brands WHERE slug = $3::text
+),
+category_id AS (
+    SELECT id FROM product_categories WHERE enum_key = $1::text
+),
+type_id AS (
+    SELECT id FROM product_types WHERE enum_key = $2::text
+),
+line_id AS (
+    SELECT id FROM brand_lines WHERE slug = $4::text
+)
+SELECT COUNT(*) AS total_count
+FROM products p
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+LEFT JOIN discount d ON p.id = d.productid
+LEFT JOIN store_house sh ON p.id = sh.productid
+LEFT JOIN LATERAL (
+    SELECT dr2.discount_value, dr2.name
+    FROM discount_rule_items dri
+    JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+        AND dr2.is_active = true
+        AND dr2.starts_at <= NOW()
+        AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+    WHERE (
+            (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+         OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+         OR (dri.item_type = 'product' AND dri.item_id = p.id)
+        )
+        AND d.id IS NULL
+    ORDER BY dr2.priority DESC
+    LIMIT 1
+) dr ON true
+WHERE 
+    p.status = 'active'
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    
+    -- 🔥 Фильтры по SLUG'ам (исправлено: проверка на NULL и пустую строку)
+    AND (
+        $1::text IS NULL 
+        OR $1::text = '' 
+        OR p.category = (SELECT id FROM category_id)
+    )
+    AND (
+        $2::text IS NULL 
+        OR $2::text = '' 
+        OR p.type = (SELECT id FROM type_id)
+    )
+    AND (
+        $3::text IS NULL 
+        OR $3::text = '' 
+        OR p.brand_id = (SELECT id FROM brand_id)
+    )
+    AND (
+        $4::text IS NULL 
+        OR $4::text = '' 
+        OR p.line_id = (SELECT id FROM line_id)
+    )
+    
+    -- Поиск по имени/артикулу (исправлено: проверка на NULL)
+    AND (
+        $5::text IS NULL 
+        OR $5::text = '' 
+        OR p.name ILIKE '%' || $5::text || '%'
+    )
+    
+    -- Размеры
+    AND (
+        COALESCE(array_length($6::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($6::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    
+    -- Категории (если переданы ID)
+    AND (
+        COALESCE(array_length($7::int[], 1), 0) = 0
+        OR p.category = ANY($7::int[])
+    )
+    
+    -- Типы продуктов (если переданы ID)
+    AND (
+        COALESCE(array_length($8::int[], 1), 0) = 0
+        OR p.type = ANY($8::int[])
+    )
+    
+    -- Бренды (если переданы ID)
+    AND (
+        COALESCE(array_length($9::int[], 1), 0) = 0
+        OR p.brand_id = ANY($9::int[])
+    )
+    
+    -- Линии (если переданы ID)
+    AND (
+        COALESCE(array_length($10::int[], 1), 0) = 0
+        OR p.line_id = ANY($10::int[])
+    )
+    
+    -- Bodytype
+    AND (
+        COALESCE(array_length($11::text[], 1), 0) = 0
+        OR p.bodytype = ANY($11::body_enum[])
+    )
+    
+    -- Цена
+    AND ($12::int IS NULL OR p.maxprice >= $12::int)
+    AND ($13::int IS NULL OR p.minprice <= $13::int)
+    
+    -- С ценой
+    AND ($14::boolean IS NULL OR $14::boolean = false OR p.minprice > 0)
+    
+    -- Скидки
+    AND (
+        (array_length($15::int[], 1) > 0 AND EXISTS (
+            SELECT 1
+            FROM discount_rule_items dri2
+            JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE dri2.rule_id = ANY($15::int[])
+              AND (
+                  (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+                  (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+                  (dri2.item_type = 'product' AND dri2.item_id = p.id)
+              )
+        ))
+        OR
+        (array_length($15::int[], 1) = 0 AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL))
+    )
+    -- Наличие на складе
+    AND (sh.id IS NOT NULL AND sh.quantity > 0)
+`
+
+type CountProductsByFiltersFullWithSlugsParams struct {
+	CategorySlug string      `json:"category_slug"`
+	TypeSlug     string      `json:"type_slug"`
+	BrandSlug    string      `json:"brand_slug"`
+	LineSlug     string      `json:"line_slug"`
+	Name         string      `json:"name"`
+	Sizes        []string    `json:"sizes"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	WithPrice    bool        `json:"with_price"`
+	RuleIds      []int32     `json:"rule_ids"`
+}
+
+func (q *Queries) CountProductsByFiltersFullWithSlugs(ctx context.Context, arg CountProductsByFiltersFullWithSlugsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countProductsByFiltersFullWithSlugs,
+		arg.CategorySlug,
+		arg.TypeSlug,
+		arg.BrandSlug,
+		arg.LineSlug,
+		arg.Name,
+		arg.Sizes,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.WithPrice,
+		arg.RuleIds,
+	)
+	var total_count int64
+	err := row.Scan(&total_count)
+	return total_count, err
 }
 
 const countProductsByFiltersWithDiscount = `-- name: CountProductsByFiltersWithDiscount :one
@@ -4425,12 +4761,13 @@ WITH product_data AS (
         p.brand_id,
         p.line_id,
         b.name as firm,
-        p.minprice,
+        COALESCE(d.min_price, p.minprice) as minprice,
         p.maxprice,
         p.bodytype,
         p.type as product_type_id
     FROM products p
     JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+    LEFT JOIN discount d ON p.id = d.productid
     WHERE p.status = 'active'
         AND (CASE WHEN $1::int = 0 THEN TRUE ELSE p.type = $1 END)
         AND (CASE WHEN $2::int = 0 THEN TRUE ELSE p.category = $2 END)
@@ -4557,13 +4894,14 @@ WITH product_data AS (
         p.line_id,
         b.name as firm,
         bl.name as line_name,
-        p.minprice,
+        COALESCE(d.min_price, p.minprice) as minprice,
         p.maxprice,
         p.bodytype,
         p.type as product_type_id
     FROM products p
     JOIN brands b ON p.brand_id = b.id AND b.is_active = true
     LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+    LEFT JOIN discount d ON p.id = d.productid
     WHERE p.status = 'active'
         AND (CASE WHEN $1::int = 0 THEN TRUE ELSE p.type = $1 END)
         AND (CASE WHEN $2::int = 0 THEN TRUE ELSE p.category = $2 END)
@@ -4689,6 +5027,186 @@ func (q *Queries) GetFiltersByNameCategoryAndTypeNewWithLine(ctx context.Context
 	return i, err
 }
 
+const getFiltersByNameCategoryAndTypeWithSlugs = `-- name: GetFiltersByNameCategoryAndTypeWithSlugs :one
+WITH 
+brand_id AS (
+    SELECT id FROM brands WHERE slug = $1::text
+),
+category_id AS (
+    SELECT id FROM product_categories WHERE enum_key = $2::text
+),
+type_id AS (
+    SELECT id FROM product_types WHERE enum_key = $3::text
+),
+line_id AS (
+    SELECT id FROM brand_lines WHERE slug = $4::text
+),
+product_data AS (
+    SELECT
+        p.id,
+        p.brand_id,
+        p.line_id,
+        b.name as firm,
+        bl.name as line_name,
+       COALESCE(d.min_price, p.minprice) as minprice,
+        p.maxprice,
+        p.bodytype,
+        p.type as product_type_id
+    FROM products p
+    JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+    LEFT JOIN discount d ON p.id = d.productid
+    WHERE p.status = 'active'
+        -- 🔥 Фильтры по ID (используем результаты CTE)
+        AND (CASE WHEN $3::text = '' THEN TRUE ELSE p.type = (SELECT id FROM type_id) END)
+        AND (CASE WHEN $2::text = '' THEN TRUE ELSE p.category = (SELECT id FROM category_id) END)
+        AND (CASE WHEN $1::text = '' THEN TRUE ELSE p.brand_id = (SELECT id FROM brand_id) END)
+        AND (CASE WHEN $4::text = '' THEN TRUE ELSE p.line_id = (SELECT id FROM line_id) END)
+        AND (CASE WHEN $5::text = '' THEN TRUE ELSE p.name ILIKE '%' || $5 || '%' END)
+        AND (
+            $6::boolean = false 
+            OR ($6::boolean = true AND d.id IS NOT NULL)
+        )
+),
+firm_counts AS (
+    SELECT firm, COUNT(*) AS firm_count
+    FROM product_data
+    WHERE firm IS NOT NULL
+    GROUP BY firm
+),
+line_counts AS (
+    SELECT line_name, COUNT(*) AS line_count
+    FROM product_data
+    WHERE line_name IS NOT NULL
+    GROUP BY line_name
+),
+bodytype_counts AS (
+    SELECT bodytype, COUNT(*) as count
+    FROM product_data
+    GROUP BY bodytype
+),
+price_range AS (
+    SELECT COALESCE(MIN(minprice), 0) AS min_price,
+           COALESCE(MAX(maxprice), 0) AS max_price
+    FROM product_data
+),
+type_data AS (
+    SELECT product_type_id, COUNT(*) as type_count
+    FROM product_data
+    GROUP BY product_type_id
+),
+sizes_agg AS (
+    SELECT jsonb_object_agg(size_key, cnt) AS sizes
+    FROM (
+        SELECT size_key, COUNT(*) AS cnt
+        FROM product_sizes ps
+        WHERE ps.product_id IN (SELECT id FROM product_data)
+          AND ps.price > 0
+        GROUP BY size_key
+    ) s
+),
+discount_rules_applied AS (
+    SELECT DISTINCT
+        dr.id,
+        dr.name,
+        dr.discount_type,
+        dr.discount_value,
+        dr.priority
+    FROM discount_rules dr
+    WHERE dr.is_active = true
+        AND dr.starts_at <= NOW()
+        AND (dr.ends_at IS NULL OR dr.ends_at > NOW())
+        AND dr.id IN (
+            SELECT DISTINCT d.rule_id
+            FROM discount d
+            WHERE d.productid IN (SELECT id FROM product_data)
+              AND d.discount_percent > 0
+        )
+)
+SELECT
+    COALESCE(
+        (SELECT sizes FROM sizes_agg),
+        '{}'::jsonb
+    ) as sizes,
+    COALESCE(
+        (SELECT jsonb_object_agg(bodytype::text, count) FROM bodytype_counts),
+        '{}'::jsonb
+    ) as bodytypes,
+    (SELECT min_price FROM price_range) as min_price,
+    (SELECT max_price FROM price_range) as max_price,
+    -- 🔥 ФИРМЫ (как в GetFiltersByNameCategoryAndTypeNew)
+    COALESCE(
+        (SELECT jsonb_object_agg(COALESCE(firm, 'Unknown'), firm_count) FROM firm_counts),
+        '{}'::jsonb
+    ) as firms,
+    -- 🔥 ЛИНИИ
+    COALESCE(
+        (SELECT jsonb_object_agg(COALESCE(line_name, 'Unknown'), line_count) FROM line_counts),
+        '{}'::jsonb
+    ) as lines,
+    COALESCE(
+        (SELECT jsonb_agg(product_type_id) FROM type_data),
+        '[]'::jsonb
+    ) as product_types,
+    COALESCE(
+        (SELECT jsonb_agg(
+            jsonb_build_object(
+                'id', id,
+                'name', name,
+                'discount_type', discount_type,
+                'discount_value', discount_value,
+                'priority', priority
+            )
+         ) FROM discount_rules_applied),
+        '[]'::jsonb
+    ) as discount_rules
+`
+
+type GetFiltersByNameCategoryAndTypeWithSlugsParams struct {
+	BrandSlug    string `json:"brand_slug"`
+	CategorySlug string `json:"category_slug"`
+	TypeSlug     string `json:"type_slug"`
+	LineSlug     string `json:"line_slug"`
+	Name         string `json:"name"`
+	HasDiscount  bool   `json:"has_discount"`
+}
+
+type GetFiltersByNameCategoryAndTypeWithSlugsRow struct {
+	Sizes         interface{} `json:"sizes"`
+	Bodytypes     interface{} `json:"bodytypes"`
+	MinPrice      interface{} `json:"min_price"`
+	MaxPrice      interface{} `json:"max_price"`
+	Firms         interface{} `json:"firms"`
+	Lines         interface{} `json:"lines"`
+	ProductTypes  interface{} `json:"product_types"`
+	DiscountRules interface{} `json:"discount_rules"`
+}
+
+// 🔥 Переводим slug → ID (один раз, по индексам)
+// 🔥 СЧЕТЧИКИ ДЛЯ ФИЛЬТРОВ
+func (q *Queries) GetFiltersByNameCategoryAndTypeWithSlugs(ctx context.Context, arg GetFiltersByNameCategoryAndTypeWithSlugsParams) (GetFiltersByNameCategoryAndTypeWithSlugsRow, error) {
+	row := q.db.QueryRow(ctx, getFiltersByNameCategoryAndTypeWithSlugs,
+		arg.BrandSlug,
+		arg.CategorySlug,
+		arg.TypeSlug,
+		arg.LineSlug,
+		arg.Name,
+		arg.HasDiscount,
+	)
+	var i GetFiltersByNameCategoryAndTypeWithSlugsRow
+	err := row.Scan(
+		&i.Sizes,
+		&i.Bodytypes,
+		&i.MinPrice,
+		&i.MaxPrice,
+		&i.Firms,
+		&i.Lines,
+		&i.ProductTypes,
+		&i.DiscountRules,
+	)
+	return i, err
+}
+
 const getFiltersForCollection = `-- name: GetFiltersForCollection :one
 WITH collection_products_data AS (
     -- Берем только товары из коллекции
@@ -4697,13 +5215,14 @@ WITH collection_products_data AS (
         p.brand_id,
         p.line_id,
         b.name as firm,
-        p.minprice,
+        COALESCE(d.min_price, p.minprice) as minprice,
         p.maxprice,
         p.bodytype,
         p.type as product_type_id
     FROM products p
     JOIN collection_products cp ON p.id = cp.product_id  -- 👈 ТОЛЬКО ИЗ КОЛЛЕКЦИИ
     JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+    LEFT JOIN discount d ON p.id = d.productid
     WHERE cp.collection_id = $1  -- 👈 ID КОЛЛЕКЦИИ
         AND p.status = 'active'
         -- Применяем фильтры, если они переданы
@@ -5903,13 +6422,198 @@ func (q *Queries) GetProductsByFiltersPaginateBase(ctx context.Context, arg GetP
 	return items, nil
 }
 
+const getProductsByFiltersPaginateBaseWithSlugs = `-- name: GetProductsByFiltersPaginateBaseWithSlugs :many
+SELECT p.id, p.name, p.image_path,
+       b.name as firm,
+       b.slug as brand_slug,
+       bl.slug as line_slug,
+       p.minprice, p.maxprice, p.status,
+       -- Данные о скидке
+       COALESCE(d.discount_percent, 0) AS discount_percent,
+       COALESCE(d.original_price, 0) AS original_price,
+       COALESCE(d.discounted_price, p.minprice) AS discounted_price,
+       COALESCE(d.min_price, p.minprice) AS min_price,
+       COALESCE(d.max_price, p.maxprice) AS max_price,
+       d.id IS NOT NULL AS has_discount
+FROM products p
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+LEFT JOIN discount d ON p.id = d.productid
+CROSS JOIN (
+    SELECT 
+        COALESCE((SELECT id FROM product_categories WHERE enum_key = $1::text), 0) as cat_id,
+        COALESCE((SELECT id FROM product_types WHERE enum_key = $2::text), 0) as typ_id,
+        COALESCE((SELECT id FROM brands WHERE slug = $3::text), 0) as br_id,
+        COALESCE((SELECT id FROM brand_lines WHERE slug = $4::text), 0) as ln_id
+) ids
+WHERE 
+    p.status = 'active'
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    
+    -- 🔥 Фильтры по ID (перевели slug в ID в CROSS JOIN)
+    AND ($1::text = '' OR p.category = ids.cat_id)
+    AND ($2::text = '' OR p.type = ids.typ_id)
+    AND ($3::text = '' OR p.brand_id = ids.br_id)
+    AND ($4::text = '' OR p.line_id = ids.ln_id)
+    
+    -- Размеры
+    AND (
+        COALESCE(array_length($5::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($5::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    -- Поиск по имени
+    AND ($6::text = '' OR p.name ILIKE '%' || $6::text || '%')
+    -- Категории
+    AND (
+        COALESCE(array_length($7::int[], 1), 0) = 0
+        OR p.category = ANY($7::int[])
+    )
+    -- Типы
+    AND (
+        COALESCE(array_length($8::int[], 1), 0) = 0
+        OR p.type = ANY($8::int[])
+    )
+    -- Бренды
+    AND (
+        COALESCE(array_length($9::int[], 1), 0) = 0
+        OR p.brand_id = ANY($9::int[])
+    )
+    -- Линии
+    AND (
+        COALESCE(array_length($10::int[], 1), 0) = 0
+        OR p.line_id = ANY($10::int[])
+    )
+    -- Bodytype
+    AND (
+        COALESCE(array_length($11::text[], 1), 0) = 0
+        OR p.bodytype = ANY($11::body_enum[])
+    )
+    -- Цена
+    AND ($12::int IS NULL OR p.maxprice >= $12::int)
+    AND ($13::int IS NULL OR p.minprice <= $13::int)
+    -- С ценой
+    AND ($14::boolean IS NULL OR $14::boolean = false OR p.minprice > 0)
+    -- 🔥 Фильтр по скидкам
+    AND (
+        $15::boolean = false 
+        OR ($15::boolean = true AND d.id IS NOT NULL)
+    )
+ORDER BY
+    CASE WHEN $16::int = 1 THEN p.name END ASC,
+    CASE WHEN $16::int = 2 THEN p.name END DESC,
+    CASE WHEN $16::int = 3 THEN p.minprice END ASC,
+    CASE WHEN $16::int = 4 THEN p.minprice END DESC,
+    CASE WHEN $16::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    p.id ASC
+LIMIT $18::int OFFSET $17::int
+`
+
+type GetProductsByFiltersPaginateBaseWithSlugsParams struct {
+	CategorySlug string      `json:"category_slug"`
+	TypeSlug     string      `json:"type_slug"`
+	BrandSlug    string      `json:"brand_slug"`
+	LineSlug     string      `json:"line_slug"`
+	Sizes        []string    `json:"sizes"`
+	Name         string      `json:"name"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	WithPrice    bool        `json:"with_price"`
+	HasDiscount  bool        `json:"has_discount"`
+	SortType     int32       `json:"sort_type"`
+	Offsetval    int32       `json:"offsetval"`
+	Limitval     int32       `json:"limitval"`
+}
+
+type GetProductsByFiltersPaginateBaseWithSlugsRow struct {
+	ID              int32       `json:"id"`
+	Name            string      `json:"name"`
+	ImagePath       string      `json:"image_path"`
+	Firm            string      `json:"firm"`
+	BrandSlug       string      `json:"brand_slug"`
+	LineSlug        pgtype.Text `json:"line_slug"`
+	Minprice        int32       `json:"minprice"`
+	Maxprice        int32       `json:"maxprice"`
+	Status          string      `json:"status"`
+	DiscountPercent int32       `json:"discount_percent"`
+	OriginalPrice   int32       `json:"original_price"`
+	DiscountedPrice int32       `json:"discounted_price"`
+	MinPrice        int32       `json:"min_price"`
+	MaxPrice        int32       `json:"max_price"`
+	HasDiscount     interface{} `json:"has_discount"`
+}
+
+func (q *Queries) GetProductsByFiltersPaginateBaseWithSlugs(ctx context.Context, arg GetProductsByFiltersPaginateBaseWithSlugsParams) ([]GetProductsByFiltersPaginateBaseWithSlugsRow, error) {
+	rows, err := q.db.Query(ctx, getProductsByFiltersPaginateBaseWithSlugs,
+		arg.CategorySlug,
+		arg.TypeSlug,
+		arg.BrandSlug,
+		arg.LineSlug,
+		arg.Sizes,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.WithPrice,
+		arg.HasDiscount,
+		arg.SortType,
+		arg.Offsetval,
+		arg.Limitval,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductsByFiltersPaginateBaseWithSlugsRow
+	for rows.Next() {
+		var i GetProductsByFiltersPaginateBaseWithSlugsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ImagePath,
+			&i.Firm,
+			&i.BrandSlug,
+			&i.LineSlug,
+			&i.Minprice,
+			&i.Maxprice,
+			&i.Status,
+			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
+			&i.MinPrice,
+			&i.MaxPrice,
+			&i.HasDiscount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getProductsByFiltersPaginateFull = `-- name: GetProductsByFiltersPaginateFull :many
 SELECT 
-p.id, 
+    p.id, 
     p.name, 
     p.image_path,
     b.name as firm,
-    -- 🔥 Данные о скидке из таблицы discount
+    -- Данные о скидке из таблицы discount
     COALESCE(d.discount_percent, 0) AS discount_percent,
     COALESCE(d.original_price, 0) AS original_price,
     COALESCE(d.discounted_price, p.minprice) AS discounted_price,
@@ -5921,8 +6625,8 @@ p.id,
 FROM products p
 INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
 LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
-LEFT JOIN discount d ON p.id = d.productid
-LEFT JOIN store_house sh ON p.id = sh.productid
+INNER JOIN discount d ON p.id = d.productid  -- INNER JOIN - только товары со скидкой
+INNER JOIN store_house sh ON p.id = sh.productid AND sh.quantity > 0  -- INNER JOIN - только товары в наличии
 LEFT JOIN LATERAL (
     SELECT dr2.discount_value, dr2.name
     FROM discount_rule_items dri
@@ -5996,10 +6700,10 @@ WHERE
     AND (
         $10::boolean IS NULL OR $10::boolean = false OR p.minprice > 0
     )
-    -- Скидки
+    -- 🔥 Фильтр по скидкам (с обработкой rule_ids)
     AND (
-        -- Если передан список правил, то требуем наличие скидки от одного из них
-        (array_length($11::int[], 1) > 0 AND EXISTS (
+        -- Если передан список правил и он НЕ ПУСТОЙ - фильтруем по конкретным правилам
+        (COALESCE(array_length($11::int[], 1), 0) > 0 AND EXISTS (
             SELECT 1
             FROM discount_rule_items dri2
             JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
@@ -6014,11 +6718,9 @@ WHERE
               )
         ))
         OR
-        -- Если список не передан, то используем старую логику (прямая скидка или правило)
-        (array_length($11::int[], 1) = 0 AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL))
+        -- Если список НЕ ПЕРЕДАН или ПУСТОЙ - показываем все товары со скидкой (без фильтрации по правилам)
+        (COALESCE(array_length($11::int[], 1), 0) = 0)
     )
-    -- Наличие на складе
-    AND (sh.id IS NOT NULL AND sh.quantity > 0)
 ORDER BY
     CASE WHEN $12::int = 1 THEN p.name END ASC,
     CASE WHEN $12::int = 2 THEN p.name END DESC,
@@ -6061,7 +6763,7 @@ type GetProductsByFiltersPaginateFullRow struct {
 	InStore         pgtype.Bool `json:"in_store"`
 }
 
-// Всё вместе: и скидки, и склад
+// Всё вместе: и скидки, и склад (только товары со скидками И в наличии)
 func (q *Queries) GetProductsByFiltersPaginateFull(ctx context.Context, arg GetProductsByFiltersPaginateFullParams) ([]GetProductsByFiltersPaginateFullRow, error) {
 	rows, err := q.db.Query(ctx, getProductsByFiltersPaginateFull,
 		arg.Sizes,
@@ -6109,24 +6811,38 @@ func (q *Queries) GetProductsByFiltersPaginateFull(ctx context.Context, arg GetP
 	return items, nil
 }
 
-const getProductsByFiltersPaginateWithDiscount = `-- name: GetProductsByFiltersPaginateWithDiscount :many
+const getProductsByFiltersPaginateFullWithSlugs = `-- name: GetProductsByFiltersPaginateFullWithSlugs :many
+WITH category_id AS (
+    SELECT id FROM product_categories WHERE enum_key = $1::text
+),
+type_id AS (
+    SELECT id FROM product_types WHERE enum_key = $2::text
+),
+brand_id AS (
+    SELECT id FROM brands WHERE slug = $3::text
+),
+line_id AS (
+    SELECT id FROM brand_lines WHERE slug = $4::text
+)
 SELECT 
     p.id, 
     p.name, 
     p.image_path,
     b.name as firm,
-    p.status,
-    -- 🔥 Данные о скидке из таблицы discount
+    b.slug as brand_slug,
+    bl.slug as line_slug,
     COALESCE(d.discount_percent, 0) AS discount_percent,
     COALESCE(d.original_price, 0) AS original_price,
     COALESCE(d.discounted_price, p.minprice) AS discounted_price,
     COALESCE(d.min_price, p.minprice) AS min_price,
     COALESCE(d.max_price, p.maxprice) AS max_price,
-    d.id IS NOT NULL AS has_discount
+    d.id IS NOT NULL AS has_discount,
+    (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
 FROM products p
 INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
 LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
 LEFT JOIN discount d ON p.id = d.productid
+LEFT JOIN store_house sh ON p.id = sh.productid
 LEFT JOIN LATERAL (
     SELECT dr2.discount_value, dr2.name
     FROM discount_rule_items dri
@@ -6140,6 +6856,231 @@ LEFT JOIN LATERAL (
          OR (dri.item_type = 'product' AND dri.item_id = p.id)
         )
         AND d.id IS NULL
+    ORDER BY dr2.priority DESC
+    LIMIT 1
+) dr ON true
+WHERE 
+    p.status = 'active'
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    
+    -- 🔥 ФИЛЬТРЫ ПО ID (один раз перевели slug → id)
+    AND (
+        $1::text IS NULL 
+        OR $1::text = '' 
+        OR p.category = (SELECT id FROM category_id)
+    )
+    AND (
+        $2::text IS NULL 
+        OR $2::text = '' 
+        OR p.type = (SELECT id FROM type_id)
+    )
+    AND (
+        $3::text IS NULL 
+        OR $3::text = '' 
+        OR p.brand_id = (SELECT id FROM brand_id)
+    )
+    AND (
+        $4::text IS NULL 
+        OR $4::text = '' 
+        OR p.line_id = (SELECT id FROM line_id)
+    )
+    
+    -- Остальные фильтры
+    AND (
+        COALESCE(array_length($5::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($5::text[])
+              AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        $6::text IS NULL OR $6::text = ''
+        OR p.name ILIKE '%' || $6::text || '%'
+        OR p.article ILIKE '%' || $6::text || '%'
+    )
+    AND (
+        COALESCE(array_length($7::int[], 1), 0) = 0
+        OR p.category = ANY($7::int[])
+    )
+    AND (
+        COALESCE(array_length($8::int[], 1), 0) = 0
+        OR p.type = ANY($8::int[])
+    )
+    AND (
+        COALESCE(array_length($9::int[], 1), 0) = 0
+        OR p.brand_id = ANY($9::int[])
+    )
+    AND (
+        COALESCE(array_length($10::int[], 1), 0) = 0
+        OR p.line_id = ANY($10::int[])
+    )
+    AND (
+        COALESCE(array_length($11::text[], 1), 0) = 0
+        OR p.bodytype = ANY($11::body_enum[])
+    )
+    AND (
+        $12::int IS NULL OR p.maxprice >= $12::int
+    )
+    AND (
+        $13::int IS NULL OR p.minprice <= $13::int
+    )
+    AND (
+        $14::boolean IS NULL OR $14::boolean = false OR p.minprice > 0
+    )
+    AND (
+        (array_length($15::int[], 1) > 0 AND EXISTS (
+            SELECT 1
+            FROM discount_rule_items dri2
+            JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE dri2.rule_id = ANY($15::int[])
+              AND (
+                  (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+                  (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+                  (dri2.item_type = 'product' AND dri2.item_id = p.id)
+              )
+        ))
+        OR
+        (array_length($15::int[], 1) = 0 AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL))
+    )
+    AND (sh.id IS NOT NULL AND sh.quantity > 0)
+ORDER BY
+    CASE WHEN $16::int = 1 THEN p.name END ASC,
+    CASE WHEN $16::int = 2 THEN p.name END DESC,
+    CASE WHEN $16::int = 3 THEN p.minprice END ASC,
+    CASE WHEN $16::int = 4 THEN p.minprice END DESC,
+    CASE WHEN $16::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    p.id ASC
+LIMIT CASE WHEN $18::integer > 0 THEN $18::integer ELSE 50 END
+OFFSET CASE WHEN $17::integer > 0 THEN $17::integer ELSE 0 END
+`
+
+type GetProductsByFiltersPaginateFullWithSlugsParams struct {
+	CategorySlug string      `json:"category_slug"`
+	TypeSlug     string      `json:"type_slug"`
+	BrandSlug    string      `json:"brand_slug"`
+	LineSlug     string      `json:"line_slug"`
+	Sizes        []string    `json:"sizes"`
+	Name         string      `json:"name"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	WithPrice    bool        `json:"with_price"`
+	RuleIds      []int32     `json:"rule_ids"`
+	SortType     int32       `json:"sort_type"`
+	Offsetval    int32       `json:"offsetval"`
+	Limitval     int32       `json:"limitval"`
+}
+
+type GetProductsByFiltersPaginateFullWithSlugsRow struct {
+	ID              int32       `json:"id"`
+	Name            string      `json:"name"`
+	ImagePath       string      `json:"image_path"`
+	Firm            string      `json:"firm"`
+	BrandSlug       string      `json:"brand_slug"`
+	LineSlug        pgtype.Text `json:"line_slug"`
+	DiscountPercent int32       `json:"discount_percent"`
+	OriginalPrice   int32       `json:"original_price"`
+	DiscountedPrice int32       `json:"discounted_price"`
+	MinPrice        int32       `json:"min_price"`
+	MaxPrice        int32       `json:"max_price"`
+	HasDiscount     interface{} `json:"has_discount"`
+	InStore         pgtype.Bool `json:"in_store"`
+}
+
+// Всё вместе: и скидки, и склад
+// 🔥 СНАЧАЛА ПОЛУЧАЕМ ID ПО SLUG'АМ (1 РАЗ)
+func (q *Queries) GetProductsByFiltersPaginateFullWithSlugs(ctx context.Context, arg GetProductsByFiltersPaginateFullWithSlugsParams) ([]GetProductsByFiltersPaginateFullWithSlugsRow, error) {
+	rows, err := q.db.Query(ctx, getProductsByFiltersPaginateFullWithSlugs,
+		arg.CategorySlug,
+		arg.TypeSlug,
+		arg.BrandSlug,
+		arg.LineSlug,
+		arg.Sizes,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.WithPrice,
+		arg.RuleIds,
+		arg.SortType,
+		arg.Offsetval,
+		arg.Limitval,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductsByFiltersPaginateFullWithSlugsRow
+	for rows.Next() {
+		var i GetProductsByFiltersPaginateFullWithSlugsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ImagePath,
+			&i.Firm,
+			&i.BrandSlug,
+			&i.LineSlug,
+			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
+			&i.MinPrice,
+			&i.MaxPrice,
+			&i.HasDiscount,
+			&i.InStore,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProductsByFiltersPaginateWithDiscount = `-- name: GetProductsByFiltersPaginateWithDiscount :many
+SELECT 
+    p.id, 
+    p.name, 
+    p.image_path,
+    b.name as firm,
+    p.status,
+    -- Данные о скидке из таблицы discount
+    COALESCE(d.discount_percent, 0) AS discount_percent,
+    COALESCE(d.original_price, 0) AS original_price,
+    COALESCE(d.discounted_price, p.minprice) AS discounted_price,
+    COALESCE(d.min_price, p.minprice) AS min_price,
+    COALESCE(d.max_price, p.maxprice) AS max_price,
+    d.id IS NOT NULL AS has_discount
+FROM products p
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+LEFT JOIN discount d ON p.id = d.productid
+LEFT JOIN LATERAL (
+    SELECT dr2.discount_value, dr2.name, dr2.id as rule_id
+    FROM discount_rule_items dri
+    JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+        AND dr2.is_active = true
+        AND dr2.starts_at <= NOW()
+        AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+    WHERE (
+            (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+         OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+         OR (dri.item_type = 'product' AND dri.item_id = p.id)
+        )
     ORDER BY dr2.priority DESC
     LIMIT 1
 ) dr ON true
@@ -6200,10 +7141,10 @@ WHERE
     AND (
         $10::boolean IS NULL OR $10::boolean = false OR p.minprice > 0
     )
-    -- фильтр по скидкам всегда активен, поэтому проверяем наличие
+    -- 🔥 ИСПРАВЛЕННЫЙ фильтр по скидкам с COALESCE для обработки NULL
     AND (
-        -- Если передан список правил, то требуем наличие скидки от одного из них
-        (array_length($11::int[], 1) > 0 AND EXISTS (
+        -- Если передан список правил
+        (COALESCE(array_length($11::int[], 1), 0) > 0 AND EXISTS (
             SELECT 1
             FROM discount_rule_items dri2
             JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
@@ -6218,8 +7159,9 @@ WHERE
               )
         ))
         OR
-        -- Если список не передан, то используем старую логику (прямая скидка или правило)
-        (array_length($11::int[], 1) = 0 AND (d.id IS NOT NULL OR dr.discount_value IS NOT NULL))
+        -- Если список не передан (NULL или пустой) - показываем товары с ЛЮБОЙ скидкой
+        (($11::int[] IS NULL OR COALESCE(array_length($11::int[], 1), 0) = 0) 
+         AND d.id IS NOT NULL)
     )
 ORDER BY
     CASE WHEN $12::int = 1 THEN p.name END ASC,
@@ -7471,36 +8413,36 @@ func (q *Queries) UpdateDiscountRule(ctx context.Context, arg UpdateDiscountRule
 
 const updateProduct = `-- name: UpdateProduct :exec
 UPDATE products
-SET -- Обязательные поля (NULL не принимают)
-    name = COALESCE($1, name),
-    brand_id    = COALESCE($2, brand_id),   
-    line_id     = $3, 
-    article = COALESCE($4, article),
-    bodytype = COALESCE($5, bodytype),
-    category = COALESCE($6, category),
-    type = COALESCE($7, type),
-    -- Числовые поля
-    minprice = COALESCE($8, minprice),
-    maxprice = COALESCE($9, maxprice),
-    image_count = COALESCE($10, image_count),
-    -- JSON поле
+SET 
+    name = COALESCE(NULLIF($1, ''), name),
+    brand_id = COALESCE(NULLIF($2, 0), brand_id),   
+    line_id = COALESCE($3, line_id), 
+    article = COALESCE(NULLIF($4, ''), article),
+    bodytype = CASE 
+        WHEN $5::text != '' THEN $5::body_enum 
+        ELSE bodytype 
+    END,
+    category = COALESCE(NULLIF($6, 0), category),
+    type = COALESCE(NULLIF($7, 0), type),
+    minprice = COALESCE(NULLIF($8, 0), minprice),
+    maxprice = COALESCE(NULLIF($9, 0), maxprice),
+    image_count = COALESCE(NULLIF($10, 0), image_count),
     sizes = COALESCE($11::jsonb, sizes),
-    description = $12
+    description = COALESCE($12, description)
 WHERE id = $13
-RETURNING id
 `
 
 type UpdateProductParams struct {
-	Name        string      `json:"name"`
-	BrandID     int32       `json:"brand_id"`
+	Name        interface{} `json:"name"`
+	BrandID     interface{} `json:"brand_id"`
 	LineID      pgtype.Int4 `json:"line_id"`
-	Article     string      `json:"article"`
-	Bodytype    BodyEnum    `json:"bodytype"`
-	Category    int32       `json:"category"`
-	Type        int32       `json:"type"`
-	Minprice    int32       `json:"minprice"`
-	Maxprice    int32       `json:"maxprice"`
-	ImageCount  int32       `json:"image_count"`
+	Article     interface{} `json:"article"`
+	Bodytype    string      `json:"bodytype"`
+	Category    interface{} `json:"category"`
+	Type        interface{} `json:"type"`
+	Minprice    interface{} `json:"minprice"`
+	Maxprice    interface{} `json:"maxprice"`
+	ImageCount  interface{} `json:"image_count"`
 	Sizes       []byte      `json:"sizes"`
 	Description pgtype.Text `json:"description"`
 	ID          int32       `json:"id"`

@@ -11,8 +11,8 @@ import (
 )
 
 // SetCollection - сохраняет коллекцию в кэш
-func (p *RedisTaskProcessor) SetCollection(ctx context.Context, slug string, data []byte) error {
-	key := fmt.Sprintf("collection:slug:%s", slug)
+func (p *RedisTaskProcessor) SetCollection(ctx context.Context, id int32, data []byte) error {
+	key := fmt.Sprintf("collection:slug:%d", id)
 	return p.redisClient.Set(ctx, key, data, 10*time.Minute).Err()
 }
 

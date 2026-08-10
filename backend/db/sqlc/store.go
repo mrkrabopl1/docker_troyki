@@ -41,6 +41,18 @@ type Store interface {
 	GetProductsWithDiscountComplex(ctx context.Context) ([]types.ProductsSearchResponse1, error)
 	GetProductsForAdminByFiltersComplex(ctx context.Context, name string, page int, size int, filters types.ProductsForAdminFilterStruct, orderedType int32) (RespProductsForAdminByStringStruct, error)
 	GetSnickersHistoryComplex(ctx context.Context, idCustomer int32) ([]types.ProductsSearchResponse1, error)
+	GetProductsAndFiltersBySlugs(
+		ctx context.Context,
+		categorySlug string,
+		typeSlug string,
+		brandSlug string,
+		lineSlug string,
+		name string,
+		filters types.ProductsFilterStruct,
+		page int,
+		size int,
+		orderedType int,
+	) (RespSearchProductsAndFiltersByString, error)
 	GetProductsAndFiltersByNameCategoryAndType(
 		ctx context.Context,
 		filtersParams GetFiltersByNameCategoryAndTypeParamsNew,
@@ -54,6 +66,16 @@ type Store interface {
 		filtersParams GetFullFiltersForCollectionParams,
 		page, limit int,
 	) ([]ProductRow, int32, error)
+	GetManualCollectionProductsPaginated(
+		ctx context.Context,
+		collectionID int32,
+		limit, offset int,
+	) ([]ProductRow, int32, error)
+	GetCollectionProductsByFilters(
+		ctx context.Context,
+		collection Collection,
+		params GetCollectionProductsParams,
+	) (GetCollectionProductsResult, error)
 	GetProductsByString(ctx context.Context, name string, page int, size int, filters types.ProductsFilterStruct, orderedType int) (RespSearchProductsByString, error)
 	CreateDiscounts(ctx context.Context, discountData map[int32]DiscountData) error
 	GetProductsByFiltersComplex(ctx context.Context, name string, page int, size int, filters types.ProductsFilterStruct, orderedType int32) (RespProductsByStringStruct, error)

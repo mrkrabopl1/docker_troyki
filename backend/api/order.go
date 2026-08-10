@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -148,24 +149,55 @@ func (s *Server) handleCreateOrder(ctx *gin.Context) {
 }
 
 func (s *Server) handleUpdatePreorder(ctx *gin.Context) {
-	cookie, err := ctx.Cookie("cart")
-	fmt.Println(err, "fkmdslkfsdlkfms")
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+	// 1. Получаем ID предзаказа из URL
+	idParam := ctx.Param("id")
+	if idParam == "" {
+		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("missing preorder id")))
 		return
 	}
-	fmt.Println("yes")
-	var preorderData UpdataPreorderType
-	if err := ctx.BindJSON(&preorderData); err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return
-	}
-	fmt.Println("yes1", preorderData)
-	quantity, _ := s.store.UpdatePreorder(ctx, preorderData.Id, preorderData.Size, preorderData.Price, preorderData.Name, preorderData.Image_path, cookie)
-	fmt.Println("yes3", quantity)
-	// Print the result and the time taken
 
-	ctx.JSON(http.StatusOK, quantity)
+	preorderID, err := strconv.Atoi(idParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("invalid preorder id: %s", idParam)))
+		return
+	}
+
+	// 2. Получаем корзину из cookie
+	cartID, err := ctx.Cookie("cart")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("cart not found")))
+		return
+	}
+
+	// 3. Парсим тело запроса
+
+	var preorderData UpdataPreorderType
+	if err := ctx.ShouldBindJSON(&preorderData); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("invalid request: %w", err)))
+		return
+	}
+
+	// 4. Обновляем предзаказ
+	quantity, err := s.store.UpdatePreorder(
+		ctx,
+		int32(preorderID), // ID из URL
+		preorderData.Size,
+		preorderData.Price,
+		preorderData.Name,
+		preorderData.Image_path,
+		cartID,
+	)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to update preorder: %w", err)))
+		return
+	}
+
+	// 5. Возвращаем результат
+	ctx.JSON(http.StatusOK, gin.H{
+		"success":  true,
+		"quantity": quantity,
+		"message":  "Preorder updated successfully",
+	})
 }
 func (s *Server) handleGetCartCount(ctx *gin.Context) {
 

@@ -1,30 +1,22 @@
-import React, { 
-    useEffect, 
-    useRef, 
+import React, {
+    useEffect,
+    useRef,
     useState,
     useMemo,
-    ReactElement, 
+    ReactElement,
     CSSProperties,
     memo,
     useCallback
 } from 'react';
 
 interface ICarouselSliderProps {
-    /** Массив элементов для прокрутки */
     items: ReactElement[];
-    /** Дополнительный CSS-класс */
     className?: string;
-    /** Скорость прокрутки (пикселей в секунду) */
     speed?: number;
-    /** Направление прокрутки: 'left' или 'right' */
     direction?: 'left' | 'right';
-    /** Пауза при наведении мыши */
     pauseOnHover?: boolean;
-    /** Высота слайдера */
     height?: string | number;
-    /** Ширина одного элемента */
     itemWidth?: string | number;
-    /** Отступ между элементами */
     gap?: string | number;
 }
 
@@ -35,7 +27,7 @@ const CarouselSlider: React.FC<ICarouselSliderProps> = ({
     direction = 'left',
     pauseOnHover = true,
     height = '100%',
-    itemWidth = 'auto',
+    itemWidth = '200px',
     gap = '20px'
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -43,42 +35,46 @@ const CarouselSlider: React.FC<ICarouselSliderProps> = ({
     const animationRef = useRef<number>();
     const scrollPositionRef = useRef(0);
     const [isPaused, setIsPaused] = useState(false);
-    
-    // Создаем достаточно клонов для бесконечной прокрутки
+    const [totalWidth, setTotalWidth] = useState(0);
+
+    // Создаем достаточное количество клонов для заполнения экрана
     const duplicatedItems = useMemo(() => {
         if (items.length === 0) return [];
-        // Чем больше клонов, тем плавнее прокрутка
-        const clonesCount = 5;
-        return Array(clonesCount).fill(items).flat();
-    }, [items]);
+        
+        // Вычисляем ширину одного элемента с учетом отступа
+        const itemWidthNum = typeof itemWidth === 'number' ? itemWidth : parseInt(itemWidth) || 200;
+        const gapNum = typeof gap === 'number' ? gap : parseInt(gap) || 20;
+        const itemWithGap = itemWidthNum + gapNum;
+        
+        // Минимальное количество копий, чтобы заполнить экран
+        const minCopies = Math.ceil(window.innerWidth / (itemWithGap * items.length)) + 2;
+        const copiesCount = Math.max(3, minCopies);
+        
+        return Array(copiesCount).fill(items).flat();
+    }, [items, itemWidth, gap]);
 
-    // Функция анимации
+    // Анимация
     const animate = useCallback(() => {
-        if (!containerRef.current || !trackRef.current || isPaused) {
+        if (!trackRef.current || isPaused) {
             animationRef.current = requestAnimationFrame(animate);
             return;
         }
 
-        const container = containerRef.current;
-        const track = trackRef.current;
-        
-        // Обновляем позицию в зависимости от направления
-        const step = speed * 0.016; // 0.016 ~ 60fps
+        const step = speed * 0.016;
         scrollPositionRef.current += direction === 'left' ? -step : step;
         
-        const trackWidth = track.scrollWidth / 5; // Ширина одного набора (делим на количество клонов)
-        
-        // Сброс позиции для создания бесконечного эффекта
-        if (direction === 'left' && Math.abs(scrollPositionRef.current) >= trackWidth) {
-            scrollPositionRef.current = 0;
-        } else if (direction === 'right' && scrollPositionRef.current >= trackWidth) {
-            scrollPositionRef.current = 0;
+        // Сброс для непрерывности
+        if (totalWidth > 0) {
+            if (direction === 'left' && Math.abs(scrollPositionRef.current) >= totalWidth) {
+                scrollPositionRef.current = 0;
+            } else if (direction === 'right' && scrollPositionRef.current >= totalWidth) {
+                scrollPositionRef.current = 0;
+            }
         }
         
-        track.style.transform = `translateX(${scrollPositionRef.current}px)`;
-        
+        trackRef.current.style.transform = `translateX(${scrollPositionRef.current}px)`;
         animationRef.current = requestAnimationFrame(animate);
-    }, [direction, speed, isPaused]);
+    }, [direction, speed, isPaused, totalWidth]);
 
     // Запуск анимации
     useEffect(() => {
@@ -93,44 +89,54 @@ const CarouselSlider: React.FC<ICarouselSliderProps> = ({
         };
     }, [animate, items.length]);
 
-    // Обработчики паузы при наведении
-    const handleMouseEnter = useCallback(() => {
-        if (pauseOnHover) {
-            setIsPaused(true);
-        }
-    }, [pauseOnHover]);
+    // Измерение ширины
+    useEffect(() => {
+        const measureWidth = () => {
+            if (trackRef.current) {
+                const track = trackRef.current;
+                // Вычисляем ширину одного набора элементов
+                const singleSetWidth = track.scrollWidth / duplicatedItems.length * items.length;
+                setTotalWidth(singleSetWidth);
+            }
+        };
 
-    const handleMouseLeave = useCallback(() => {
-        if (pauseOnHover) {
-            setIsPaused(false);
+        measureWidth();
+        
+        const observer = new ResizeObserver(measureWidth);
+        if (trackRef.current) {
+            observer.observe(trackRef.current);
         }
-    }, [pauseOnHover]);
+        
+        window.addEventListener('resize', measureWidth);
+        
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', measureWidth);
+        };
+    }, [duplicatedItems, items.length]);
 
-    // Стили для контейнера
-    const containerStyle: CSSProperties = useMemo(() => ({
+    const containerStyle: CSSProperties = {
         overflow: 'hidden',
         width: '100%',
         height,
         position: 'relative'
-    }), [height]);
+    };
 
-    // Стили для трека
-    const trackStyle: CSSProperties = useMemo(() => ({
+    const trackStyle: CSSProperties = {
         display: 'flex',
         gap,
         height: '100%',
         width: 'fit-content',
         willChange: 'transform'
-    }), [gap]);
+    };
 
-    // Стили для элемента
-    const itemStyle: CSSProperties = useMemo(() => ({
+    const itemStyle: CSSProperties = {
         flex: itemWidth === 'auto' ? '0 0 auto' : `0 0 ${itemWidth}`,
         height: '100%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center'
-    }), [itemWidth]);
+    };
 
     if (items.length === 0) {
         return <div style={containerStyle} />;
@@ -141,19 +147,12 @@ const CarouselSlider: React.FC<ICarouselSliderProps> = ({
             ref={containerRef}
             style={containerStyle}
             className={`carousel-slider ${className}`}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
+            onMouseEnter={() => pauseOnHover && setIsPaused(true)}
+            onMouseLeave={() => pauseOnHover && setIsPaused(false)}
         >
-            <div
-                ref={trackRef}
-                style={trackStyle}
-            >
+            <div ref={trackRef} style={trackStyle}>
                 {duplicatedItems.map((item, index) => (
-                    <div
-                        key={`slide-${index}`}
-                        style={itemStyle}
-                        className="carousel-slide"
-                    >
+                    <div key={`slide-${index}`} style={itemStyle}>
                         {item}
                     </div>
                 ))}

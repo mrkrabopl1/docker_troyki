@@ -32,7 +32,6 @@ export interface CollectionSettings {
         bodytypes: string[];
         in_store: boolean;
     };
-    product_ids?: number[];
     max_items?: number;
     show_out_of_stock?: boolean;
     sort_by?: 'price_asc' | 'price_desc' | 'popular' | 'newest';
@@ -41,6 +40,7 @@ export interface CollectionSettings {
 export interface Collection {
     id: number;
     slug: string;
+    product_ids?: number[];
     name: string;
     description?: string;
     type: 'dynamic' | 'manual' | 'hybrid';

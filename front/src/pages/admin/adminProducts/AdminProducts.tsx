@@ -11,6 +11,8 @@ import { ReactComponent as Filter } from '/public/filter.svg'
 import { ReactComponent as SortIcon } from '/public/sort.svg'
 import RadioGroup from 'src/components/radio/RadioGroup'
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
+import { SizeEditorModal, SizePrice } from 'src/modules/admin/sizeEditor/SizeEditor';
+import { getAdminProductById, updateAdminProduct } from 'src/providers/adminProductsProvider';
 import { ProductInfo } from 'src/types/adminProduct'
 import {
   getAdminProducts,
@@ -102,6 +104,72 @@ const AdminProducts: React.FC = () => {
   const [selectedPriceType, setSelectedPriceType] = useState<'increase' | 'decrease'>('increase')
   const [selectedPriceValue, setSelectedPriceValue] = useState(0)
   const [selectedActive, setSelectedActive] = useState<boolean | null>(null)
+
+
+  const [sizeEditorOpen, setSizeEditorOpen] = useState(false);
+  const [selectedProductForSize, setSelectedProductForSize] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+  const [sizesData, setSizesData] = useState<SizePrice[]>([]);
+  const [sizesLoading, setSizesLoading] = useState(false);
+  const [sizesSaving, setSizesSaving] = useState(false);
+  const handleOpenSizeEditor = async (product: any) => {
+    if (bulkMode) return;
+
+    setSelectedProductForSize({
+      id: product.id,
+      name: product.name
+    });
+    setSizeEditorOpen(true);
+    setSizesLoading(true);
+
+    try {
+      await getAdminProductById(product.id, (data) => {
+        const parsedSizes = Object.entries(data.info || {}).map(([size, info]: [string, any]) => ({
+          size,
+          price: info.price || 0,
+          discount: info.discount || 0,
+          quantity: info.quantity || 0
+        }));
+        setSizesData(parsedSizes);
+      });
+    } catch (error) {
+      console.error('Error loading sizes:', error);
+    } finally {
+      setSizesLoading(false);
+    }
+  };
+
+  // Сохранение размеров
+  const handleSaveSizes = async (sizes: SizePrice[]) => {
+    setSizesSaving(true);
+    try {
+      const sizesForSubmit = sizes.reduce((acc, size) => ({
+        ...acc,
+        [size.size]: {
+          price: size.price,
+          quantity: size.quantity || 0,
+          discount: size.discount || 0
+        }
+      }), {});
+
+      await updateAdminProduct(selectedProductForSize!.id, { sizes: sizesForSubmit } as any, () => {
+        setSizesData(sizes);
+        loadProducts(); // обновить таблицу
+      });
+    } catch (error) {
+      console.error('Error saving sizes:', error);
+    } finally {
+      setSizesSaving(false);
+    }
+  };
+
+  // Обработчик клика по строке
+  const handleRowClick = (product: any) => {
+    if (bulkMode) return;
+    handleOpenSizeEditor(product);
+  };
   const convertFiltersData = useCallback((resData: any) => {
     const priceProps = {
       min: resData.price?.[0] || 0,
@@ -147,7 +215,6 @@ const AdminProducts: React.FC = () => {
         name: firm
       })
     })
-
     setFiltersState({
       priceProps,
       checboxsProps: [
@@ -178,7 +245,8 @@ const AdminProducts: React.FC = () => {
           discount: { asc: 7, desc: 8 },
           created_at: { asc: 9, desc: 10 },
           updated_at: { asc: 11, desc: 12 },
-          status: { asc: 12, desc: 13 },
+          status: { asc: 13, desc: 14 },
+          in_stock: { asc: 15, desc: 16 },
         }
         sortType = sortMap[sortField]?.[sortDirection] || 0
       }
@@ -782,6 +850,7 @@ const AdminProducts: React.FC = () => {
               <SortableHeader field="name">Название</SortableHeader>
               <SortableHeader field="brand">Фирма</SortableHeader>
               <SortableHeader field="price">Цена</SortableHeader>
+              <SortableHeader field="in_stock">На складе</SortableHeader>
               <SortableHeader field="updated_at">Обновлен</SortableHeader>
               <SortableHeader field="discount">Скидка</SortableHeader>
               <SortableHeader field="status">Статус</SortableHeader>
@@ -804,6 +873,10 @@ const AdminProducts: React.FC = () => {
                   key={product.id}
                   className={`${s.productRow} ${!product.is_active ? s.inactive : ''}`}
                   onClick={() => !bulkMode && router.push(`/admin/products/${product.id}`)}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    handleRowClick(product)
+                  }}
                   style={{ cursor: bulkMode ? 'default' : 'pointer' }}
                 >
                   {bulkMode && (
@@ -829,6 +902,11 @@ const AdminProducts: React.FC = () => {
                   <td data-label="Фирма">{product.firm || '—'}</td>
                   <td className={s.priceCell} data-label="Цена">
                     {formatPrice(product.price, product.old_price)}
+                  </td>
+                  <td data-label="На складе">
+                    <span className={product.in_stock ? s.inStockBadge : s.outOfStockBadge}>
+                      {product.in_stock ? '✓ В наличии' : '✕ Нет'}
+                    </span>
                   </td>
                   <td data-label="Обновлен">{product.updated_at ? new Date(product.updated_at).toLocaleDateString() : '—'}</td>
                   <td className={s.discountCell} data-label="Скидка">
@@ -951,6 +1029,22 @@ const AdminProducts: React.FC = () => {
           </div>
         )}
       </Modal>
+      {sizeEditorOpen && selectedProductForSize && (
+        <SizeEditorModal
+          isOpen={sizeEditorOpen}
+          productId={selectedProductForSize.id}
+          productName={selectedProductForSize.name}
+          sizes={sizesData}
+          loading={sizesLoading}
+          saving={sizesSaving}
+          onClose={() => {
+            setSizeEditorOpen(false);
+            setSelectedProductForSize(null);
+          }}
+          onSave={handleSaveSizes}
+          onUpdate={loadProducts}
+        />
+      )}
     </div>
   )
 }

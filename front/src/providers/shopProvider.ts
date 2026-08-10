@@ -1,96 +1,96 @@
 import axios from "axios";
 const isServer = () => typeof window === 'undefined';
 export async function getMainBanners(): Promise<any> {
-  if (isServer()) {
-    const res = await fetch(`${API_URL}/getMainBanners`, {
-      headers: { 'Content-Type': 'application/json' }
-    });
-    if (!res.ok) throw new Error(`Failed to fetch banners: ${res.status}`);
-    return res.json();
-  }
-  
-  const res = await axios.get(`${API_URL}/getMainBanners`);
-  return res.data;
+    console.log("Fetching main banners...", API_URL);
+    if (isServer()) {
+        const res = await fetch(`${API_URL}/banners`, {
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) throw new Error(`Failed to fetch banners: ${res.status}`);
+        return res.json();
+    }
+
+    const res = await axios.get(`${API_URL}/banners`);
+    return res.data;
 }
 
-const getCartData = function ( hash, callback: (val: any) => void) {
+const getCartData = function (hash, callback: (val: any) => void) {
     axios({
         withCredentials: true,
         method: 'get',
-        url: `${API_URL}/getCartData?hash=${hash}`,
+        url: `${API_URL}/cart?hash=${hash}`,
         headers: {}
     }
-    ).then((res:any)=>{
+    ).then((res: any) => {
         console.log(res.data)
         callback(res.data)
-    },(error)=>{
+    }, (error) => {
         console.warn(error)
     })
 }
 
-const getCartCount = function ( callback: (val: any) => void) {
+const getCartCount = function (callback: (val: any) => void) {
     axios({
         withCredentials: true,
         method: 'get',
-        url: `${API_URL}/getCartCount`,
+        url: `${API_URL}/cart/count`,
         headers: {}
     }
-    ).then((res:any)=>{
+    ).then((res: any) => {
         console.log(res.data)
         callback(res.data)
-    },(error)=>{
+    }, (error) => {
         console.warn(error)
     })
 }
 const getMainInfo = async () => {
-  try {
-    const res = await axios({
-      withCredentials: true,
-      method: 'get',
-      url: `${API_URL}/getMainInfo`,
-      headers: {},
-    });
+    console.log("Fetching main banners...", API_URL);
+    if (isServer()) {
+        const res = await fetch(`${API_URL}/getMainInfo`, {
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) throw new Error(`Failed to fetch banners: ${res.status}`);
+        return res.json();
+    }
+
+    const res = await axios.get(`${API_URL}/getMainInfo`);
     return res.data;
-  } catch (error) {
-    console.warn(error);
-    throw error;
-  }
 }
 
-const getOrderCartData = function (cartHash:any, callback: (val: any) => void) {
+const getOrderCartData = function (cartHash: any, callback: (val: any) => void) {
     const data = new FormData();
     axios({
         withCredentials: true,
         method: 'get',
-        url: `${API_URL}/getCartDataFromOrder?hash=`+cartHash,
+        url: `${API_URL}/orders/cart?hash=` + cartHash,
         headers: {}
     }
-    ).then((res:any)=>{
+    ).then((res: any) => {
         console.log(res.data)
         callback(res.data)
-    },(error)=>{
+    }, (error) => {
         console.warn(error)
     })
 }
 
 const deleteCartData = function (preorderId, callback: (val: any) => void) {
-    let json = JSON.stringify({preorderId})
+    let json = JSON.stringify({ preorderId })
     axios({
         method: 'post',
-        url: `${API_URL}/deleteCartData`,
+        url: `${API_URL}/delete/cart`,
         headers: {
             'Content-Type': 'application/json'
         },
-        data:json
+        data: json
     }
-    ).then((res:any)=>{
+    ).then((res: any) => {
         console.log(res.data)
         callback(res.data)
-    },(error)=>{
+    }, (error) => {
         console.warn(error)
     })
 }
 
 
 
-export { getCartData, deleteCartData ,getOrderCartData, getCartCount,getMainInfo}
+export { getCartData, deleteCartData, getOrderCartData, getCartCount, getMainInfo }

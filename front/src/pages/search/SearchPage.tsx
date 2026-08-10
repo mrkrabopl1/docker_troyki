@@ -6,17 +6,17 @@ import Button from 'src/components/Button'
 import MerchSliderField from 'src/modules/merchField/MerchFieldWithPageSwitcher'
 import s from "./style1.module.css"
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
-import { getProductsAndFiltersByCategoryAndType, getProductsAndFiltersByString, getProductsByString, getProductsByCategoriesAndFilters } from "src/providers/searchProvider"
+import { getProductsAndFiltersByCategoryAndType, getProductsAndFiltersByString,  getProductsByCategoriesAndFilters } from "src/providers/searchProvider"
 import { ReactComponent as FoureGrid } from '/public/foureGrid.svg'
 import { ReactComponent as SixGrid } from '/public/sixGrid.svg'
 import RadioGroup from 'src/components/radio/RadioGroup'
 import { ReactComponent as Filter } from '/public/filter.svg'
 import { ReactComponent as Sort } from '/public/sort.svg'
-import { set } from 'ol/transform';
 import Combobox from 'src/components/combobox/Combobox';
 import { finishLoading } from 'src/store/reducers/loadingSlice';
 import { CheckBoxType } from 'src/types/modules';
 import { BODY_TYPES } from 'src/constants/bodytypes'
+
 interface FiltersInfoRequest {
   sizes: string[]
   price: number[]
@@ -46,12 +46,23 @@ interface FiltersState {
   }[]
 }
 
-const SearchPage: React.FC = () => {
-  const dispatch = useAppDispatch()
+interface SearchPageProps {
+  initialData?: any;
+  searchParams?: any;
+}
 
+const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrParams }) => {
+  const dispatch = useAppDispatch()
   const router = useRouter();
   const searchParams = router.query;
   const { typesVal, categories, discountRules, firmMap, lineMap } = useAppSelector(state => state.menu);
+  const [isFirmMapReady, setIsFirmMapReady] = useState(false);
+  useEffect(() => {
+    console.debug("emdksalkdaslask")
+    if (Object.keys(firmMap).length > 0) {
+      setIsFirmMapReady(true);
+    }
+  }, [firmMap]);
   // Refs для хранения изменяемых данных без перерисовки
   const filtersInfo = useRef<FiltersInfoRequest>({
     categories: [],
@@ -63,9 +74,11 @@ const SearchPage: React.FC = () => {
     bodytypes: [],
     store: false,
     discount: false,
-    withPrice: true,
+    withPrice: false,
     rule_ids: []
   })
+
+  const isHydrated = useRef(false); // 🔥 Флаг для SSR
   const [hoverSettings, setHoverSettings] = useState(false);
   const emptyData = useRef(false)
   const [refresh, setRefresh] = useState(false)
@@ -95,6 +108,43 @@ const SearchPage: React.FC = () => {
     checboxsProps: [],
     soloDataProps: []
   })
+
+  // ============================================================
+  // 🔥 ОБРАБОТКА SSR ДАННЫХ
+  // ============================================================
+  useEffect(() => {
+    if (initialData || !isFirmMapReady) {
+      console.log('🔥 Using SSR data for search');
+      dispatch(finishLoading());
+
+      if (initialData.products.length === 0) {
+        emptyData.current = true;
+        emtyText.current = "По запросу ничего не найдено.";
+        setRefresh(prev => !prev);
+      } else {
+        emptyData.current = false;
+        pages.current = Math.ceil(initialData.totalCount / pageSize.current);
+        const data = convertFiltersData(initialData.filters);
+        setFilters(data);
+        settingsModuleMemo.current = !settingsModuleMemo.current;
+        setMerchFieldData(initialData.products);
+      }
+    }
+  }, [initialData, isFirmMapReady]);
+
+  // ============================================================
+  // ❌ КЛИЕНТСКАЯ ЗАГРУЗКА (если нет SSR)
+  // ============================================================
+  useEffect(() => {
+    if (Object.entries(typesVal).length === 0 || Object.entries(categories).length === 0 || !router.isReady) {
+      return;
+    }
+    typesValRef.current = typesVal;
+    setFiltersFromUrl();
+    const name = searchParams.key_word as string || "";
+    searchWord.current = name;
+  }, [router.isReady,categories,initialData]);
+
   const setFiltersFromUrl = useCallback(() => {
     filtersInfo.current.sizes = [];
     filtersInfo.current.firms = [];
@@ -127,12 +177,11 @@ const SearchPage: React.FC = () => {
       }
     }
 
-    // Обработка фирмы из URL (ИСПРАВЛЕНО)
     const firmSlug = searchParams.brand as string || "";
     if (firmSlug) {
       const firm = firmMap[firmSlug];
       if (firm) {
-        filtersInfo.current.firms.push(firm.id); // сохраняем ID для API
+        filtersInfo.current.firms.push(firm.id);
         brandIdRef.current = firm.id
       }
     }
@@ -145,9 +194,7 @@ const SearchPage: React.FC = () => {
     if (lineSlug) {
       const line = lineMap[lineSlug];
       if (line) {
-        filtersInfo.current.lines.push(line.id); // сохраняем ID для API
-        // если нужно сохранить ID линии для других целей
-        // lineIdRef.current = line.id;
+        filtersInfo.current.lines.push(line.id);
       }
     }
     if (searchParams.rule_ids || searchParams.discount) {
@@ -161,7 +208,7 @@ const SearchPage: React.FC = () => {
       typeRef.current = typeId
     }
   }, [searchParams, typesVal, categories, firmMap])
-  // Мемоизированные колбэки
+
   const updatePage = useCallback((respData: any) => {
     dispatch(finishLoading());
     if (respData.products.length === 0) {
@@ -171,14 +218,13 @@ const SearchPage: React.FC = () => {
     } else {
       emptyData.current = false
       pages.current = Math.ceil(respData.totalCount / pageSize.current);
-      // Сбрасываем фильтры на новые, полученные от бэка
       setFiltersFromUrl()
       const data = convertFiltersData(respData.filters)
       setFilters(data)
       settingsModuleMemo.current = !settingsModuleMemo.current
       setMerchFieldData(respData.products)
     }
-  }, [firmMap, setFiltersFromUrl, searchParams])
+  }, [setFiltersFromUrl])
 
   const updatMerch = useCallback((respData: any) => {
     pages.current = Math.ceil(respData.totalCount / pageSize.current);
@@ -195,13 +241,13 @@ const SearchPage: React.FC = () => {
   const searchNameCallback = useCallback((name: string) => {
     searchWord.current = name
     searchData()
-  }, [updatMerch])
+  }, [])
 
-  const searchCallback = useCallback((searchData: string) => {
-    searchWord.current = searchData
+  const searchCallback = useCallback((searchDataStr: string) => {
+    searchWord.current = searchDataStr
     let params = {};
     if (searchWord.current) {
-      params["name"] = searchData
+      params["name"] = searchDataStr
     }
 
     if (categoryRef.current && !filtersInfo.current.categories.includes(categoryRef.current)) {
@@ -211,7 +257,6 @@ const SearchPage: React.FC = () => {
     if (typeRef.current && !filtersInfo.current.types.includes(typeRef.current)) {
       filtersInfo.current.types.push(typeRef.current)
     }
-
 
     getProductsByCategoriesAndFilters(
       params,
@@ -223,7 +268,6 @@ const SearchPage: React.FC = () => {
     )
   }, [updatMerch])
 
-  // Преобразование данных фильтров
   const convertFiltersData = useCallback((resData: {
     price: number[],
     avalible: boolean,
@@ -246,7 +290,6 @@ const SearchPage: React.FC = () => {
     firms.current = []
     const checkBoxPropsData: CheckBoxType[] = []
 
-    // Обработка размеров одежды
     if (resData.sizes && Object.entries(resData.sizes).length > 1) {
       Object.entries(resData.sizes).forEach(([size, count]) => {
         activeSizes.current.push(size)
@@ -255,12 +298,11 @@ const SearchPage: React.FC = () => {
           id: size,
           enable: true,
           activeData: active,
-          name: `${size}` // `${size}(${count})`
+          name: `${size}`
         })
       })
     }
 
-    // Обработка типов товара
     const checkBoxPropsTypeData: CheckBoxType[] = []
     if (resData.types && resData.types.length > 1) {
       resData.types.forEach((typeId) => {
@@ -277,12 +319,11 @@ const SearchPage: React.FC = () => {
           id: typeId,
           enable: true,
           activeData: active,
-          name: `${typeDescr.name}`//"(${resData.firmsCount[typeDescr.name] || 0})"`
+          name: `${typeDescr.name}`
         })
       })
     }
 
-    // Обработка скидок (discounts) – преобразуем в CheckBoxType
     const checkBoxPropsDiscountData: CheckBoxType[] = []
     if (resData.discounts) {
       resData.discounts.forEach((disc) => {
@@ -296,61 +337,46 @@ const SearchPage: React.FC = () => {
       })
     }
 
-    // Обработка фирм (ИСПРАВЛЕНО)
     const checkBoxPropsFirmData: CheckBoxType[] = []
     Object.entries(resData.firmsCount).forEach(([firmName, count]) => {
-      // Ищем фирму по имени в firmMap
       const firm = Object.values(firmMap).find(f => f.name === firmName);
       if (!firm) {
-        // Если не нашли - пропускаем
         console.warn(`Firm "${firmName}" not found in firmMap`);
         return;
       }
-
-      // Сохраняем ID для фильтрации
       firms.current.push(firm.id);
-
-      // Проверяем, активна ли фирма в текущих фильтрах
       const active = filtersInfo.current.firms.includes(firm.id);
-
-      // Используем slug как id для UI
       checkBoxPropsFirmData.push({
-        id: firm.slug, // ← теперь slug, а не имя
+        id: firm.slug,
         enable: true,
         activeData: active,
         name: `${firmName}`
       });
     });
 
-    // Solo данные – два чекбокса: "Есть на складе" (withPrice) и "В наличии" (store)
     const soloDataProps: CheckBoxType[] = [
       {
         id: 'withPrice',
         enable: true,
-        activeData: filtersInfo.current.withPrice ?? true,
-        name: "Есть на складе"
+        activeData: false,
+        name: "В наличии"
       },
       {
         id: 'store',
         enable: true,
-        activeData: filtersInfo.current.store ?? false,
-        name: "В наличии"
+        activeData:false,
+        name: "Есть на складе"
       }
     ]
     const checkBoxPropsLineData: CheckBoxType[] = []
     if (resData.linesData) {
       Object.entries(resData.linesData).forEach(([lineName, count]) => {
-        // Ищем линию по имени в lineMap
         const line = Object.values(lineMap).find(l => l.name === lineName);
         if (!line) {
           console.warn(`Line "${lineName}" not found in lineMap`);
           return;
         }
-
-
-        // Проверяем, активна ли линия в текущих фильтрах
         const active = filtersInfo.current.lines.includes(line.id);
-
         checkBoxPropsLineData.push({
           id: line.slug,
           enable: true,
@@ -363,7 +389,6 @@ const SearchPage: React.FC = () => {
     if (resData.bodytypes) {
       Object.entries(resData.bodytypes).forEach(([body, count]) => {
         const active = filtersInfo.current.bodytypes.includes(body);
-
         checkBoxPropsBodyData.push({
           id: body,
           enable: true,
@@ -379,31 +404,27 @@ const SearchPage: React.FC = () => {
         { id: "firms", name: "Фирмы", props: checkBoxPropsFirmData },
         { id: "lines", name: "Линейки", props: checkBoxPropsLineData },
         { id: "bodytypes", name: "Телосложение", props: checkBoxPropsBodyData },
-
         { id: "type", name: "Типы товара", props: checkBoxPropsTypeData },
         { id: "discounts", name: "Скидки", props: checkBoxPropsDiscountData },
       ],
       soloDataProps
     }
-  }, [discountRules, firmMap]);
-
+  }, [discountRules, firmMap, lineMap]);
 
   const onFiltersChange = useCallback((filter: any) => {
     switch (filter.id) {
       case "sizes":
         filtersInfo.current.sizes = filter.data;
         break;
-      case "lines": // 👈 ДОБАВЛЯЕМ
+      case "lines":
         filtersInfo.current.lines = filter.data
           .map((slug: string) => lineMap[slug]?.id)
           .filter(Boolean);
         break;
       case "firms":
-        // filter.data - массив slug'ов от чекбоксов
-        // Преобразуем slug'и в ID для запроса к API
         filtersInfo.current.firms = filter.data
           .map((slug: string) => firmMap[slug]?.id)
-          .filter(Boolean); // убираем undefined
+          .filter(Boolean);
         break;
       case "type":
         filtersInfo.current.types = filter.data;
@@ -429,20 +450,14 @@ const SearchPage: React.FC = () => {
         break;
     }
     setFilters(prevState => {
-      // Создаем копию текущего состояния
       const newState = { ...prevState };
-
-      // Обновляем priceProps
       newState.priceProps = {
         ...newState.priceProps,
         dataLeft: filtersInfo.current.price[0] || newState.priceProps.min,
         dataRight: filtersInfo.current.price[1] || newState.priceProps.max
       };
-
-      // Обновляем все чекбоксы
       newState.checboxsProps = newState.checboxsProps.map(section => {
         const newSection = { ...section };
-
         switch (section.id) {
           case "sizes":
             newSection.props = section.props.map(item => ({
@@ -489,33 +504,28 @@ const SearchPage: React.FC = () => {
           default:
             break;
         }
-
         return newSection;
       });
-
-      // Обновляем soloDataProps
       newState.soloDataProps = newState.soloDataProps.map(item => ({
         ...item,
         activeData: item.id === 'withPrice'
           ? (filtersInfo.current.withPrice ?? true)
           : (filtersInfo.current.store ?? false)
       }));
-
       return newState;
     });
-    // после изменения фильтров делаем поиск
     searchCallback(searchWord.current);
-  }, [searchCallback, firmMap]);
+  }, [searchCallback, firmMap, lineMap]);
 
   const pageChange = useCallback((page: number) => {
     currentPage.current = page
     searchCallback(searchWord.current)
-  }, [updatMerch])
+  }, [searchCallback])
 
   const orderTypeChange = useCallback((ind: number | string) => {
     orderType.current = Number(ind)
     searchCallback(searchWord.current)
-  }, [updatMerch])
+  }, [searchCallback])
 
   const resetFilters = useCallback(() => {
     filtersInfo.current = {
@@ -530,7 +540,23 @@ const SearchPage: React.FC = () => {
       bodytypes: []
     }
     searchData()
-  }, [updatMerch])
+  }, [])
+
+  const searchData = useCallback(() => {
+      getProductsAndFiltersByCategoryAndType(
+        searchWord.current,
+        updatePage,
+        currentPage.current,
+        pageSize.current,
+        orderType.current,
+        categoryRef.current,
+        typeRef.current,
+        brandIdRef.current,
+        filtersInfo.current
+      )
+  }, [updatePage])
+
+  // ... остальные useEffect и JSX без изменений (Resize, Scroll, Sticky и т.д.)
 
   useEffect(() => {
     if (!pageWrap.current) return;
@@ -554,67 +580,23 @@ const SearchPage: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (Object.entries(typesVal).length === 0 || Object.entries(categories).length === 0, !router.isReady) {
-      return;
-    }
-    if (pageWrap.current && pageWrap.current.clientWidth < 600) {
-      setGrid(true)
-      setShowGrid(false)
-    }
-    typesValRef.current = typesVal;
-
-    setFiltersFromUrl()
-    const name = searchParams.key_word as string || "";
-    searchWord.current = name
-    searchData()
-  }, [searchParams, typesVal, categories, firmMap]);
-
-
-  const searchData = useCallback(() => {
-    if (searchWord.current) {
-      getProductsAndFiltersByString(
-        searchWord.current,
-        updatePage,
-        currentPage.current,
-        pageSize.current,
-        categoryRef.current,
-        typeRef.current,
-        orderType.current
-      )
-    } else {
-      getProductsAndFiltersByCategoryAndType(
-        searchWord.current,
-        updatePage,
-        currentPage.current,
-        pageSize.current,
-        "0",
-        categoryRef.current,
-        typeRef.current,
-        brandIdRef.current,
-        filtersInfo.current
-      )
-    }
-  }, [getProductsAndFiltersByString, getProductsAndFiltersByCategoryAndType, firmMap, setFiltersFromUrl])
-
-
   const handleMouseEnter = useCallback(() => setHoverSettings(true), []);
   const handleMouseLeave = useCallback(() => setHoverSettings(false), []);
 
+  const [showSortPanel, setShowSortPanel] = useState(false)
+  const [showFiltersPanel, setShowFiltersPanel] = useState(false)
 
-  const [showSortPanel, setShowSortPanel] = useState(false) // для сортировки
-  const [showFiltersPanel, setShowFiltersPanel] = useState(false) // для фильтров
   useEffect(() => {
     if (showSortPanel || showFiltersPanel) {
       document.body.classList.add('modalOpen')
     } else {
       document.body.classList.remove('modalOpen')
     }
-
     return () => {
       document.body.classList.remove('modalOpen')
     }
   }, [showSortPanel, showFiltersPanel])
+
   const rightBlockRef = useRef<HTMLDivElement>(null);
   const [isSticky, setIsSticky] = useState(false);
   const [stickyTop, setStickyTop] = useState(20);
@@ -627,27 +609,20 @@ const SearchPage: React.FC = () => {
 
     const handleScroll = () => {
       if (rafId) return;
-
       rafId = requestAnimationFrame(() => {
         if (!rightBlockRef.current) return;
         const rightRect = rightBlockRef?.current.getBoundingClientRect();
         const windowHeight = window.innerHeight;
         const blockHeight = rightRect.height;
         const minTopOffset = 120;
-        const startTopOffset = 20;
-
         const currentScrollY = window.scrollY;
         const delta = currentScrollY - lastScrollY;
         lastScrollY = currentScrollY;
-
-        // Проверяем, нужно ли вообще обновлять
         const shouldBeSticky = rightRect.top <= minTopOffset;
 
         if (blockHeight <= windowHeight - minTopOffset) {
-          // Короткий блок
           setIsSticky(shouldBeSticky);
           if (shouldBeSticky) {
-            // Для короткого блока фиксируем top = minTopOffset
             const newTop = minTopOffset;
             if (delta < 0) {
               if (stickyTopRef.current !== newTop) {
@@ -662,21 +637,16 @@ const SearchPage: React.FC = () => {
             }
           }
         } else {
-          // Длинный блок
           if (isSticky) {
-            // Уже в режиме sticky - двигаем с ограничениями
             let newTop = stickyTopRef.current - delta;
             const maxTop = 120;
             const minTop = windowHeight - blockHeight;
             newTop = Math.max(minTop, Math.min(maxTop, newTop));
-
-            // Обновляем только если значение реально изменилось
             if (Math.abs(stickyTopRef.current - newTop) > 0.5) {
               stickyTopRef.current = newTop;
               setStickyTop(newTop);
             }
           } else {
-            // Вход в sticky
             if ((delta < 0 && rightRect.top <= minTopOffset) ||
               (delta > 0 && rightRect.bottom <= windowHeight)) {
               setIsSticky(true);
@@ -689,13 +659,11 @@ const SearchPage: React.FC = () => {
             }
           }
         }
-
         rafId = null;
       });
     };
 
     const resizeObserver = new ResizeObserver(() => {
-      // Используем debounce для ResizeObserver
       setTimeout(() => handleScroll(), 0);
     });
 
@@ -755,7 +723,6 @@ const SearchPage: React.FC = () => {
               onClick={() => setShowFiltersPanel(true)}
             />
           </div> : <div style={{ margin: "auto", width: "30%" }} />}
-
         </div>
 
         {!emptyData.current ? <div className={s.settings_filters_holder}>
@@ -764,7 +731,6 @@ const SearchPage: React.FC = () => {
             className={s.settings_holder}
           >
           </div>
-
           <div
             style={showFilters ? { left: "0" } : {}}
             className={s.filters_holder}
@@ -784,15 +750,14 @@ const SearchPage: React.FC = () => {
             </div>
           </div>
         </div> : null}
+        <div style={{ position: "relative", display: "flex", alignItems: "flex-start" }}>
+          {emptyData.current ? (
+            <div className={s.emptyRow}>
+              {emtyText.current}
+              <span onClick={resetFilters}></span>
+            </div>
+          ) : (
 
-        {emptyData.current ? (
-          <div className={s.emptyRow}>
-            {emtyText.current}
-            <span onClick={resetFilters}></span>
-          </div>
-        ) : (
-
-          <div style={{ position: "relative", display: "flex", alignItems: "flex-start" }}>
             <MerchSliderField
               onChange={pageChange}
               currentPage={currentPage.current}
@@ -801,26 +766,29 @@ const SearchPage: React.FC = () => {
               size={grid ? 2 : 3}
               data={merchFieldData}
             />
-            {widthProps ? null : <div
-              ref={rightBlockRef}
-              style={{
-                width: "25%",
-                position: isSticky ? "sticky" : "relative",
-                top: isSticky ? `${stickyTop}px` : "0px",
-                height: "fit-content",
-                alignSelf: "flex-start",
-                transition: "none"
-              }}
-            >
-              <ProductsFilters
-                classNames={{ secondPage: s.secondPage }}
-                onChange={onFiltersChange}
-                {...filtersState}
-              />
-            </div>}
+
+          )}
+          {widthProps ? null : <div
+            ref={rightBlockRef}
+            style={{
+              width: "25%",
+              position: isSticky ? "sticky" : "relative",
+              top: isSticky ? `${stickyTop}px` : "0px",
+              height: "fit-content",
+              alignSelf: "flex-start",
+              transition: "none"
+            }}
+          >
+            <ProductsFilters
+              classNames={{ secondPage: s.secondPage }}
+              onChange={onFiltersChange}
+              {...filtersState}
+            />
 
           </div>
-        )}
+          }
+        </div>
+
       </div>
       {showSortPanel && (
         <div className={s.modalOverlay} onClick={() => setShowSortPanel(false)}>
@@ -847,8 +815,6 @@ const SearchPage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Модальное окно фильтров */}
       {showFiltersPanel && (
         <div className={s.modalOverlay} onClick={() => setShowFiltersPanel(false)}>
           <div className={s.modalPanelRight} onClick={e => e.stopPropagation()}>
@@ -868,4 +834,4 @@ const SearchPage: React.FC = () => {
   )
 }
 
-export default React.memo(SearchPage)
+export default React.memo(SearchPage);

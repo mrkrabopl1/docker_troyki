@@ -32,7 +32,7 @@ func (s *Server) handleGetMainBanners(ctx *gin.Context) {
 			CollectionSlug: banner.CollectionSlug,
 		}
 	}
-
+	fmt.Println(params, "paaaaaaaarams")
 	s.taskProcessor.SetBanners(ctx, params)
 	ctx.JSON(http.StatusOK, resp)
 }

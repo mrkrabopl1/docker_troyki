@@ -11,6 +11,7 @@ import 'src/global.css';
 const store = setupStore();
 
 export default function App({ Component, pageProps }: AppProps) {
+  console.log(pageProps)
   const router = useRouter();
   const isAdmin = router.pathname.startsWith('/admin') && 
                   !router.pathname.startsWith('/admin/login') &&
@@ -24,7 +25,7 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <Provider store={store}>
       {/* 🔥 Передаем initialMainInfo в AppContent */}
-      <AppContent initialMainInfo={initialMainInfo}>
+      <AppContent initialMainInfo={initialMainInfo} initialInstagramPhotos={pageProps.initialData.instagramPosts}>
         {isAdmin ? (
           <ProtectedRoute>
             <AdminLayout>

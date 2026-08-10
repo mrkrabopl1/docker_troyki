@@ -18,6 +18,7 @@ import searchReducer from "./reducers/searchSlice"
 import formReducer from "./reducers/formSlice"
 import dispetcherReducer from "./reducers/dispetcherSlice"
 import resizeReducer from "./reducers/resizeSlice"
+import instagramReducer from "./reducers/instagramSlice"
 import adminReducer from "./reducers/adminSlice"
 import loadingReducer from './reducers/loadingSlice';
 
@@ -41,6 +42,7 @@ const rootReducer = combineReducers({
     resize: resizeReducer,
     admin: adminReducer,
     loading: loadingReducer,
+    instagram:instagramReducer
 })
 
 // ============================================================

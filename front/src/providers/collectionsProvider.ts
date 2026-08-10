@@ -6,16 +6,27 @@ const api = axios.create({
 })
 
 export const getCollectionBySlug = async (slug: string) => {
+    const res = await fetch(`${API_URL}/collections/slug/${slug}`, {
+        headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!res.ok) {
+        throw new Error(`Failed to fetch collection: ${res.status}`);
+    }
+    
+    return res.json();
+}
+export const getCollectionById = async (id: number) => {
     try {
-        const response = await api.get(`/collections/${slug}`)
+        const response = await api.get(`/collections/${id}`)
         return response.data
     } catch (error) {
-        console.error('Error fetching collection:', error)
+        console.error('Error fetching collection products:', error)
         throw error
     }
 }
 export const getCollectionProducts = async (
-    slug: string,
+    id: number,
     params: {
         page: number,
         size: number,
@@ -25,7 +36,7 @@ export const getCollectionProducts = async (
     }
 ) => {
     try {
-        const response = await api.post(`/collections/${slug}/products`, {
+        const response = await api.post(`/collections/${id}/products`, {
             page: params.page,
             size: params.size,
             sortType: params.sortType,

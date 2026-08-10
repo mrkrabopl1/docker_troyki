@@ -8,8 +8,10 @@ import { CheckBoxType, Collection } from 'src/types/modules'
 import { BODY_TYPES } from 'src/constants/bodytypes'
 import Scroller from 'src/components/scroller/Scroller'
 import Modal from 'src/components/modal/Modal'
+import Combobox from 'src/components/combobox/Combobox'
 import { getAdminProductsAndFilters, getAdminProducts } from 'src/providers/adminProductsProvider'
 import s from './style.module.css'
+import { COLLECTION_TYPES, CollectionType } from 'src/types/adminProduct';
 
 interface FiltersState {
     priceProps: {
@@ -59,7 +61,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
     const [slug, setSlug] = useState('')
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
-    const [type, setType] = useState<'dynamic' | 'manual' | 'hybrid'>('dynamic')
+    const [type, setType] = useState<CollectionType>(COLLECTION_TYPES.DYNAMIC);
     const [isActive, setIsActive] = useState(true)
     const [selectedProductIds, setSelectedProductIds] = useState<number[]>([])
     const [showFiltersPanel, setShowFiltersPanel] = useState(false)
@@ -92,17 +94,21 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
     })
 
     const [errors, setErrors] = useState<{ filters?: boolean }>({})
-    
+
     // Состояния для загрузки
     const [previewProducts, setPreviewProducts] = useState<any[]>([])
     const [previewTotal, setPreviewTotal] = useState(0)
     const [previewLoading, setPreviewLoading] = useState(false)
-    
+
     // Состояния для ProductSelector
     const [selectorProducts, setSelectorProducts] = useState<any[]>([])
     const [selectorLoading, setSelectorLoading] = useState(false)
     const [selectorTotal, setSelectorTotal] = useState(0)
     const [selectorSearch, setSelectorSearch] = useState('')
+    const [selectorCurrentPage, setSelectorCurrentPage] = useState(1)
+    const [selectorViewMode, setSelectorViewMode] = useState<'all' | 'selected'>('all')
+    const [selectedViewProducts, setSelectedViewProducts] = useState<any[]>([])
+    const [selectedViewLoading, setSelectedViewLoading] = useState(false)
     const selectorPage = useRef(1)
     const pageSize = 20
     const searchTimeoutRef = useRef<any>()
@@ -346,24 +352,24 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
     }, [firmMap, updatePreview])
 
     // Загрузка товаров для селектора
-    const loadSelectorProducts = useCallback(async () => {
+    const loadSelectorProducts = useCallback(async (searchQuery?: string) => {
         if (type === 'dynamic') return
 
         setSelectorLoading(true)
         try {
-            const handleData = (data: any) => {
-                setSelectorProducts(data.products || [])
-                setSelectorTotal(data.totalCount || 0)
-                setSelectorLoading(false)
-            }
-
+            const query = searchQuery !== undefined ? searchQuery : selectorSearch
+            
             await getAdminProducts(
-                handleData,
+                (data: any) => {
+                    setSelectorProducts(data.products || [])
+                    setSelectorTotal(data.totalCount || 0)
+                    setSelectorLoading(false)
+                },
                 selectorPage.current,
                 pageSize,
                 {},
                 0,
-                selectorSearch,
+                query
             )
         } catch (error) {
             console.error('Error loading products:', error)
@@ -371,21 +377,58 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
         }
     }, [selectorSearch, type])
 
+    // Загрузка выбранных товаров для режима просмотра
+    const loadSelectedViewProducts = useCallback(async () => {
+        if (selectedProductIds.length === 0) {
+            setSelectedViewProducts([])
+            return
+        }
+
+        setSelectedViewLoading(true)
+        try {
+            await getAdminProducts(
+                (data: any) => {
+                    const filtered = (data.products || []).filter((p: any) => 
+                        selectedProductIds.includes(p.id)
+                    )
+                    setSelectedViewProducts(filtered)
+                    setSelectedViewLoading(false)
+                },
+                1,
+                selectedProductIds.length,
+                { product_ids: selectedProductIds },
+                0,
+                ''
+            )
+        } catch (error) {
+            console.error('Error loading selected products:', error)
+            setSelectedViewLoading(false)
+        }
+    }, [selectedProductIds])
+
     const handleSelectorSearch = (query: string) => {
         setSelectorSearch(query)
         selectorPage.current = 1
+        setSelectorCurrentPage(1)
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
         searchTimeoutRef.current = setTimeout(() => {
-            loadSelectorProducts()
+            loadSelectorProducts(query)
         }, 300)
     }
 
-    const handleLoadMore = () => {
-        if (selectorProducts.length < selectorTotal) {
-            selectorPage.current += 1
-            loadSelectorProducts()
-        }
+    const handlePageChange = (page: number) => {
+        setSelectorCurrentPage(page)
+        selectorPage.current = page
+        loadSelectorProducts()
     }
+
+    // Обработчик просмотра выбранных товаров
+    const handleViewSelected = useCallback(() => {
+        setSelectorViewMode('selected')
+        if (selectedProductIds.length > 0) {
+            loadSelectedViewProducts()
+        }
+    }, [selectedProductIds, loadSelectedViewProducts])
 
     // Инициализация данных
     useEffect(() => {
@@ -411,7 +454,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
             }
 
             if (initialData.type === 'manual' || initialData.type === 'hybrid') {
-                setSelectedProductIds(initialData.settings?.product_ids || [])
+                setSelectedProductIds(initialData.product_ids || [])
             }
         }
 
@@ -420,6 +463,13 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
             loadSelectorProducts()
         }
     }, [initialData, type])
+
+    // Загружаем выбранные товары при переключении в режим просмотра
+    useEffect(() => {
+        if (selectorViewMode === 'selected' && selectedProductIds.length > 0) {
+            loadSelectedViewProducts()
+        }
+    }, [selectorViewMode, selectedProductIds, loadSelectedViewProducts])
 
     // Валидация
     const validateForm = (): boolean => {
@@ -499,8 +549,8 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
                     rule_ids: filtersInfo.current.rule_ids || [],
                     in_store: filtersInfo.current.in_store || false
                 } : undefined,
-                product_ids: type !== 'dynamic' ? selectedProductIds : undefined
-            }
+            },
+            product_ids: type !== 'dynamic' ? selectedProductIds : undefined
         }
 
         onSave(data)
@@ -552,6 +602,28 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
         return parts.length > 0 ? parts.join('; ') : 'Условия не выбраны'
     }, [filtersVersion, typesVal, firmMap])
 
+    // Определяем какие товары показывать в ProductSelector
+    const displayProducts = useMemo(() => {
+        if (selectorViewMode === 'selected') {
+            return selectedViewProducts
+        }
+        return selectorProducts
+    }, [selectorViewMode, selectedViewProducts, selectorProducts])
+
+    const displayLoading = useMemo(() => {
+        if (selectorViewMode === 'selected') {
+            return selectedViewLoading
+        }
+        return selectorLoading
+    }, [selectorViewMode, selectedViewLoading, selectorLoading])
+
+    const displayTotal = useMemo(() => {
+        if (selectorViewMode === 'selected') {
+            return selectedProductIds.length
+        }
+        return selectorTotal
+    }, [selectorViewMode, selectedProductIds, selectorTotal])
+
     return (
         <div className={s.formContainer}>
             <div className={s.formGroup}>
@@ -586,11 +658,17 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
 
             <div className={s.formGroup}>
                 <label>Тип коллекции</label>
-                <select value={type} onChange={e => setType(e.target.value as any)}>
-                    <option value="dynamic">Динамическая (по фильтрам)</option>
-                    <option value="manual">Ручная (выбор товаров)</option>
-                    <option value="hybrid">Гибридная (фильтры + ручной выбор)</option>
-                </select>
+                <Combobox
+                    currentIndex={type}
+                    enumProp={true}
+                    data={{
+                        "dynamic": "Динамическая (по фильтрам)",
+                        "manual": "Ручная (выбор товаров)",
+                        "hybrid": "Гибридная (фильтры + ручной выбор)"
+                    }}
+                    onChangeIndex={(val) => setType(val as CollectionType)}
+                    className={s.combobox}
+                />
             </div>
 
             {type !== 'manual' && (
@@ -640,17 +718,21 @@ const CollectionForm: React.FC<CollectionFormProps> = ({
                 <div className={s.formGroup}>
                     <label>Товары</label>
                     <ProductSelector
-                        products={selectorProducts}
+                        products={displayProducts}
                         selectedIds={selectedProductIds}
                         onChange={setSelectedProductIds}
-                        isLoading={selectorLoading}
-                        total={selectorTotal}
+                        isLoading={displayLoading}
+                        total={displayTotal}
                         searchQuery={selectorSearch}
+                        currentPage={selectorCurrentPage}
                         onSearch={handleSelectorSearch}
-                        onLoadMore={handleLoadMore}
+                        onPageChange={handlePageChange}
+                        onViewSelected={handleViewSelected}
                         multiple={true}
                         maxItems={500}
                         placeholder="Поиск товаров для добавления..."
+                        showViewSelected={true}
+                        pageSize={pageSize}
                     />
                     <div className={s.selectedCount}>
                         Выбрано: <strong>{selectedProductIds.length}</strong> товаров

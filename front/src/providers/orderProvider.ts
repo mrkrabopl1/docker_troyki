@@ -3,7 +3,7 @@ const createPreorder = function (data: { id: number, size: string }, callback: (
     let jsonData = JSON.stringify(data)
     axios({
         withCredentials: true,
-        url: `${API_URL}/createPreorder`,
+        url: `${API_URL}/preorders`,
         headers: { "content-type": "application/json" },
         data: jsonData,
         method: 'post',
@@ -16,10 +16,10 @@ const updatePreorder = function (data: { id: number, hashUrl: string,  size: str
     let jsonData = JSON.stringify(data)
     axios({
         withCredentials: true,
-        url: `${API_URL}/updatePreorder`,
+        url: `${API_URL}/preorders?id=${data.id}`,
         headers: { "content-type": "application/json" },
         data: jsonData,
-        method: 'post',
+        method: 'put',
     }).then((res)=>callback(res.data), (error) => {
         console.warn(error)
     })
@@ -54,7 +54,7 @@ const createOrder = function (data: clientDataType, callback: (val: any) => void
     let jsonData = JSON.stringify(data)
     axios({
         withCredentials: true,
-        url: `${API_URL}/createOrder`,
+        url: `${API_URL}/orders`,
         headers: { "content-type": "application/json" },
         data: jsonData,
         method: 'post',
@@ -68,7 +68,7 @@ const createOrder = function (data: clientDataType, callback: (val: any) => void
 const getOrderDataByHash = function (hash: string, callback: (val: any) => void) {
     axios({
         withCredentials: true,
-        url: `${API_URL}/getOrderDataByHash?hash=` + hash,
+        url: `${API_URL}/orders/by-hash?hash=` + hash,
         headers: { "content-type": "application/json" },
         method: 'get',
     }).then((res) => {
@@ -82,7 +82,7 @@ const getOrderDataByMail = function (mail: string, orderId: string, callback: (v
     let jsonData = JSON.stringify({ mail, orderId: Number(orderId) })
     axios({
         withCredentials: true,
-        url: `${API_URL}/getOrderDataByMail`,
+        url: `${API_URL}/orders/by-email`,
         headers: { "content-type": "application/json" },
         data: jsonData,
         method: 'post',

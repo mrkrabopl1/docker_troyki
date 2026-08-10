@@ -1,0 +1,102 @@
+/* src/modules/instagramScroller/style.module.css - минималистичная версия */
+
+.instagramWrapper {
+    margin: 40px 0;
+    padding: 0 20px;
+}
+
+.instagramHeader {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.instagramTitle {
+    font-size: 24px;
+    font-weight: 600;
+    color: #262626;
+    margin: 0;
+}
+
+.instagramScroller {
+    position: relative;
+}
+
+.instagramItem {
+    border-radius: 8px;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+    background: #fafafa;
+    transition: transform 0.2s;
+}
+
+.instagramItem:hover {
+    transform: scale(1.02);
+}
+
+.instagramImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.emptyState {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    background: #fafafa;
+    border-radius: 8px;
+    color: #8e8e8e;
+    font-size: 16px;
+}
+
+.loadingState {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+}
+
+.loader {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #0095f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+    .instagramWrapper {
+        margin: 24px 0;
+        padding: 0 12px;
+    }
+    
+    .instagramTitle {
+        font-size: 20px;
+    }
+    
+    .emptyState {
+        height: 200px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .instagramWrapper {
+        margin: 16px 0;
+        padding: 0 8px;
+    }
+    
+    .instagramTitle {
+        font-size: 18px;
+    }
+}

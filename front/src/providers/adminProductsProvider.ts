@@ -54,7 +54,7 @@ const updateAdminProduct = async (
 };
 const getAdminProductsAndFilters = async (callback: (val: any) => void, page: number, size: number, sortType: number) => {
   try {
-    const response = await adminApi.get(`/admin/productsAndFilters`,
+    const response = await adminApi.get(`/admin/products/with-filters`,
       {
         params: {
           page: page,
@@ -361,7 +361,7 @@ const getBrandsWithLines = async (
   params
 ): Promise<any> => {
   try {
-    const response = await adminApi.get(`/admin/brandsWithLines`, { params });
+    const response = await adminApi.get(`/admin/brands/with-lines`, { params });
     return response.data
   } catch (error) {
     console.error('Error updating product:', error);

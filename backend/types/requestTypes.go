@@ -58,6 +58,17 @@ type PostData struct {
 	Name string `json:"name"`
 	Max  int32  `json:"max"`
 }
+type PostDataSnickersAndFiltersBySlugs struct {
+	Name         string               `json:"name"`
+	CategorySlug string               `json:"categorySlug"` // ← slug вместо ID
+	TypeSlug     string               `json:"typeSlug"`     // ← slug вместо ID
+	BrandSlug    string               `json:"brandSlug"`    // ← slug вместо ID
+	LineSlug     string               `json:"lineSlug"`     // ← slug вместо ID
+	Page         int                  `json:"page"`
+	Size         int                  `json:"size"`
+	SortType     int                  `json:"sortType"`
+	Filters      ProductsFilterStruct `json:"filters"`
+}
 type PostDataSnickersAndFiltersByString struct {
 	// Define your struct to represent the JSON data
 	Name     string               `json:"name"`

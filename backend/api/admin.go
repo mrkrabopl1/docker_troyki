@@ -503,6 +503,21 @@ func (s *Server) handleAdminUpdateProduct(c *gin.Context) {
 
 	admin, _ := c.Get("admin")
 	adminRow := admin.(db.GetAdminByIDRow)
+
+	// Логируем входящий запрос
+	log.Printf("=== UPDATE PRODUCT REQUEST ===")
+	log.Printf("Product ID: %d", productID)
+	log.Printf("Name: %v", req.Name)
+	log.Printf("Article: %v", req.Article)
+	log.Printf("CategoryID: %v", req.CategoryID)
+	log.Printf("TypeID: %v", req.TypeID)
+	log.Printf("BrandID: %v", req.BrandID)
+	log.Printf("LineID: %v", req.LineID)
+	log.Printf("BodyType: %v", req.BodyType)
+	log.Printf("Description: %v", req.Description)
+	log.Printf("Sizes: %+v", req.Sizes)
+	log.Printf("================================")
+
 	// Проверяем, существует ли товар
 	_, err = s.store.CheckProductExistsById(c.Request.Context(), int32(productID))
 	if err != nil {
@@ -537,6 +552,9 @@ func (s *Server) handleAdminUpdateProduct(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to marshal sizes"})
 			return
 		}
+
+		log.Printf("Sizes marshaled: %s", string(sizesJSON))
+		log.Printf("MinPrice: %d, MaxPrice: %d", minPrice, maxPrice)
 	}
 
 	// Формируем параметры обновления
@@ -544,46 +562,94 @@ func (s *Server) handleAdminUpdateProduct(c *gin.Context) {
 		ID: int32(productID),
 	}
 
+	// Обязательные поля
 	if req.Name != nil {
 		params.Name = *req.Name
-	}
-	if req.Description != nil {
-		params.Description = pgtype.Text{String: *req.Description, Valid: true}
-	}
-	if req.CategoryID != nil {
-		params.Category = *req.CategoryID
-	}
-	if req.CategoryID != nil {
-		params.Category = *req.CategoryID
-	}
-	if req.TypeID != nil {
-		params.Type = *req.TypeID
-	}
-	if req.BrandID != nil {
-		params.BrandID = *req.BrandID
-	}
-	if req.LineID != nil {
-		params.LineID = pgtype.Int4{Int32: *req.LineID, Valid: true}
 	}
 	if req.Article != nil {
 		params.Article = *req.Article
 	}
-	if req.BodyType != nil {
-		params.Bodytype = db.BodyEnum(*req.BodyType)
+
+	// CategoryID - проверяем валидность
+	if req.CategoryID != nil {
+		if *req.CategoryID <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
+			return
+		}
+		params.Category = *req.CategoryID
 	}
+
+	// TypeID - проверяем валидность
+	if req.TypeID != nil {
+		if *req.TypeID <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid type ID"})
+			return
+		}
+		// Проверяем, существует ли тип товара
+		params.Type = *req.TypeID
+	}
+
+	if req.BrandID != nil {
+		params.BrandID = *req.BrandID
+	}
+
+	// Bodytype
+	if req.BodyType != nil && *req.BodyType != "" {
+		params.Bodytype = *req.BodyType
+	} else if req.BodyType != nil && *req.BodyType == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bodytype cannot be empty string"})
+		return
+	} else {
+		params.Bodytype = ""
+	}
+
+	// LineID
+	if req.LineID != nil {
+		params.LineID = pgtype.Int4{Int32: *req.LineID, Valid: true}
+	} else {
+		params.LineID = pgtype.Int4{Valid: false}
+	}
+
+	// Description
+	if req.Description != nil {
+		params.Description = pgtype.Text{String: *req.Description, Valid: true}
+	} else {
+		params.Description = pgtype.Text{Valid: false}
+	}
+
+	// Sizes
 	if req.Sizes != nil {
 		params.Minprice = minPrice
 		params.Maxprice = maxPrice
 		params.ImageCount = int32(len(*req.Sizes))
 		params.Sizes = sizesJSON
 	}
-	fmt.Printf("%+v\n", params)
+
+	// Логируем итоговые параметры для БД
+	log.Printf("=== FINAL DB PARAMS ===")
+	log.Printf("ID: %d", params.ID)
+	log.Printf("Name: %s", params.Name)
+	log.Printf("Article: %s", params.Article)
+	log.Printf("Category: %d", params.Category)
+	log.Printf("Type: %d", params.Type)
+	log.Printf("BrandID: %d", params.BrandID)
+	log.Printf("Bodytype: %s", params.Bodytype)
+	log.Printf("LineID: %+v", params.LineID)
+	log.Printf("Description: %+v", params.Description)
+	log.Printf("Minprice: %d", params.Minprice)
+	log.Printf("Maxprice: %d", params.Maxprice)
+	log.Printf("ImageCount: %d", params.ImageCount)
+	log.Printf("Sizes: %s", string(params.Sizes))
+	log.Printf("========================")
+
 	err = s.store.UpdateProduct(c.Request.Context(), params)
 	if err != nil {
-		fmt.Println(err, "d11111111111111111")
+		log.Printf("ERROR updating product: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update product"})
 		return
 	}
+
+	log.Printf("Product %d updated successfully", productID)
 
 	// Логируем
 	go func() {

@@ -669,6 +669,13 @@ SELECT p.id,
         ),
         0
     ) AS discount_percent,
+    -- В наличии: есть ли хотя бы один размер в store_house с quantity > 0
+    EXISTS (
+        SELECT 1 
+        FROM store_house sh 
+        WHERE sh.productid = p.id 
+        AND sh.quantity > 0
+    ) AS in_stock,
     COUNT(*) FILTER (
         WHERE p.status = 'active'
     ) OVER() AS active_count,
@@ -739,13 +746,15 @@ WHERE p.status != 'deleted' -- Статус
         @has_discount::boolean IS NULL
         OR @has_discount::boolean = false
         OR d.productid IS NOT NULL
-    ) -- В наличии
+    ) -- В наличии (фильтр по store_house)
     AND (
         @in_store::boolean IS NULL
         OR @in_store::boolean = false
-        OR (
-            sh.id IS NOT NULL
-            AND sh.quantity > 0
+        OR EXISTS (
+            SELECT 1 
+            FROM store_house sh2 
+            WHERE sh2.productid = p.id 
+            AND sh2.quantity > 0
         )
     ) -- Цена > 0
     AND (
@@ -814,6 +823,23 @@ ORDER BY -- Сортировка по имени
     CASE
         WHEN @sort_type::int = 14 THEN p.status
     END DESC,
+    -- Сортировка по наличию (in_stock)
+    CASE
+        WHEN @sort_type::int = 15 THEN EXISTS (
+            SELECT 1 
+            FROM store_house sh3 
+            WHERE sh3.productid = p.id 
+            AND sh3.quantity > 0
+        )::int
+    END ASC,
+    CASE
+        WHEN @sort_type::int = 16 THEN EXISTS (
+            SELECT 1 
+            FROM store_house sh4 
+            WHERE sh4.productid = p.id 
+            AND sh4.quantity > 0
+        )::int
+    END DESC,
     -- Вторичная сортировка по id для стабильности
     p.id ASC
 LIMIT CASE
@@ -823,6 +849,31 @@ LIMIT CASE
         WHEN @offsetVal::integer > 0 THEN @offsetVal::integer
         ELSE 0
     END;
+
+
+-- name: GetProductsLight :many
+SELECT 
+    p.article,
+    p.name,
+    p.updated_at
+FROM products p
+WHERE p.status != 'deleted'
+ORDER BY p.id
+LIMIT COALESCE(sqlc.narg('limit_val')::int, 1000)
+OFFSET COALESCE(sqlc.narg('offset_val')::int, 0);
+
+-- name: GetProductsLightSince :many
+SELECT 
+    p.article,
+    p.name,
+    p.updated_at
+FROM products p
+WHERE p.status != 'deleted'
+  AND p.updated_at >= COALESCE(sqlc.narg('since')::timestamptz, '1970-01-01')
+ORDER BY p.updated_at, p.id
+LIMIT COALESCE(sqlc.narg('limit_val')::int, 1000)
+OFFSET COALESCE(sqlc.narg('offset_val')::int, 0);
+
 -- name: GetAdminProductsInfoById :one
 SELECT p.sizes,
     p.id AS id,
@@ -841,7 +892,7 @@ SELECT p.sizes,
     p.type,
     p.category,
     p.date,
-    b.name as firm,
+    b.slug as firm,
     p.status,
     p.image_count
 FROM products p
@@ -852,7 +903,7 @@ FROM products p
 WHERE p.id = $1
 GROUP BY p.id,
     d.value,
-    b.name,
+    b.slug,
     bl.name;
 -- name: GetOrdersWithFilters :many
 SELECT *

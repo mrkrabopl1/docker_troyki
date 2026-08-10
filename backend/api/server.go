@@ -52,9 +52,6 @@ func NewServer(config util.Config, store db.Store, taskDistributor worker.TaskDi
 
 func (s *Server) setupRouter() {
 	router := gin.Default()
-
-	fmt.Println(s.config.AllowedOrigins, "ыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыError while creating server")
-
 	corsConfig := cors.Config{
 		AllowOrigins:     s.config.AllowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -74,13 +71,11 @@ func (s *Server) setupRouter() {
 	// ==================== ГРУППА /api ====================
 	api := router.Group("/api")
 	{
-		// Snickers routes
+		rateLimiter := NewRateLimiter(3, 3)
 		snickersRoute := api.Group("/")
 		snickersRoute.Use(CachedMiddleware(s))
-		snickersRoute.GET("/productsInfo", s.handleGetProductsInfoById)
+		snickersRoute.GET("/products/:id", s.handleGetProductsInfoById)
 
-		// Newsletter
-		rateLimiter := NewRateLimiter(3, 3)
 		newsletterGroup := api.Group("/newsletter")
 		newsletterGroup.Use(RateLimitMiddleware(rateLimiter))
 		{
@@ -92,30 +87,41 @@ func (s *Server) setupRouter() {
 		// Banners
 		bannerRoute := api.Group("/")
 		bannerRoute.Use(CachedBannersMiddleware(s))
-		bannerRoute.GET("/getMainBanners", s.handleGetMainBanners)
+		bannerRoute.GET("/banners", s.handleGetMainBanners)
 
 		// Основные API маршруты
-		api.POST("/searchProducts", s.handleSearchProducts)
-		api.POST("/getProductsAndFiltersByNameCategoryAndType", s.handleSearchSnickersAndFiltersByNameCategoryAndType)
-		api.POST("/getProductsByString", s.handleSearchProductsByString)
+
+		api.POST("/search", s.handleSearchProducts)
+		api.POST("/search/with-filters", s.handleSearchWithFilters)
+		api.POST("/search-by-slug", s.handleSearchSnickersAndFiltersBySlugs)
+
 		api.POST("/collection", s.handleGetSoloCollection)
-		api.GET("/collections/:slug", s.handleGetCollectionBySlug)
-		api.POST("/disconts", s.handleGetDiscounts)
-		api.GET("/setUniqueCustomer", s.handleSetUniqueCustomer)
-		api.POST("/createPreorder", s.handleCreatePreorder)
-		api.POST("/createOrder", s.handleCreateOrder)
-		api.POST("/updatePreorder", s.handleUpdatePreorder)
-		api.GET("/getCartCount", s.handleGetCartCount)
-		api.GET("/getCartData", s.handleGetCart)
-		api.GET("/getCartDataFromOrder", s.handleGetCartFromOrder)
-		api.GET("/getOrderDataByHash", s.handleGetOrderDataByHash)
-		api.POST("/getOrderDataByMail", s.handleGetOrderDataByMail)
-		api.POST("/deleteCartData", s.handleDeleteCartData)
-		api.GET("/historyInfo", s.handleGetHistory)
+		api.GET("/collections/:id", s.handleGetCollectionById)
+		api.GET("/collections/slug/:slug", s.handleGetCollectionBySlug)
+		api.POST("/collections/:id/products", s.handleGetCollectionProducts)
+
+		api.POST("/discounts", s.handleGetDiscounts)
+
+		api.GET("/customers/unique", s.handleSetUniqueCustomer)
+
+		api.GET("/cart/count", s.handleGetCartCount)
+		api.GET("/cart", s.handleGetCart)
+		api.POST("/delete/cart", s.handleDeleteCartData)
+
+		api.POST("/orders", s.handleCreateOrder)
+		api.GET("/orders/cart", s.handleGetCartFromOrder)
+		api.GET("/orders/by-hash/:hash", s.handleGetOrderDataByHash)
+		api.POST("/orders/by-email", s.handleGetOrderDataByMail)
+		api.POST("/preorders", s.handleCreatePreorder)
+		api.PUT("/preorders/:id", s.handleUpdatePreorder)
+
+		// public routes (для клиента)
+		api.GET("/instagram", s.handleGetInstagramPhotos)
+
+		api.GET("/history", s.handleGetHistory)
 		api.POST("/registerUser", s.handleRegisterUser)
 		api.POST("/login", s.handleLogin)
 		api.GET("/unlogin", s.handleUnlogin)
-		api.GET("/categoriesWithTypes", s.handleGetCategoriesWithTypes)
 		api.GET("/pasetoAutorise", s.handlePasetoAutorise)
 		api.GET("/getUserData", s.handleGetUserData)
 		api.POST("/verify", s.handleVerifyUser)
@@ -124,7 +130,7 @@ func (s *Server) setupRouter() {
 		api.POST("/verifyChangePass", s.handleVerifyForgetPass)
 		api.POST("/changeForgetPass", s.handleChangeForgetPass)
 		api.POST("/getDataByCategoriesAndFilters", s.handleSearchProductByCategoriesAndFilters)
-		api.GET("/getMainPage", s.handleGetMainPage)
+		api.GET("/main", s.handleGetMainPage)
 		api.GET("/getMainInfo", s.handleGetMainInfo)
 		api.GET("/checkCustomerData", s.handleCheckCustomerData)
 
@@ -144,8 +150,10 @@ func (s *Server) setupRouter() {
 
 			// Управление товарами
 			adminGroup.POST("/products", s.handleAdminCreateProduct)
-			adminGroup.GET("/productsAndFilters", s.handleAdminGetProductsAndFilters)
+			adminGroup.GET("/products/with-filters", s.handleAdminGetProductsAndFilters)
 			adminGroup.POST("/products/search", s.handleAdminGetProducts)
+			adminGroup.GET("/products/light", s.handleGetProductsLight)
+			adminGroup.GET("/products/light/since", s.handleGetProductsLightSince)
 			adminGroup.PUT("/products/:id", s.handleAdminUpdateProduct)
 			adminGroup.GET("/products/:id", s.handleAdminGetProductById)
 			adminGroup.DELETE("/products/:id", s.handleAdminHardDeleteProduct)
@@ -159,7 +167,7 @@ func (s *Server) setupRouter() {
 			adminGroup.DELETE("/tempImage/:id", s.handleAdminDeleteTempImage)
 			adminGroup.GET("/tempImage/:id", s.handleAdminGetTempImages)
 
-			adminGroup.GET("/brandsWithLines", s.handleGetAllBrandsWithLines)
+			adminGroup.GET("/brands/with-lines", s.handleGetAllBrandsWithLines)
 			adminGroup.POST("/firms", s.handleAdminCreateFirm)
 			adminGroup.GET("/brands/:id", s.handleAdminGetBrandById)
 			adminGroup.POST("/brands/:id", s.handleAdminUpdateBrand)
@@ -191,17 +199,22 @@ func (s *Server) setupRouter() {
 			adminGroup.DELETE("/sizes", s.handleAdminBulkDeleteSize)
 			adminGroup.PUT("/sizes", s.handleAdminRenameSize)
 
-			adminGroup.GET("/page-blocks", s.handleAdminGetPageWidgets)
-			adminGroup.POST("/page-blocks", s.handleAdminCreatePageWidget)
-			adminGroup.PUT("/page-blocks/:id", s.handleAdminUpdatePageWidget)
-			adminGroup.DELETE("/page-blocks/:id", s.handleAdminDeletePageWidget)
-			adminGroup.PATCH("/page-blocks/reorder", s.handleAdminReorderPageWidgets)
+			adminGroup.GET("/page-widgets", s.handleAdminGetPageWidgets)
+			adminGroup.POST("/page-widgets", s.handleAdminCreatePageWidget)
+			adminGroup.PUT("/page-widgets/:id", s.handleAdminUpdatePageWidget)
+			adminGroup.DELETE("/page-widgets/:id", s.handleAdminDeletePageWidget)
+			adminGroup.PATCH("/page-widgets/reorder", s.handleAdminReorderPageWidgets)
 
 			adminGroup.GET("/collections", s.handleAdminGetCollections)
 			adminGroup.GET("/collections/:id", s.handleAdminGetCollection)
 			adminGroup.POST("/collections", s.handleAdminCreateCollection)
 			adminGroup.PUT("/collections/:id", s.handleAdminUpdateCollection)
 			adminGroup.DELETE("/collections/:id", s.handleAdminDeleteCollection)
+
+			adminGroup.POST("/instagram/upload", s.handleAdminUploadInstagramPhotos)     // загрузка нескольких фото
+			adminGroup.GET("/instagram", s.handleAdminGetInstagramPhotos)                // список всех фото
+			adminGroup.DELETE("/instagram/:id", s.handleAdminDeleteInstagramPhoto)       // удаление
+			adminGroup.PATCH("/instagram/:id/toggle", s.handleAdminToggleInstagramPhoto) // вкл/выкл
 
 			// Discount rules
 			discountRules := adminGroup.Group("/discount-rules")

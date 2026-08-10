@@ -264,14 +264,14 @@ func CachedMiddleware(s *Server) gin.HandlerFunc {
 
 func CachedBannersMiddleware(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		fmt.Println("CachedBannersMiddleware")
-		BanersInfo, err := s.taskProcessor.GetBanners(ctx)
+		// fmt.Println("CachedBannersMiddleware")
+		// BanersInfo, err := s.taskProcessor.GetBanners(ctx)
 
-		if err == nil {
-			ctx.JSON(http.StatusOK, BanersInfo)
-			ctx.Abort()
-			return
-		}
+		// if err == nil {
+		// 	ctx.JSON(http.StatusOK, BanersInfo)
+		// 	ctx.Abort()
+		// 	return
+		// }
 		ctx.Next()
 	}
 }

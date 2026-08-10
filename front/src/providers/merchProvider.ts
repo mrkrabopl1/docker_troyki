@@ -6,7 +6,7 @@ const getMerchInfo = function (id: string, callback: (val: any) => void) {
     axios({
         withCredentials: true,
         method: 'get',
-        url: `${API_URL}/productsInfo` + "?" + "id=" + id,
+        url: `${API_URL}/products` + "?" + "id=" + id,
         headers: {}
     }
     ).then((res: any) => {
@@ -16,12 +16,22 @@ const getMerchInfo = function (id: string, callback: (val: any) => void) {
         console.warn(error)
     })
 }
-
+export async function getMerchInfoServer(id: string): Promise<any> {
+    const res = await fetch(`${API_URL}/products?id=${id}`, {
+        headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!res.ok) {
+        throw new Error(`Failed to fetch product info: ${res.status}`);
+    }
+    
+    return res.json();
+}
 const getHistoryInfo = function (callback: (val: any) => void) {
     axios({
         withCredentials: true,
         method: 'get',
-        url: `${API_URL}/historyInfo`,
+        url: `${API_URL}/history`,
         headers: {}
     }
     ).then((res: any) => {
@@ -36,7 +46,7 @@ const getDiscontInfo = function (max: number, callback: (val: any) => void) {
     axios({
         withCredentials: true,
         method: 'post',
-        url: `${API_URL}/disconts`,
+        url: `${API_URL}/discounts`,
         headers: {
             'Content-Type': 'application/json'
         },
@@ -76,7 +86,7 @@ const api = axios.create({
 
 
 export const getCollectionBySlug = async (slug: string) => {
-    const response = await api.get(`/collections/${slug}`)
+    const response = await api.get(`/collections/slug/${slug}`)
     return response.data
 }
 export const getCollectionProducts = function(
@@ -130,18 +140,7 @@ const getCollections = function (reqData: { names: string[], page: number, size:
 
 
 
-const getCategoriesAndTypes = function (callback: (val: any) => void) {
-    axios({
-        method: 'get',
-        url: `${API_URL}/categoriesWithTypes`,
-        headers: {}
-    }
-    ).then((res: any) => {
-        callback(res.data)
-    },  (error: any) => {
-        console.warn(error)
-    })
-}
+
 
 const getSizeTable = function (category: string, callback: (val: any) => void) {
     axios({
@@ -158,9 +157,10 @@ const getSizeTable = function (category: string, callback: (val: any) => void) {
 
 
 export async function getMainPage(): Promise<any> {
+   console.log("Fetching main page...", API_URL,isServer());
   if (isServer()) {
     // Сервер: используем fetch
-    const res = await fetch(`${API_URL}/getMainPage`, {
+    const res = await fetch(`${API_URL}/main`, {
       headers: { 'Content-Type': 'application/json' }
     });
     if (!res.ok) throw new Error(`Failed to fetch main page: ${res.status}`);
@@ -168,7 +168,7 @@ export async function getMainPage(): Promise<any> {
   }
   
   // Клиент: используем axios
-  const res = await axios.get(`${API_URL}/getMainPage`);
+  const res = await axios.get(`${API_URL}/main`);
   return res.data;
 }
 
@@ -188,4 +188,4 @@ export async function getMainInfo(): Promise<any> {
   const res = await axios.get(`${API_URL}/getMainInfo`);
   return res.data;
 }
-export { getMerchInfo, getSizeTable,  getCollections, getFirms, getHistoryInfo, getDiscontInfo,getCategoriesAndTypes }
+export { getMerchInfo, getSizeTable,  getCollections, getFirms, getHistoryInfo, getDiscontInfo }

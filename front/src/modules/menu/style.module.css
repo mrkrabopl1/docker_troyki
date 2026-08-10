@@ -308,6 +308,9 @@
     width: 70px;
     height: 70px;
   }
+  .textLogo{
+    display: none;
+  }
 }
 
 

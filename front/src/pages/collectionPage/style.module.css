@@ -151,6 +151,7 @@
     text-align: center;
     font-size: 16px;
     color: #666;
+    width:100%
 }
 
 .emptyRow span {
@@ -165,9 +166,7 @@
 
 /* ===== Поиск ===== */
 .searchInput {
-    padding: 10px;
-    border: solid 1px black;
-    width: 35%;
+    width: 75%;
 }
 
 /* ===== Модалки ===== */

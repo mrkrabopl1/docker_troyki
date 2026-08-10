@@ -1,11 +1,14 @@
 package api
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
 )
 
@@ -173,4 +176,98 @@ func (s *Server) handleAdminRenameSize(c *gin.Context) {
 		"success": true,
 		"message": fmt.Sprintf("Size '%s' renamed to '%s'", req.OldSizeKey, req.NewSizeKey),
 	})
+}
+
+func (s *Server) handleGetProductsLight(c *gin.Context) {
+	limit := parseLimit(c.Query("limit"), 1000, 5000)
+	offset := parseOffset(c.Query("offset"))
+
+	products, err := s.store.GetProductsLight(c.Request.Context(), db.GetProductsLightParams{
+		LimitVal:  pgtype.Int4{Int32: int32(limit), Valid: true},
+		OffsetVal: pgtype.Int4{Int32: int32(offset), Valid: true},
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"products": products,
+		"pagination": gin.H{
+			"limit":  limit,
+			"offset": offset,
+			"count":  len(products),
+		},
+	})
+}
+
+// ============================================================
+// 2. GET /admin/products/light/since
+// Только обновленные после указанной даты
+// ============================================================
+// Query параметры:
+//   - since: RFC3339 дата (например, 2026-07-31T17:35:32Z)
+//   - limit: int (default 1000, max 5000)
+//   - offset: int (default 0)
+//
+// ============================================================
+func (s *Server) handleGetProductsLightSince(c *gin.Context) {
+	sinceStr := c.Query("since")
+	limit := parseLimit(c.Query("limit"), 1000, 5000)
+	offset := parseOffset(c.Query("offset"))
+
+	var since sql.NullTime
+	if sinceStr != "" {
+		t, err := time.Parse(time.RFC3339, sinceStr)
+		if err == nil {
+			since = sql.NullTime{Time: t, Valid: true}
+		}
+	}
+
+	// Общее количество обновленных
+
+	products, err := s.store.GetProductsLightSince(c.Request.Context(), db.GetProductsLightSinceParams{
+		Since:     pgtype.Timestamptz{Time: since.Time, Valid: since.Valid},
+		LimitVal:  pgtype.Int4{Int32: int32(limit), Valid: true},
+		OffsetVal: pgtype.Int4{Int32: int32(offset), Valid: true},
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"products": products,
+		"pagination": gin.H{
+			"limit":  limit,
+			"offset": offset,
+			"count":  len(products),
+		},
+		"since": sinceStr,
+	})
+}
+
+func parseLimit(val string, defaultVal, maxVal int) int {
+	if val == "" {
+		return defaultVal
+	}
+	parsed, err := strconv.Atoi(val)
+	if err != nil || parsed <= 0 {
+		return defaultVal
+	}
+	if parsed > maxVal {
+		return maxVal
+	}
+	return parsed
+}
+
+func parseOffset(val string) int {
+	if val == "" {
+		return 0
+	}
+	parsed, err := strconv.Atoi(val)
+	if err != nil || parsed < 0 {
+		return 0
+	}
+	return parsed
 }

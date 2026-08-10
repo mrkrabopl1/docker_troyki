@@ -216,7 +216,7 @@ const setUniqueCustomer = function (callback: (val: any) => void) {
     axios({
         withCredentials: true,
         method: 'get',
-        url: `${API_URL}/setUniqueCustomer`,
+        url: `${API_URL}/customers/unique`,
         headers: {}
     }
     ).then((res: any) => {

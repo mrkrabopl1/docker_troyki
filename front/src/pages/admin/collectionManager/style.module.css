@@ -201,7 +201,60 @@
     padding: 24px;
     overflow-y: auto;
 }
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: #000000;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    user-select: none;
+    white-space: nowrap;
+}
 
+.btn:hover {
+    background-color: #333333;
+    transform: translateY(-1px);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Outline */
+.btn-outline {
+    background-color: transparent;
+    color: #000000;
+    border: 1.5px solid #000000;
+}
+
+.btn-outline:hover {
+    background-color: #000000;
+    color: #ffffff;
+}
+
+/* Ghost */
+.btn-ghost {
+    background-color: transparent;
+    color: #000000;
+}
+
+.btn-ghost:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
 .modalHeader {
     display: flex;
     justify-content: space-between;
@@ -520,7 +573,7 @@
         width: 100%;
         max-width: 100%;
         border-radius: 0;
-        max-height: 100vh;
+        max-height: 90vh;
     }
 
     .modalHeader h3 {

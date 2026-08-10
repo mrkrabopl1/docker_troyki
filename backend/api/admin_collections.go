@@ -174,6 +174,7 @@ func (s *Server) handleAdminGetCollections(c *gin.Context) {
 }
 
 // GetCollection - получение одной коллекции
+// GetCollection - получение одной коллекции
 func (s *Server) handleAdminGetCollection(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -193,8 +194,51 @@ func (s *Server) handleAdminGetCollection(c *gin.Context) {
 		productIDs, _ = s.store.GetCollectionProductIDs(c.Request.Context(), collection.ID)
 	}
 
+	// Парсим Settings в нужный формат
+	var settingsMap map[string]interface{}
+
+	if len(collection.Settings) > 0 {
+		var settings types.CollectionSettings
+		if err := json.Unmarshal(collection.Settings, &settings); err == nil && settings.Filters != nil {
+			settingsMap = map[string]interface{}{
+				"firms":     settings.Filters.Firms,
+				"lines":     settings.Filters.Lines,
+				"price":     settings.Filters.Price,
+				"sizes":     settings.Filters.Sizes,
+				"types":     settings.Filters.Types,
+				"in_store":  settings.Filters.InStore,
+				"rule_ids":  settings.Filters.RuleIDs,
+				"bodytypes": settings.Filters.Bodytypes,
+			}
+		}
+	}
+
+	// Если settingsMap не заполнен - дефолтные значения
+	if settingsMap == nil {
+		settingsMap = map[string]interface{}{
+			"firms":     []int32{},
+			"lines":     []int32{},
+			"price":     []int{0, 100000},
+			"sizes":     []string{},
+			"types":     []int32{},
+			"in_store":  false,
+			"rule_ids":  []int32{},
+			"bodytypes": []string{},
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"collection":  collection,
+		"collection": gin.H{
+			"id":          collection.ID,
+			"slug":        collection.Slug,
+			"name":        collection.Name,
+			"description": collection.Description.String,
+			"type":        collection.Type,
+			"is_active":   collection.IsActive.Bool,
+			"created_at":  collection.CreatedAt,
+			"updated_at":  collection.UpdatedAt,
+		},
+		"filters":     toJSONRawMessage(settingsMap, "{}"),
 		"product_ids": productIDs,
 	})
 }

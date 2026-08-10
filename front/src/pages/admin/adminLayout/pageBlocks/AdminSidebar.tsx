@@ -25,7 +25,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, isMobile, onClose }
     };
 
     return (
-        <aside className={`
+        <aside onClick={onClose} className={`
             ${s.sidebar} 
             ${isMobile ? s.mobile : s.desktop}
             ${isMobile && isOpen ? s.open : ''}
@@ -92,7 +92,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, isMobile, onClose }
                         Коллекции
                     </NavLink>
                 )}
-                 {user?.role === 'superadmin' && (
+                {user?.role === 'superadmin' && (
                     <NavLink href="/admin/sqlConsole">
                         <span className={s.icon}>💻</span>
                         SQL Консоль
@@ -103,6 +103,12 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, isMobile, onClose }
                     <span className={s.icon}>🖼️</span>
                     Баннеры
                 </NavLink>
+                {user?.role === 'superadmin' && (
+                    <NavLink href="/admin/instagram">
+                        <span className={s.icon}>📸</span>
+                        Instagram лента
+                    </NavLink>
+                )}
             </nav>
         </aside>
     );

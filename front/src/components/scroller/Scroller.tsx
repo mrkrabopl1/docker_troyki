@@ -1,11 +1,11 @@
-import React, { 
-    forwardRef, 
+import React, {
+    forwardRef,
     useImperativeHandle,
-    useRef, 
-    useState, 
-    useEffect, 
-    useCallback, 
-    CSSProperties 
+    useRef,
+    useState,
+    useEffect,
+    useCallback,
+    CSSProperties
 } from 'react';
 import ScrollerThumb from './ScrollThumb';
 
@@ -15,7 +15,7 @@ export interface ScrollerRef {
     scrollToBottom: () => void;
     scrollTo: (position: number) => void;
     getCurrentPosition: () => number;
-   
+
 }
 
 type ScrollType = {
@@ -25,16 +25,16 @@ type ScrollType = {
     maxHeight?: number;
     top?: number;
     left?: number;
-    transparentThumb?:boolean
+    transparentThumb?: boolean
 };
 
-const Scroller = forwardRef<ScrollerRef, ScrollType>(({ 
-    className = '', 
-    children, 
-    onlyVertical = false, 
-    maxHeight, 
-    top, 
-    left ,
+const Scroller = forwardRef<ScrollerRef, ScrollType>(({
+    className = '',
+    children,
+    onlyVertical = false,
+    maxHeight,
+    top,
+    left,
     transparentThumb
 }, ref) => {
     const [contTop, setContTop] = useState(0);
@@ -73,7 +73,7 @@ const Scroller = forwardRef<ScrollerRef, ScrollType>(({
             setContTop(0);
             setThumbVertPos(0);
         },
-        
+
         scrollToBottom: () => {
             const scroller = scrollerRef.current;
             const scrollCont = scrollContRef.current;
@@ -85,7 +85,7 @@ const Scroller = forwardRef<ScrollerRef, ScrollType>(({
                 setThumbVertPos(1);
             }
         },
-        
+
         scrollTo: (position: number) => {
             const scroller = scrollerRef.current;
             const scrollCont = scrollContRef.current;
@@ -100,12 +100,12 @@ const Scroller = forwardRef<ScrollerRef, ScrollType>(({
 
             const newTop = Math.min(0, Math.max(position, maxScroll));
             setContTop(newTop);
-            
+
             if (maxScroll !== 0) {
                 setThumbVertPos(Math.abs(newTop) / Math.abs(maxScroll));
             }
         },
-        
+
         getCurrentPosition: () => {
             return contTop;
         }
@@ -185,11 +185,36 @@ const Scroller = forwardRef<ScrollerRef, ScrollType>(({
         setHasHorizontalScroll(needsHorizontal);
         setHasVerticalScroll(needsVertical);
 
-        if (needsVertical && maxScrollTop !== 0) {
-            setThumbVertPos(Math.abs(contTop) / Math.abs(maxScrollTop));
+        // Если вертикальный скролл не нужен - сбрасываем позицию в 0
+        if (!needsVertical) {
+            setContTop(0);
+            setThumbVertPos(0);
+        } else if (needsVertical && maxScrollTop !== 0) {
+            // Если скролл нужен, но текущая позиция выходит за пределы
+            const maxPos = Math.abs(maxScrollTop);
+            const currentPos = Math.abs(contTop);
+            if (currentPos > maxPos) {
+                setContTop(maxScrollTop);
+                setThumbVertPos(1);
+            } else {
+                setThumbVertPos(Math.abs(contTop) / maxPos);
+            }
         }
-        if (needsHorizontal && maxScrollLeft !== 0) {
-            setThumbHorPos(Math.abs(contLeft) / Math.abs(maxScrollLeft));
+
+        // Если горизонтальный скролл не нужен - сбрасываем позицию в 0
+        if (!needsHorizontal) {
+            setContLeft(0);
+            setThumbHorPos(0);
+        } else if (needsHorizontal && maxScrollLeft !== 0) {
+            // Если скролл нужен, но текущая позиция выходит за пределы
+            const maxPos = Math.abs(maxScrollLeft);
+            const currentPos = Math.abs(contLeft);
+            if (currentPos > maxPos) {
+                setContLeft(maxScrollLeft);
+                setThumbHorPos(1);
+            } else {
+                setThumbHorPos(Math.abs(contLeft) / maxPos);
+            }
         }
     }, [contTop, contLeft, getMaxScroll]);
 

@@ -53,6 +53,7 @@ const PageBlocksManager: React.FC = () => {
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
   const [blockType, setBlockType] = useState<'products_slider' | 'banner_slider' | 'brands_scroller'>('products_slider')
   const [isActive, setIsActive] = useState(true)
+  const [errors, setErrors] = useState<{ collection?: boolean }>({}) // Добавлено для валидации
 
   // Состояния для CollectionSelector
   const [collectionsError, setCollectionsError] = useState<string | null>(null)
@@ -92,17 +93,19 @@ const PageBlocksManager: React.FC = () => {
 
   // Валидация
   const validateForm = (): boolean => {
+    const newErrors: { collection?: boolean } = {}
+
     if (!blockName.trim()) {
       alert('Введите название блока')
       return false
     }
 
     if (!selectedCollection) {
-      alert('Выберите коллекцию')
-      return false
+      newErrors.collection = true
     }
 
-    return true
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
   }
 
   // Сохранение
@@ -138,9 +141,12 @@ const PageBlocksManager: React.FC = () => {
     setSelectedCollection(null)
     setBlockType('products_slider')
     setIsActive(true)
+    setErrors({})
   }
 
   const openModal = (block?: PageWidget) => {
+    setErrors({})
+    
     if (block) {
       setEditingBlock(block)
       setBlockName(block.name)
@@ -172,6 +178,7 @@ const PageBlocksManager: React.FC = () => {
   const handleSelectCollection = (collection: Collection) => {
     setSelectedCollection(collection)
     setShowCollectionSelector(false)
+    setErrors(prev => ({ ...prev, collection: false }))
   }
 
   // Закрытие CollectionSelector
@@ -194,6 +201,7 @@ const PageBlocksManager: React.FC = () => {
       await loadCollections()
       setSelectedCollection(newCollection)
       setShowCollectionForm(false)
+      setErrors(prev => ({ ...prev, collection: false }))
     } catch (error) {
       console.error('Error creating collection:', error)
       alert('Ошибка при создании коллекции')
@@ -281,7 +289,7 @@ const PageBlocksManager: React.FC = () => {
           </div>
 
           <div className={s.formGroup}>
-            <label>Название блока *</label>
+            <label>Название блока <span className={s.required}>*</span></label>
             <input
               type="text"
               value={blockName}
@@ -292,7 +300,7 @@ const PageBlocksManager: React.FC = () => {
           </div>
 
           <div className={s.formGroup}>
-            <label>Тип блока *</label>
+            <label>Тип блока <span className={s.required}>*</span></label>
             <select 
               value={blockType} 
               onChange={e => setBlockType(e.target.value as any)}
@@ -305,9 +313,9 @@ const PageBlocksManager: React.FC = () => {
           </div>
 
           <div className={s.formGroup}>
-            <label>Коллекция *</label>
+            <label>Коллекция <span className={s.required}>*</span></label>
             <div 
-              className={`${s.collectionSelector} ${!selectedCollection ? s.errorBorder : ''}`}
+              className={`${s.collectionSelector} ${errors.collection ? s.errorBorder : ''}`}
               onClick={() => setShowCollectionSelector(true)}
             >
               <div className={s.collectionDisplay}>
@@ -315,6 +323,7 @@ const PageBlocksManager: React.FC = () => {
               </div>
               <span className={s.editHint}>✏️ нажмите чтобы выбрать</span>
             </div>
+            {errors.collection && <div className={s.errorText}>Выберите коллекцию</div>}
           </div>
 
           <div className={s.formGroup}>

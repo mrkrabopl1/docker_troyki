@@ -74,7 +74,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
     const handleComplexDrop = useCallback((data: { main?: string; sub?: string }) => {
         setShowBurgerMenu(false)
         if (!data.sub) {
-            router.push(`/search?category=${data.main}&type=""`);
+            router.push(`/search?category=${data.main}`);
         } else {
             let type_key = Object.values(typesVal).filter(cat => cat.category_key === data.main && data.sub === cat.name).map(cat => cat.type_key)[0]
             router.push(`/search?type=${type_key}&category=${data.main}`);

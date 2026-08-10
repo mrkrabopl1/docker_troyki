@@ -95,6 +95,7 @@ type ProductsInfoAdminResponse struct {
 	Type      int32              `json:"type"`
 	Category  int32              `json:"category"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	InStock   bool               `json:"in_stock"`
 }
 
 func (store *SQLStore) buildAdminProductsResponse(rows []GetProductsForAdminByFiltersRow) []ProductsInfoAdminResponse {
@@ -114,6 +115,7 @@ func (store *SQLStore) buildAdminProductsResponse(rows []GetProductsForAdminByFi
 			Type:      row.Type,
 			Category:  row.Category,
 			UpdatedAt: row.UpdatedAt,
+			InStock:   row.InStock, // Преобразуем pgtype.Bool в bool
 		})
 	}
 

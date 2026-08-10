@@ -7,6 +7,10 @@ import ProductSelector from 'src/modules/merchField/ProductSelector'
 import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux'
 import { CheckBoxType, Collection } from 'src/types/modules'
 import {
+    getCollectionById
+} from 'src/providers/collectionsProvider'
+import {
+    getCollection,
     getCollections,
     createCollection,
     updateCollection,
@@ -17,6 +21,8 @@ import { finishLoading } from 'src/store/reducers/loadingSlice'
 import { BODY_TYPES } from 'src/constants/bodytypes'
 import Scroller from 'src/components/scroller/Scroller'
 import s from './style.module.css'
+import { COLLECTION_TYPES, CollectionType } from 'src/types/adminProduct';
+import Combobox from 'src/components/combobox/Combobox'
 
 interface FiltersState {
     priceProps: {
@@ -31,21 +37,31 @@ interface FiltersState {
         id: string
         props: CheckBoxType[]
     }[]
-    variationGroups?: VariationFilterGroup[] // Добавляем вариационные группы
+    variationGroups?: VariationFilterGroup[]
 }
 
-// Интерфейс для вариационной группы
 interface VariationFilterGroup {
-    id: string; // Уникальный идентификатор группы (например, "lines", "firms")
-    name: string; // Название группы (например, "Линии", "Фирмы")
-    options: VariationOption[]; // Массив опций для выбора
+    id: string;
+    name: string;
+    options: VariationOption[];
 }
 
-// Интерфейс для опции вариации
 interface VariationOption {
-    id: string; // Уникальный идентификатор опции
-    name: string; // Название опции
-    props: CheckBoxType[]; // Дополнительные чекбоксы внутри опции (если нужны)
+    id: string;
+    name: string;
+    props: CheckBoxType[];
+}
+
+// Тип для выбранного товара в таблице
+interface SelectedProduct {
+    id: number;
+    name: string;
+    article: string;
+    price: number;
+    old_price?: number;
+    firm: string;
+    image_path?: string;
+    status: string;
 }
 
 const CollectionsManager: React.FC = () => {
@@ -57,19 +73,25 @@ const CollectionsManager: React.FC = () => {
     const [collections, setCollections] = useState<Collection[]>([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
-    const [showFiltersPanel, setShowFiltersPanel] = useState(false) // 👈 ДОБАВИЛИ
+    const [showFiltersPanel, setShowFiltersPanel] = useState(false)
     const [editingCollection, setEditingCollection] = useState<Collection | null>(null)
+    const [loadingCollection, setLoadingCollection] = useState(false)
 
     // Форма
     const [slug, setSlug] = useState('')
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
-    const [type, setType] = useState<'dynamic' | 'manual' | 'hybrid'>('dynamic')
+    const [type, setType] = useState<CollectionType>(COLLECTION_TYPES.DYNAMIC);
     const [isActive, setIsActive] = useState(true)
-    const [sortOrder, setSortOrder] = useState(0)
 
     // Для разных режимов
     const [selectedProductIds, setSelectedProductIds] = useState<number[]>([])
+    const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([])
+
+    // Пагинация для выбранных товаров
+    const [selectedPage, setSelectedPage] = useState(1)
+    const selectedPageSize = 10
+    const totalSelectedProducts = selectedProducts.length
 
     // Фильтры
     const filtersInfo = useRef<{
@@ -84,7 +106,7 @@ const CollectionsManager: React.FC = () => {
     }>({
         sizes: [],
         firms: [],
-        lines:[],
+        lines: [],
         types: [],
         price: [0, 100000],
         rule_ids: [],
@@ -107,28 +129,29 @@ const CollectionsManager: React.FC = () => {
     const [selectorProducts, setSelectorProducts] = useState<any[]>([])
     const [selectorLoading, setSelectorLoading] = useState(false)
     const [selectorTotal, setSelectorTotal] = useState(0)
+    const [selectorCurrentPage, setSelectorCurrentPage] = useState(1)
     const [selectorSearch, setSelectorSearch] = useState('')
+    const [selectorViewMode, setSelectorViewMode] = useState<'all' | 'selected'>('all')
+    const [selectedViewProducts, setSelectedViewProducts] = useState<any[]>([])
+    const [selectedViewLoading, setSelectedViewLoading] = useState(false)
     const selectorPage = useRef(1)
     const pageSize = 20
     const searchTimeoutRef = useRef<any>()
+
     const validateForm = (): boolean => {
-        // 1. Проверка обязательных полей
         if (!slug.trim() || !name.trim()) {
             alert('Заполните все обязательные поля (Slug и Название)')
             return false
         }
 
-        // 2. Проверка slug (только латиница, цифры, дефис)
         const slugRegex = /^[a-z0-9-]+$/
         if (!slugRegex.test(slug)) {
             alert('Slug должен содержать только латинские буквы, цифры и дефис')
             return false
         }
 
-        // 3. Валидация в зависимости от типа коллекции
         switch (type) {
             case 'dynamic':
-                // Для динамической: нужны фильтры (типы ИЛИ бренды ИЛИ размеры ИЛИ цены ИЛИ скидки ИЛИ наличие)
                 const hasDynamicFilters =
                     (filtersInfo.current.types && filtersInfo.current.types.length > 0) ||
                     (filtersInfo.current.firms && filtersInfo.current.firms.length > 0) ||
@@ -139,13 +162,12 @@ const CollectionsManager: React.FC = () => {
                     (filtersInfo.current.bodytypes && filtersInfo.current.bodytypes.length > 0)
 
                 if (!hasDynamicFilters) {
-                    alert('Для динамической коллекции нужно выбрать хотя бы один фильтр (типы, бренды, размеры, цены, скидки, наличие или bodytype)')
+                    alert('Для динамической коллекции нужно выбрать хотя бы один фильтр')
                     return false
                 }
                 break
 
             case 'manual':
-                // Для ручной: нужны выбранные товары
                 if (selectedProductIds.length === 0) {
                     alert('Для ручной коллекции нужно выбрать хотя бы один товар')
                     return false
@@ -157,7 +179,6 @@ const CollectionsManager: React.FC = () => {
                 break
 
             case 'hybrid':
-                // Для гибридной: нужны ИЛИ фильтры, ИЛИ товары
                 const hasHybridFilters =
                     (filtersInfo.current.types && filtersInfo.current.types.length > 0) ||
                     (filtersInfo.current.firms && filtersInfo.current.firms.length > 0) ||
@@ -185,7 +206,6 @@ const CollectionsManager: React.FC = () => {
                 return false
         }
 
-        // 4. Проверка на дубликат slug (если редактирование - проверяем что slug не занят другой коллекцией)
         const slugExists = collections.some(c =>
             c.slug === slug && c.id !== editingCollection?.id
         )
@@ -196,6 +216,7 @@ const CollectionsManager: React.FC = () => {
 
         return true
     }
+
     // Конвертация фильтров
     const convertFiltersData = useCallback((resData: any) => {
         if (!resData) return
@@ -245,10 +266,9 @@ const CollectionsManager: React.FC = () => {
             });
         }
 
-        // Формируем данные для линий
         const checkBoxPropsLineData: CheckBoxType[] = []
         Object.values(lineMap).forEach((line) => {
-            const active = filtersInfo.current.lines.includes(line.id);
+            const active = filtersInfo.current.lines?.includes(line.id) || false;
             checkBoxPropsLineData.push({
                 id: line.id,
                 enable: true,
@@ -257,7 +277,6 @@ const CollectionsManager: React.FC = () => {
             });
         });
 
-        // Формируем данные для фирм
         const checkBoxPropsFirmData: CheckBoxType[] = Object.values(firmMap)
             .map((firm: any) => {
                 return {
@@ -269,40 +288,34 @@ const CollectionsManager: React.FC = () => {
             })
             .filter(Boolean) as CheckBoxType[]
 
-        // СОЗДАЕМ ОДНУ ГРУППУ с двумя опциями: Линии и Фирмы
         const variationGroups = [];
 
-        // Проверяем, есть ли данные для линий или фирм
         if (checkBoxPropsLineData.length > 0 || checkBoxPropsFirmData.length > 0) {
             const options: VariationOption[] = [];
 
-            // Добавляем опцию "Линии" с чекбоксами линий
             if (checkBoxPropsLineData.length > 0) {
                 options.push({
                     id: "lines_option",
                     name: "Линии",
-                    props: checkBoxPropsLineData // Все чекбоксы линий
+                    props: checkBoxPropsLineData
                 });
             }
 
-            // Добавляем опцию "Фирмы" с чекбоксами фирм
             if (checkBoxPropsFirmData.length > 0) {
                 options.push({
                     id: "firms_option",
                     name: "Фирмы",
-                    props: checkBoxPropsFirmData // Все чекбоксы фирм
+                    props: checkBoxPropsFirmData
                 });
             }
 
-            // Создаем одну группу с двумя опциями
             variationGroups.push({
-                id: "catalog_filter", // Уникальный ID группы
-                name: "Каталог", // Название группы (будет отображаться в DoubleInfoDrop)
-                options: options // Две опции: Линии и Фирмы
+                id: "catalog_filter",
+                name: "Каталог",
+                options: options
             });
         }
 
-        // Обычные чекбоксы (убираем firms и lines, так как они теперь в вариациях)
         const checboxsProps = [
             { id: "sizes", name: "Размеры", props: checkBoxPropsData },
             { id: "type", name: "Типы товара", props: checkBoxPropsTypeData },
@@ -326,9 +339,10 @@ const CollectionsManager: React.FC = () => {
             priceProps,
             checboxsProps,
             soloDataProps,
-            variationGroups // Одна группа с двумя опциями
+            variationGroups
         })
-    }, [typesVal, firmMap])
+    }, [typesVal, firmMap, lineMap])
+
     // Загрузка фильтров
     const loadFilters = useCallback(async () => {
         try {
@@ -415,38 +429,24 @@ const CollectionsManager: React.FC = () => {
                     filtersInfo.current.in_store = inStoreItem ? inStoreItem.activeData : false
                 }
                 break
-            // Обработка вариационных групп
             case "variation_catalog_filter":
-                // Переключение между Линиями и Фирмами
                 const { selectedOptionId } = filter.data;
-                console.log('Переключение на:', selectedOptionId);
-
-                // Очищаем предыдущие фильтры при переключении
                 if (selectedOptionId === 'lines_option') {
-                    // Очищаем фильтры фирм, так как переключились на линии
                     filtersInfo.current.firms = [];
                 } else if (selectedOptionId === 'firms_option') {
-                    // Очищаем фильтры линий, так как переключились на фирмы
                     filtersInfo.current.lines = [];
                 }
                 break
-
             case "variation_checkbox_catalog_filter":
-                // Изменение чекбоксов внутри выбранной опции
                 const { optionId, selectedCheckboxes } = filter.data;
-
                 if (optionId === 'lines_option') {
-                    // Обновляем фильтр линий
                     filtersInfo.current.lines = selectedCheckboxes || [];
                 } else if (optionId === 'firms_option') {
-                    // Обновляем фильтр фирм
-                    // Преобразуем слаги в ID
                     filtersInfo.current.firms = (selectedCheckboxes || [])
                         .map((slug: string) => firmMap[slug]?.id)
                         .filter(Boolean) as number[];
                 }
                 break
-
             default:
                 break
         }
@@ -456,52 +456,91 @@ const CollectionsManager: React.FC = () => {
     }, [updatePreview, firmMap])
 
     // Загрузка товаров для селектора
-    const loadSelectorProducts = useCallback(async () => {
-        if (!showModal) return
-        if (type === 'dynamic') return
+    const loadSelectorProducts = useCallback(async (searchQuery?: string) => {
+        if (!showModal || type === 'dynamic') return
 
         setSelectorLoading(true)
         try {
-            const handleData = (data: any) => {
-                setSelectorProducts(data.products || [])
-                setSelectorTotal(data.totalCount || 0)
-                setSelectorLoading(false)
-            }
+            const query = searchQuery !== undefined ? searchQuery : selectorSearch
 
             await getAdminProducts(
-                handleData,
+                (data: any) => {
+                    setSelectorProducts(data.products || [])
+                    setSelectorTotal(data.totalCount || 0)
+                    setSelectorLoading(false)
+                },
                 selectorPage.current,
                 pageSize,
-                {},
+                filtersInfo.current,
                 0,
-                selectorSearch,
+                query
             )
         } catch (error) {
             console.error('Error loading products:', error)
             setSelectorLoading(false)
         }
     }, [selectorSearch, showModal, type])
+    const handlePageChange = useCallback((page: number) => {
+        setSelectorCurrentPage(page)
+        selectorPage.current = page
+        loadSelectorProducts()
+    }, [loadSelectorProducts])
+    // Загрузка выбранных товаров для режима просмотра
+    const loadSelectedViewProducts = useCallback(async () => {
+        if (selectedProductIds.length === 0) {
+            setSelectedViewProducts([])
+            return
+        }
+
+        setSelectedViewLoading(true)
+        try {
+            // Загружаем выбранные товары с фильтром по ID
+            await getAdminProducts(
+                (data: any) => {
+                    // Фильтруем только те, что есть в selectedProductIds
+                    const filtered = (data.products || []).filter((p: any) =>
+                        selectedProductIds.includes(p.id)
+                    )
+                    setSelectedViewProducts(filtered)
+                    setSelectedViewLoading(false)
+                },
+                1,
+                selectedProductIds.length,
+                filtersInfo.current,
+                0,
+                ''
+            )
+        } catch (error) {
+            console.error('Error loading selected products:', error)
+            setSelectedViewLoading(false)
+        }
+    }, [selectedProductIds])
 
     // Загружаем при открытии модалки
     useEffect(() => {
-        if (showModal) {
-            if (type === 'dynamic' || type === 'hybrid') {
-                loadFilters()
-                updatePreview()
-            }
-            if (type === 'manual' || type === 'hybrid') {
-                selectorPage.current = 1
-                loadSelectorProducts()
-            }
+        if (type === 'dynamic' || type === 'hybrid') {
+            loadFilters()
+            updatePreview()
         }
-    }, [showModal, type, loadFilters, updatePreview, loadSelectorProducts])
+        if (type === 'manual' || type === 'hybrid') {
+            selectorPage.current = 1
+            loadSelectorProducts()
+        }
+    }, [])
+
+    // Загружаем выбранные товары при переключении в режим просмотра
+    useEffect(() => {
+        if (selectorViewMode === 'selected' && selectedProductIds.length > 0) {
+            loadSelectedViewProducts()
+        }
+    }, [selectorViewMode, selectedProductIds, loadSelectedViewProducts])
 
     const handleSelectorSearch = (query: string) => {
         setSelectorSearch(query)
         selectorPage.current = 1
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
         searchTimeoutRef.current = setTimeout(() => {
-            loadSelectorProducts()
+            loadSelectorProducts(query)
         }, 300)
     }
 
@@ -511,6 +550,73 @@ const CollectionsManager: React.FC = () => {
             loadSelectorProducts()
         }
     }
+
+    // Добавление товара в коллекцию
+    const handleAddProducts = (ids: number[]) => {
+        // Находим новые ID
+        const newIds = ids.filter(id => !selectedProductIds.includes(id))
+        if (newIds.length === 0) return
+
+        // Добавляем товары из селектора
+        const productsToAdd = selectorProducts
+            .filter(p => newIds.includes(p.id))
+            .map((p: any) => ({
+                id: p.id,
+                name: p.name || 'Без названия',
+                article: p.article || '',
+                price: p.price || 0,
+                old_price: p.old_price,
+                firm: p.firm || '—',
+                image_path: p.image_path,
+                status: p.status || 'draft'
+            }))
+
+        setSelectedProducts(prev => [...prev, ...productsToAdd])
+        setSelectedProductIds(prev => [...prev, ...newIds])
+
+        // Обновляем выбранные товары в режиме просмотра
+        if (selectorViewMode === 'selected') {
+            loadSelectedViewProducts()
+        }
+    }
+
+    // Удаление товара из коллекции
+    const handleRemoveProduct = (id: number) => {
+        setSelectedProducts(prev => prev.filter(p => p.id !== id))
+        setSelectedProductIds(prev => prev.filter(pid => pid !== id))
+
+        // Обновляем выбранные товары в режиме просмотра
+        if (selectorViewMode === 'selected') {
+            loadSelectedViewProducts()
+        }
+    }
+
+    // Очистка всех товаров
+    const handleClearAllProducts = () => {
+        if (selectedProducts.length === 0) return
+        if (!confirm('Удалить все товары из коллекции?')) return
+        setSelectedProducts([])
+        setSelectedProductIds([])
+        setSelectedPage(1)
+
+        // Обновляем выбранные товары в режиме просмотра
+        if (selectorViewMode === 'selected') {
+            setSelectedViewProducts([])
+        }
+    }
+
+    // Обработчик просмотра выбранных товаров
+    const handleViewModeChange = useCallback((viewMode) => {
+        setSelectorViewMode(viewMode)
+        if (viewMode === "select") {
+            if (selectedProductIds.length > 0) {
+                loadSelectedViewProducts()
+            }
+        }
+        else {
+
+        }
+    }, [selectedProductIds, loadSelectedViewProducts])
 
     const loadCollections = useCallback(async () => {
         setLoading(true)
@@ -533,10 +639,13 @@ const CollectionsManager: React.FC = () => {
         setSlug('')
         setName('')
         setDescription('')
-        setType('dynamic')
+        setType(COLLECTION_TYPES.DYNAMIC)
         setIsActive(true)
-        setSortOrder(collections.length)
         setSelectedProductIds([])
+        setSelectedProducts([])
+        setSelectedPage(1)
+        setSelectorViewMode('all')
+        setSelectedViewProducts([])
         filtersInfo.current = {
             sizes: [],
             firms: [],
@@ -544,7 +653,7 @@ const CollectionsManager: React.FC = () => {
             price: [0, 100000],
             rule_ids: [],
             in_store: false,
-            lines:[],
+            lines: [],
             bodytypes: []
         }
         setFiltersState({
@@ -564,54 +673,84 @@ const CollectionsManager: React.FC = () => {
         selectorPage.current = 1
     }
 
-    const openModal = (collection?: Collection) => {
+    const openModal = async (collection?: Collection) => {
         if (collection) {
-            setEditingCollection(collection)
-            setSlug(collection.slug)
-            setName(collection.name)
-            setDescription(collection.description || '')
-            setType(collection.type as any)
-            setIsActive(collection.is_active)
+            try {
+                setShowModal(true)
+                setLoadingCollection(true)
 
-            if (collection.settings?.filters) {
-                const f = collection.settings.filters
-                filtersInfo.current = {
-                    sizes: f.sizes || [],
-                    firms: f.firms || [],
-                    types: f.types || [],
-                    lines: f.lines || [],
-                    price: f.price || [0, 100000],
-                    rule_ids: f.rule_ids || [],
-                    bodytypes: f.bodytypes || [],
-                    in_store: f.in_store || false
+                const fullCollection = await getCollection(collection.id)
+                const col = fullCollection.collection
+
+                setEditingCollection(fullCollection)
+                setSlug(col.slug)
+                setName(col.name)
+                setDescription(col.description || '')
+                setType(col.type as any)
+                setIsActive(col.is_active)
+
+                if (fullCollection.filters) {
+                    const f = fullCollection.filters
+                    filtersInfo.current = {
+                        sizes: f.sizes || [],
+                        firms: f.firms || [],
+                        types: f.types || [],
+                        lines: f.lines || [],
+                        price: f.price || [0, 100000],
+                        rule_ids: f.rule_ids || [],
+                        bodytypes: f.bodytypes || [],
+                        in_store: f.in_store || false
+                    }
                 }
-            } else {
-                filtersInfo.current = {
-                    sizes: [],
-                    firms: [],
-                    types: [],
-                    lines:[],
-                    price: [0, 100000],
-                    rule_ids: [],
-                    bodytypes: [],
-                    in_store: false
+
+                if (col.type === 'manual' || col.type === 'hybrid') {
+                    let productIds: number[] = []
+
+                    productIds = fullCollection.products.map((p: any) => p.id)
+                    setSelectedProductIds(productIds)
+
+                    if (fullCollection.products && fullCollection.products.length > 0) {
+                        const products = fullCollection.products.map((p: any) => ({
+                            id: p.id,
+                            name: p.name || 'Без названия',
+                            article: p.article || '',
+                            price: p.min_price || 0,
+                            old_price: p.old_price,
+                            firm: p.firm || '—',
+                            image_path: p.image_path,
+                            status: p.status || 'draft'
+                        }))
+                        setSelectedProducts(products)
+                    }
                 }
-            }
 
-            if (collection.type === 'manual' || collection.type === 'hybrid') {
-                setSelectedProductIds(collection.settings?.product_ids || [])
-            }
+                if (col.type === 'dynamic' || col.type === 'hybrid') {
+                    setFiltersVersion(prev => prev + 1)
+                    await updatePreview()
+                }
 
-            setShowModal(true)
+
+                if (col.type === 'manual' || col.type === 'hybrid') {
+                    selectorPage.current = 1
+                    await loadSelectorProducts()
+                }
+
+                setLoadingCollection(false)
+
+            } catch (error) {
+                console.error('Error loading collection:', error)
+                alert('Ошибка при загрузке коллекции')
+                setShowModal(false)
+                setLoadingCollection(false)
+            }
         } else {
             resetForm()
             setShowModal(true)
+            loadFilters()
+            updatePreview()
         }
     }
-    // Полная валидация для всех типов коллекций
 
-
-    // Использование в handleSave:
     const handleSave = async () => {
         if (!validateForm()) return
 
@@ -632,8 +771,8 @@ const CollectionsManager: React.FC = () => {
                     rule_ids: filtersInfo.current.rule_ids || [],
                     in_store: filtersInfo.current.in_store || false
                 } : undefined,
-                product_ids: type !== 'dynamic' ? selectedProductIds : undefined
-            }
+            },
+            product_ids: type !== 'dynamic' ? selectedProductIds : undefined
         }
 
         try {
@@ -650,6 +789,7 @@ const CollectionsManager: React.FC = () => {
             alert('Ошибка при сохранении')
         }
     }
+
     const handleDelete = async (id: number) => {
         if (!confirm('Удалить коллекцию?')) return
         try {
@@ -706,11 +846,46 @@ const CollectionsManager: React.FC = () => {
         return parts.length > 0 ? parts.join('; ') : 'Условия не выбраны'
     }, [filtersVersion, typesVal, firmMap, filtersInfo.current, editingCollection])
 
+    // Пагинация для выбранных товаров
+    const paginatedSelectedProducts = useMemo(() => {
+        const start = (selectedPage - 1) * selectedPageSize
+        const end = start + selectedPageSize
+        return selectedProducts.slice(start, end)
+    }, [selectedProducts, selectedPage])
+
+    const totalSelectedPages = Math.ceil(totalSelectedProducts / selectedPageSize)
+
+    const handleSelectedPageChange = (page: number) => {
+        setSelectedPage(Math.max(1, Math.min(page, totalSelectedPages)))
+    }
+
+    // Определяем какие товары показывать в ProductSelector
+    const displayProducts = useMemo(() => {
+        if (selectorViewMode === 'selected') {
+            return selectedProducts
+        }
+        return selectorProducts
+    }, [selectorViewMode, selectedProducts, selectorProducts])
+
+    const displayLoading = useMemo(() => {
+        if (selectorViewMode === 'selected') {
+            return selectedViewLoading
+        }
+        return selectorLoading
+    }, [selectorViewMode, selectedViewLoading, selectorLoading])
+
+    const displayTotal = useMemo(() => {
+        if (selectorViewMode === 'selected') {
+            return selectedProductIds.length
+        }
+        return selectorTotal
+    }, [selectorViewMode, selectedProductIds, selectorTotal])
+
     return (
         <div className={s.container}>
             <div className={s.header}>
                 <h2>Управление коллекциями</h2>
-                <Button text="+ Создать коллекцию" onClick={() => openModal()} />
+                <Button className={s.btn + " " + s.btn_ghost} text="+ Создать коллекцию" onClick={() => openModal()} />
             </div>
 
             {loading ? (
@@ -748,137 +923,153 @@ const CollectionsManager: React.FC = () => {
 
             {/* Модалка */}
             <Modal active={showModal} onChange={setShowModal}>
-                <div onClick={e => e.stopPropagation()} className={s.modalContent}>
-                    <div className={s.modalHeader}>
-                        <h3>{editingCollection ? 'Редактировать коллекцию' : 'Новая коллекция'}</h3>
-                        <button className={s.closeBtn} onClick={() => setShowModal(false)}>✕</button>
+                {loadingCollection ? (
+                    <div className={s.loader}>
+                        <div className={s.spinner}></div>
+                        <p>Загрузка коллекции...</p>
                     </div>
-
-                    <div className={s.formGroup}>
-                        <label>Slug *</label>
-                        <input
-                            type="text"
-                            value={slug}
-                            onChange={e => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-                            placeholder="collection-slug"
-                        />
-                    </div>
-
-                    <div className={s.formGroup}>
-                        <label>Название *</label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={e => setName(e.target.value)}
-                            placeholder="Название коллекции"
-                        />
-                    </div>
-
-                    <div className={s.formGroup}>
-                        <label>Описание</label>
-                        <textarea
-                            value={description}
-                            onChange={e => setDescription(e.target.value)}
-                            placeholder="Описание коллекции"
-                            rows={3}
-                        />
-                    </div>
-
-                    <div className={s.formGroup}>
-                        <label>Тип коллекции</label>
-                        <select value={type} onChange={e => setType(e.target.value as any)}>
-                            <option value="dynamic">Динамическая (по фильтрам)</option>
-                            <option value="manual">Ручная (выбор товаров)</option>
-                            <option value="hybrid">Гибридная (фильтры + ручной выбор)</option>
-                        </select>
-                    </div>
-
-                    {type !== 'manual' && (
-                        <div className={s.formGroup}>
-                            <label>Фильтры</label>
-                            <div
-                                className={`${s.filtersPreview} ${errors.filters ? s.errorBorder : ''}`}
-                                onClick={() => {
-                                    console.debug(";dsa;md;as")
-                                    setShowFiltersPanel(true)
-                                }
-                                }
-                                style={{ cursor: 'pointer' }}
-                            >
-                                <div className={s.filtersSummary}>
-                                    {getFiltersSummary}
-                                </div>
-                                <span className={s.editHint}>✏️ нажмите чтобы настроить</span>
-                            </div>
-                            {errors.filters && <div className={s.errorText}>Выберите хотя бы один фильтр</div>}
-
-                            {/* Предпросмотр для dynamic и hybrid */}
-                            {(type === 'dynamic' || type === 'hybrid') && (
-                                <div className={s.previewSection}>
-                                    <h4>Предпросмотр товаров</h4>
-                                    {previewLoading ? (
-                                        <div className={s.loader}>Загрузка...</div>
-                                    ) : (
-                                        <>
-                                            <div className={s.previewStats}>
-                                                Найдено: <strong>{previewTotal}</strong>
-                                            </div>
-                                            <div className={s.productsGrid}>
-                                                {previewProducts.slice(0, 8).map(p => (
-                                                    <div key={p.id} className={s.previewProduct}>
-                                                        {p.image_path && (
-                                                            <img src={p.image_path} alt={p.name} />
-                                                        )}
-                                                        <div className={s.productName}>{p.name}</div>
-                                                    </div>
-                                                ))}
-                                                {previewTotal > 8 && <div className={s.more}>+ ещё {previewTotal - 8}</div>}
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            )}
+                ) : (
+                    <div onClick={e => e.stopPropagation()} className={s.modalContent}>
+                        <div className={s.modalHeader}>
+                            <h3>{editingCollection ? 'Редактировать коллекцию' : 'Новая коллекция'}</h3>
+                            <button className={s.closeBtn} onClick={() => setShowModal(false)}>✕</button>
                         </div>
-                    )}
 
-                    {type !== 'dynamic' && (
                         <div className={s.formGroup}>
-                            <label>Товары</label>
-                            <ProductSelector
-                                products={selectorProducts}
-                                selectedIds={selectedProductIds}
-                                onChange={setSelectedProductIds}
-                                isLoading={selectorLoading}
-                                total={selectorTotal}
-                                searchQuery={selectorSearch}
-                                onSearch={handleSelectorSearch}
-                                onLoadMore={handleLoadMore}
-                                multiple={true}
-                                maxItems={500}
-                                placeholder="Поиск товаров для добавления..."
-                            />
-                            <div className={s.selectedCount}>
-                                Выбрано: <strong>{selectedProductIds.length}</strong> товаров
-                            </div>
-                        </div>
-                    )}
-
-                    <div className={s.formGroup}>
-                        <label className={s.checkboxLabel}>
+                            <label>Slug *</label>
                             <input
-                                type="checkbox"
-                                checked={isActive}
-                                onChange={e => setIsActive(e.target.checked)}
+                                type="text"
+                                value={slug}
+                                onChange={e => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                                placeholder="collection-slug"
                             />
-                            Активна
-                        </label>
-                    </div>
+                        </div>
 
-                    <div className={s.modalActions}>
-                        <Button text="Отмена" onClick={() => setShowModal(false)} />
-                        <Button text="Сохранить" onClick={handleSave} />
+                        <div className={s.formGroup}>
+                            <label>Название *</label>
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                placeholder="Название коллекции"
+                            />
+                        </div>
+
+                        <div className={s.formGroup}>
+                            <label>Описание</label>
+                            <textarea
+                                value={description}
+                                onChange={e => setDescription(e.target.value)}
+                                placeholder="Описание коллекции"
+                                rows={3}
+                            />
+                        </div>
+
+                        <div className={s.formGroup}>
+                            <label>Тип коллекции</label>
+                            <Combobox
+                                currentIndex={type}
+                                enumProp={true}
+                                data={{
+                                    "dynamic": "Динамическая (по фильтрам)",
+                                    "manual": "Ручная (выбор товаров)",
+                                    "hybrid": "Гибридная (фильтры + ручной выбор)"
+                                }}
+                                onChangeIndex={(val) => setType(val as CollectionType)}
+                                className={s.combobox}
+                            />
+                        </div>
+
+                        {type !== 'manual' && (
+                            <div className={s.formGroup}>
+                                <label>Фильтры</label>
+                                <div
+                                    className={`${s.filtersPreview} ${errors.filters ? s.errorBorder : ''}`}
+                                    onClick={() => setShowFiltersPanel(true)}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    <div className={s.filtersSummary}>
+                                        {getFiltersSummary}
+                                    </div>
+                                    <span className={s.editHint}>✏️ нажмите чтобы настроить</span>
+                                </div>
+                                {errors.filters && <div className={s.errorText}>Выберите хотя бы один фильтр</div>}
+
+                                {(type === 'dynamic' || type === 'hybrid') && (
+                                    <div className={s.previewSection}>
+                                        <h4>Предпросмотр товаров</h4>
+                                        {previewLoading ? (
+                                            <div className={s.loader}>Загрузка...</div>
+                                        ) : (
+                                            <>
+                                                <div className={s.previewStats}>
+                                                    Найдено: <strong>{previewTotal}</strong>
+                                                </div>
+                                                <div className={s.productsGrid}>
+                                                    {previewProducts.slice(0, 8).map(p => (
+                                                        <div key={p.id} className={s.previewProduct}>
+                                                            {p.image_path && (
+                                                                <img src={p.image_path} alt={p.name} />
+                                                            )}
+                                                            <div className={s.productName}>{p.name}</div>
+                                                        </div>
+                                                    ))}
+                                                    {previewTotal > 8 && <div className={s.more}>+ ещё {previewTotal - 8}</div>}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {type !== 'dynamic' && (
+                            <div className={s.formGroup}>
+                                <label>Товары {type === 'manual' && '*'}</label>
+
+                                <ProductSelector
+                                    products={displayProducts}
+                                    selectedIds={selectedProductIds}
+                                    onChange={handleAddProducts}
+                                    isLoading={displayLoading}
+                                    total={displayTotal}
+                                    searchQuery={selectorSearch}
+                                    currentPage={selectorCurrentPage}
+                                    onSearch={handleSelectorSearch}
+                                    onPageChange={handlePageChange}
+                                    onViewSelected={handleViewModeChange}
+                                    multiple={true}
+                                    maxItems={500}
+                                    placeholder="Поиск товаров для добавления..."
+                                    showViewSelected={true}
+                                    pageSize={pageSize}
+                                />
+
+
+
+                                {/* Таблица выбранных товаров */}
+
+                            </div>
+                        )}
+
+                        <div className={s.formGroup}>
+                            <label className={s.checkboxLabel}>
+                                <input
+                                    type="checkbox"
+                                    checked={isActive}
+                                    onChange={e => setIsActive(e.target.checked)}
+                                />
+                                Активна
+                            </label>
+                        </div>
+
+                        <div className={s.modalActions}>
+                            <Button text="Отмена" onClick={() => setShowModal(false)} />
+                            <Button text="Сохранить" onClick={handleSave} />
+                        </div>
                     </div>
-                </div>
+                )}
+
                 {showFiltersPanel && (
                     <div className={s.modalOverlay} onClick={() => setShowFiltersPanel(false)}>
                         <div className={s.modalPanel} onClick={e => e.stopPropagation()}>
@@ -886,13 +1077,13 @@ const CollectionsManager: React.FC = () => {
                                 <h3>Выберите условия показа</h3>
                                 <button onClick={() => setShowFiltersPanel(false)}>✕</button>
                             </div>
-                            <Scroller>
+                            <Scroller onlyVertical={true}>
                                 <ProductsFilters
                                     onChange={onFiltersChange}
                                     {...filtersState}
                                 />
                             </Scroller>
-                           
+
                             <div className={s.modalFooter}>
                                 <Button text="Готово" onClick={() => setShowFiltersPanel(false)} />
                             </div>

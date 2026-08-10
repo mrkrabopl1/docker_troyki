@@ -39,7 +39,10 @@ const ZoneSliderSimple: React.FC<ZoneSliderSetterType> = ({ min, max, onChange }
         sliderPositionLeftRef.current = sliderPositionLeft
         sliderPositionRightRef.current = sliderPositionRight
     }, [sliderPositionLeft, sliderPositionRight])
-
+    useEffect(() => {
+        sliderLeftData .current = min
+        sliderRightData.current = max
+    }, [min, max])
     useEffect(() => {
         if (wrappRef.current) {
             if (sliderRefLeft.current && min >= 0 && min <= 1) {

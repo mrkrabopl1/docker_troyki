@@ -128,3 +128,11 @@ export interface AdminProductItem {
   created_at: string;
   updated_at: string;
 }
+
+export const COLLECTION_TYPES = {
+    DYNAMIC: "dynamic",
+    MANUAL: "manual",
+    HYBRID: "hybrid"
+} as const;
+
+export type CollectionType = typeof COLLECTION_TYPES[keyof typeof COLLECTION_TYPES];

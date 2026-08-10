@@ -109,7 +109,7 @@ type ProductsFilterStruct struct {
 	Categories []int32                `json:"categories"`
 }
 
-func (s *Server) handleSearchSnickersAndFiltersByNameCategoryAndType(ctx *gin.Context) {
+func (s *Server) handleSearchWithFilters(ctx *gin.Context) {
 	startTotal := time.Now()
 	log.Printf("🚀 [START] handleSearchSnickersAndFiltersByNameCategoryAndType")
 
@@ -166,6 +166,67 @@ func (s *Server) handleSearchSnickersAndFiltersByNameCategoryAndType(ctx *gin.Co
 	log.Printf("⏱️ [TOTAL] handleSearchSnickersAndFiltersByNameCategoryAndType: %v", totalDuration)
 	log.Printf("✅ [END] handleSearchSnickersAndFiltersByNameCategoryAndType")
 }
+func (s *Server) handleSearchSnickersAndFiltersBySlugs(ctx *gin.Context) {
+	startTotal := time.Now()
+	log.Printf("🚀 [START] handleSearchSnickersAndFiltersBySlugs")
+
+	// ---- 1. Биндинг JSON ----
+	startBind := time.Now()
+	var postData types.PostDataSnickersAndFiltersBySlugs
+	if err := ctx.BindJSON(&postData); err != nil {
+		log.Printf("❌ [ERROR] BindJSON: %v", err)
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+	bindDuration := time.Since(startBind)
+	log.Printf("⏱️ [1] BindJSON: %v", bindDuration)
+	log.Printf("📥 postData: Name='%s', CategorySlug='%s', TypeSlug='%s', BrandSlug='%s', LineSlug='%s', Page=%d, Size=%d, SortType=%d",
+		postData.Name, postData.CategorySlug, postData.TypeSlug, postData.BrandSlug, postData.LineSlug, postData.Page, postData.Size, postData.SortType)
+
+	// ---- 2. Валидация ----
+	if postData.Page < 1 {
+		postData.Page = 1
+	}
+	if postData.Size < 1 || postData.Size > 100 {
+		postData.Size = 24
+	}
+
+	// ---- 3. Получение данных через store ----
+	startStore := time.Now()
+
+	result, err := s.store.GetProductsAndFiltersBySlugs(
+		ctx,
+		postData.CategorySlug,
+		postData.TypeSlug,
+		postData.BrandSlug,
+		postData.LineSlug,
+		postData.Name,
+		postData.Filters,
+		postData.Page,
+		postData.Size,
+		postData.SortType,
+	)
+
+	storeDuration := time.Since(startStore)
+	log.Printf("⏱️ [2] GetProductsAndFiltersBySlugs: %v", storeDuration)
+
+	if err != nil {
+		log.Printf("❌ [ERROR] GetProductsAndFiltersBySlugs: %v", err)
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	// ---- 4. JSON ответ ----
+	startJSON := time.Now()
+	ctx.JSON(http.StatusOK, result)
+	jsonDuration := time.Since(startJSON)
+	log.Printf("⏱️ [3] ctx.JSON: %v", jsonDuration)
+
+	// ---- ИТОГО ----
+	totalDuration := time.Since(startTotal)
+	log.Printf("⏱️ [TOTAL] handleSearchSnickersAndFiltersBySlugs: %v", totalDuration)
+	log.Printf("✅ [END] handleSearchSnickersAndFiltersBySlugs")
+}
 func (s *Server) handleSearchProductByCategoriesAndFilters(ctx *gin.Context) {
 	var postData types.PostDataAndFiltersByCategoryAndType
 	if err := ctx.BindJSON(&postData); err != nil {
@@ -175,7 +236,7 @@ func (s *Server) handleSearchProductByCategoriesAndFilters(ctx *gin.Context) {
 	}
 
 	//fmt.Println(postData.Filters.Price, "postData postData postData postData postData postData postData postData ")
-	fmt.Println(postData.Filters.Types, "postData postData postData postData postData postData postData postData ")
+	fmt.Println(postData.Filters.InStore, "postData postData postData postData postData postData postData postData ")
 	postData.Filters.Status = "active"
 	resp, err := s.store.GetProductsByFiltersComplex(ctx, postData.Name, postData.Page, postData.Size, postData.Filters, postData.SortType)
 	if err != nil {
@@ -189,16 +250,16 @@ func (s *Server) handleGetMainPage(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	// 1. Пытаемся получить из кэша
-	widgets, err := s.taskProcessor.GetPageWidgets(ctx)
-	// fmt.Println("widgets", widgets)
-	if err == nil && len(widgets) > 0 {
-		c.Data(http.StatusOK, "application/json", widgets)
-		c.Header("X-Cache", "HIT")
-		return
-	}
+	// widgets, err := s.taskProcessor.GetPageWidgets(ctx)
+	// // fmt.Println("widgets", widgets)
+	// if err == nil && len(widgets) > 0 {
+	// 	c.Data(http.StatusOK, "application/json", widgets)
+	// 	c.Header("X-Cache", "HIT")
+	// 	return
+	// }
 
-	// 2. Кэша нет - отдаём из БД
-	c.Header("X-Cache", "MISS")
+	// // 2. Кэша нет - отдаём из БД
+	// c.Header("X-Cache", "MISS")
 
 	widgetsFromDB, err := s.store.GetPageWidgetsFromDB(ctx)
 	if err != nil {
@@ -281,11 +342,6 @@ func (s *Server) handleSearchProducts(ctx *gin.Context) {
 		return
 	}
 	response, _ := s.store.GetProductsByNameComplex(ctx, postData.Name, postData.Max)
-	ctx.JSON(http.StatusOK, response)
-}
-
-func (s *Server) handleGetCategoriesWithTypes(ctx *gin.Context) {
-	response, _ := s.store.GetCategoriesWithTypes(ctx)
 	ctx.JSON(http.StatusOK, response)
 }
 
@@ -387,57 +443,90 @@ func (s *Server) handleGetCollectionBySlug(c *gin.Context) {
 	slug := c.Param("slug")
 	ctx := c.Request.Context()
 
-	// // 1. Пытаемся получить из кэша
-	// cached, err := s.taskProcessor.GetCollection(ctx, slug)
-	// if err == nil && len(cached) > 0 {
-	// 	c.Data(http.StatusOK, "application/json", cached)
-	// 	c.Header("X-Cache", "HIT")
-	// 	return
-	// }
-
-	// 2. Получаем коллекцию из БД
+	// 1. Получаем коллекцию из БД
 	collection, err := s.store.GetCollectionBySlug(ctx, slug)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Collection not found"})
 		return
 	}
 
-	// 3. Парсим фильтры из коллекции
-	var filtersParams db.GetFullFiltersForCollectionParams
-	filtersParams.CollectionID = collection.ID
+	var filtersResponse FiltersResponse
+	var products []types.CachedProduct
+	var total int64
 
-	if len(collection.Settings) > 0 {
-		var settings types.CollectionSettings
-		if err := json.Unmarshal(collection.Settings, &settings); err == nil && settings.Filters != nil {
-			filtersParams.CollectionTypeIds = settings.Filters.Types
-			filtersParams.CollectionCategoryIds = settings.Filters.Categories
-			filtersParams.CollectionBrandIds = settings.Filters.Firms
-			filtersParams.CollectionLineIds = settings.Filters.Lines
-			filtersParams.CollectionBodyTypes = settings.Filters.Bodytypes
-			filtersParams.CollectionPriceMin = int32(settings.Filters.Price[0])
-			filtersParams.CollectionPriceMax = int32(settings.Filters.Price[1])
-			filtersParams.CollectionSizes = settings.Filters.Sizes
-			filtersParams.CollectionInStore = settings.Filters.InStore
-			filtersParams.CollectionRuleIds = settings.Filters.RuleIDs
+	// 2. В зависимости от типа коллекции - разные запросы
+	switch collection.Type {
+	case "manual":
+		// ===== MANUAL =====
+		// Получаем фильтры только для manual
+		manualFilters, err := s.store.GetFullFiltersForManualCollection(ctx, collection.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get filters"})
+			return
 		}
-	}
-	fmt.Println(filtersParams, "filtersParamsfiltersParamsfiltersParamsfiltersParamsfiltersParamsfiltersParamsfiltersParamsfiltersParams")
-	// 4. Получаем полный набор фильтров
-	filters, err := s.store.GetFullFiltersForCollection(ctx, filtersParams)
-	if err != nil {
-		fmt.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get filters"})
-		return
-	}
-	fmt.Println(filters, "qqqqqqqqqqqqqqqqqqqqmmm")
-	// 5. Получаем товары коллекции (первая страница)
-	products, total, err := s.store.GetCollectionProducts(ctx, collection, filtersParams, 1, 20)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get products"})
+		filtersResponse = convertManualFiltersToResponse(&manualFilters)
+		fmt.Println(manualFilters, "ddddddddd")
+		// Получаем товары manual коллекции
+		dbProducts, dbTotal, err := s.store.GetManualCollectionProductsPaginated(ctx, collection.ID, 24, 0)
+		fmt.Println(dbProducts, "qqqqqqqqq")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get products"})
+			return
+		}
+
+		// Конвертируем db.ProductRow в types.CachedProduct
+		products = convertDBProductsToCached(dbProducts)
+		total = int64(dbTotal)
+
+	case "dynamic", "hybrid":
+		// ===== DYNAMIC / HYBRID =====
+		// Формируем параметры фильтров
+		var filtersParams db.GetFullFiltersForCollectionParams
+		filtersParams.CollectionID = collection.ID
+
+		if len(collection.Settings) > 0 {
+			var settings types.CollectionSettings
+			if err := json.Unmarshal(collection.Settings, &settings); err == nil && settings.Filters != nil {
+				filtersParams.CollectionTypeIds = settings.Filters.Types
+				filtersParams.CollectionCategoryIds = settings.Filters.Categories
+				filtersParams.CollectionBrandIds = settings.Filters.Firms
+				filtersParams.CollectionLineIds = settings.Filters.Lines
+				filtersParams.CollectionBodyTypes = settings.Filters.Bodytypes
+				if len(settings.Filters.Price) >= 2 {
+					filtersParams.CollectionPriceMin = int32(settings.Filters.Price[0])
+					filtersParams.CollectionPriceMax = int32(settings.Filters.Price[1])
+				}
+				filtersParams.CollectionSizes = settings.Filters.Sizes
+				filtersParams.CollectionInStore = settings.Filters.InStore
+				filtersParams.CollectionRuleIds = settings.Filters.RuleIDs
+			}
+		}
+
+		// Получаем полный набор фильтров
+		dynamicFilters, err := s.store.GetFullFiltersForCollection(ctx, filtersParams)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get filters"})
+			return
+		}
+		filtersResponse = convertDynamicFiltersToResponse(&dynamicFilters)
+
+		// Получаем товары по фильтрам
+		dbProducts, dbTotal, err := s.store.GetCollectionProducts(ctx, collection, filtersParams, 1, 24)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get products"})
+			return
+		}
+
+		// Конвертируем db.ProductRow в types.CachedProduct
+		products = convertDBProductsToCached(dbProducts)
+		total = int64(dbTotal)
+
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unknown collection type"})
 		return
 	}
 
-	// 6. Формируем ответ
+	// 3. Формируем ответ
 	response := gin.H{
 		"collection": gin.H{
 			"id":          collection.ID,
@@ -448,29 +537,520 @@ func (s *Server) handleGetCollectionBySlug(c *gin.Context) {
 			"is_active":   collection.IsActive.Bool,
 		},
 		"filters": gin.H{
-			"sizes":          toJSONRawMessage(filters.Sizes, "{}"),
-			"bodytypes":      toJSONRawMessage(filters.Bodytypes, "{}"),
-			"min_price":      filters.MinPrice,
-			"max_price":      filters.MaxPrice,
-			"firms":          toJSONRawMessage(filters.Firms, "{}"),
-			"product_types":  toJSONRawMessage(filters.ProductTypes, "[]"),
-			"categories":     toJSONRawMessage(filters.Categories, "[]"),
-			"discount_rules": toJSONRawMessage(filters.DiscountRules, "[]"),
+			"sizes":          toJSONRawMessage(filtersResponse.Sizes, "{}"),
+			"bodytypes":      toJSONRawMessage(filtersResponse.Bodytypes, "{}"),
+			"min_price":      filtersResponse.MinPrice,
+			"max_price":      filtersResponse.MaxPrice,
+			"firms":          toJSONRawMessage(filtersResponse.Firms, "{}"),
+			"product_types":  toJSONRawMessage(filtersResponse.ProductTypes, "[]"),
+			"categories":     toJSONRawMessage(filtersResponse.Categories, "[]"),
+			"discount_rules": toJSONRawMessage(filtersResponse.DiscountRules, "[]"),
 		},
 		"products": products,
 		"total":    total,
 		"page":     1,
-		"limit":    20,
+		"limit":    24,
 	}
 
-	// 7. Сохраняем в кэш
+	// 4. Сохраняем в кэш
 	go func() {
 		bgCtx := context.Background()
 		data, _ := json.Marshal(response)
-		s.taskProcessor.SetCollection(bgCtx, slug, data)
+		s.taskProcessor.SetCollection(bgCtx, collection.ID, data)
 	}()
 
 	c.JSON(http.StatusOK, response)
 }
 
-// ============ MANUAL ============
+// ============================================
+// СТРУКТУРЫ ДЛЯ FILTERS
+// ============================================
+
+// FiltersResponse - общая структура для фильтров
+type FiltersResponse struct {
+	Sizes         map[string]int64       `json:"sizes"`
+	Bodytypes     map[string]int64       `json:"bodytypes"`
+	MinPrice      int32                  `json:"min_price"`
+	MaxPrice      int32                  `json:"max_price"`
+	Firms         map[string]int64       `json:"firms"`
+	ProductTypes  []int32                `json:"product_types"`
+	Categories    []int32                `json:"categories"`
+	DiscountRules []DiscountRuleResponse `json:"discount_rules"`
+}
+
+// DiscountRuleResponse - структура для правила скидки
+type DiscountRuleResponse struct {
+	ID            int32   `json:"id"`
+	Name          string  `json:"name"`
+	DiscountType  string  `json:"discount_type"`
+	DiscountValue float64 `json:"discount_value"`
+	Priority      int32   `json:"priority"`
+}
+
+// ============================================
+// КОНВЕРТЕРЫ
+// ============================================
+
+// convertManualFiltersToResponse - конвертирует manual фильтры в общий формат
+func convertManualFiltersToResponse(manualFilters *db.GetFullFiltersForManualCollectionRow) FiltersResponse {
+	var (
+		sizes         map[string]int64
+		bodytypes     map[string]int64
+		firms         map[string]int64
+		productTypes  []int32
+		categories    []int32
+		discountRules []DiscountRuleResponse
+		minPrice      int32
+		maxPrice      int32
+	)
+
+	json.Unmarshal(toJSONRawMessage(manualFilters.Sizes, "{}"), &sizes)
+	json.Unmarshal(toJSONRawMessage(manualFilters.Bodytypes, "{}"), &bodytypes)
+	json.Unmarshal(toJSONRawMessage(manualFilters.Firms, "{}"), &firms)
+	json.Unmarshal(toJSONRawMessage(manualFilters.ProductTypes, "[]"), &productTypes)
+	json.Unmarshal(toJSONRawMessage(manualFilters.Categories, "[]"), &categories)
+	json.Unmarshal(toJSONRawMessage(manualFilters.DiscountRules, "[]"), &discountRules)
+	json.Unmarshal(toJSONRawMessage(manualFilters.MinPrice, "0"), &minPrice)
+	json.Unmarshal(toJSONRawMessage(manualFilters.MaxPrice, "0"), &maxPrice)
+
+	return FiltersResponse{
+		Sizes:         sizes,
+		Bodytypes:     bodytypes,
+		MinPrice:      minPrice,
+		MaxPrice:      maxPrice,
+		Firms:         firms,
+		ProductTypes:  productTypes,
+		Categories:    categories,
+		DiscountRules: discountRules,
+	}
+}
+
+// convertDynamicFiltersToResponse - конвертирует dynamic/hybrid фильтры в общий формат
+func convertDynamicFiltersToResponse(dynamicFilters *db.GetFullFiltersForCollectionRow) FiltersResponse {
+	// Используем toJSONRawMessage для конвертации
+	var (
+		sizes         map[string]int64
+		bodytypes     map[string]int64
+		firms         map[string]int64
+		productTypes  []int32
+		categories    []int32
+		discountRules []DiscountRuleResponse
+		minPrice      int32
+		maxPrice      int32
+	)
+
+	json.Unmarshal(toJSONRawMessage(dynamicFilters.Sizes, "{}"), &sizes)
+	json.Unmarshal(toJSONRawMessage(dynamicFilters.Bodytypes, "{}"), &bodytypes)
+	json.Unmarshal(toJSONRawMessage(dynamicFilters.Firms, "{}"), &firms)
+	json.Unmarshal(toJSONRawMessage(dynamicFilters.ProductTypes, "[]"), &productTypes)
+	json.Unmarshal(toJSONRawMessage(dynamicFilters.Categories, "[]"), &categories)
+	json.Unmarshal(toJSONRawMessage(dynamicFilters.DiscountRules, "[]"), &discountRules)
+	json.Unmarshal(toJSONRawMessage(dynamicFilters.MinPrice, "0"), &minPrice)
+	json.Unmarshal(toJSONRawMessage(dynamicFilters.MaxPrice, "0"), &maxPrice)
+
+	return FiltersResponse{
+		Sizes:         sizes,
+		Bodytypes:     bodytypes,
+		MinPrice:      minPrice,
+		MaxPrice:      maxPrice,
+		Firms:         firms,
+		ProductTypes:  productTypes,
+		Categories:    categories,
+		DiscountRules: discountRules,
+	}
+}
+
+func (s *Server) handleGetCollectionById(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"})
+		return
+	}
+	ctx := c.Request.Context()
+
+	// 1. Получаем коллекцию из БД
+	collection, err := s.store.GetCollectionByID(ctx, int32(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Collection not found"})
+		return
+	}
+
+	var filtersResponse FiltersResponse
+	var products []types.CachedProduct
+	var total int64
+
+	// 2. В зависимости от типа коллекции - разные запросы
+	switch collection.Type {
+	case "manual":
+		// ===== MANUAL =====
+		// Получаем фильтры только для manual
+		fmt.Println("GetFullFiltersForManualCollection")
+		manualFilters, err := s.store.GetFullFiltersForManualCollection(ctx, collection.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get filters"})
+			return
+		}
+		filtersResponse = convertManualFiltersToResponse(&manualFilters)
+
+		// Получаем товары manual коллекции
+		dbProducts, dbTotal, err := s.store.GetManualCollectionProductsPaginated(ctx, collection.ID, 1, 24)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get products"})
+			return
+		}
+
+		// Конвертируем db.ProductRow в types.CachedProduct
+		products = convertDBProductsToCached(dbProducts)
+		total = int64(dbTotal)
+
+	case "dynamic", "hybrid":
+		// ===== DYNAMIC / HYBRID =====
+		// Формируем параметры фильтров
+		var filtersParams db.GetFullFiltersForCollectionParams
+		filtersParams.CollectionID = collection.ID
+
+		if len(collection.Settings) > 0 {
+			var settings types.CollectionSettings
+			if err := json.Unmarshal(collection.Settings, &settings); err == nil && settings.Filters != nil {
+				filtersParams.CollectionTypeIds = settings.Filters.Types
+				filtersParams.CollectionCategoryIds = settings.Filters.Categories
+				filtersParams.CollectionBrandIds = settings.Filters.Firms
+				filtersParams.CollectionLineIds = settings.Filters.Lines
+				filtersParams.CollectionBodyTypes = settings.Filters.Bodytypes
+				if len(settings.Filters.Price) >= 2 {
+					filtersParams.CollectionPriceMin = int32(settings.Filters.Price[0])
+					filtersParams.CollectionPriceMax = int32(settings.Filters.Price[1])
+				}
+				filtersParams.CollectionSizes = settings.Filters.Sizes
+				filtersParams.CollectionInStore = settings.Filters.InStore
+				filtersParams.CollectionRuleIds = settings.Filters.RuleIDs
+			}
+		}
+
+		// Получаем полный набор фильтров
+		dynamicFilters, err := s.store.GetFullFiltersForCollection(ctx, filtersParams)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get filters"})
+			return
+		}
+		filtersResponse = convertDynamicFiltersToResponse(&dynamicFilters)
+
+		// Получаем товары по фильтрам
+		dbProducts, dbTotal, err := s.store.GetCollectionProducts(ctx, collection, filtersParams, 1, 24)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get products"})
+			return
+		}
+
+		// Конвертируем db.ProductRow в types.CachedProduct
+		products = convertDBProductsToCached(dbProducts)
+		total = int64(dbTotal)
+
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unknown collection type"})
+		return
+	}
+
+	// 3. Формируем ответ
+	response := gin.H{
+		"collection": gin.H{
+			"id":          collection.ID,
+			"slug":        collection.Slug,
+			"name":        collection.Name,
+			"description": collection.Description.String,
+			"type":        collection.Type,
+			"is_active":   collection.IsActive.Bool,
+		},
+		"filters": gin.H{
+			"sizes":          toJSONRawMessage(filtersResponse.Sizes, "{}"),
+			"bodytypes":      toJSONRawMessage(filtersResponse.Bodytypes, "{}"),
+			"min_price":      filtersResponse.MinPrice,
+			"max_price":      filtersResponse.MaxPrice,
+			"firms":          toJSONRawMessage(filtersResponse.Firms, "{}"),
+			"product_types":  toJSONRawMessage(filtersResponse.ProductTypes, "[]"),
+			"categories":     toJSONRawMessage(filtersResponse.Categories, "[]"),
+			"discount_rules": toJSONRawMessage(filtersResponse.DiscountRules, "[]"),
+		},
+		"products": products,
+		"total":    total,
+		"page":     1,
+		"limit":    24,
+	}
+
+	// 4. Сохраняем в кэш
+	go func() {
+		bgCtx := context.Background()
+		data, _ := json.Marshal(response)
+		s.taskProcessor.SetCollection(bgCtx, int32(id), data)
+	}()
+
+	c.JSON(http.StatusOK, response)
+}
+
+// convertDBProductsToCached конвертирует []db.ProductRow в []types.CachedProduct
+func convertDBProductsToCached(dbProducts []db.ProductRow) []types.CachedProduct {
+	products := make([]types.CachedProduct, 0, len(dbProducts))
+	for _, p := range dbProducts {
+		imagePath := ""
+		if p.ImagePath != "" {
+			imagePath = p.ImagePath
+		}
+
+		products = append(products, types.CachedProduct{
+			ID:              p.ID,
+			Name:            p.Name,
+			ImagePath:       imagePath,
+			Price:           p.MinPrice,
+			Discount:        0, // Если есть поле Discount в ProductRow
+			DiscountPercent: 0, // Если есть поле DiscountPercent в ProductRow
+		})
+	}
+	return products
+}
+
+// ============================================
+// ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ STORE
+// ============================================
+
+// GetManualCollectionProducts - получение товаров для manual коллекции
+// handleGetCollectionProducts - обработчик для получения продуктов коллекции с фильтрацией
+type CollectionProductsRequest struct {
+	// Пагинация
+	Page     int `json:"page"`
+	Size     int `json:"size"` // У вас size, не limit
+	SortType int `json:"sortType"`
+
+	// Поиск
+	Search string `json:"search"` // У вас search, не name
+
+	// Фильтры (вложенный объект)
+	Filters struct {
+		Sizes      []string `json:"sizes"`
+		Types      []int32  `json:"types"`
+		Categories []int32  `json:"categories"`
+		Firms      []int32  `json:"firms"`
+		Lines      []int32  `json:"lines"`
+		Bodytypes  []string `json:"bodytypes"`
+		PriceMin   *int     `json:"price_min"`
+		PriceMax   *int     `json:"price_max"`
+		WithPrice  *bool    `json:"with_price"`
+		RuleIDs    []int32  `json:"rule_ids"`
+		InStore    *bool    `json:"in_store"`
+	} `json:"filters"`
+}
+
+// handleGetCollectionProducts - обработчик для получения продуктов коллекции с фильтрацией
+func (s *Server) handleGetCollectionProducts(c *gin.Context) {
+	startTotal := time.Now()
+	log.Printf("🚀 [START] handleGetCollectionProducts")
+
+	// ---- 1. Получаем ID коллекции из параметров ----
+	collectionID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		log.Printf("❌ [ERROR] Invalid collection ID: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"})
+		return
+	}
+	log.Printf("📥 Collection ID: %d", collectionID)
+
+	// ---- 2. Биндинг JSON ----
+	startBind := time.Now()
+	var req CollectionProductsRequest
+
+	// Пробуем привязать JSON
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// Если ошибка - используем значения по умолчанию
+		log.Printf("⚠️ [WARN] Invalid JSON body, using defaults: %v", err)
+		req = CollectionProductsRequest{
+			Page: 1,
+			Size: 24,
+		}
+	}
+	bindDuration := time.Since(startBind)
+	log.Printf("⏱️ [1] BindJSON: %v", bindDuration)
+
+	// ---- 3. Устанавливаем значения по умолчанию и валидация ----
+	if req.Page < 1 {
+		req.Page = 1
+	}
+	if req.Size < 1 || req.Size > 100 {
+		req.Size = 24
+	}
+	if req.SortType < 0 || req.SortType > 4 {
+		req.SortType = 0 // default sort
+	}
+
+	log.Printf("📥 Request: Page=%d, Size=%d, SortType=%d, Search='%s'",
+		req.Page, req.Size, req.SortType, req.Search)
+	log.Printf("📥 Filters: Sizes=%v, Types=%v, Categories=%v, Firms=%v, Lines=%v, Bodytypes=%v, PriceMin=%v, PriceMax=%v, RuleIDs=%v",
+		req.Filters.Sizes, req.Filters.Types, req.Filters.Categories, req.Filters.Firms, req.Filters.Lines,
+		req.Filters.Bodytypes, req.Filters.PriceMin, req.Filters.PriceMax, req.Filters.RuleIDs)
+
+	ctx := c.Request.Context()
+
+	// ---- 4. Получаем коллекцию из БД ----
+	startCollection := time.Now()
+	collection, err := s.store.GetCollectionByID(ctx, int32(collectionID))
+	if err != nil {
+		log.Printf("❌ [ERROR] GetCollectionByID: %v", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Collection not found"})
+		return
+	}
+	collectionDuration := time.Since(startCollection)
+	log.Printf("⏱️ [2] GetCollectionByID: %v, Type: %s", collectionDuration, collection.Type)
+
+	// ---- 5. Формируем фильтры ----
+	startFilters := time.Now()
+	filters := types.ProductsFilterStruct{
+		Sizes:      req.Filters.Sizes,
+		Firms:      req.Filters.Firms,
+		Lines:      req.Filters.Lines,
+		Bodytypes:  req.Filters.Bodytypes,
+		Types:      req.Filters.Types,
+		Categories: req.Filters.Categories,
+		Price:      []float32{},
+		WithPrice:  false,
+		RuleIDs:    req.Filters.RuleIDs,
+		InStore:    false,
+	}
+
+	if req.Filters.WithPrice != nil {
+		filters.WithPrice = *req.Filters.WithPrice
+	}
+	if req.Filters.InStore != nil {
+		filters.InStore = *req.Filters.InStore
+	}
+	if req.Filters.PriceMin != nil && req.Filters.PriceMax != nil {
+		filters.Price = []float32{float32(*req.Filters.PriceMin), float32(*req.Filters.PriceMax)}
+	}
+
+	filtersDuration := time.Since(startFilters)
+	log.Printf("⏱️ [3] Формирование фильтров: %v", filtersDuration)
+
+	// ---- 6. Подготовка параметров для запроса ----
+	startParams := time.Now()
+	params := db.GetCollectionProductsParams{
+		CollectionID:   collection.ID,
+		Filters:        filters,
+		Page:           req.Page,
+		Limit:          req.Size,
+		SortType:       req.SortType,
+		Name:           req.Search,
+		UsePriceFilter: req.Filters.PriceMin != nil && req.Filters.PriceMax != nil,
+	}
+	paramsDuration := time.Since(startParams)
+	log.Printf("⏱️ [4] Подготовка параметров: %v", paramsDuration)
+
+	// ---- 7. Основной запрос ----
+	startQuery := time.Now()
+	result, err := s.store.GetCollectionProductsByFilters(ctx, collection, params)
+	queryDuration := time.Since(startQuery)
+	log.Printf("⏱️ [5] GetCollectionProductsByFilters: %v, Products: %d, Total: %d",
+		queryDuration, len(result.Products), result.TotalCount)
+
+	if err != nil {
+		log.Printf("❌ [ERROR] GetCollectionProductsByFilters: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get products"})
+		return
+	}
+
+	// ---- 8. Конвертируем продукты ----
+	startConvert := time.Now()
+	products := convertDBProductsToCached(result.Products)
+	convertDuration := time.Since(startConvert)
+	log.Printf("⏱️ [6] Конвертация продуктов: %v", convertDuration)
+
+	// ---- 9. Получаем фильтры для ответа ----
+	startFiltersResponse := time.Now()
+	var filtersResponse FiltersResponse
+
+	switch collection.Type {
+	case "manual":
+		manualFilters, err := s.store.GetFullFiltersForManualCollection(ctx, collection.ID)
+		if err != nil {
+			log.Printf("⚠️ [WARN] GetFullFiltersForManualCollection: %v", err)
+		} else {
+			filtersResponse = convertManualFiltersToResponse(&manualFilters)
+		}
+	case "dynamic", "hybrid":
+		// Формируем параметры фильтров из настроек коллекции
+		var filtersParams db.GetFullFiltersForCollectionParams
+		filtersParams.CollectionID = collection.ID
+
+		if len(collection.Settings) > 0 {
+			var settings types.CollectionSettings
+			if err := json.Unmarshal(collection.Settings, &settings); err == nil && settings.Filters != nil {
+				filtersParams.CollectionTypeIds = settings.Filters.Types
+				filtersParams.CollectionCategoryIds = settings.Filters.Categories
+				filtersParams.CollectionBrandIds = settings.Filters.Firms
+				filtersParams.CollectionLineIds = settings.Filters.Lines
+				filtersParams.CollectionBodyTypes = settings.Filters.Bodytypes
+				if len(settings.Filters.Price) >= 2 {
+					filtersParams.CollectionPriceMin = int32(settings.Filters.Price[0])
+					filtersParams.CollectionPriceMax = int32(settings.Filters.Price[1])
+				}
+				filtersParams.CollectionSizes = settings.Filters.Sizes
+				filtersParams.CollectionInStore = settings.Filters.InStore
+				filtersParams.CollectionRuleIds = settings.Filters.RuleIDs
+			}
+		}
+
+		dynamicFilters, err := s.store.GetFullFiltersForCollection(ctx, filtersParams)
+		if err != nil {
+			log.Printf("⚠️ [WARN] GetFullFiltersForCollection: %v", err)
+		} else {
+			filtersResponse = convertDynamicFiltersToResponse(&dynamicFilters)
+		}
+	}
+	filtersResponseDuration := time.Since(startFiltersResponse)
+	log.Printf("⏱️ [7] Получение фильтров для ответа: %v", filtersResponseDuration)
+
+	// ---- 10. Формируем ответ ----
+	startResponse := time.Now()
+	response := gin.H{
+		"collection": gin.H{
+			"id":          collection.ID,
+			"slug":        collection.Slug,
+			"name":        collection.Name,
+			"description": collection.Description.String,
+			"type":        collection.Type,
+			"is_active":   collection.IsActive.Bool,
+		},
+		"filters": gin.H{
+			"sizes":          toJSONRawMessage(filtersResponse.Sizes, "{}"),
+			"bodytypes":      toJSONRawMessage(filtersResponse.Bodytypes, "{}"),
+			"min_price":      filtersResponse.MinPrice,
+			"max_price":      filtersResponse.MaxPrice,
+			"firms":          toJSONRawMessage(filtersResponse.Firms, "{}"),
+			"product_types":  toJSONRawMessage(filtersResponse.ProductTypes, "[]"),
+			"categories":     toJSONRawMessage(filtersResponse.Categories, "[]"),
+			"discount_rules": toJSONRawMessage(filtersResponse.DiscountRules, "[]"),
+		},
+		"products": products,
+		"total":    result.TotalCount,
+		"page":     req.Page,
+		"limit":    req.Size,
+	}
+	responseDuration := time.Since(startResponse)
+	log.Printf("⏱️ [8] Формирование ответа: %v", responseDuration)
+
+	// ---- 11. Сохраняем в кэш (опционально) ----
+	go func() {
+		bgCtx := context.Background()
+		data, _ := json.Marshal(response)
+		s.taskProcessor.SetCollection(bgCtx, int32(collectionID), data)
+	}()
+
+	// ---- 12. JSON ответ ----
+	startJSON := time.Now()
+	c.JSON(http.StatusOK, response)
+	jsonDuration := time.Since(startJSON)
+	log.Printf("⏱️ [9] ctx.JSON: %v", jsonDuration)
+
+	// ---- ИТОГО ----
+	totalDuration := time.Since(startTotal)
+	log.Printf("⏱️ [TOTAL] handleGetCollectionProducts: %v", totalDuration)
+	log.Printf("✅ [END] handleGetCollectionProducts")
+}
+
+// convertDBProductsToCached - конвертирует продукты из БД в кэшируемый формат

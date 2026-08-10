@@ -61,7 +61,7 @@ func TestHandleSetUniqueCustomer(t *testing.T) {
 			server := newTestServer(t, store, taskDistributor, taskProcessor)
 			recorder := httptest.NewRecorder()
 
-			url := "/setUniqueCustomer"
+			url := "/customers/unique"
 			data := types.PreorderType{
 				Id:   int32(1),
 				Size: "10",

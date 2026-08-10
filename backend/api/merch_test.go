@@ -82,7 +82,7 @@ func TestHandleGetHistory(t *testing.T) {
 			server := newTestServer(t, store, taskDistributor, taskProcessor)
 			recorder := httptest.NewRecorder()
 
-			url := "/historyInfo"
+			url := "/history"
 
 			fmt.Println("url", url, "ytfjgjhgjhgj")
 			request, err := http.NewRequest(http.MethodGet, url, nil)

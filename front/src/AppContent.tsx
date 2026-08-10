@@ -6,11 +6,13 @@ import { cartCountAction, setDiscountRules, setSizeTables } from 'src/store/redu
 import { show, sticky, types, categories, setFirmMap, setFirms, collections, setLineMap } from 'src/store/reducers/menuSlice';
 import { setFooter } from 'src/store/reducers/dispetcherSlice';
 import { setWidthProps } from 'src/store/reducers/resizeSlice';
+import { setInstagramPhotos } from 'src/store/reducers/instagramSlice';
 import { getCookie } from './global';
 import { setUniqueCustomer } from './providers/userProvider';
 import { getCartCount } from './providers/shopProvider';
 import { getMainInfo } from './providers/shopProvider';
-import { addImageToLoad, imageLoaded } from 'src/store/reducers/loadingSlice'
+import { getInstagramPhotos } from './providers/instagramProvider';
+import { addImageToLoad, imageLoaded } from 'src/store/reducers/loadingSlice';
 // Components (общие для всех страниц)
 import ScrollToTop from './scrollToTop';
 import Preloader from './components/preloader/Preloader';
@@ -19,19 +21,20 @@ import ComplexDropMenuWithRequest from './modules/menu/ComplexDropMenuWithReques
 import StickyDispetcherButton from 'src/modules/stickyDispetcherButton/StickyDispetcherButton';
 import Footer from './modules/footer/Footer';
 
-import { Firm, Line } from "src/types/modules"
+import { Firm, Line } from "src/types/modules";
 
 interface AppContentProps {
   children: React.ReactNode;
-  initialMainInfo?: any; // 🔥 Добавляем пропс для SSR данных
+  initialMainInfo?: any; // SSR данные
+  initialInstagramPhotos?: any[]; // SSR данные для Instagram
 }
 
-const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo }) => {
+const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, initialInstagramPhotos }) => {
   const dispatch = useAppDispatch();
   const contRef = useRef<HTMLDivElement>(null);
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const animationFrameRef = useRef<number>();
-  const isHydrated = useRef(false); // 🔥 Флаг, чтобы не дублировать инициализацию
+  const isHydrated = useRef(false); // Флаг, чтобы не дублировать инициализацию
 
   useRouteChange();
 
@@ -58,7 +61,7 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo }) =>
     }, 100);
   }, [dispatch]);
 
-  // 🔥 Выносим applyDataToRedux в useCallback для переиспользования
+  // Выносим applyDataToRedux в useCallback для переиспользования
   const applyDataToRedux = useCallback((data: any) => {
     // 1. Категории и типы
     const categoriesVal: any = {};
@@ -158,7 +161,34 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo }) =>
     }
   }, [dispatch]);
 
-  // 🔥 Загрузка данных на клиенте (fallback)
+  // Загрузка Instagram фото на клиенте (fallback)
+  const loadInstagramPhotos = useCallback(async () => {
+    try {
+      // Пробуем взять из localStorage
+      const cached = localStorage.getItem('instagramPhotosCache');
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < 60 * 60 * 1000) { // 1 час
+          dispatch(setInstagramPhotos(data));
+          return;
+        }
+      }
+
+      // Иначе запрашиваем с сервера
+      const photos = await getInstagramPhotos();
+      dispatch(setInstagramPhotos(photos));
+      localStorage.setItem('instagramPhotosCache', JSON.stringify({
+        data: photos,
+        timestamp: Date.now(),
+      }));
+    } catch (error) {
+      console.error('Failed to load instagram photos', error);
+      // Если ошибка, просто оставляем пустой массив
+      dispatch(setInstagramPhotos([]));
+    }
+  }, [dispatch]);
+
+  // Загрузка основных данных на клиенте (fallback)
   const loadMainInfo = useCallback(async () => {
     try {
       // Пробуем взять из localStorage (с TTL)
@@ -183,20 +213,30 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo }) =>
     }
   }, [applyDataToRedux]);
 
-  // 🔥 Инициализация Redux из SSR данных или загрузка на клиенте
+  // Инициализация Redux из SSR данных или загрузка на клиенте
   useEffect(() => {
     if (isHydrated.current) return; // Уже инициализировали
 
+    // 1. Инициализируем основные данные
     if (initialMainInfo) {
       console.log('🔥 Redux initialized from SSR data');
       applyDataToRedux(initialMainInfo);
-      isHydrated.current = true;
     } else {
       // Если нет SSR данных - загружаем на клиенте
       loadMainInfo();
-      isHydrated.current = true;
     }
-  }, [initialMainInfo, applyDataToRedux, loadMainInfo]);
+
+    // 2. Инициализируем Instagram фото
+    if (initialInstagramPhotos && initialInstagramPhotos.length > 0) {
+      console.log('📸 Instagram photos initialized from SSR data:', initialInstagramPhotos.length);
+      dispatch(setInstagramPhotos(initialInstagramPhotos));
+    } else {
+      // Если нет SSR данных - загружаем на клиенте
+      loadInstagramPhotos();
+    }
+
+    isHydrated.current = true;
+  }, [initialMainInfo, initialInstagramPhotos, applyDataToRedux, loadMainInfo, loadInstagramPhotos, dispatch]);
 
   // Остальные эффекты без изменений
   useEffect(() => {

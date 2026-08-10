@@ -1,6 +1,7 @@
 // pages/collections/[collection].tsx
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/router';
+import { GetServerSideProps } from 'next';
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
 import { finishLoading } from 'src/store/reducers/loadingSlice'
 import { CheckBoxType } from 'src/types/modules'
@@ -43,15 +44,34 @@ interface FiltersState {
     }[]
 }
 
+interface CollectionPageProps {
+    initialData?: {
+        collection: any
+        products: any[]
+        filters: any
+        total: number
+        page: number
+    }
+    collectionSlug?: string
+}
+
 const PAGE_SIZE = 24
 
-const CollectionPage: React.FC = () => {
+const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collectionSlug }) => {
     const router = useRouter()
     const dispatch = useAppDispatch()
-    const { collection } = router.query // ← collection, не slug!
-    
+    const { collection } = router.query
+
     const { typesVal, categories, discountRules, firmMap, lineMap } = useAppSelector(state => state.menu)
     const { widthProps } = useAppSelector(state => state.resize)
+
+    // 🔥 Флаг готовности firmMap
+    const [isFirmMapReady, setIsFirmMapReady] = useState(false);
+    useEffect(() => {
+        if (Object.keys(firmMap).length > 0) {
+            setIsFirmMapReady(true);
+        }
+    }, [firmMap]);
 
     // Рефы
     const filtersInfo = useRef<FiltersInfoRequest>({
@@ -62,11 +82,11 @@ const CollectionPage: React.FC = () => {
         bodytypes: [],
         lines: [],
         store: false,
-        withPrice: true,
+        withPrice: false,
         discount: false,
         rule_ids: []
     })
-    
+
     const collectionBaseFilters = useRef<any>(null)
     const searchWord = useRef("")
     const currentPage = useRef(1)
@@ -74,10 +94,15 @@ const CollectionPage: React.FC = () => {
     const orderType = useRef(0)
     const emptyData = useRef(false)
     const emtyText = useRef("В этой коллекции пока нет товаров")
-    const isInitialLoad = useRef(true)
-    
+    const isHydrated = useRef(false)
+    const isMounted = useRef(true)
+    const settingsModuleMemo = useRef(true)
+    const firmMapRef = useRef(firmMap)
+    const lineMapRef = useRef(lineMap)
+    const typesValRef = useRef(typesVal)
+
     // Состояния
-    const [merchFieldData, setMerchFieldData] = useState<any[]>([])
+    const [merchFieldData, setMerchFieldData] = useState<any[]>(initialData?.products || [])
     const [filtersState, setFiltersState] = useState<FiltersState>({
         priceProps: { min: 0, max: 0 },
         checboxsProps: [],
@@ -87,15 +112,42 @@ const CollectionPage: React.FC = () => {
     const [loading, setLoading] = useState(false)
     const [showSortPanel, setShowSortPanel] = useState(false)
     const [showFiltersPanel, setShowFiltersPanel] = useState(false)
-    const [collectionName, setCollectionName] = useState('')
-    const [totalCount, setTotalCount] = useState(0)
-    
-    const pageWrap = useRef<HTMLDivElement>(null)
+    const [collectionName, setCollectionName] = useState(initialData?.collection?.name || '')
+    const collectionId = useRef<number>(0)
+    const [totalCount, setTotalCount] = useState(initialData?.total || 0)
+    const [refresh, setRefresh] = useState(false)
 
-    // Конвертация фильтров из ответа
+    const pageWrap = useRef<HTMLDivElement>(null)
+    const rightBlockRef = useRef<HTMLDivElement>(null);
+
+    // Sticky состояния
+    const [isSticky, setIsSticky] = useState(false);
+    const [stickyTop, setStickyTop] = useState(20);
+    const stickyTopRef = useRef(20);
+
+    // Обновляем refs при изменении данных
+    useEffect(() => {
+        firmMapRef.current = firmMap
+    }, [firmMap])
+
+    useEffect(() => {
+        lineMapRef.current = lineMap
+    }, [lineMap])
+
+    useEffect(() => {
+        typesValRef.current = typesVal
+    }, [typesVal])
+
+    // ============================================================
+    // 🔥 КОНВЕРТАЦИЯ ФИЛЬТРОВ (аналогично SearchPage)
+    // ============================================================
     const convertFiltersData = useCallback((resData: any) => {
-        if (!resData) return
-        
+        if (!resData) return {
+            priceProps: { min: 0, max: 0 },
+            checboxsProps: [],
+            soloDataProps: []
+        }
+
         const priceProps = {
             min: resData.min_price || 0,
             max: resData.max_price || 100000,
@@ -121,9 +173,13 @@ const CollectionPage: React.FC = () => {
         const checkBoxPropsTypeData: CheckBoxType[] = []
         if (resData.product_types) {
             resData.product_types.forEach((typeId: number) => {
-                const typeDescr = typesVal[typeId]
+                const typeDescr = typesValRef.current[typeId]
                 if (!typeDescr) return
                 const active = filtersInfo.current.types.includes(typeId)
+                let name = typeDescr.name
+                if (typeDescr.type_key === "other") {
+                    name = typeDescr.category_name + "/" + typeDescr.name
+                }
                 checkBoxPropsTypeData.push({
                     id: typeId,
                     enable: true,
@@ -133,12 +189,15 @@ const CollectionPage: React.FC = () => {
             })
         }
 
-        // Фирмы
+        // Фирмы (используем firmMapRef)
         const checkBoxPropsFirmData: CheckBoxType[] = []
         if (resData.firms) {
             Object.entries(resData.firms).forEach(([firmName, count]) => {
-                const firm = Object.values(firmMap).find(f => f.name === firmName)
-                if (!firm) return
+                const firm = Object.values(firmMapRef.current).find(f => f.name === firmName)
+                if (!firm) {
+                    console.warn(`Firm "${firmName}" not found in firmMap`)
+                    return
+                }
                 const active = filtersInfo.current.firms.includes(firm.id)
                 checkBoxPropsFirmData.push({
                     id: firm.slug,
@@ -177,12 +236,15 @@ const CollectionPage: React.FC = () => {
             })
         }
 
-        // Линии
+        // Линии (используем lineMapRef)
         const checkBoxPropsLineData: CheckBoxType[] = []
         if (resData.lines) {
             Object.entries(resData.lines).forEach(([lineName, count]) => {
-                const line = Object.values(lineMap).find(l => l.name === lineName)
-                if (!line) return
+                const line = Object.values(lineMapRef.current).find(l => l.name === lineName)
+                if (!line) {
+                    console.warn(`Line "${lineName}" not found in lineMap`)
+                    return
+                }
                 const active = filtersInfo.current.lines.includes(line.id)
                 checkBoxPropsLineData.push({
                     id: line.slug,
@@ -199,13 +261,13 @@ const CollectionPage: React.FC = () => {
                 id: 'withPrice',
                 enable: true,
                 activeData: filtersInfo.current.withPrice ?? true,
-                name: "Есть на складе"
+                name: "В наличии"
             },
             {
                 id: 'store',
                 enable: true,
                 activeData: filtersInfo.current.store ?? false,
-                name: "В наличии"
+                name: "Есть на складе"
             }
         ]
 
@@ -221,139 +283,200 @@ const CollectionPage: React.FC = () => {
             checboxsProps.push({ id: "lines", name: "Линейки", props: checkBoxPropsLineData })
         }
 
-        setFiltersState({
+        return {
             priceProps,
             checboxsProps,
             soloDataProps
-        })
-    }, [typesVal, firmMap, lineMap])
+        }
+    }, [])
 
-    // Загрузка базовых данных коллекции
+    // ============================================================
+    // 🔥 ИСПОЛЬЗОВАНИЕ SSR ДАННЫХ (с проверкой firmMap)
+    // ============================================================
+    useEffect(() => {
+        if (initialData && !isHydrated.current && isMounted.current && isFirmMapReady) {
+            console.log('🔥 Using SSR data for collection')
+
+            if (initialData.collection) {
+                collectionId.current = initialData.collection.id
+                setCollectionName(initialData.collection.name)
+            }
+
+            if (initialData.products) {
+                if (initialData.products.length === 0) {
+                    emptyData.current = true
+                    emtyText.current = "В этой коллекции пока нет товаров"
+                    setRefresh(prev => !prev)
+                } else {
+                    emptyData.current = false
+                    setMerchFieldData(initialData.products)
+                    setTotalCount(initialData.total || 0)
+                    pages.current = Math.ceil((initialData.total || 0) / PAGE_SIZE)
+                    currentPage.current = initialData.page || 1
+                }
+            }
+
+            if (initialData.filters) {
+                collectionBaseFilters.current = initialData.filters
+                const data = convertFiltersData(initialData.filters)
+                setFiltersState(data)
+                settingsModuleMemo.current = !settingsModuleMemo.current
+            }
+
+            isHydrated.current = true
+            dispatch(finishLoading())
+        }
+    }, [initialData, isFirmMapReady, convertFiltersData, dispatch])
+
+    // ============================================================
+    // ❌ КЛИЕНТСКАЯ ЗАГРУЗКА (если нет SSR)
+    // ============================================================
     const loadCollection = useCallback(async () => {
-        if (!collection || !router.isReady) return
-        
+        if (!collection || !router.isReady || isHydrated.current || (isMounted.current && initialData)) return
+        if (!isFirmMapReady) return // Ждем загрузку firmMap
+
         setLoading(true)
         try {
-            const data = await getCollectionBySlug(collection as string) // ← collection
-            
+            const data = await getCollectionBySlug(collection as string)
+
             if (data.collection) {
+                collectionId.current = data.collection.id
                 setCollectionName(data.collection.name)
             }
-            
+
             if (data.filters) {
                 collectionBaseFilters.current = data.filters
-                convertFiltersData(data.filters)
+                const filtersData = convertFiltersData(data.filters)
+                setFiltersState(filtersData)
+                settingsModuleMemo.current = !settingsModuleMemo.current
             }
-            
+
             if (data.products) {
-                setMerchFieldData(data.products)
-                setTotalCount(data.total || 0)
-                pages.current = Math.ceil((data.total || 0) / PAGE_SIZE)
-                currentPage.current = data.page || 1
-            }
-            
-            if (!data.products || data.products.length === 0) {
+                if (data.products.length === 0) {
+                    emptyData.current = true
+                    emtyText.current = "В этой коллекции пока нет товаров"
+                    setRefresh(prev => !prev)
+                } else {
+                    emptyData.current = false
+                    setMerchFieldData(data.products)
+                    setTotalCount(data.total || 0)
+                    pages.current = Math.ceil((data.total || 0) / PAGE_SIZE)
+                    currentPage.current = data.page || 1
+                }
+            } else {
                 emptyData.current = true
                 emtyText.current = "В этой коллекции пока нет товаров"
-            } else {
-                emptyData.current = false
+                setRefresh(prev => !prev)
             }
         } catch (error) {
             console.error('Error loading collection:', error)
             emptyData.current = true
             emtyText.current = "Ошибка загрузки коллекции"
+            setRefresh(prev => !prev)
         } finally {
             setLoading(false)
             dispatch(finishLoading())
         }
-    }, [collection, router.isReady, convertFiltersData, dispatch])
+    }, [collection, router.isReady, convertFiltersData, dispatch, initialData, isFirmMapReady])
 
-    // Загрузка товаров с фильтрацией
-    const loadCollectionProducts = useCallback(async (page: number) => {
-        if (!collection || !router.isReady) return
-        
-        setLoading(true)
-        try {
-            const params = {
-                page: page,
-                size: PAGE_SIZE,
-                sortType: orderType.current,
-                search: searchWord.current,
-                filters: {
-                    sizes: filtersInfo.current.sizes,
-                    firms: filtersInfo.current.firms,
-                    types: filtersInfo.current.types,
-                    bodytypes: filtersInfo.current.bodytypes,
-                    lines: filtersInfo.current.lines,
-                    price_min: filtersInfo.current.price[0] || 0,
-                    price_max: filtersInfo.current.price[1] || 100000,
-                    in_store: filtersInfo.current.store,
-                    with_price: filtersInfo.current.withPrice,
-                    rule_ids: filtersInfo.current.rule_ids
-                }
-            }
-
-            const data = await getCollectionProducts(collection as string, params) // ← collection
-            
-            if (!data.products || data.products.length === 0) {
-                emptyData.current = true
-                emtyText.current = page === 1 
-                    ? "По выбранным фильтрам товаров не найдено" 
-                    : "Больше товаров нет"
-            } else {
-                emptyData.current = false
-                setMerchFieldData(data.products)
-                setTotalCount(data.total || 0)
-                pages.current = Math.ceil((data.total || 0) / PAGE_SIZE)
-                currentPage.current = page
-            }
-        } catch (error) {
-            console.error('Error loading products:', error)
-            emptyData.current = true
-            emtyText.current = "Ошибка загрузки товаров"
-        } finally {
-            setLoading(false)
-            dispatch(finishLoading())
-        }
-    }, [collection, router.isReady, dispatch])
-
-    // Инициализация - ждем router.isReady
+    // Инициализация - только если нет SSR данных и firmMap готов
     useEffect(() => {
-        if (!router.isReady) return
-        
-        if (collection && Object.keys(typesVal).length > 0) {
-            isInitialLoad.current = true
+        if (isHydrated.current || initialData) return
+
+        if (router.isReady && collection && isFirmMapReady && Object.keys(typesVal).length > 0) {
             loadCollection()
         }
-    }, [router.isReady, collection, typesVal])
+    }, [router.isReady, collection, typesVal, initialData, loadCollection, isFirmMapReady])
 
-    // Обновление при изменении фильтров/сортировки/поиска
-    useEffect(() => {
-        if (!router.isReady || !collection || !collectionBaseFilters.current || isInitialLoad.current) {
-            if (isInitialLoad.current) {
-                isInitialLoad.current = false
-            }
-            return
+    // ============================================================
+    // 🔄 ОБНОВЛЕНИЕ СТРАНИЦЫ (аналогично SearchPage)
+    // ============================================================
+    const updatePage = useCallback((respData: any) => {
+        dispatch(finishLoading())
+        if (respData.products.length === 0) {
+            emptyData.current = true
+            emtyText.current = "По запросу ничего не найдено. Проверьте правописание или выберите другие слова либо фразу."
+            setRefresh(prev => !prev)
+        } else {
+            emptyData.current = false
+            pages.current = Math.ceil(respData.total / PAGE_SIZE)
+            const data = convertFiltersData(respData.filters)
+            setFiltersState(data)
+            settingsModuleMemo.current = !settingsModuleMemo.current
+            setMerchFieldData(respData.products)
+            setTotalCount(respData.total || 0)
         }
-        loadCollectionProducts(1)
-    }, [
-        filtersInfo.current.sizes,
-        filtersInfo.current.firms,
-        filtersInfo.current.types,
-        filtersInfo.current.bodytypes,
-        filtersInfo.current.lines,
-        filtersInfo.current.price,
-        filtersInfo.current.store,
-        filtersInfo.current.withPrice,
-        filtersInfo.current.rule_ids,
-        orderType.current,
-        searchWord.current,
-        collection,
-        router.isReady,
-        loadCollectionProducts
-    ])
+    }, [convertFiltersData, dispatch])
 
-    // Обработчик изменения фильтров
+    const updatMerch = useCallback((respData: any) => {
+        pages.current = Math.ceil(respData.total / PAGE_SIZE)
+        if (respData.products.length === 0) {
+            emptyData.current = true
+            emtyText.current = "По запросу ничего не найдено. Сбросить фильтры"
+            setRefresh(prev => !prev)
+        } else {
+            emptyData.current = false
+            setMerchFieldData(respData.products)
+            setTotalCount(respData.total || 0)
+        }
+    }, [])
+
+    // ============================================================
+    // 🔍 ПОИСК ДАННЫХ (аналогично SearchPage)
+    // ============================================================
+    const searchData = useCallback(() => {
+        if (!collection || !router.isReady) return
+        if (!isFirmMapReady) return // Ждем загрузку firmMap
+
+        const params: any = {
+            page: currentPage.current,
+            size: PAGE_SIZE,
+            sortType: orderType.current,
+            filters: {
+                sizes: filtersInfo.current.sizes,
+                firms: filtersInfo.current.firms,
+                types: filtersInfo.current.types,
+                bodytypes: filtersInfo.current.bodytypes,
+                lines: filtersInfo.current.lines,
+                price_min: Math.round(filtersInfo.current.price[0]) || 0,
+                price_max: Math.round(filtersInfo.current.price[1]) || 100000,
+                in_store: filtersInfo.current.store,
+                // with_price: filtersInfo.current.withPrice,
+                rule_ids: filtersInfo.current.rule_ids
+            }
+        }
+
+        if (searchWord.current) {
+            params.search = searchWord.current
+        }
+
+        getCollectionProducts(collectionId.current, params)
+            .then(data => {
+                scrollToTop()
+                if (currentPage.current === 1) {
+                    updatePage(data)
+                } else {
+                    updatMerch(data)
+                }
+            })
+            .catch(error => {
+                console.error('Error searching products:', error)
+                emptyData.current = true
+                emtyText.current = "Ошибка загрузки товаров"
+                setRefresh(prev => !prev)
+                dispatch(finishLoading())
+            })
+    }, [collection, router.isReady, isFirmMapReady, updatePage, updatMerch, dispatch])
+
+    // ============================================================
+    // 🎯 ОБРАБОТЧИКИ (аналогично SearchPage)
+    // ============================================================
+    const searchNameCallback = useCallback((name: string) => {
+        searchWord.current = name
+        currentPage.current = 1
+        searchData()
+    }, [searchData])
+
     const onFiltersChange = useCallback((filter: any) => {
         switch (filter.id) {
             case "sizes":
@@ -361,12 +484,12 @@ const CollectionPage: React.FC = () => {
                 break
             case "firms":
                 filtersInfo.current.firms = (filter.data || [])
-                    .map((slug: string) => firmMap[slug]?.id)
+                    .map((slug: string) => firmMapRef.current[slug]?.id)
                     .filter(Boolean)
                 break
             case "lines":
                 filtersInfo.current.lines = (filter.data || [])
-                    .map((slug: string) => lineMap[slug]?.id)
+                    .map((slug: string) => lineMapRef.current[slug]?.id)
                     .filter(Boolean)
                 break
             case "type":
@@ -392,9 +515,19 @@ const CollectionPage: React.FC = () => {
             default:
                 break
         }
+
         // Обновляем состояние фильтров для отображения
         setFiltersState(prevState => {
             const newState = { ...prevState }
+
+            // Обновляем priceProps
+            newState.priceProps = {
+                ...newState.priceProps,
+                dataLeft: filtersInfo.current.price[0] || newState.priceProps.min,
+                dataRight: filtersInfo.current.price[1] || newState.priceProps.max
+            }
+
+            // Обновляем чекбоксы
             newState.checboxsProps = newState.checboxsProps.map(section => {
                 const newSection = { ...section }
                 switch (section.id) {
@@ -406,7 +539,7 @@ const CollectionPage: React.FC = () => {
                         break
                     case "firms":
                         newSection.props = section.props.map(item => {
-                            const firm = Object.values(firmMap).find(f => f.slug === item.id)
+                            const firm = Object.values(firmMapRef.current).find(f => f.slug === item.id)
                             return {
                                 ...item,
                                 activeData: firm ? filtersInfo.current.firms.includes(firm.id) : false
@@ -415,7 +548,7 @@ const CollectionPage: React.FC = () => {
                         break
                     case "lines":
                         newSection.props = section.props.map(item => {
-                            const line = Object.values(lineMap).find(l => l.slug === item.id)
+                            const line = Object.values(lineMapRef.current).find(l => l.slug === item.id)
                             return {
                                 ...item,
                                 activeData: line ? filtersInfo.current.lines.includes(line.id) : false
@@ -445,33 +578,34 @@ const CollectionPage: React.FC = () => {
                 }
                 return newSection
             })
+
+            // Обновляем solo чекбоксы
             newState.soloDataProps = newState.soloDataProps.map(item => ({
                 ...item,
-                activeData: item.id === 'withPrice' 
-                    ? (filtersInfo.current.withPrice ?? true) 
+                activeData: item.id === 'withPrice'
+                    ? (filtersInfo.current.withPrice ?? true)
                     : (filtersInfo.current.store ?? false)
             }))
+
             return newState
         })
-    }, [firmMap, lineMap])
 
-    // Сортировка
+        // При изменении фильтров - перезагружаем
+        currentPage.current = 1
+        searchData()
+    }, [searchData])
+
     const orderTypeChange = useCallback((ind: number | string) => {
         orderType.current = Number(ind)
-    }, [])
+        currentPage.current = 1
+        searchData()
+    }, [searchData])
 
-    // Пагинация
     const pageChange = useCallback((page: number) => {
         currentPage.current = page
-        loadCollectionProducts(page)
-    }, [loadCollectionProducts])
+        searchData()
+    }, [searchData])
 
-    // Поиск по названию
-    const searchNameCallback = useCallback((name: string) => {
-        searchWord.current = name
-    }, [])
-
-    // Сброс фильтров
     const resetFilters = useCallback(() => {
         filtersInfo.current = {
             sizes: [],
@@ -487,12 +621,99 @@ const CollectionPage: React.FC = () => {
         }
         currentPage.current = 1
         if (collectionBaseFilters.current) {
-            convertFiltersData(collectionBaseFilters.current)
+            const data = convertFiltersData(collectionBaseFilters.current)
+            setFiltersState(data)
         }
-        loadCollectionProducts(1)
-    }, [loadCollectionProducts, convertFiltersData])
+        searchData()
+    }, [searchData, convertFiltersData])
+    const scrollToTop = useCallback(() => {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth' // или 'auto' для мгновенного скролла
+        });
+    }, []);
+    // ============================================================
+    // 🪟 STICKY ЭФФЕКТ
+    // ============================================================
+    useEffect(() => {
+        if (!rightBlockRef.current) return;
+        let rafId: number | null = null;
+        let lastScrollY = window.scrollY;
 
-    // Адаптив
+        const handleScroll = () => {
+            if (rafId) return;
+            rafId = requestAnimationFrame(() => {
+                if (!rightBlockRef.current) return;
+                const rightRect = rightBlockRef.current.getBoundingClientRect();
+                const windowHeight = window.innerHeight;
+                const blockHeight = rightRect.height;
+                const minTopOffset = 120;
+                const currentScrollY = window.scrollY;
+                const delta = currentScrollY - lastScrollY;
+                lastScrollY = currentScrollY;
+                const shouldBeSticky = rightRect.top <= minTopOffset;
+
+                if (blockHeight <= windowHeight - minTopOffset) {
+                    setIsSticky(shouldBeSticky);
+                    if (shouldBeSticky) {
+                        const newTop = minTopOffset;
+                        if (delta < 0) {
+                            if (stickyTopRef.current !== newTop) {
+                                stickyTopRef.current = newTop;
+                                setStickyTop(newTop);
+                            }
+                        } else {
+                            if (stickyTopRef.current !== 0) {
+                                stickyTopRef.current = 0;
+                                setStickyTop(0);
+                            }
+                        }
+                    }
+                } else {
+                    if (isSticky) {
+                        let newTop = stickyTopRef.current - delta;
+                        const maxTop = 120;
+                        const minTop = windowHeight - blockHeight;
+                        newTop = Math.max(minTop, Math.min(maxTop, newTop));
+                        if (Math.abs(stickyTopRef.current - newTop) > 0.5) {
+                            stickyTopRef.current = newTop;
+                            setStickyTop(newTop);
+                        }
+                    } else {
+                        if ((delta < 0 && rightRect.top <= minTopOffset) ||
+                            (delta > 0 && rightRect.bottom <= windowHeight)) {
+                            setIsSticky(true);
+                            const initialTop = Math.max(
+                                windowHeight - blockHeight,
+                                Math.min(120, rightRect.top)
+                            );
+                            stickyTopRef.current = initialTop;
+                            setStickyTop(initialTop);
+                        }
+                    }
+                }
+                rafId = null;
+            });
+        };
+
+        const resizeObserver = new ResizeObserver(() => {
+            setTimeout(() => handleScroll(), 0);
+        });
+
+        resizeObserver.observe(rightBlockRef.current);
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll();
+
+        return () => {
+            if (rafId) cancelAnimationFrame(rafId);
+            resizeObserver.disconnect();
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, [isSticky]);
+
+    // ============================================================
+    // 🎨 АДАПТИВ
+    // ============================================================
     useEffect(() => {
         if (!pageWrap.current) return
         const handleResize = () => {
@@ -504,7 +725,9 @@ const CollectionPage: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize)
     }, [])
 
-    // Блокировка скролла
+    // ============================================================
+    // 🔒 БЛОКИРОВКА СКРОЛЛА
+    // ============================================================
     useEffect(() => {
         if (showSortPanel || showFiltersPanel) {
             document.body.classList.add('modalOpen')
@@ -513,6 +736,16 @@ const CollectionPage: React.FC = () => {
         }
         return () => document.body.classList.remove('modalOpen')
     }, [showSortPanel, showFiltersPanel])
+
+    // ============================================================
+    // 🧹 CLEANUP
+    // ============================================================
+    useEffect(() => {
+        isMounted.current = true
+        return () => {
+            isMounted.current = false
+        }
+    }, [])
 
     // Если роутер еще не готов - показываем загрузку
     if (!router.isReady) {
@@ -563,6 +796,9 @@ const CollectionPage: React.FC = () => {
                     </div>
 
                     <SearchWithList
+                        className={{
+                            main: s.searchInput,
+                        }}
                         val={searchWord.current}
                         searchCallback={searchNameCallback}
                         selectList={(data) => router.push('/product/' + data)}
@@ -579,14 +815,18 @@ const CollectionPage: React.FC = () => {
                         <div style={{ margin: "auto", width: "30%" }} />
                     )}
                 </div>
+                <div style={{ position: "relative", display: "flex", alignItems: "flex-start" }}>
+                    {emptyData.current ? (
 
-                {emptyData.current ? (
-                    <div className={s.emptyRow}>
-                        {emtyText.current}
-                        <span onClick={resetFilters}> Сбросить фильтры</span>
-                    </div>
-                ) : (
-                    <div style={{ position: "relative", display: "flex", alignItems: "flex-start" }}>
+                        <div className={s.emptyRow}>
+                            {emtyText.current}
+                            {emtyText.current.includes('Сбросить фильтры') && (
+                                <span onClick={resetFilters}> Сбросить фильтры</span>
+                            )}
+
+                        </div>
+
+                    ) : (
                         <MerchSliderField
                             onChange={pageChange}
                             currentPage={currentPage.current}
@@ -595,17 +835,27 @@ const CollectionPage: React.FC = () => {
                             size={grid ? 2 : 3}
                             data={merchFieldData}
                         />
-                        {!widthProps && (
-                            <div style={{ width: "25%" }}>
-                                <ProductsFilters
-                                    classNames={{ secondPage: s.secondPage }}
-                                    onChange={onFiltersChange}
-                                    {...filtersState}
-                                />
-                            </div>
-                        )}
-                    </div>
-                )}
+                    )}
+                    {!widthProps && (
+                        <div
+                            ref={rightBlockRef}
+                            style={{
+                                width: "25%",
+                                position: isSticky ? "sticky" : "relative",
+                                top: isSticky ? `${stickyTop}px` : "0px",
+                                height: "fit-content",
+                                alignSelf: "flex-start",
+                                transition: "none"
+                            }}
+                        >
+                            <ProductsFilters
+                                classNames={{ secondPage: s.secondPage }}
+                                onChange={onFiltersChange}
+                                {...filtersState}
+                            />
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Модалка сортировки */}
@@ -653,6 +903,47 @@ const CollectionPage: React.FC = () => {
             )}
         </div>
     )
+}
+
+// ============================================================
+// 🔥 SSR
+// ============================================================
+export const getServerSideProps: GetServerSideProps = async (context) => {
+    const { collection } = context.params || {}
+
+    if (!collection) {
+        return {
+            props: {
+                initialData: null,
+                collectionSlug: null
+            }
+        }
+    }
+
+    try {
+        const data = await getCollectionBySlug(collection as string)
+
+        return {
+            props: {
+                initialData: {
+                    collection: data.collection || null,
+                    products: data.products || [],
+                    filters: data.filters || null,
+                    total: data.total || 0,
+                    page: data.page || 1
+                },
+                collectionSlug: collection as string
+            }
+        }
+    } catch (error) {
+        console.error('SSR failed for collection:', error)
+        return {
+            props: {
+                initialData: null,
+                collectionSlug: collection as string
+            }
+        }
+    }
 }
 
 export default React.memo(CollectionPage)

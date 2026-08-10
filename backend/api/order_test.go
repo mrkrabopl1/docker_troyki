@@ -221,7 +221,7 @@ func TestHandleGetCartCount(t *testing.T) {
 			server := newTestServer(t, store, taskDistributor, taskProcessor)
 			recorder := httptest.NewRecorder()
 
-			url := "/getCartCount"
+			url := "/cart/count"
 			data := types.PreorderType{
 				Id:   int32(1),
 				Size: "10",
@@ -341,7 +341,7 @@ func TestHandleCreateOrder(t *testing.T) {
 			jsonData, err := json.Marshal(tc.requestBody)
 			require.NoError(t, err)
 
-			request, err := http.NewRequest(http.MethodPost, "/createOrder", bytes.NewBuffer(jsonData))
+			request, err := http.NewRequest(http.MethodPost, "/orders", bytes.NewBuffer(jsonData))
 			require.NoError(t, err)
 
 			if tc.cookieValue != "" {

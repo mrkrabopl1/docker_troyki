@@ -372,6 +372,13 @@ type DiscountRuleItem struct {
 	ItemID   int32  `json:"item_id"`
 }
 
+type InstagramPost struct {
+	ID        int32              `json:"id"`
+	ImageUrl  string             `json:"image_url"`
+	IsActive  pgtype.Bool        `json:"is_active"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type NewsletterSubscriber struct {
 	ID                int32            `json:"id"`
 	Email             string           `json:"email"`
@@ -537,6 +544,37 @@ type ProductType struct {
 	CategoryID int32  `json:"category_id"`
 	TypeName   string `json:"type_name"`
 	EnumKey    string `json:"enum_key"`
+}
+
+type PromoCode struct {
+	ID                int32              `json:"id"`
+	Code              string             `json:"code"`
+	Name              pgtype.Text        `json:"name"`
+	Description       pgtype.Text        `json:"description"`
+	DiscountType      string             `json:"discount_type"`
+	DiscountValue     int32              `json:"discount_value"`
+	MinOrderAmount    pgtype.Int4        `json:"min_order_amount"`
+	MaxDiscountAmount pgtype.Int4        `json:"max_discount_amount"`
+	AppliesTo         pgtype.Text        `json:"applies_to"`
+	AppliesToIds      pgtype.Text        `json:"applies_to_ids"`
+	StartsAt          pgtype.Timestamptz `json:"starts_at"`
+	EndsAt            pgtype.Timestamptz `json:"ends_at"`
+	UsageLimit        pgtype.Int4        `json:"usage_limit"`
+	PerUserLimit      pgtype.Int4        `json:"per_user_limit"`
+	IsActive          pgtype.Bool        `json:"is_active"`
+	IsCombinable      pgtype.Bool        `json:"is_combinable"`
+	Priority          pgtype.Int4        `json:"priority"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PromoCodeUsage struct {
+	ID             int32              `json:"id"`
+	PromoCodeID    int32              `json:"promo_code_id"`
+	OrderID        int32              `json:"order_id"`
+	CustomerID     pgtype.Int4        `json:"customer_id"`
+	DiscountAmount int32              `json:"discount_amount"`
+	UsedAt         pgtype.Timestamptz `json:"used_at"`
 }
 
 type StoreHouse struct {

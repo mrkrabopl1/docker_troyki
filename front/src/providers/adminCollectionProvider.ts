@@ -18,7 +18,7 @@ export const getCollections = async (): Promise<Collection[]> => {
 };
 
 // GET /admin/collections/:id
-export const getCollection = async (id: number): Promise<Collection> => {
+export const getCollection = async (id: number): Promise<any> => {
     const response = await adminApi.get(`/collections/${id}`);
     return response.data;
 };
