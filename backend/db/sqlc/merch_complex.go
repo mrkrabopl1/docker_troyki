@@ -1652,7 +1652,7 @@ func (store *SQLStore) GetProductsForCollectionByID(ctx context.Context, collect
 			productMap[p.ID] = types.CachedProduct{
 				ID:              p.ID,
 				Name:            p.Name,
-				ImagePath:       p.ImagePath,
+				ImagePath:       store.ImagePathBuilder.GetProductMainImage(p.ImagePath),
 				Price:           int32(p.MinPrice),
 				Discount:        p.MaxDiscPrice,
 				DiscountPercent: int32(p.DiscountPercent),

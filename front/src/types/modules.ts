@@ -50,7 +50,22 @@ export interface Collection {
     created_at?: string;
     updated_at?: string;
 }
+export interface EditCollection {
+    collection: {
+        slug: string;
+        id: number;
+        name: string;
+        description?: string;
+        type: 'dynamic' | 'manual' | 'hybrid';
+        is_active: boolean;
+        product_count?: number;
+        created_at?: string;
+        updated_at?: string;
+    }
+    product_ids?: number[];
+    settings: CollectionSettings;
 
+}
 export interface CollectionDetail extends Collection {
     products: any[];
     total: number;

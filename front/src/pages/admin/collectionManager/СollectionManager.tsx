@@ -5,7 +5,7 @@ import Modal from 'src/components/modal/Modal'
 import ProductsFilters from 'src/modules/settingsPanels/ProductsFilters'
 import ProductSelector from 'src/modules/merchField/ProductSelector'
 import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux'
-import { CheckBoxType, Collection } from 'src/types/modules'
+import { CheckBoxType, Collection,EditCollection } from 'src/types/modules'
 import {
     getCollectionById
 } from 'src/providers/collectionsProvider'
@@ -74,7 +74,7 @@ const CollectionsManager: React.FC = () => {
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [showFiltersPanel, setShowFiltersPanel] = useState(false)
-    const [editingCollection, setEditingCollection] = useState<Collection | null>(null)
+    const [editingCollection, setEditingCollection] = useState<EditCollection | null>(null)
     const [loadingCollection, setLoadingCollection] = useState(false)
 
     // Форма
@@ -207,7 +207,7 @@ const CollectionsManager: React.FC = () => {
         }
 
         const slugExists = collections.some(c =>
-            c.slug === slug && c.id !== editingCollection?.id
+            c.slug === slug && c.id !== editingCollection?.collection?.id
         )
         if (slugExists) {
             alert('Коллекция с таким slug уже существует')
@@ -776,8 +776,8 @@ const CollectionsManager: React.FC = () => {
         }
 
         try {
-            if (editingCollection?.id) {
-                await updateCollection(editingCollection.id, data)
+            if (editingCollection?.collection.id) {
+                await updateCollection(editingCollection?.collection.id, data)
             } else {
                 await createCollection(data)
             }
