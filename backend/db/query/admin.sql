@@ -11,6 +11,10 @@ SELECT id,
 FROM admins
 WHERE email = $1
 LIMIT 1;
+-- name: GetSuperAdmins :many
+SELECT id, email, name 
+FROM admins 
+WHERE role = 'superadmin' AND is_active = true;
 -- name: GetAdminByID :one
 SELECT id,
     email,

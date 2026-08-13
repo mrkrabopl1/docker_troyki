@@ -6,7 +6,7 @@ import Button from 'src/components/Button'
 import MerchSliderField from 'src/modules/merchField/MerchFieldWithPageSwitcher'
 import s from "./style1.module.css"
 import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
-import { getProductsAndFiltersByCategoryAndType, getProductsAndFiltersByString,  getProductsByCategoriesAndFilters } from "src/providers/searchProvider"
+import { getProductsAndFiltersByCategoryAndType, getProductsAndFiltersByString, getProductsByCategoriesAndFilters } from "src/providers/searchProvider"
 import { ReactComponent as FoureGrid } from '/public/foureGrid.svg'
 import { ReactComponent as SixGrid } from '/public/sixGrid.svg'
 import RadioGroup from 'src/components/radio/RadioGroup'
@@ -143,7 +143,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
     setFiltersFromUrl();
     const name = searchParams.key_word as string || "";
     searchWord.current = name;
-  }, [router.isReady,categories,initialData]);
+  }, [router.isReady, categories, initialData]);
 
   const setFiltersFromUrl = useCallback(() => {
     filtersInfo.current.sizes = [];
@@ -364,7 +364,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
       {
         id: 'store',
         enable: true,
-        activeData:false,
+        activeData: false,
         name: "Есть на складе"
       }
     ]
@@ -543,17 +543,17 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
   }, [])
 
   const searchData = useCallback(() => {
-      getProductsAndFiltersByCategoryAndType(
-        searchWord.current,
-        updatePage,
-        currentPage.current,
-        pageSize.current,
-        orderType.current,
-        categoryRef.current,
-        typeRef.current,
-        brandIdRef.current,
-        filtersInfo.current
-      )
+    getProductsAndFiltersByCategoryAndType(
+      searchWord.current,
+      updatePage,
+      currentPage.current,
+      pageSize.current,
+      orderType.current,
+      categoryRef.current,
+      typeRef.current,
+      brandIdRef.current,
+      filtersInfo.current
+    )
   }, [updatePage])
 
   // ... остальные useEffect и JSX без изменений (Resize, Scroll, Sticky и т.д.)
@@ -713,6 +713,9 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
           </div>
 
           <SearchWithList
+            className={{
+              main: s.searchInput,
+            }}
             val={searchWord.current}
             searchCallback={searchNameCallback}
             selectList={(data) => { router.push('/product/' + data); }}

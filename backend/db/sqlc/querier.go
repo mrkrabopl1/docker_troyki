@@ -274,6 +274,7 @@ type Querier interface {
 	GetSnickersByFirmName(ctx context.Context, name string) ([]GetSnickersByFirmNameRow, error)
 	GetSoloCollection(ctx context.Context, arg GetSoloCollectionParams) ([]GetSoloCollectionRow, error)
 	GetSoloCollectionWithCount(ctx context.Context, arg GetSoloCollectionWithCountParams) ([]GetSoloCollectionWithCountRow, error)
+	GetSuperAdmins(ctx context.Context) ([]GetSuperAdminsRow, error)
 	GetTypeByID(ctx context.Context, typeID int32) (GetTypeByIDRow, error)
 	GetUnregisterCustomer(ctx context.Context, id int32) (Unregistercustomer, error)
 	GetUnregisterCustomerByID(ctx context.Context, id int32) (GetUnregisterCustomerByIDRow, error)

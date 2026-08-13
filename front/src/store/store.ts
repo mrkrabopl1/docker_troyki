@@ -21,7 +21,7 @@ import resizeReducer from "./reducers/resizeSlice"
 import instagramReducer from "./reducers/instagramSlice"
 import adminReducer from "./reducers/adminSlice"
 import loadingReducer from './reducers/loadingSlice';
-
+import widgetReducer from './reducers/widgetSlice';
 // ============================================================
 // 🔗 КОРНЕВОЙ РЕДЬЮСЕР
 // ============================================================
@@ -42,7 +42,8 @@ const rootReducer = combineReducers({
     resize: resizeReducer,
     admin: adminReducer,
     loading: loadingReducer,
-    instagram:instagramReducer
+    instagram:instagramReducer,
+    widget:widgetReducer
 })
 
 // ============================================================

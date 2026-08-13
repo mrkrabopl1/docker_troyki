@@ -7,6 +7,7 @@ import { show, sticky, types, categories, setFirmMap, setFirms, collections, set
 import { setFooter } from 'src/store/reducers/dispetcherSlice';
 import { setWidthProps } from 'src/store/reducers/resizeSlice';
 import { setInstagramPhotos } from 'src/store/reducers/instagramSlice';
+import { setPageInfo,SliderData } from 'src/store/reducers/widgetSlice';
 import { getCookie } from './global';
 import { setUniqueCustomer } from './providers/userProvider';
 import { getCartCount } from './providers/shopProvider';
@@ -27,9 +28,10 @@ interface AppContentProps {
   children: React.ReactNode;
   initialMainInfo?: any; // SSR данные
   initialInstagramPhotos?: any[]; // SSR данные для Instagram
+  initialWidgetsInfo?: SliderData;
 }
 
-const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, initialInstagramPhotos }) => {
+const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, initialInstagramPhotos, initialWidgetsInfo }) => {
   const dispatch = useAppDispatch();
   const contRef = useRef<HTMLDivElement>(null);
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -92,7 +94,7 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
         };
       }
     });
-    
+
     // Загрузка изображений (только на клиенте)
     if (typeof window !== 'undefined') {
       const imageUrls = data.categories.map((cat: any) => "/" + cat.image_path);
@@ -108,7 +110,7 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
         img.src = url;
       });
     }
-    
+
     dispatch(types(typesVal));
     dispatch(categories(categoriesVal));
 
@@ -225,6 +227,13 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
       // Если нет SSR данных - загружаем на клиенте
       loadMainInfo();
     }
+     if (initialWidgetsInfo) {
+      console.log('🔥 Redux initialized from SSR data');
+      dispatch(setPageInfo(initialWidgetsInfo));
+    } else {
+      // Если нет SSR данных - загружаем на клиенте
+      loadMainInfo();
+    }
 
     // 2. Инициализируем Instagram фото
     if (initialInstagramPhotos && initialInstagramPhotos.length > 0) {
@@ -236,7 +245,7 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
     }
 
     isHydrated.current = true;
-  }, [initialMainInfo, initialInstagramPhotos, applyDataToRedux, loadMainInfo, loadInstagramPhotos, dispatch]);
+  }, [initialMainInfo,initialWidgetsInfo, initialInstagramPhotos, applyDataToRedux, loadMainInfo, loadInstagramPhotos, dispatch]);
 
   // Остальные эффекты без изменений
   useEffect(() => {
@@ -244,7 +253,7 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
     window.addEventListener("resize", handleResize);
 
     if (!getCookie("unique")) {
-      setUniqueCustomer(() => {});
+      setUniqueCustomer(() => { });
     }
 
     const cartCookie = getCookie("cart");

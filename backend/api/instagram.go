@@ -3,24 +3,19 @@ package api
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"net/netip"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
 )
 
-const (
-	MaxInstagramPhotos = 20 // Максимальное количество фото в ленте
-)
+const MaxInstagramPhotos = 100
 
 type InstagramPhotoResponse struct {
 	ID        int32     `json:"id"`
@@ -29,11 +24,13 @@ type InstagramPhotoResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// ========== ЗАГРУЗКА ФОТО (СРАЗУ НЕСКОЛЬКО) ==========
-// ========== ЗАГРУЗКА ФОТО (СРАЗУ НЕСКОЛЬКО) ==========
 func (s *Server) handleAdminUploadInstagramPhotos(c *gin.Context) {
 	// 1. Проверяем админа
-	admin, _ := c.Get("admin")
+	admin, exists := c.Get("admin")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 	adminRow := admin.(db.GetAdminByIDRow)
 
 	// 2. Получаем файлы (максимум 10 за раз)
@@ -49,13 +46,12 @@ func (s *Server) handleAdminUploadInstagramPhotos(c *gin.Context) {
 		return
 	}
 
-	// 3. Проверяем лимит загрузки за раз
 	if len(files) > 10 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Maximum 10 images per upload"})
 		return
 	}
 
-	// 4. Проверяем общее количество фото
+	// 3. Проверяем общее количество фото
 	count, err := s.store.CountInstagramPosts(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check posts count"})
@@ -73,68 +69,29 @@ func (s *Server) handleAdminUploadInstagramPhotos(c *gin.Context) {
 		return
 	}
 
-	// 5. Создаем папку если нет
-	instagramDir := filepath.Join(s.imageService.BaseDir, "instagram")
-	if err := os.MkdirAll(instagramDir, 0755); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create directory"})
-		return
-	}
-
 	var savedPosts []InstagramPhotoResponse
 	var failedFiles []string
 
-	// 6. Обрабатываем каждый файл
-	for _, fileHeader := range files {
-		// Проверяем размер (макс 5MB)
-		if fileHeader.Size > 5*1024*1024 {
-			failedFiles = append(failedFiles, fileHeader.Filename+" (too large, max 5MB)")
-			continue
-		}
+	// 4. Получаем следующий номер для изображений
+	nextNumber := s.imageService.GetNextImageNumber("instagram")
 
-		// Проверяем расширение
-		ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
-		allowedExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true}
-		if !allowedExts[ext] {
-			failedFiles = append(failedFiles, fileHeader.Filename+" (invalid format)")
-			continue
-		}
+	// 5. Обрабатываем каждый файл
+	for i, fileHeader := range files {
+		imageNumber := nextNumber + i
 
-		// Открываем файл
-		file, err := fileHeader.Open()
+		// Сохраняем изображение (только оригинал, без thumb)
+		imageURL, err := s.imageService.SaveImageSimple("instagram", fileHeader, imageNumber)
 		if err != nil {
-			failedFiles = append(failedFiles, fileHeader.Filename+" (failed to open)")
+			failedFiles = append(failedFiles, fmt.Sprintf("%s: %s", fileHeader.Filename, err.Error()))
 			continue
 		}
-
-		// Генерируем имя
-		newFilename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), uuid.New().String(), ext)
-		newPath := filepath.Join(instagramDir, newFilename)
-		fmt.Println(newPath, "newPath", fileHeader.Filename, "fileHeader.Filename", "instagramDir", instagramDir)
-		// Сохраняем файл
-		out, err := os.Create(newPath)
-		if err != nil {
-			file.Close()
-			failedFiles = append(failedFiles, fileHeader.Filename+" (failed to save)")
-			continue
-		}
-
-		if _, err := io.Copy(out, file); err != nil {
-			file.Close()
-			out.Close()
-			os.Remove(newPath)
-			failedFiles = append(failedFiles, fileHeader.Filename+" (failed to copy)")
-			continue
-		}
-
-		file.Close()
-		out.Close()
 
 		// Сохраняем в БД
-		imageURL := "/images/instagram/" + newFilename
 		post, err := s.store.CreateInstagramPost(c.Request.Context(), imageURL)
 		if err != nil {
-			failedFiles = append(failedFiles, fileHeader.Filename+" (failed to save to DB)")
-			os.Remove(newPath)
+			// Если БД не сохранила - удаляем файл
+			s.imageService.DeleteProductImage(imageURL)
+			failedFiles = append(failedFiles, fmt.Sprintf("%s: failed to save to database", fileHeader.Filename))
 			continue
 		}
 
@@ -146,7 +103,7 @@ func (s *Server) handleAdminUploadInstagramPhotos(c *gin.Context) {
 		})
 	}
 
-	// 7. Логируем
+	// 6. Логируем действие админа
 	go func() {
 		ctx := context.Background()
 		var ipAddr *netip.Addr
@@ -165,7 +122,7 @@ func (s *Server) handleAdminUploadInstagramPhotos(c *gin.Context) {
 		_ = s.store.CreateAdminLog(ctx, logParams)
 	}()
 
-	// 8. Ответ
+	// 7. Формируем ответ
 	response := gin.H{
 		"message":  "Photos uploaded successfully",
 		"uploaded": len(savedPosts),

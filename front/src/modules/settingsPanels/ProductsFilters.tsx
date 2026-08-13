@@ -269,12 +269,10 @@ const ProductsFilters: React.FC<ProductsFiltersProps> = memo(({
             {renderTimeGroup(timeProps)}
 
             <div style={{ padding: "5px" }}>
-                <DoubleInfoDrop info="Цена">
-                    <ZoneSliderValueSetter
+               <ZoneSliderValueSetter
                         onChange={handlePriceChange}
                         {...priceProps}
                     />
-                </DoubleInfoDrop>
             </div>
 
             {checboxsProps.map(renderCheckboxGroup)}

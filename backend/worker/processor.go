@@ -28,6 +28,10 @@ type TaskProcessor interface {
 	ProcessTaskSendNewsletterVerification(ctx context.Context, task *asynq.Task) error
 	ProcessTaskSendNewsletterWelcome(ctx context.Context, task *asynq.Task) error
 	ProcessTaskSendNewsletterBroadcast(ctx context.Context, task *asynq.Task) error
+	ProcessTaskSendProductNotification(
+		ctx context.Context,
+		task *asynq.Task,
+	) error
 	// Существующие методы
 	SetProductsInfo(ctx context.Context, ID string, merchant db.ProductsInfoResponse) error
 	GetProductsInfo(ctx context.Context, ID string) (db.ProductsInfoResponse, error)
@@ -220,6 +224,7 @@ func (processor *RedisTaskProcessor) Start() error {
 	mux.HandleFunc(TaskSendAdminPasswordReset, processor.ProcessTaskSendAdminPasswordReset)
 	mux.HandleFunc(TaskSendAdminPasswordChanged, processor.ProcessTaskSendAdminPasswordChanged)
 	mux.HandleFunc(TaskSendAdminInvite, processor.ProcessTaskSendAdminInvite)
+	mux.HandleFunc(TaskSendProductNotification, processor.ProcessTaskSendProductNotification)
 	// mux.HandleFunc(TaskGenerateWidgetLink, processor.ProcessTaskGenerateWidgetLink)
 	return processor.server.Start(mux)
 }

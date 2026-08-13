@@ -5,10 +5,8 @@
     margin-bottom: 15px;
 }
 .search{
-     border-radius: 15px;
-       height:35px;
        width:30%;
-       border: 2px black solid;
+     
 }
 .settings_holder{
     right: -300px;
@@ -122,8 +120,6 @@
 }
 
 .searchInput{
-    padding:10px;
-    border: solid 1px black;
     width: 35%;
   }
   

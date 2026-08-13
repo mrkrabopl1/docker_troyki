@@ -59,6 +59,11 @@ type TaskDistributor interface {
 		payload *PayloadGenerateWidgetLink,
 		opts ...asynq.Option,
 	) error
+	DistributeTaskSendProductNotification(
+		ctx context.Context,
+		payload *PayloadSendProductNotification,
+		opts ...asynq.Option,
+	) error
 }
 
 type RedisTaskDistributor struct {

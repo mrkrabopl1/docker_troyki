@@ -107,12 +107,12 @@ func (s *ImageService) SaveProductImage(imagePath string, file *multipart.FileHe
 	}
 
 	// Сохраняем оригинал
-	if err := s.saveWebP(img, filepath.Join(dstDir, fmt.Sprintf("img%d.webp", imageNumber))); err != nil {
+	if err := s.SaveWebP(img, filepath.Join(dstDir, fmt.Sprintf("img%d.webp", imageNumber))); err != nil {
 		return "", "", err
 	}
 
 	// Сохраняем thumb
-	if err := s.saveWebP(thumb, filepath.Join(dstDir, fmt.Sprintf("img%d_thumb.webp", imageNumber))); err != nil {
+	if err := s.SaveWebP(thumb, filepath.Join(dstDir, fmt.Sprintf("img%d_thumb.webp", imageNumber))); err != nil {
 		return "", "", err
 	}
 
@@ -221,18 +221,60 @@ func (s *ImageService) convertAndSave(srcPath string, dstDir string, imageNumber
 	}
 
 	// Сохраняем
-	if err := s.saveWebP(img, filepath.Join(dstDir, fmt.Sprintf("img%d.webp", imageNumber))); err != nil {
+	if err := s.SaveWebP(img, filepath.Join(dstDir, fmt.Sprintf("img%d.webp", imageNumber))); err != nil {
 		return err
 	}
-	if err := s.saveWebP(thumb, filepath.Join(dstDir, fmt.Sprintf("img%d_thumb.webp", imageNumber))); err != nil {
+	if err := s.SaveWebP(thumb, filepath.Join(dstDir, fmt.Sprintf("img%d_thumb.webp", imageNumber))); err != nil {
 		return err
 	}
 
 	return nil
 }
+func (s *ImageService) SaveImageSimple(folder string, file *multipart.FileHeader, imageNumber int) (string, error) {
+	// Валидация
+	if err := s.validateFile(file); err != nil {
+		return "", err
+	}
 
-// saveWebP сохраняет изображение в WebP
-func (s *ImageService) saveWebP(img image.Image, dstPath string) error {
+	// Открываем
+	src, err := file.Open()
+	if err != nil {
+		return "", fmt.Errorf("не удалось открыть файл: %w", err)
+	}
+	defer src.Close()
+
+	// Декодируем
+	img, _, err := image.Decode(src)
+	if err != nil {
+		return "", fmt.Errorf("неверный формат изображения: %w", err)
+	}
+
+	// Ресайз если больше maxWidth
+	bounds := img.Bounds()
+	if bounds.Dx() > s.maxWidth || bounds.Dy() > s.maxWidth {
+		img = imaging.Fit(img, s.maxWidth, s.maxWidth, imaging.Lanczos)
+	}
+
+	// Папка назначения
+	dstDir := filepath.Join(s.BaseDir, folder)
+	if err := os.MkdirAll(dstDir, 0755); err != nil {
+		return "", fmt.Errorf("не удалось создать папку: %w", err)
+	}
+
+	// Сохраняем только оригинал
+	originalPath := filepath.Join(dstDir, fmt.Sprintf("img%d.webp", imageNumber))
+	if err := s.SaveWebP(img, originalPath); err != nil {
+		return "", err
+	}
+
+	// URL
+	imageURL := "/images/" + folder + "/" + fmt.Sprintf("img%d.webp", imageNumber)
+
+	return imageURL, nil
+}
+
+// SaveWebP сохраняет изображение в WebP
+func (s *ImageService) SaveWebP(img image.Image, dstPath string) error {
 	options, err := encoder.NewLossyEncoderOptions(encoder.PresetDefault, s.webpQuality)
 	if err != nil {
 		return fmt.Errorf("ошибка энкодера: %w", err)
@@ -296,6 +338,33 @@ func (s *ImageService) DeleteProductImagesByPath(imagePath string) error {
 	return os.RemoveAll(fullPath)
 }
 
+// service/image_service.go
+
+// GetNextImageNumber возвращает следующий номер для изображения в папке
+func (s *ImageService) GetNextImageNumber(folder string) int {
+	dir := filepath.Join(s.BaseDir, folder)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 1
+	}
+
+	maxNum := 0
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		var num int
+		if _, err := fmt.Sscanf(entry.Name(), "img%d.webp", &num); err == nil {
+			if num > maxNum {
+				maxNum = num
+			}
+		}
+	}
+
+	return maxNum + 1
+}
+
 // DeleteBannerImage удаляет изображение баннера
 func (s *ImageService) DeleteBannerImage(imageURL string) error {
 	relativePath := strings.TrimPrefix(imageURL, "/images/")
@@ -334,7 +403,7 @@ func (s *ImageService) SaveBannerImage(file *multipart.FileHeader) (string, erro
 		return "", err
 	}
 
-	if err := s.saveWebP(img, fullPath); err != nil {
+	if err := s.SaveWebP(img, fullPath); err != nil {
 		return "", err
 	}
 

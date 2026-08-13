@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/hibiken/asynq"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
@@ -26,6 +28,7 @@ const TaskSendAdminPasswordChanged = "task:send_admin_password_changed"
 const TaskSendAdminInvite = "task:send_admin_invite"
 
 const TaskGenerateWidgetLink = "task:generate_widget_link"
+const TaskSendProductNotification = "task:send_product_notification"
 
 // Добавь структуру для приглашения админа
 type PayloadSendAdminInvite struct {
@@ -96,6 +99,24 @@ type PayloadGenerateWidgetLink struct {
 }
 
 // ============ DISTRIBUTORS ============
+type ProductNotificationItem struct {
+	ProductID      int32  `json:"product_id"`
+	ProductName    string `json:"product_name"`
+	ProductArticle string `json:"product_article"`
+	OldValue       string `json:"old_value,omitempty"` // для изменений
+	NewValue       string `json:"new_value,omitempty"` // для изменений
+}
+
+// PayloadSendProductNotification - уведомление о действиях с продуктами
+type PayloadSendProductNotification struct {
+	AdminID    int32                     `json:"admin_id"`
+	AdminName  string                    `json:"admin_name"`
+	Action     string                    `json:"action"` // created, updated, deleted, status_changed, price_changed, bulk_updated
+	Details    string                    `json:"details"`
+	Products   []ProductNotificationItem `json:"products"` // ← МАССИВ!
+	TotalCount int32                     `json:"total_count"`
+	Timestamp  time.Time                 `json:"timestamp"`
+}
 
 // Существующие методы
 func (distributor *RedisTaskDistributor) DistributeTaskSendVerifyEmail(
@@ -951,4 +972,255 @@ func (processor *RedisTaskProcessor) RefreshSingleWidgetCache(ctx context.Contex
 
 	log.Info().Int32("widget_id", widgetID).Msg("single widget cache updated")
 	return nil
+}
+func (p *RedisTaskProcessor) ProcessTaskSendProductNotification(
+	ctx context.Context,
+	task *asynq.Task,
+) error {
+	var payload PayloadSendProductNotification
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", err)
+	}
+
+	log.Info().
+		Int32("admin_id", payload.AdminID).
+		Str("action", payload.Action).
+		Int("product_count", len(payload.Products)).
+		Msg("Processing product notification")
+
+	// Получаем всех суперадминов
+	admins, err := p.store.GetSuperAdmins(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get super admins: %w", err)
+	}
+
+	if len(admins) == 0 {
+		log.Warn().Msg("No super admins found to notify")
+		return nil
+	}
+
+	// Формируем письмо
+	subject := p.buildProductNotificationSubject(payload.Action, len(payload.Products))
+	body := p.buildProductNotificationBody(&payload)
+
+	// Отправляем каждому суперадмину
+	var sentCount int
+	for _, admin := range admins {
+		if admin.ID == payload.AdminID {
+			continue
+		}
+
+		// ✅ ИСПРАВЛЕНО: передаем email как []string
+		err := p.mailer.SendEmail(
+			subject,               // subject
+			body,                  // content
+			[]string{admin.Email}, // to - МАССИВ С ОДНИМ EMAIL
+			nil,                   // cc
+			nil,                   // bcc
+			nil,                   // attachFiles
+		)
+		if err != nil {
+			log.Error().
+				Err(err).
+				Str("admin", admin.Email).
+				Int32("admin_id", payload.AdminID).
+				Msg("Failed to send product notification")
+			continue
+		}
+		sentCount++
+	}
+
+	log.Info().
+		Int32("admin_id", payload.AdminID).
+		Str("action", payload.Action).
+		Int("sent_to", sentCount).
+		Msg("Product notification sent successfully")
+
+	return nil
+}
+
+// buildProductNotificationSubject - формирует тему письма
+func (p *RedisTaskProcessor) buildProductNotificationSubject(action string, count int) string {
+	emojis := map[string]string{
+		"created":        "🆕",
+		"updated":        "🔄",
+		"deleted":        "🗑️",
+		"status_changed": "📌",
+		"price_changed":  "💰",
+		"bulk_updated":   "📦",
+	}
+
+	emoji := emojis[action]
+	if emoji == "" {
+		emoji = "📦"
+	}
+
+	actionLabels := map[string]string{
+		"created":        "Created",
+		"updated":        "Updated",
+		"deleted":        "Deleted",
+		"status_changed": "Status Changed",
+		"price_changed":  "Price Changed",
+		"bulk_updated":   "Bulk Updated",
+	}
+
+	label := actionLabels[action]
+	if label == "" {
+		label = action
+	}
+
+	if count > 1 {
+		return fmt.Sprintf("%s %s %d Products", emoji, label, count)
+	}
+	return fmt.Sprintf("%s Product %s", emoji, label)
+}
+
+// buildProductNotificationBody - формирует HTML тело письма с таблицей продуктов
+func (p *RedisTaskProcessor) buildProductNotificationBody(payload *PayloadSendProductNotification) string {
+	// Строим таблицу продуктов
+	var productsRows string
+	for i, product := range payload.Products {
+		// Чередуем цвет строк
+		bgColor := "#ffffff"
+		if i%2 == 0 {
+			bgColor = "#f8f9fa"
+		}
+
+		// Добавляем изменения если есть
+		var changes string
+		if product.OldValue != "" || product.NewValue != "" {
+			changes = fmt.Sprintf("<span style='color:#FF9800;'>%s → %s</span>",
+				product.OldValue, product.NewValue)
+		}
+
+		productsRows += fmt.Sprintf(`
+            <tr style="background: %s;">
+                <td style="padding: 8px; border-bottom: 1px solid #eee;">#%d</td>
+                <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>%s</strong></td>
+                <td style="padding: 8px; border-bottom: 1px solid #eee;">%s</td>
+                <td style="padding: 8px; border-bottom: 1px solid #eee;">%s</td>
+            </tr>`,
+			bgColor,
+			product.ProductID,
+			product.ProductName,
+			product.ProductArticle,
+			changes,
+		)
+	}
+
+	actionLabels := map[string]string{
+		"created":        "Created",
+		"updated":        "Updated",
+		"deleted":        "Deleted",
+		"status_changed": "Status Changed",
+		"price_changed":  "Price Changed",
+		"bulk_updated":   "Bulk Updated",
+	}
+
+	actionEmojis := map[string]string{
+		"created":        "✨",
+		"updated":        "🔄",
+		"deleted":        "⚠️",
+		"status_changed": "📌",
+		"price_changed":  "💰",
+		"bulk_updated":   "📦",
+	}
+
+	label := actionLabels[payload.Action]
+	emoji := actionEmojis[payload.Action]
+
+	appURL := os.Getenv("APP_URL")
+	if appURL == "" {
+		appURL = "http://localhost:8080"
+	}
+
+	return fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; background: #f8f9fa; }
+        .header { background: #2196F3; color: white; padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .header .emoji { font-size: 48px; display: block; margin-bottom: 10px; }
+        .content { background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .admin-info { margin: 20px 0; padding: 15px; background: #e3f2fd; border-radius: 6px; }
+        .stats { display: inline-block; background: #4CAF50; color: white; padding: 4px 12px; border-radius: 20px; font-size: 14px; }
+        table { width: 100%%; border-collapse: collapse; margin: 20px 0; }
+        th { background: #2196F3; color: white; padding: 10px; text-align: left; }
+        td { padding: 8px; border-bottom: 1px solid #eee; }
+        .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999; text-align: center; }
+        .btn { display: inline-block; background: #2196F3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
+        .btn:hover { opacity: 0.9; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #2196F3; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <span class="emoji">%s</span>
+            <h1>Products %s</h1>
+            <div style="margin-top: 5px; opacity: 0.9;">
+                <span class="badge">%d products</span>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="admin-info">
+                <strong>👤 Admin:</strong> %s
+            </div>
+            
+            <div style="margin: 15px 0;">
+                <strong>📋 Action:</strong> %s
+            </div>
+            
+            <div style="margin: 15px 0;">
+                <strong>📝 Details:</strong> %s
+            </div>
+            
+            <div style="margin: 15px 0;">
+                <strong>⏰ Time:</strong> %s
+            </div>
+            
+            <h3 style="margin-top: 30px;">📦 Products List</h3>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Article</th>
+                        <th>Changes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    %s
+                </tbody>
+            </table>
+            
+            <div style="text-align: center; margin: 25px 0;">
+                <a href="%s/admin/products" class="btn">📦 View All Products</a>
+            </div>
+            
+            <div class="footer">
+                <p>This is an automated notification from your e-commerce platform.</p>
+                <p>Total products: %d</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`,
+		emoji,
+		label,
+		len(payload.Products),
+		payload.AdminName,
+		label,
+		payload.Details,
+		payload.Timestamp.Format("2006-01-02 15:04:05"),
+		productsRows,
+		appURL,
+		len(payload.Products),
+	)
 }

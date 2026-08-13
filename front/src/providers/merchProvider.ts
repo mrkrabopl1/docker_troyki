@@ -6,7 +6,7 @@ const getMerchInfo = function (id: string, callback: (val: any) => void) {
     axios({
         withCredentials: true,
         method: 'get',
-        url: `${API_URL}/products` + "?" + "id=" + id,
+        url: `${API_URL}/products/${id}`,
         headers: {}
     }
     ).then((res: any) => {
@@ -17,7 +17,7 @@ const getMerchInfo = function (id: string, callback: (val: any) => void) {
     })
 }
 export async function getMerchInfoServer(id: string): Promise<any> {
-    const res = await fetch(`${API_URL}/products?id=${id}`, {
+    const res = await fetch(`${API_URL}/products/${id}`, {
         headers: { 'Content-Type': 'application/json' }
     });
     

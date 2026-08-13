@@ -52,7 +52,8 @@ func (s *Server) handleGetSnickersByFirmName(ctx *gin.Context) {
 // }
 
 func (s *Server) handleGetProductsInfoById(ctx *gin.Context) {
-	id := ctx.Query("id")
+	id := ctx.Param("id")
+	fmt.Println(id, "ididididididididididididididid")
 	numId, err := strconv.ParseInt(id, 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
@@ -61,11 +62,12 @@ func (s *Server) handleGetProductsInfoById(ctx *gin.Context) {
 
 	ProductsInfo, err2 := s.store.GetProductsInfoByIdComplex(ctx, int32(numId))
 	if err2 != nil {
+		fmt.Println(err, "wssssssssssss")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
-	s.taskProcessor.SetProductsInfo(ctx, id, ProductsInfo)
+	err = s.taskProcessor.SetProductsInfo(ctx, id, ProductsInfo)
 	ctx.JSON(http.StatusOK, ProductsInfo)
 
 	cookie, errC := ctx.Cookie("unique")

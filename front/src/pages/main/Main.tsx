@@ -47,16 +47,7 @@ const Main: React.FC<MainProps> = memo(({ initialData }) => {
     }
   }, [mainData.banners, dispatch]);
 
-  const handleMainPageInfo = useMemo(() => {
-    return Object.entries(mainData.pageInfo).map(([key, value]: [string, any]) => (
-      <MerchSliderField
-        key={key}
-        name={value.name}
-        merchInfo={value.products}
-        onClick={() => router.push(`/collections/${value.collection_slug}`)}
-      />
-    ));
-  }, [mainData.pageInfo, router]);
+ 
 
   const onFirmClicked = useCallback((firmName) => {
     const firm = Object.values(firmMap).find(f => f.name === firmName);
@@ -82,8 +73,6 @@ const Main: React.FC<MainProps> = memo(({ initialData }) => {
     <div style={{ position: "relative" }}>
       <ContentSliderWithLinks content={createBanners()} />
       <FirmsScroller onChange={onFirmClicked} />
-      <div>{handleMainPageInfo}</div>
-      <InstagramScroller />
     </div>
   );
 });

@@ -3369,6 +3369,38 @@ func (q *Queries) GetSizesCount(ctx context.Context, dollar_1 string) (int32, er
 	return total, err
 }
 
+const getSuperAdmins = `-- name: GetSuperAdmins :many
+SELECT id, email, name 
+FROM admins 
+WHERE role = 'superadmin' AND is_active = true
+`
+
+type GetSuperAdminsRow struct {
+	ID    int32  `json:"id"`
+	Email string `json:"email"`
+	Name  string `json:"name"`
+}
+
+func (q *Queries) GetSuperAdmins(ctx context.Context) ([]GetSuperAdminsRow, error) {
+	rows, err := q.db.Query(ctx, getSuperAdmins)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSuperAdminsRow
+	for rows.Next() {
+		var i GetSuperAdminsRow
+		if err := rows.Scan(&i.ID, &i.Email, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUnregisterCustomersCount = `-- name: GetUnregisterCustomersCount :one
 SELECT COUNT(*)
 FROM unregistercustomer

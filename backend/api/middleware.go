@@ -231,7 +231,7 @@ func (s *Server) SuperAdminMiddleware() gin.HandlerFunc {
 func CachedMiddleware(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		cookie, errC := ctx.Cookie("unique")
-		idStr := ctx.Query("id")
+		idStr := ctx.Param("id")
 		if idStr == "" {
 			ctx.JSON(http.StatusBadRequest, errorResponse(errors.New("id is not provided")))
 			return

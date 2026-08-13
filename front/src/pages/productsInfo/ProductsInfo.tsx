@@ -15,7 +15,6 @@ import Modal from 'src/components/modal/Modal';
 import Scroller from 'src/components/scroller/Scroller';
 import TableWithComboboxColumn from 'src/components/table/simpleTable/TableWithComboboxColumn';
 import ContentSlider from 'src/components/contentSlider/ContentSliderWithLinks';
-import MerchComplexSliderField from 'src/modules/merchField/MerchComplexSliderField';
 import s from "./style.module.css";
 import { ReactComponent as CopySvg } from "/public/copy.svg";
 import { ReactComponent as Shoe } from "/public/shoe_size.svg";
@@ -382,8 +381,6 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
                     <ContentSlider content={imageContent} />
                 </Modal>
             </div>
-
-            <MerchComplexSliderField />
         </div>
     );
 };
