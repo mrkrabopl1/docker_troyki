@@ -3982,7 +3982,8 @@ func (s *Server) handleAdminExecuteSQL(ctx *gin.Context) {
 	}
 
 	admin, _ := ctx.Get("admin")
-	role := admin.(db.GetAdminByIDRow).Role
+	adminRow := admin.(db.GetAdminByIDRow)
+	role := adminRow.Role
 
 	fmt.Println("========================================")
 	fmt.Printf("[SQL] 🚀 ВЫПОЛНЕНИЕ SQL (роль: %s)\n", role)
@@ -3991,20 +3992,16 @@ func (s *Server) handleAdminExecuteSQL(ctx *gin.Context) {
 
 	startTime := time.Now()
 
-	// 1. Парсим запросы
 	parsedQueries := util.ParseSQLScript(query)
 	fmt.Printf("[SQL] 📝 Найдено %d запросов\n", len(parsedQueries))
 
-	// 2. Валидируем
 	validation := util.ValidateSQL(parsedQueries, string(role))
 
-	// 3. Проверяем ошибки
 	if !validation.Valid {
 		fmt.Println("[SQL] ❌ ОШИБКИ ВАЛИДАЦИИ:")
 		for _, err := range validation.Errors {
 			fmt.Printf("  - %s\n", err)
 		}
-
 		ctx.JSON(http.StatusBadRequest, types.ExecuteSQLResponse{
 			Success:    false,
 			Validation: validation,
@@ -4014,7 +4011,6 @@ func (s *Server) handleAdminExecuteSQL(ctx *gin.Context) {
 		return
 	}
 
-	// 4. Предупреждения
 	if len(validation.Warnings) > 0 {
 		fmt.Println("[SQL] ⚠️ ПРЕДУПРЕЖДЕНИЯ:")
 		for _, w := range validation.Warnings {
@@ -4022,7 +4018,7 @@ func (s *Server) handleAdminExecuteSQL(ctx *gin.Context) {
 		}
 	}
 
-	// 5. Выполняем
+	// Выполняем запросы
 	operations, summary, err := util.ExecuteSQLQueries(
 		ctx.Request.Context(),
 		s.store.DB(),
@@ -4037,9 +4033,70 @@ func (s *Server) handleAdminExecuteSQL(ctx *gin.Context) {
 		return
 	}
 
+	// ========== ЛОГИРУЕМ КАЖДУЮ УСПЕШНУЮ ОПЕРАЦИЮ ==========
+	go func() {
+		logCtx := context.Background()
+
+		// Проходим по каждой операции
+		for idx, op := range operations {
+			// Логируем только успешные INSERT/UPDATE/DELETE
+			if op.Status == "success" && op.RowsAffected > 0 {
+				if op.Type == "INSERT" || op.Type == "UPDATE" || op.Type == "DELETE" {
+					// Берем соответствующий запрос из parsedQueries
+					var originalQuery string
+					if idx < len(parsedQueries) {
+						originalQuery = parsedQueries[idx].Query
+					}
+
+					// Извлекаем артикул и имя
+					article := extractArticleFromQuery(originalQuery, op.Type)
+					name := extractNameFromQuery(originalQuery)
+
+					var details string
+					switch op.Type {
+					case "INSERT":
+						if op.Table == "products" && article != "" {
+							details = fmt.Sprintf("Добавлен товар с артикулом '%s'", article)
+						} else if op.Table == "brands" && name != "" {
+							details = fmt.Sprintf("Добавлен бренд '%s'", name)
+						} else if op.Table == "brand_lines" && name != "" {
+							details = fmt.Sprintf("Добавлена линейка '%s'", name)
+						} else if name != "" {
+							details = fmt.Sprintf("Добавлен '%s' в %s", name, op.Table)
+						} else {
+							details = fmt.Sprintf("Добавлена запись в %s", op.Table)
+						}
+					case "UPDATE":
+						if article != "" {
+							details = fmt.Sprintf("Обновлен товар с артикулом '%s'", article)
+						} else {
+							details = fmt.Sprintf("Обновлена запись в %s (%d строк)", op.Table, op.RowsAffected)
+						}
+					case "DELETE":
+						if article != "" {
+							details = fmt.Sprintf("Удален товар с артикулом '%s'", article)
+						} else {
+							details = fmt.Sprintf("Удалена запись из %s (%d строк)", op.Table, op.RowsAffected)
+						}
+					}
+
+					params := db.CreateAdminLogParams{
+						AdminID:    adminRow.ID,
+						Action:     strings.ToLower(op.Type),
+						EntityType: pgtype.Text{String: op.Table, Valid: true},
+						EntityID:   pgtype.Int4{Int32: 0, Valid: false},
+						Details:    pgtype.Text{String: details, Valid: true},
+						IpAddress:  nil,
+					}
+
+					_ = s.store.CreateAdminLog(logCtx, params)
+				}
+			}
+		}
+	}()
+
 	elapsed := time.Since(startTime)
 
-	// 6. Итоги в консоль
 	fmt.Println("\n========================================")
 	fmt.Println("[SQL] 📊 ИТОГИ ВЫПОЛНЕНИЯ")
 	fmt.Println("========================================")
@@ -4070,6 +4127,68 @@ func (s *Server) handleAdminExecuteSQL(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, response)
+}
+func extractArticleFromQuery(query, opType string) string {
+	if query == "" {
+		return ""
+	}
+
+	// Ищем article = 'XXX'
+	re := regexp.MustCompile(`(?i)article\s*=\s*'([^']+)'`)
+	matches := re.FindStringSubmatch(query)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+
+	// Ищем в VALUES для INSERT
+	if opType == "INSERT" {
+		re2 := regexp.MustCompile(`(?i)VALUES\s*\(([^)]+)\)`)
+		matches2 := re2.FindStringSubmatch(query)
+		if len(matches2) > 1 {
+			parts := strings.Split(matches2[1], ",")
+			if len(parts) >= 6 {
+				article := strings.TrimSpace(parts[5])
+				article = strings.Trim(article, "'")
+				return article
+			}
+		}
+	}
+
+	return ""
+}
+
+func extractNameFromQuery(query string) string {
+	if query == "" {
+		return ""
+	}
+
+	// Ищем name = 'XXX'
+	re := regexp.MustCompile(`(?i)name\s*=\s*'([^']+)'`)
+	matches := re.FindStringSubmatch(query)
+	if len(matches) > 1 {
+		name := matches[1]
+		if len(name) > 50 {
+			name = name[:50] + "..."
+		}
+		return name
+	}
+
+	// Ищем в VALUES для INSERT
+	re2 := regexp.MustCompile(`(?i)VALUES\s*\(([^)]+)\)`)
+	matches2 := re2.FindStringSubmatch(query)
+	if len(matches2) > 1 {
+		parts := strings.Split(matches2[1], ",")
+		if len(parts) >= 2 {
+			name := strings.TrimSpace(parts[1])
+			name = strings.Trim(name, "'")
+			if len(name) > 50 {
+				name = name[:50] + "..."
+			}
+			return name
+		}
+	}
+
+	return ""
 }
 
 // Парсинг SQL скрипта на отдельные запросы

@@ -22,9 +22,9 @@
 -- CREATE INDEX IF NOT EXISTS idx_products_archived_at ON public.products(archived_at);
 
 
-ALTER TABLE public.products 
-ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
-CREATE INDEX IF NOT EXISTS idx_products_updated_at ON public.products(updated_at);
+-- ALTER TABLE public.products 
+-- ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+-- CREATE INDEX IF NOT EXISTS idx_products_updated_at ON public.products(updated_at);
 
 
 -- -- Проверяем и обновляем внешние ключи

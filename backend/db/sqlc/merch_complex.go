@@ -1783,7 +1783,6 @@ func (store *SQLStore) GetManualCollectionProductsPaginated(
 		log.Printf("📦 [Manual] Product %d: ID=%d, Name=%s, Price=%d-%d", i+1, row.GlobalID, row.Name, row.MinPrice, row.MaxPrice)
 	}
 
-	log.Printf("✅ [END] GetManualCollectionProductsPaginated: Products: %d, Total: %d", len(products), total)
 	return products, total, nil
 }
 
@@ -1843,8 +1842,6 @@ func (store *SQLStore) getDynamicCollectionProducts(
 		log.Printf("📦 [Dynamic] ... and %d more products", len(productsWithCount.Products)-5)
 	}
 
-	log.Printf("✅ [END] getDynamicCollectionProducts: Products: %d, Total: %d",
-		len(productsWithCount.Products), productsWithCount.TotalCount)
 	return productsWithCount.Products, int32(productsWithCount.TotalCount), nil
 }
 
@@ -1856,21 +1853,17 @@ func (store *SQLStore) getHybridCollectionProducts(
 	filtersParams GetFullFiltersForCollectionParams,
 	limit, offset int,
 ) ([]ProductRow, int32, error) {
-	log.Printf("🚀 [START] getHybridCollectionProducts")
-	log.Printf("📊 [Params] CollectionID: %d, Type: %s, Limit: %d, Offset: %d",
-		collection.ID, collection.Type, limit, offset)
 
 	// Парсим настройки коллекции
-	log.Printf("🔍 [Hybrid] Parsing collection settings")
+
 	var settings types.CollectionSettings
 	if err := json.Unmarshal(collection.Settings, &settings); err != nil {
 		log.Printf("❌ [Hybrid] Failed to parse settings: %v", err)
 		return nil, 0, fmt.Errorf("failed to parse settings: %w", err)
 	}
-	log.Printf("📊 [Hybrid] Settings loaded successfully")
 
 	// Строим параметры для запроса
-	log.Printf("🔍 [Hybrid] Building query parameters")
+
 	params := GetProductsForCollectionByFiltersPaginateFullParams{
 		CollectionID: collection.ID,
 		Sizes:        []string{},
@@ -1888,7 +1881,7 @@ func (store *SQLStore) getHybridCollectionProducts(
 
 	// Заполняем фильтры если есть
 	if settings.Filters != nil {
-		log.Printf("📊 [Hybrid] Applying filters from settings")
+
 		params.Sizes = settings.Filters.Sizes
 		params.Firms = settings.Filters.Firms
 		params.ProductTypes = settings.Filters.Types
@@ -1898,9 +1891,6 @@ func (store *SQLStore) getHybridCollectionProducts(
 		params.RuleIds = settings.Filters.RuleIDs
 		params.WithPrice = true
 
-		log.Printf("📊 [Hybrid] Filters: Sizes: %v, Firms: %v, Types: %v, Categories: %v, Lines: %v, Bodytypes: %v, RuleIDs: %v, WithPrice: %v",
-			params.Sizes, params.Firms, params.ProductTypes, params.Categories,
-			params.Lines, params.Bodytypes, params.RuleIds, params.WithPrice)
 	} else {
 		log.Printf("⚠️ [Hybrid] No filters in settings")
 	}
@@ -1911,11 +1901,6 @@ func (store *SQLStore) getHybridCollectionProducts(
 		// log.Printf("💰 [Hybrid] Price filter: %d - %d", settings.Filters.Price[0], settings.Filters.Price[1])
 	}
 
-	log.Printf("📤 [Hybrid] Query Params: CollectionID: %d, Limit: %d, Offset: %d, SortType: %d",
-		params.CollectionID, params.Limitval, params.Offsetval, params.SortType)
-
-	// ОДИН ЗАПРОС для всех товаров (фильтрованные + ручные через OR)
-	log.Printf("🔍 [Hybrid] Executing GetProductsForCollectionByFiltersPaginateFull")
 	rows, err := store.GetProductsForCollectionByFiltersPaginateFull(ctx, params)
 	if err != nil {
 		log.Printf("❌ [Hybrid] GetProductsForCollectionByFiltersPaginateFull error: %v", err)
@@ -1943,8 +1928,6 @@ func (store *SQLStore) getHybridCollectionProducts(
 		log.Printf("📦 [Hybrid] ... and %d more products", len(rows)-5)
 	}
 
-	// Считаем общее количество
-	log.Printf("🔍 [Hybrid] Counting total products")
 	total, err := store.CountProductsForCollectionByFiltersFull(ctx, CountProductsForCollectionByFiltersFullParams{
 		CollectionID: collection.ID,
 		Sizes:        params.Sizes,
@@ -1959,12 +1942,8 @@ func (store *SQLStore) getHybridCollectionProducts(
 		WithPrice:    params.WithPrice,
 	})
 	if err != nil {
-		log.Printf("❌ [Hybrid] CountProductsForCollectionByFiltersFull error: %v", err)
 		return nil, 0, err
 	}
-	log.Printf("✅ [Hybrid] Total count: %d", total)
-
-	log.Printf("✅ [END] getHybridCollectionProducts: Products: %d, Total: %d", len(products), total)
 	return products, total, nil
 }
 
@@ -2181,7 +2160,6 @@ func (store *SQLStore) GetCollectionProductsByFilters(
 		return GetCollectionProductsResult{}, err
 	}
 
-	log.Printf("✅ [END] GetCollectionProductsByFilters: Products: %d, Total: %d", len(products), total)
 	return GetCollectionProductsResult{
 		Products:   products,
 		TotalCount: int(total),

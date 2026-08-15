@@ -95,6 +95,9 @@ func (s *Server) setupRouter() {
 		api.POST("/search/with-filters", s.handleSearchWithFilters)
 		api.POST("/search-by-slug", s.handleSearchSnickersAndFiltersBySlugs)
 
+		api.GET("/products/light", s.handleGetProductsLight)
+		api.GET("/products/light/since", s.handleGetProductsLightSince)
+
 		api.POST("/collection", s.handleGetSoloCollection)
 		api.GET("/collections/:id", s.handleGetCollectionById)
 		api.GET("/collections/slug/:slug", s.handleGetCollectionBySlug)
@@ -152,8 +155,6 @@ func (s *Server) setupRouter() {
 			adminGroup.POST("/products", s.handleAdminCreateProduct)
 			adminGroup.GET("/products/with-filters", s.handleAdminGetProductsAndFilters)
 			adminGroup.POST("/products/search", s.handleAdminGetProducts)
-			adminGroup.GET("/products/light", s.handleGetProductsLight)
-			adminGroup.GET("/products/light/since", s.handleGetProductsLightSince)
 			adminGroup.PUT("/products/:id", s.handleAdminUpdateProduct)
 			adminGroup.GET("/products/:id", s.handleAdminGetProductById)
 			adminGroup.DELETE("/products/:id", s.handleAdminHardDeleteProduct)

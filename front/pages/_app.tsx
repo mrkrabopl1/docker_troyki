@@ -36,12 +36,12 @@ interface MyAppProps extends AppProps {
 
 function MyApp({ Component, pageProps, mainData }: MyAppProps) {
   const router = useRouter();
-  
-  const isAdmin = router.pathname.startsWith('/admin') && 
-                  !router.pathname.startsWith('/admin/login') &&
-                  !router.pathname.startsWith('/admin/forgot-password') &&
-                  !router.pathname.startsWith('/admin/reset-password') &&
-                  !router.pathname.startsWith('/admin/accept-invite');
+
+  const isAdmin = router.pathname.startsWith('/admin') &&
+    !router.pathname.startsWith('/admin/login') &&
+    !router.pathname.startsWith('/admin/forgot-password') &&
+    !router.pathname.startsWith('/admin/reset-password') &&
+    !router.pathname.startsWith('/admin/accept-invite');
 
   const isShopPage = SHOP_PAGES.some(pattern => {
     if (pattern.includes('[id]') || pattern.includes('[slug]')) {
@@ -79,11 +79,11 @@ function MyApp({ Component, pageProps, mainData }: MyAppProps) {
 
   return (
     <Provider store={store}>
-      <AppContent 
+      <AppContent
 
-        initialMainInfo={mainData?.mainInfo || {}} 
+        initialMainInfo={mainData?.mainInfo || {}}
         initialInstagramPhotos={mainData?.instagramPosts || []}
-        initialWidgetsInfo={mainData?.pageInfo||[]}
+        initialWidgetsInfo={mainData?.pageInfo || []}
       >
         {renderContent()}
       </AppContent>
@@ -94,7 +94,7 @@ function MyApp({ Component, pageProps, mainData }: MyAppProps) {
 // 🔥 ГЛАВНОЕ: getInitialProps в _app - загружает данные для ВСЕХ страниц
 MyApp.getInitialProps = async (context: AppContext) => {
   // Получаем данные со страницы если они есть
-  const pageProps = context.Component.getInitialProps 
+  const pageProps = context.Component.getInitialProps
     ? await context.Component.getInitialProps(context.ctx)
     : {};
 
@@ -107,11 +107,11 @@ MyApp.getInitialProps = async (context: AppContext) => {
   };
 
   const isAdminRoute = context.ctx.pathname?.startsWith('/admin');
-  
+
   if (!isAdminRoute) {
     try {
       console.log('🔥 Loading main data in _app getInitialProps for:', context.ctx.pathname);
-      
+
       // Загружаем все данные параллельно (как на index)
       const [pageInfo, banners, mainInfo, instagramPhotos] = await Promise.all([
         getMainPage().catch(() => ({})),
@@ -119,7 +119,7 @@ MyApp.getInitialProps = async (context: AppContext) => {
         getMainInfo().catch(() => ({})),
         getInstagramPhotosServer().catch(() => [])
       ]);
-      console.log(pageInfo,"d lskmdlaksmdlaskm")
+      console.log(pageInfo, "d lskmdlaksmdlaskm")
       mainData = {
         pageInfo: pageInfo || {},
         banners: banners || [],
@@ -129,6 +129,18 @@ MyApp.getInitialProps = async (context: AppContext) => {
     } catch (error) {
       console.error('Failed to load main data in _app:', error);
     }
+  } else {
+    const [mainInfo] = await Promise.all([
+
+      getMainInfo().catch(() => ({})),
+
+    ]);
+    mainData = {
+      pageInfo: {},
+      banners: [],
+      mainInfo: mainInfo || {},
+      instagramPosts: []
+    };
   }
 
   return {

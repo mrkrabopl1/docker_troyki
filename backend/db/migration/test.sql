@@ -65,240 +65,249 @@
 
 
 
--- ============================================================
--- 1. Удаляем in_stock из JSONB sizes в products
--- ============================================================
-UPDATE public.products
-SET sizes = (
-    SELECT jsonb_object_agg(
-        key,
-        jsonb_build_object(
-            'price', value->'price',
-            'quantity', 0  -- обнуляем quantity
-        )
-    )
-    FROM jsonb_each(sizes)
-)
-WHERE sizes IS NOT NULL;
+-- -- ============================================================
+-- -- 1. Удаляем in_stock из JSONB sizes в products
+-- -- ============================================================
+-- UPDATE public.products
+-- SET sizes = (
+--     SELECT jsonb_object_agg(
+--         key,
+--         jsonb_build_object(
+--             'price', value->'price',
+--             'quantity', 0  -- обнуляем quantity
+--         )
+--     )
+--     FROM jsonb_each(sizes)
+-- )
+-- WHERE sizes IS NOT NULL;
 
--- ============================================================
--- 2. Удаляем колонку in_stock из product_sizes
--- ============================================================
-ALTER TABLE public.product_sizes DROP COLUMN IF EXISTS in_stock;
+-- -- ============================================================
+-- -- 2. Удаляем колонку in_stock из product_sizes
+-- -- ============================================================
+-- ALTER TABLE public.product_sizes DROP COLUMN IF EXISTS in_stock;
 
--- ============================================================
--- 3. Обнуляем quantity в store_house
--- ============================================================
-UPDATE public.store_house SET quantity = 0;
-
-
+-- -- ============================================================
+-- -- 3. Обнуляем quantity в store_house
+-- -- ============================================================
+-- UPDATE public.store_house SET quantity = 0;
 
 
--- Индексы
-CREATE INDEX IF NOT EXISTS idx_product_sizes_product_id ON public.product_sizes(product_id);
-CREATE INDEX IF NOT EXISTS idx_product_sizes_size_key ON public.product_sizes(size_key);
-CREATE INDEX IF NOT EXISTS idx_product_sizes_quantity ON public.product_sizes(quantity) WHERE quantity > 0;
 
--- ============================================================
--- 2. Функция синхронизации при изменении products.sizes
--- ============================================================
-CREATE OR REPLACE FUNCTION public.sync_product_sizes_from_products()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Удаляем старые размеры для этого товара
-    DELETE FROM public.product_sizes WHERE product_id = NEW.id;
+
+-- -- Индексы
+-- CREATE INDEX IF NOT EXISTS idx_product_sizes_product_id ON public.product_sizes(product_id);
+-- CREATE INDEX IF NOT EXISTS idx_product_sizes_size_key ON public.product_sizes(size_key);
+-- CREATE INDEX IF NOT EXISTS idx_product_sizes_quantity ON public.product_sizes(quantity) WHERE quantity > 0;
+
+-- -- ============================================================
+-- -- 2. Функция синхронизации при изменении products.sizes
+-- -- ============================================================
+-- CREATE OR REPLACE FUNCTION public.sync_product_sizes_from_products()
+-- RETURNS TRIGGER AS $$
+-- BEGIN
+--     -- Удаляем старые размеры для этого товара
+--     DELETE FROM public.product_sizes WHERE product_id = NEW.id;
     
-    -- Вставляем новые размеры из JSONB
-    INSERT INTO public.product_sizes (product_id, size_key, price, quantity)
-    SELECT
-        NEW.id,
-        key,
-        (value->>'price')::NUMERIC,
-        COALESCE((value->>'quantity')::INTEGER, 0)
-    FROM jsonb_each(NEW.sizes)
-    WHERE (value->>'price')::NUMERIC > 0;
+--     -- Вставляем новые размеры из JSONB
+--     INSERT INTO public.product_sizes (product_id, size_key, price, quantity)
+--     SELECT
+--         NEW.id,
+--         key,
+--         (value->>'price')::NUMERIC,
+--         COALESCE((value->>'quantity')::INTEGER, 0)
+--     FROM jsonb_each(NEW.sizes)
+--     WHERE (value->>'price')::NUMERIC > 0;
     
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+--     RETURN NEW;
+-- END;
+-- $$ LANGUAGE plpgsql;
 
--- ============================================================
--- 3. Триггер на изменение products.sizes
--- ============================================================
-DROP TRIGGER IF EXISTS trg_sync_product_sizes ON public.products;
-CREATE TRIGGER trg_sync_product_sizes
-AFTER INSERT OR UPDATE OF sizes ON public.products
-FOR EACH ROW
-EXECUTE FUNCTION public.sync_product_sizes_from_products();
+-- -- ============================================================
+-- -- 3. Триггер на изменение products.sizes
+-- -- ============================================================
+-- DROP TRIGGER IF EXISTS trg_sync_product_sizes ON public.products;
+-- CREATE TRIGGER trg_sync_product_sizes
+-- AFTER INSERT OR UPDATE OF sizes ON public.products
+-- FOR EACH ROW
+-- EXECUTE FUNCTION public.sync_product_sizes_from_products();
 
--- ============================================================
--- 4. Функция для ПЕРВОНАЧАЛЬНОГО заполнения product_sizes из products
--- ============================================================
-CREATE OR REPLACE FUNCTION public.fill_product_sizes_from_products()
-RETURNS void AS $$
-BEGIN
-    -- Очищаем таблицу
-    TRUNCATE public.product_sizes;
+-- -- ============================================================
+-- -- 4. Функция для ПЕРВОНАЧАЛЬНОГО заполнения product_sizes из products
+-- -- ============================================================
+-- CREATE OR REPLACE FUNCTION public.fill_product_sizes_from_products()
+-- RETURNS void AS $$
+-- BEGIN
+--     -- Очищаем таблицу
+--     TRUNCATE public.product_sizes;
     
-    -- Заполняем из products.sizes
-    INSERT INTO public.product_sizes (product_id, size_key, price, quantity)
-    SELECT
-        p.id,
-        key,
-        (value->>'price')::NUMERIC,
-        COALESCE((value->>'quantity')::INTEGER, 0)
-    FROM public.products p,
-    LATERAL jsonb_each(p.sizes)
-    WHERE (value->>'price')::NUMERIC > 0;
+--     -- Заполняем из products.sizes
+--     INSERT INTO public.product_sizes (product_id, size_key, price, quantity)
+--     SELECT
+--         p.id,
+--         key,
+--         (value->>'price')::NUMERIC,
+--         COALESCE((value->>'quantity')::INTEGER, 0)
+--     FROM public.products p,
+--     LATERAL jsonb_each(p.sizes)
+--     WHERE (value->>'price')::NUMERIC > 0;
     
-    RAISE NOTICE 'product_sizes заполнена. Всего записей: %', (SELECT COUNT(*) FROM public.product_sizes);
-END;
-$$ LANGUAGE plpgsql;
+--     RAISE NOTICE 'product_sizes заполнена. Всего записей: %', (SELECT COUNT(*) FROM public.product_sizes);
+-- END;
+-- $$ LANGUAGE plpgsql;
 
--- ============================================================
--- 5. ВЫПОЛНЯЕМ ПЕРВОНАЧАЛЬНОЕ ЗАПОЛНЕНИЕ
--- ============================================================
-SELECT public.fill_product_sizes_from_products();
+-- -- ============================================================
+-- -- 5. ВЫПОЛНЯЕМ ПЕРВОНАЧАЛЬНОЕ ЗАПОЛНЕНИЕ
+-- -- ============================================================
+-- SELECT public.fill_product_sizes_from_products();
 
--- ============================================================
--- 6. Индексы
--- ============================================================
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_status_category_type
-ON public.products(status, category, type) WHERE status = 'active';
+-- -- ============================================================
+-- -- 6. Индексы
+-- -- ============================================================
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_status_category_type
+-- ON public.products(status, category, type) WHERE status = 'active';
 
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_name_trgm
-ON public.products USING gin(name gin_trgm_ops);
+-- CREATE EXTENSION IF NOT EXISTS pg_trgm;
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_name_trgm
+-- ON public.products USING gin(name gin_trgm_ops);
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_discount_productid ON public.discount(productid);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_discount_rule_id ON public.discount(rule_id);
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_discount_productid ON public.discount(productid);
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_discount_rule_id ON public.discount(rule_id);
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_brands_id_active ON public.brands(id, is_active) WHERE is_active = true;
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_brands_id_active ON public.brands(id, is_active) WHERE is_active = true;
 
 
--- ============================================================
--- 1. Удаляем старые функции и триггеры
--- ============================================================
-DROP FUNCTION IF EXISTS public.sync_product_sizes() CASCADE;
-DROP FUNCTION IF EXISTS public.sync_store_house_to_product_sizes() CASCADE;
-DROP FUNCTION IF EXISTS public.sync_product_sizes_from_products() CASCADE;
+-- -- ============================================================
+-- -- 1. Удаляем старые функции и триггеры
+-- -- ============================================================
+-- DROP FUNCTION IF EXISTS public.sync_product_sizes() CASCADE;
+-- DROP FUNCTION IF EXISTS public.sync_store_house_to_product_sizes() CASCADE;
+-- DROP FUNCTION IF EXISTS public.sync_product_sizes_from_products() CASCADE;
 
-DROP TRIGGER IF EXISTS trg_sync_sizes ON public.products;
-DROP TRIGGER IF EXISTS trg_sync_store_house ON public.store_house;
-DROP TRIGGER IF EXISTS trg_sync_product_sizes ON public.products;
+-- DROP TRIGGER IF EXISTS trg_sync_sizes ON public.products;
+-- DROP TRIGGER IF EXISTS trg_sync_store_house ON public.store_house;
+-- DROP TRIGGER IF EXISTS trg_sync_product_sizes ON public.products;
 
--- ============================================================
--- 2. Функция синхронизации при изменении products.sizes
--- ============================================================
-CREATE OR REPLACE FUNCTION public.sync_product_sizes_from_products()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Удаляем старые записи для этого товара
-    DELETE FROM public.product_sizes WHERE product_id = NEW.id;
+-- -- ============================================================
+-- -- 2. Функция синхронизации при изменении products.sizes
+-- -- ============================================================
+-- CREATE OR REPLACE FUNCTION public.sync_product_sizes_from_products()
+-- RETURNS TRIGGER AS $$
+-- BEGIN
+--     -- Удаляем старые записи для этого товара
+--     DELETE FROM public.product_sizes WHERE product_id = NEW.id;
 
-    -- Вставляем новые размеры из JSONB (без in_stock)
-    INSERT INTO public.product_sizes (product_id, size_key, price, quantity)
-    SELECT
-        NEW.id,
-        key,
-        (value->>'price')::NUMERIC,
-        COALESCE((value->>'quantity')::INTEGER, 0)
-    FROM jsonb_each(NEW.sizes)
-    WHERE (value->>'price')::NUMERIC > 0;
+--     -- Вставляем новые размеры из JSONB (без in_stock)
+--     INSERT INTO public.product_sizes (product_id, size_key, price, quantity)
+--     SELECT
+--         NEW.id,
+--         key,
+--         (value->>'price')::NUMERIC,
+--         COALESCE((value->>'quantity')::INTEGER, 0)
+--     FROM jsonb_each(NEW.sizes)
+--     WHERE (value->>'price')::NUMERIC > 0;
 
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+--     RETURN NEW;
+-- END;
+-- $$ LANGUAGE plpgsql;
 
--- ============================================================
--- 3. Функция синхронизации при изменении store_house
--- ============================================================
-CREATE OR REPLACE FUNCTION public.sync_store_house_to_product_sizes()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Обновляем quantity в product_sizes
-    UPDATE public.product_sizes
-    SET quantity = NEW.quantity
-    WHERE product_id = NEW.productid 
-      AND size_key = NEW.size;
+-- -- ============================================================
+-- -- 3. Функция синхронизации при изменении store_house
+-- -- ============================================================
+-- CREATE OR REPLACE FUNCTION public.sync_store_house_to_product_sizes()
+-- RETURNS TRIGGER AS $$
+-- BEGIN
+--     -- Обновляем quantity в product_sizes
+--     UPDATE public.product_sizes
+--     SET quantity = NEW.quantity
+--     WHERE product_id = NEW.productid 
+--       AND size_key = NEW.size;
     
-    -- Если записи нет - создаем (с ценой из products.sizes)
-    IF NOT FOUND THEN
-        INSERT INTO public.product_sizes (product_id, size_key, price, quantity)
-        SELECT 
-            NEW.productid,
-            NEW.size,
-            COALESCE(
-                (SELECT (value->>'price')::NUMERIC 
-                 FROM public.products p,
-                 LATERAL jsonb_each(p.sizes) 
-                 WHERE p.id = NEW.productid AND key = NEW.size),
-                0
-            ),
-            NEW.quantity
-        WHERE EXISTS (
-            SELECT 1 FROM public.products 
-            WHERE id = NEW.productid 
-            AND sizes ? NEW.size
-        );
-    END IF;
+--     -- Если записи нет - создаем (с ценой из products.sizes)
+--     IF NOT FOUND THEN
+--         INSERT INTO public.product_sizes (product_id, size_key, price, quantity)
+--         SELECT 
+--             NEW.productid,
+--             NEW.size,
+--             COALESCE(
+--                 (SELECT (value->>'price')::NUMERIC 
+--                  FROM public.products p,
+--                  LATERAL jsonb_each(p.sizes) 
+--                  WHERE p.id = NEW.productid AND key = NEW.size),
+--                 0
+--             ),
+--             NEW.quantity
+--         WHERE EXISTS (
+--             SELECT 1 FROM public.products 
+--             WHERE id = NEW.productid 
+--             AND sizes ? NEW.size
+--         );
+--     END IF;
     
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+--     RETURN NEW;
+-- END;
+-- $$ LANGUAGE plpgsql;
 
--- ============================================================
--- 4. Создаем триггеры
--- ============================================================
-CREATE TRIGGER trg_sync_product_sizes
-AFTER INSERT OR UPDATE OF sizes ON public.products
-FOR EACH ROW
-EXECUTE FUNCTION public.sync_product_sizes_from_products();
+-- -- ============================================================
+-- -- 4. Создаем триггеры
+-- -- ============================================================
+-- CREATE TRIGGER trg_sync_product_sizes
+-- AFTER INSERT OR UPDATE OF sizes ON public.products
+-- FOR EACH ROW
+-- EXECUTE FUNCTION public.sync_product_sizes_from_products();
 
-CREATE TRIGGER trg_sync_store_house
-AFTER INSERT OR UPDATE OF quantity ON public.store_house
-FOR EACH ROW
-EXECUTE FUNCTION public.sync_store_house_to_product_sizes();
+-- CREATE TRIGGER trg_sync_store_house
+-- AFTER INSERT OR UPDATE OF quantity ON public.store_house
+-- FOR EACH ROW
+-- EXECUTE FUNCTION public.sync_store_house_to_product_sizes();
 
 
 
--- Функция синхронизации store_house из products.sizes
-CREATE OR REPLACE FUNCTION public.sync_store_house_from_products()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Удаляем все старые записи для этого товара
-    DELETE FROM public.store_house WHERE productid = NEW.id;
+-- -- Функция синхронизации store_house из products.sizes
+-- CREATE OR REPLACE FUNCTION public.sync_store_house_from_products()
+-- RETURNS TRIGGER AS $$
+-- BEGIN
+--     -- Удаляем все старые записи для этого товара
+--     DELETE FROM public.store_house WHERE productid = NEW.id;
     
-    -- Вставляем только размеры с quantity > 0
-    INSERT INTO public.store_house (productid, size, quantity)
-    SELECT
-        NEW.id,
-        key,
-        COALESCE((value->>'quantity')::INTEGER, 0)
-    FROM jsonb_each(NEW.sizes)
-    WHERE COALESCE((value->>'quantity')::INTEGER, 0) > 0;
+--     -- Вставляем только размеры с quantity > 0
+--     INSERT INTO public.store_house (productid, size, quantity)
+--     SELECT
+--         NEW.id,
+--         key,
+--         COALESCE((value->>'quantity')::INTEGER, 0)
+--     FROM jsonb_each(NEW.sizes)
+--     WHERE COALESCE((value->>'quantity')::INTEGER, 0) > 0;
     
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+--     RETURN NEW;
+-- END;
+-- $$ LANGUAGE plpgsql;
 
--- Создаем триггер на INSERT и UPDATE в products.sizes
-DROP TRIGGER IF EXISTS trg_sync_store_house_from_products ON public.products;
-CREATE TRIGGER trg_sync_store_house_from_products
-AFTER INSERT OR UPDATE OF sizes ON public.products
-FOR EACH ROW
-EXECUTE FUNCTION public.sync_store_house_from_products();
+-- -- Создаем триггер на INSERT и UPDATE в products.sizes
+-- DROP TRIGGER IF EXISTS trg_sync_store_house_from_products ON public.products;
+-- CREATE TRIGGER trg_sync_store_house_from_products
+-- AFTER INSERT OR UPDATE OF sizes ON public.products
+-- FOR EACH ROW
+-- EXECUTE FUNCTION public.sync_store_house_from_products();
 
--- Очищаем store_house
-TRUNCATE public.store_house;
+-- -- Очищаем store_house
+-- TRUNCATE public.store_house;
 
--- Заполняем store_house из products (только quantity > 0)
-INSERT INTO public.store_house (productid, size, quantity)
-SELECT
-    p.id,
-    key,
-    COALESCE((value->>'quantity')::INTEGER, 0)
-FROM public.products p,
-LATERAL jsonb_each(p.sizes)
-WHERE COALESCE((value->>'quantity')::INTEGER, 0) > 0;
+-- -- Заполняем store_house из products (только quantity > 0)
+-- INSERT INTO public.store_house (productid, size, quantity)
+-- SELECT
+--     p.id,
+--     key,
+--     COALESCE((value->>'quantity')::INTEGER, 0)
+-- FROM public.products p,
+-- LATERAL jsonb_each(p.sizes)
+-- WHERE COALESCE((value->>'quantity')::INTEGER, 0) > 0;
 
+-- SELECT * FROM products WHERE article = 'MeNY';
+SELECT 
+    column_name, 
+    is_nullable, 
+    data_type,
+    column_default
+FROM information_schema.columns 
+WHERE table_name = 'products' 
+AND column_name = 'brand_id';

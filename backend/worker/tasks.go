@@ -333,6 +333,33 @@ func (distributor *RedisTaskDistributor) DistributeTaskGenerateWidgetLink(
 
 	return nil
 }
+func (distributor *RedisTaskDistributor) DistributeTaskSendProductNotification(
+	ctx context.Context,
+	payload *PayloadSendProductNotification,
+	opts ...asynq.Option,
+) error {
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal task payload: %w", err)
+	}
+
+	task := asynq.NewTask(TaskSendProductNotification, jsonPayload, opts...)
+	info, err := distributor.client.EnqueueContext(ctx, task)
+	if err != nil {
+		return fmt.Errorf("failed to enqueue task: %w", err)
+	}
+
+	log.Info().
+		Str("type", task.Type()).
+		Int32("admin_id", payload.AdminID).
+		Str("action", payload.Action).
+		Int("products", len(payload.Products)).
+		Str("queue", info.Queue).
+		Int("max_retry", info.MaxRetry).
+		Msg("enqueued product notification task")
+
+	return nil
+}
 
 // ============ PROCESSORS ============
 

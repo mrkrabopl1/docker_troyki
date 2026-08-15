@@ -112,37 +112,22 @@ type ProductsFilterStruct struct {
 }
 
 func (s *Server) handleSearchWithFilters(ctx *gin.Context) {
-	startTotal := time.Now()
-	log.Printf("🚀 [START] handleSearchSnickersAndFiltersByNameCategoryAndType")
-
-	// ---- 1. Биндинг JSON ----
-	startBind := time.Now()
 	var postData types.PostDataSnickersAndFiltersByString
 	if err := ctx.BindJSON(&postData); err != nil {
 		fmt.Println(err, "error in handleSearchProductsByCategories")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	bindDuration := time.Since(startBind)
-	log.Printf("⏱️ [1] BindJSON: %v", bindDuration)
 	log.Printf("📥 postData: Name='%s', Category=%d, Type=%d, Page=%d, Size=%d, SortType=%d",
 		postData.Name, postData.Category, postData.Type, postData.Page, postData.Size, postData.SortType)
 
-	// ---- 2. Подготовка параметров ----
-	startParams := time.Now()
 	params := db.GetFiltersByNameCategoryAndTypeParamsNew{
 		Name:     pgtype.Text{String: postData.Name, Valid: postData.Name != ""},
 		Category: pgtype.Int4{Int32: postData.Category, Valid: postData.Category != 0},
 		Type:     pgtype.Int4{Int32: postData.Type, Valid: postData.Type != 0},
 		BrandID:  pgtype.Int4{Int32: postData.BrandID, Valid: postData.BrandID != 0},
 	}
-	paramsDuration := time.Since(startParams)
-	log.Printf("⏱️ [2] Подготовка параметров: %v", paramsDuration)
-	fmt.Println(params)
-	log.Printf("📤 params: Type=%v, Category=%v, Name=%v, BrandId =%v",
-		params.Type.Valid, params.Category.Valid, params.Name.Valid, params.BrandID.Valid)
 
-	// ---- 3. Основной запрос ----
 	startQuery := time.Now()
 	ProductsInfo, err1 := s.store.GetProductsAndFiltersByNameCategoryAndType(
 		ctx, params, postData.Page, postData.Size, postData.Filters, postData.SortType)
@@ -157,16 +142,8 @@ func (s *Server) handleSearchWithFilters(ctx *gin.Context) {
 	// log.Printf("📥 ProductsInfo: TotalCount=%v, ProductsCount=%d, Filters=%+v",
 	// 	ProductsInfo.TotalCount, len(ProductsInfo.Products), ProductsInfo.Filters)
 
-	// ---- 4. JSON ответ ----
-	startJSON := time.Now()
 	ctx.JSON(http.StatusOK, ProductsInfo)
-	jsonDuration := time.Since(startJSON)
-	log.Printf("⏱️ [4] ctx.JSON: %v", jsonDuration)
 
-	// ---- ИТОГО ----
-	totalDuration := time.Since(startTotal)
-	log.Printf("⏱️ [TOTAL] handleSearchSnickersAndFiltersByNameCategoryAndType: %v", totalDuration)
-	log.Printf("✅ [END] handleSearchSnickersAndFiltersByNameCategoryAndType")
 }
 func (s *Server) handleSearchSnickersAndFiltersBySlugs(ctx *gin.Context) {
 	startTotal := time.Now()

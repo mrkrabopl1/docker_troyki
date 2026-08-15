@@ -26,24 +26,19 @@ var AllowedWriteTables = map[string][]string{
 		"discount", "discount_rules", "discount_rule_items",
 		"banners", "customers", "orders",
 	},
-	"DELETE": {
-		"products", "product_colors", "store_house",
-		"discount", "discount_rule_items", "banners",
-	},
+	// DELETE - удален, запрещен
 }
 
 var ForbiddenKeywords = []string{
-	"DROP DATABASE", "DROP SCHEMA", "DROP OWNED",
-	"REVOKE", "GRANT",
-	"CREATE DATABASE", "CREATE SCHEMA",
-	"ALTER DATABASE", "ALTER SCHEMA",
-	"COPY", "\\COPY",
+	"DROP", "ALTER", "TRUNCATE", "DELETE",
+	"REVOKE", "GRANT", "COPY", "EXECUTE", "PREPARE",
+	"LISTEN", "NOTIFY", "VACUUM", "REINDEX", "CLUSTER",
 	"pg_read_file", "pg_read_binary_file",
 	"pg_ls_dir", "pg_ls_waldir",
 	"lo_import", "lo_export",
-	"EXECUTE", "PREPARE",
-	"LISTEN", "NOTIFY",
-	"VACUUM", "REINDEX", "CLUSTER",
+	"ALTER DATABASE", "ALTER SCHEMA",
+	"CREATE DATABASE", "CREATE SCHEMA",
+	"DROP DATABASE", "DROP SCHEMA", "DROP OWNED",
 }
 
 var ForbiddenWriteTables = []string{
@@ -126,6 +121,49 @@ func ValidateSQL(queries []types.ParsedQuery, adminRole string) types.SQLValidat
 
 		upperQ := strings.ToUpper(strings.TrimSpace(pq.Query))
 
+		// ========== ЯВНЫЕ ЗАПРЕТЫ ==========
+
+		// Запрещаем DELETE
+		if strings.HasPrefix(upperQ, "DELETE") {
+			result.Errors = append(result.Errors,
+				fmt.Sprintf("Запрос #%d: DELETE запрещен в SQL консоли", i+1))
+			result.Valid = false
+			continue
+		}
+
+		// Запрещаем ALTER
+		if strings.HasPrefix(upperQ, "ALTER") {
+			result.Errors = append(result.Errors,
+				fmt.Sprintf("Запрос #%d: ALTER запрещен в SQL консоли", i+1))
+			result.Valid = false
+			continue
+		}
+
+		// Запрещаем DROP
+		if strings.HasPrefix(upperQ, "DROP") {
+			result.Errors = append(result.Errors,
+				fmt.Sprintf("Запрос #%d: DROP запрещен в SQL консоли", i+1))
+			result.Valid = false
+			continue
+		}
+
+		// Запрещаем TRUNCATE
+		if strings.HasPrefix(upperQ, "TRUNCATE") {
+			result.Errors = append(result.Errors,
+				fmt.Sprintf("Запрос #%d: TRUNCATE запрещен в SQL консоли", i+1))
+			result.Valid = false
+			continue
+		}
+
+		// Запрещаем CREATE (кроме CREATE INDEX)
+		if strings.HasPrefix(upperQ, "CREATE") && !strings.Contains(upperQ, "CREATE INDEX") {
+			result.Errors = append(result.Errors,
+				fmt.Sprintf("Запрос #%d: CREATE запрещен в SQL консоли (разрешены только CREATE INDEX)", i+1))
+			result.Valid = false
+			continue
+		}
+
+		// Проверка на запрещенные ключевые слова
 		if containsForbiddenKeywords(upperQ) {
 			result.Errors = append(result.Errors,
 				fmt.Sprintf("Запрос #%d содержит запрещённые операции", i+1))
@@ -135,6 +173,14 @@ func ValidateSQL(queries []types.ParsedQuery, adminRole string) types.SQLValidat
 
 		opType := detectOperationType(upperQ, pq.Query)
 		tableName := extractTableName(pq.Query, opType)
+
+		// Еще одна проверка на DELETE (для надежности)
+		if opType == "DELETE" {
+			result.Errors = append(result.Errors,
+				fmt.Sprintf("Запрос #%d: DELETE запрещен в SQL консоли", i+1))
+			result.Valid = false
+			continue
+		}
 
 		if !isOperationAllowed(opType, tableName, adminRole) {
 			result.Errors = append(result.Errors,
@@ -169,7 +215,7 @@ func ValidateSQL(queries []types.ParsedQuery, adminRole string) types.SQLValidat
 
 func containsForbiddenKeywords(query string) bool {
 	for _, keyword := range ForbiddenKeywords {
-		if strings.Contains(query, strings.ToUpper(keyword)) {
+		if strings.Contains(query, keyword) {
 			return true
 		}
 	}
@@ -243,21 +289,41 @@ func extractTableName(query, opType string) string {
 }
 
 func isOperationAllowed(opType, tableName, adminRole string) bool {
+	// SUPERADMIN может все
 	if adminRole == "superadmin" {
 		return true
 	}
 
+	// SELECT всегда разрешен
 	if opType == "SELECT" || opType == "BEGIN" || opType == "COMMIT" {
 		return true
 	}
 
+	// DELETE запрещен для всех (кроме superadmin)
+	if opType == "DELETE" {
+		return false
+	}
+
+	// ALTER, DROP, TRUNCATE запрещены для всех (кроме superadmin)
+	if opType == "ALTER" || opType == "DROP" || opType == "TRUNCATE" {
+		return false
+	}
+
+	// CREATE запрещен (кроме CREATE INDEX для superadmin)
+	if opType == "CREATE" {
+		return false
+	}
+
 	tableName = strings.ToLower(tableName)
+
+	// Запрещенные таблицы
 	for _, forbidden := range ForbiddenWriteTables {
 		if strings.HasPrefix(tableName, forbidden) {
 			return false
 		}
 	}
 
+	// Проверяем разрешенные таблицы для INSERT/UPDATE
 	if allowedTables, ok := AllowedWriteTables[opType]; ok {
 		for _, allowed := range allowedTables {
 			if tableName == allowed {
@@ -265,10 +331,6 @@ func isOperationAllowed(opType, tableName, adminRole string) bool {
 			}
 		}
 		return false
-	}
-
-	if opType == "CREATE" && strings.Contains(strings.ToUpper(tableName), "INDEX") {
-		return true
 	}
 
 	return false
@@ -320,7 +382,7 @@ func isStricterMode(new, current types.SQLExecutionMode) bool {
 	return modes[new] > modes[current]
 }
 
-// ========== ВЫПОЛНЕНИЕ (прямо с pgxpool.Pool) ==========
+// ========== ВЫПОЛНЕНИЕ ==========
 
 func ExecuteSQLQueries(
 	ctx context.Context,
@@ -343,6 +405,8 @@ func ExecuteSQLQueries(
 		summary.TotalQueries++
 		opInfo := validation.Operations[i]
 		queryStartTime := time.Now()
+
+		var rowsAffected int64
 
 		switch {
 		case opInfo.Type == "SELECT":
@@ -380,7 +444,7 @@ func ExecuteSQLQueries(
 				opInfo.Message = err.Error()
 				summary.Failed++
 			} else {
-				rowsAffected := result.RowsAffected()
+				rowsAffected = result.RowsAffected()
 				opInfo.RowsAffected = rowsAffected
 
 				if rowsAffected == 0 {

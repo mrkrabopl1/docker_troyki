@@ -21,7 +21,7 @@ const PricesBlock: React.FC<merchType> = (props) => {
     return (
         <div 
             onClick={in_stock ? onChange : undefined} 
-            className={`${s.priceBlock} ${active ? s.active : ''} ${!in_stock ? s.outOfStock : ''}`}
+            className={`${s.priceBlock} ${active ? s.active : ''} ${!price ? s.outOfStock : ''}`}
         >
             <div className={s.sizeHolder}>{size}</div>
             
@@ -42,7 +42,7 @@ const PricesBlock: React.FC<merchType> = (props) => {
                 </div>
             )}
 
-            {!in_stock && (
+            {!price && (
                 <div className={s.stockLabel}>
                     Нет в наличии
                 </div>

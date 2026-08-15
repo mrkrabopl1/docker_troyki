@@ -2,10 +2,21 @@ package types
 
 import (
 	"encoding/json"
+	"net/netip"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/lib/pq"
 )
+
+type CreateAdminLogParams struct {
+	AdminID    int32       `json:"admin_id"`
+	Action     string      `json:"action"`
+	EntityType pgtype.Text `json:"entity_type"`
+	EntityID   pgtype.Int4 `json:"entity_id"`
+	Details    pgtype.Text `json:"details"`
+	IpAddress  *netip.Addr `json:"ip_address"`
+}
 
 type ProductsFilterStruct struct {
 	Firms       []int32   `json:"firms"`
