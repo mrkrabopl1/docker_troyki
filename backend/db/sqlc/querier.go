@@ -151,6 +151,7 @@ type Querier interface {
 	GetBrandLinesByBrandSlug(ctx context.Context, slug string) ([]GetBrandLinesByBrandSlugRow, error)
 	GetBrandLinesWithProductCount(ctx context.Context, brandID int32) ([]GetBrandLinesWithProductCountRow, error)
 	GetBrandsIds(ctx context.Context, name string) ([]int32, error)
+	GetBrandsLight(ctx context.Context, arg GetBrandsLightParams) ([]GetBrandsLightRow, error)
 	GetBrandsWithProductCount(ctx context.Context) ([]GetBrandsWithProductCountRow, error)
 	GetBrandsWithStats(ctx context.Context, arg GetBrandsWithStatsParams) ([]GetBrandsWithStatsRow, error)
 	GetBrandsWithStatsAndDiscounts(ctx context.Context, arg GetBrandsWithStatsAndDiscountsParams) ([]GetBrandsWithStatsAndDiscountsRow, error)

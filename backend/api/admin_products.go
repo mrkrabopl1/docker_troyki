@@ -201,6 +201,29 @@ func (s *Server) handleGetProductsLight(c *gin.Context) {
 	})
 }
 
+func (s *Server) handleGetBrandsLight(c *gin.Context) {
+	limit := parseLimit(c.Query("limit"), 1000, 5000)
+	offset := parseOffset(c.Query("offset"))
+
+	products, err := s.store.GetBrandsLight(c.Request.Context(), db.GetBrandsLightParams{
+		LimitVal:  pgtype.Int4{Int32: int32(limit), Valid: true},
+		OffsetVal: pgtype.Int4{Int32: int32(offset), Valid: true},
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"products": products,
+		"pagination": gin.H{
+			"limit":  limit,
+			"offset": offset,
+			"count":  len(products),
+		},
+	})
+}
+
 // ============================================================
 // 2. GET /admin/products/light/since
 // Только обновленные после указанной даты

@@ -3517,6 +3517,46 @@ func (q *Queries) GetBrandsIds(ctx context.Context, name string) ([]int32, error
 	return items, nil
 }
 
+const getBrandsLight = `-- name: GetBrandsLight :many
+SELECT 
+    b.slug,
+    b.name
+FROM brands b
+ORDER BY b.id
+LIMIT COALESCE($2::int, 1000)
+OFFSET COALESCE($1::int, 0)
+`
+
+type GetBrandsLightParams struct {
+	OffsetVal pgtype.Int4 `json:"offset_val"`
+	LimitVal  pgtype.Int4 `json:"limit_val"`
+}
+
+type GetBrandsLightRow struct {
+	Slug string `json:"slug"`
+	Name string `json:"name"`
+}
+
+func (q *Queries) GetBrandsLight(ctx context.Context, arg GetBrandsLightParams) ([]GetBrandsLightRow, error) {
+	rows, err := q.db.Query(ctx, getBrandsLight, arg.OffsetVal, arg.LimitVal)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBrandsLightRow
+	for rows.Next() {
+		var i GetBrandsLightRow
+		if err := rows.Scan(&i.Slug, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getBrandsWithProductCount = `-- name: GetBrandsWithProductCount :many
 SELECT b.id,
     b.name,

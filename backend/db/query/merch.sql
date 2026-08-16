@@ -4258,3 +4258,13 @@ SET
 -- name: DeleteAllRuleBasedDiscounts :exec
 DELETE FROM discount
 WHERE value::text LIKE '%"rule_id"%';
+
+
+-- name: GetBrandsLight :many
+SELECT 
+    b.slug,
+    b.name
+FROM brands b
+ORDER BY b.id
+LIMIT COALESCE(sqlc.narg('limit_val')::int, 1000)
+OFFSET COALESCE(sqlc.narg('offset_val')::int, 0);
