@@ -97,7 +97,7 @@ func (s *Server) setupRouter() {
 
 		api.GET("/products/light", s.handleGetProductsLight)
 		api.GET("/products/light/since", s.handleGetProductsLightSince)
-		api.GET("/brands/light", s.handleGetProductsLight)
+		api.GET("/brands/light", s.handleGetBrandsLight)
 
 		api.POST("/collection", s.handleGetSoloCollection)
 		api.GET("/collections/:id", s.handleGetCollectionById)
