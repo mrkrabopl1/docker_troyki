@@ -205,7 +205,7 @@ func (s *Server) handleGetBrandsLight(c *gin.Context) {
 	limit := parseLimit(c.Query("limit"), 1000, 5000)
 	offset := parseOffset(c.Query("offset"))
 
-	products, err := s.store.GetBrandsLight(c.Request.Context(), db.GetBrandsLightParams{
+	brands, err := s.store.GetBrandsLight(c.Request.Context(), db.GetBrandsLightParams{
 		LimitVal:  pgtype.Int4{Int32: int32(limit), Valid: true},
 		OffsetVal: pgtype.Int4{Int32: int32(offset), Valid: true},
 	})
@@ -215,11 +215,11 @@ func (s *Server) handleGetBrandsLight(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"products": products,
+		"brands": brands,
 		"pagination": gin.H{
 			"limit":  limit,
 			"offset": offset,
-			"count":  len(products),
+			"count":  len(brands),
 		},
 	})
 }
