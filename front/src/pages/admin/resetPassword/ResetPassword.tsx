@@ -4,10 +4,11 @@ import { confirmPasswordReset } from 'src/providers/adminAuth';
 import ResetPasswordForm from 'src/modules/loginForm/ResetPasswordForm';
 import s from './style.module.css';
 import { finishLoading } from 'src/store/reducers/loadingSlice';
-import { useAppDispatch} from 'src/store/hooks/redux'
+import { useAppDispatch, useNavigate} from 'src/store/hooks/redux'
 
 
 const AdminResetPassword: React.FC = () => {
+    const navigate = useNavigate()
     const router = useRouter();
     const token = router.query.token as string;
     const [isLoading, setIsLoading] = useState(false);

@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { getOrderDetails } from 'src/providers/adminOrdersProvider';
 import s from './style.module.css';
 import { finishLoading } from 'src/store/reducers/loadingSlice';
-import { useAppDispatch } from 'src/store/hooks/redux';
+import { useAppDispatch,useNavigate } from 'src/store/hooks/redux';
 
 // Конфигурация статусов
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -101,6 +101,7 @@ interface OrderDetails {
 }
 
 const OrderDetails: React.FC = () => {
+    const navigate = useNavigate();
     const router = useRouter();
     const { id } = router.query;
     const [order, setOrder] = useState<OrderDetails | null>(null);

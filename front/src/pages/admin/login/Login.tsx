@@ -4,10 +4,11 @@ import { useRouter } from 'next/router';
 import { loginAdmin } from 'src/providers/adminAuth';
 import LoginForm from 'src/modules/loginForm/LoginForm';
 import s from './style.module.css';
-import { useAppDispatch } from 'src/store/hooks/redux';
+import { useAppDispatch,useNavigate } from 'src/store/hooks/redux';
 import { finishLoading } from 'src/store/reducers/loadingSlice';
 
 const AdminLogin: React.FC = () => {
+    const navigate = useNavigate();
     const router = useRouter();
     const dispatch = useAppDispatch();
     
