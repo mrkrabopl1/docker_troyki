@@ -5,8 +5,9 @@ import { requestPasswordReset } from 'src/providers/adminAuth';
 import ForgotPasswordForm from 'src/modules/loginForm/ForgotPasswordForm';
 import s from './style.module.css';
 import { finishLoading } from 'src/store/reducers/loadingSlice';
-import { useAppDispatch } from 'src/store/hooks/redux'
+import { useAppDispatch, useNavigate } from 'src/store/hooks/redux'
 const AdminForgotPassword: React.FC = () => {
+    const navigate = useNavigate()
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
