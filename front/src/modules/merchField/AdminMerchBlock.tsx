@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/router';
 import { toPrice } from 'src/global';
 import s from './adminMerchBlock.module.css'
-
+import { useNavigate } from 'src/store/hooks/redux';
 interface AdminMerchBlockProps {
     data: any
     isSelected: boolean
@@ -11,17 +11,18 @@ interface AdminMerchBlockProps {
     onStatusToggle: (isActive: boolean) => void
 }
 
-const AdminMerchBlock: React.FC<AdminMerchBlockProps> = ({ 
-    data, 
-    isSelected, 
-    onSelect, 
-    onStatusToggle 
+const AdminMerchBlock: React.FC<AdminMerchBlockProps> = ({
+    data,
+    isSelected,
+    onSelect,
+    onStatusToggle
 }) => {
+    const navigate = useNavigate()
     const router = useRouter();
     const [isHovered, setIsHovered] = useState(false)
 
     return (
-        <div 
+        <div
             className={`${s.merchBlock} ${!data.is_active ? s.inactive : ''} ${isSelected ? s.selected : ''}`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
@@ -34,8 +35,8 @@ const AdminMerchBlock: React.FC<AdminMerchBlockProps> = ({
                     onClick={(e) => e.stopPropagation()}
                 />
             </div>
-            
-            <div className={s.imageBlock} onClick={() => router.push('/products/edit/' + data.id)}>
+
+            <div className={s.imageBlock} onClick={() => navigate('/products/edit/' + data.id)}>
                 <img src={data.imgs?.[0] || data.image_path} alt={data.name} />
                 {data.discount && (
                     <div className={s.discountBadge}>
@@ -43,7 +44,7 @@ const AdminMerchBlock: React.FC<AdminMerchBlockProps> = ({
                     </div>
                 )}
             </div>
-            
+
             <div className={s.infoBlock}>
                 <div className={s.name}>{data.name}</div>
                 <div className={s.firm}>{data.firm}</div>
@@ -58,12 +59,12 @@ const AdminMerchBlock: React.FC<AdminMerchBlockProps> = ({
                     )}
                 </div>
             </div>
-            
+
             <div className={s.statusBlock}>
                 <div className={`${s.statusBadge} ${data.is_active ? s.active : s.inactive}`}>
                     {data.is_active ? 'На витрине' : 'Скрыт'}
                 </div>
-                
+
                 {isHovered && (
                     <button
                         className={`${s.toggleBtn} ${data.is_active ? s.hideBtn : s.showBtn}`}

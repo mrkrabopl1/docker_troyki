@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/router';
 import { GetServerSideProps } from 'next';
-import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
+import { useAppDispatch, useAppSelector,useNavigate } from 'src/store/hooks/redux'
 import { finishLoading } from 'src/store/reducers/loadingSlice'
 import { CheckBoxType } from 'src/types/modules'
 import { BODY_TYPES } from 'src/constants/bodytypes'
@@ -58,6 +58,7 @@ interface CollectionPageProps {
 const PAGE_SIZE = 24
 
 const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collectionSlug }) => {
+    const navigate = useNavigate()
     const router = useRouter()
     const dispatch = useAppDispatch()
     const { collection } = router.query
@@ -801,7 +802,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
                         }}
                         val={searchWord.current}
                         searchCallback={searchNameCallback}
-                        selectList={(data) => router.push('/product/' + data)}
+                        selectList={(data) => navigate('/product/' + data)}
                     />
 
                     {widthProps ? (

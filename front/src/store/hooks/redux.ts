@@ -1,10 +1,13 @@
-import {TypedUseSelectorHook, useDispatch, useSelector} from "react-redux";
-import {AppDispatch, RootState} from "../store";
+import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../store";
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { resetLoading } from 'src/store/reducers/loadingSlice';
+import { show } from 'src/store/reducers/menuSlice';
+
 export const useAppDispatch = () => useDispatch<AppDispatch>();
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+
 const useRouteChange = () => {
     const router = useRouter();
     const dispatch = useAppDispatch();
@@ -22,6 +25,7 @@ const useRouteChange = () => {
         };
     }, [router.pathname, dispatch]);
 };
+
 const useMediaQuery = (query: string): boolean => {
     const [matches, setMatches] = useState(false);
 
@@ -37,6 +41,7 @@ const useMediaQuery = (query: string): boolean => {
 
     return matches;
 };
+
 const useContentHeight = () => {
     const [contentHeight, setContentHeight] = useState(0);
     const contentRef = useRef<HTMLDivElement>(null);
@@ -75,6 +80,25 @@ const useContentHeight = () => {
       contentRef, 
       contentHeight
     };
+};
+
+// Вариант 1: Кастомный хук для навигации с меню
+const useNavigate = () => {
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+
+  const navigate = (path: string, options?: { showMenu?: boolean }) => {
+    // Показываем меню при навигации
+    dispatch(show(options?.showMenu ?? true));
+    router.push(path);
   };
-  
-  export { useContentHeight, useMediaQuery,useRouteChange };
+
+  return navigate;
+};
+
+export { 
+  useContentHeight, 
+  useMediaQuery, 
+  useRouteChange,
+  useNavigate
+};

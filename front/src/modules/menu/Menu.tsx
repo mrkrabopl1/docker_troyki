@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useMemo, memo, CSSProperties } from 'react';
 import {useRouter } from 'next/router';
-import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux';
+import { useAppSelector, useAppDispatch,useNavigate } from 'src/store/hooks/redux';
 import { searchSlice } from 'src/store/reducers/searchSlice';
 import { setGlobalScroller } from 'src/global';
 import BuyButton from "./BuyButton";
@@ -24,6 +24,7 @@ interface MenuProps {
 }
 
 const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
+    const navigate = useNavigate()
     const dispatch = useAppDispatch();
     const router = useRouter();
     const { isLog } = useAppSelector(state => state.user);
@@ -44,16 +45,16 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
 
     const searchCallback = useCallback((text: string) => {
         turnActive(false);
-        router.push(`/search?key_word=${text}`);
+        navigate(`/search?key_word=${text}`);
     }, [router, turnActive]);
 
     const selectListHandler = useCallback((id: number) => {
         setActive(false);
-        router.push('/product/' + id);
+        navigate('/product/' + id);
     }, [router]);
 
     const handleLogoClick = useCallback(() => {
-        router.push("/");
+        navigate("/");
     }, [router]);
 
     const handleLoupeClick = useCallback(() => {
@@ -74,10 +75,10 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
     const handleComplexDrop = useCallback((data: { main?: string; sub?: string }) => {
         setShowBurgerMenu(false)
         if (!data.sub) {
-            router.push(`/search?category=${data.main}`);
+            navigate(`/search?category=${data.main}`);
         } else {
             let type_key = Object.values(typesVal).filter(cat => cat.category_key === data.main && data.sub === cat.name).map(cat => cat.type_key)[0]
-            router.push(`/search?type=${type_key}&category=${data.main}`);
+            navigate(`/search?type=${type_key}&category=${data.main}`);
         }
     }, [router, typesVal]);
     const handleBurgerChange = useCallback((data: boolean) => {
@@ -110,12 +111,12 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                     Фирмы
                 </div>
                 <div onClick={() => {
-                    router.push('/search?discount=true');
+                    navigate('/search?discount=true');
                 }} className={s.link}>
                     Скидки
                 </div>
                 <div onClick={() => {
-                    router.push('/about');
+                    navigate('/about');
                 }} className={s.link}>
                     О нас
                 </div>
@@ -142,19 +143,19 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                     </div>
                     <div onClick={() => {
                         actibeBurger.current = false;
-                        router.push('/search?discount=true');
+                        navigate('/search?discount=true');
                     }} className={s.link}>
                         Скидки
                     </div>
                     <div onClick={() => {
                         actibeBurger.current = false;
-                        router.push('/about');
+                        navigate('/about');
                     }} className={s.link}>
                         О нас
                     </div>
                     <div onClick={() => {
                         actibeBurger.current = false;
-                        router.push('/reviews');
+                        navigate('/reviews');
                     }} className={s.link}>
                         Отзывы
                     </div>
@@ -184,7 +185,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                 <div style={{ height: "100%" }} onClick={(e) => e.stopPropagation()} className={s.modalWrap1}>
                     <AlphabetNavigation
                         onChange={(name) => {
-                            router.push(`/search?brand=${name}`);
+                            navigate(`/search?brand=${name}`);
                             setActiveAlphabet(false);
                         }}
                     />

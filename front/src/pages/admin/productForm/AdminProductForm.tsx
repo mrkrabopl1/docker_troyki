@@ -1,7 +1,7 @@
 // pages/admin/ProductForm/AdminProductForm.tsx
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { useAppSelector } from 'src/store/hooks/redux';
+import { useAppSelector,useNavigate } from 'src/store/hooks/redux';
 import Button from 'src/components/Button';
 import Modal from 'src/components/modal/Modal';
 import Scroller from 'src/components/scroller/Scroller';
@@ -42,6 +42,7 @@ interface SizePrice {
 }
 
 const AdminProductForm: React.FC = () => {
+    const navigate = useNavigate();
     const router = useRouter();
     const { id } = router.query;
     const isEdit = !!id && id !== 'create';
@@ -178,7 +179,7 @@ const AdminProductForm: React.FC = () => {
         setLoading(true);
         try {
             await deleteAdminProduct(formData.id, () => {
-                router.push('/admin/products');
+                navigate('/admin/products');
             });
         } catch (error) {
             console.error('Ошибка удаления товара:', error);
@@ -340,12 +341,12 @@ const AdminProductForm: React.FC = () => {
             if (isEdit && formData.id) {
                 await updateAdminProduct(formData.id, payload as any, (response) => {
                     console.log('Product updated:', response);
-                    router.push('/admin/products');
+                    navigate('/admin/products');
                 });
             } else {
                 await createAdminProduct(payload as any, (response) => {
                     console.log('Product created:', response);
-                    router.push('/admin/products');
+                    navigate('/admin/products');
                 });
             }
         } catch (error: any) {

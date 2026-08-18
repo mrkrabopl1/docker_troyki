@@ -20,7 +20,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick, isMobile }) => {
         logoutAdmin(() => {
             dispatch(logout());
             console.debug('Admin logged out');
-            router.push('/admin/login');
+            navigate('/admin/login');
         });
     };
     

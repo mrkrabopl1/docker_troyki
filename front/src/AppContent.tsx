@@ -217,7 +217,7 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
 
   // Инициализация Redux из SSR данных или загрузка на клиенте
   useEffect(() => {
-    if (isHydrated.current) return; // Уже инициализировали
+    // if (isHydrated.current) return; // Уже инициализировали
 
     // 1. Инициализируем основные данные
     if (initialMainInfo) {

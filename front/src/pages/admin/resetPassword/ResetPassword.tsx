@@ -37,7 +37,7 @@ const AdminResetPassword: React.FC = () => {
                 if (result) {
                     setIsSuccess(true);
                     setTimeout(() => {
-                        router.push('/admin/login');
+                        navigate('/admin/login');
                     }, 3000);
                 } else {
                     setError('Ошибка смены пароля. Возможно, токен истек.');

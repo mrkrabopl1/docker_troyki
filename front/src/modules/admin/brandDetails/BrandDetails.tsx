@@ -12,8 +12,10 @@ import {
     updateBrandData,
     uploadTempImage
 } from 'src/providers/adminProductsProvider';
+import { useNavigate } from 'src/store/hooks/redux';
 
 const BrandDetails: React.FC = () => {
+    const navigate = useNavigate();
     const router = useRouter();
     const { brandId } = router.query;
 
@@ -160,7 +162,7 @@ const BrandDetails: React.FC = () => {
         return (
             <div className={s.container}>
                 <div className={s.error}>Бренд не найден</div>
-                <Button text="← Назад к списку" onClick={() => router.push('/admin/brands')} />
+                <Button text="← Назад к списку" onClick={() => navigate('/admin/brands')} />
             </div>
         );
     }
@@ -168,9 +170,9 @@ const BrandDetails: React.FC = () => {
     return (
         <div className={s.container}>
             <div className={s.breadcrumbs}>
-                <span onClick={() => router.push('/admin')}>Админ</span>
+                <span onClick={() => navigate('/admin')}>Админ</span>
                 <span className={s.separator}>/</span>
-                <span onClick={() => router.push('/admin/brands')}>Бренды</span>
+                <span onClick={() => navigate('/admin/brands')}>Бренды</span>
                 <span className={s.separator}>/</span>
                 <span className={s.current}>{brand.name}</span>
             </div>
@@ -186,7 +188,7 @@ const BrandDetails: React.FC = () => {
                     {!isEditing ? (
                         <>
                             <Button text="Редактировать бренд" onClick={handleEditClick} />
-                            <Button text="← Назад к списку" onClick={() => router.push('/admin/brands')} />
+                            <Button text="← Назад к списку" onClick={() => navigate('/admin/brands')} />
                         </>
                     ) : (
                         <>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { useAppSelector } from 'src/store/hooks/redux';
+import { useAppSelector,useNavigate } from 'src/store/hooks/redux';
 import { isDeepEqual } from 'src/global';
 import Menu from './Menu';
 import ComplexDrop from 'src/components/complexDrop/ComplexDrop';
@@ -23,6 +23,7 @@ const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
     className,
     complexDropData,
 }) => {
+    const navigate = useNavigate()
     const router = useRouter();
     const { show, sticky, typesVal, categories, firms } = useAppSelector(state => state.menu);
     const [showMenu, setShowMenu] = useState(false);
@@ -38,10 +39,10 @@ const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
 
     const handleCategoriesSelect = useCallback((data: { main?: string; sub?: string }) => {
         if (!data.sub) {
-            router.push(`/search?category=${data.main}`);
+            navigate(`/search?category=${data.main}`);
         } else {
             let type_key = Object.values(typesVal).filter(cat => cat.category_key === data.main && data.sub === cat.name).map(cat => cat.type_key)[0]
-            router.push(`/search?type=${type_key}&category=${data.main}`);
+            navigate(`/search?type=${type_key}&category=${data.main}`);
         }
 
     }, [router, typesVal]);
@@ -67,7 +68,7 @@ const ComplexDropMenuComponent: React.FC<ComplexDropMenuProps> = ({
             convertedData[key] = {
                 main: (<div
                     onClick={() => {
-                        router.push(`/search?category=${key}`);
+                        navigate(`/search?category=${key}`);
                     }}
                     className={s.categoryLine} key={key}>
                     <img src={"/" + value.image_path} alt={key} />

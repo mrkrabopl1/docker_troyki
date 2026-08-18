@@ -1,7 +1,7 @@
 // pages/admin/ProductForm/AdminProductForm.tsx
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { useAppSelector } from 'src/store/hooks/redux';
+import { useAppSelector,useNavigate } from 'src/store/hooks/redux';
 import { toPrice } from 'src/global';
 import Button from 'src/components/Button';
 import Modal from 'src/components/modal/Modal';
@@ -39,6 +39,7 @@ interface SizePrice {
 }
 
 const AdminProductForm: React.FC = () => {
+    const navigate = useNavigate();
     const router = useRouter();
     const { id } = router.query;
     const isEdit = !!id && id !== 'create';
@@ -368,12 +369,12 @@ const AdminProductForm: React.FC = () => {
             if (isEdit && formData.id) {
                 await updateAdminProduct(formData.id, submitData, (response) => {
                     console.log('Product updated:', response);
-                    router.push('/admin/products');
+                    navigate('/admin/products');
                 });
             } else {
                 await createAdminProduct(submitData as any, (response) => {
                     console.log('Product created:', response);
-                    router.push('/admin/products');
+                    navigate('/admin/products');
                 });
             }
         } catch (error) {
@@ -388,7 +389,7 @@ const AdminProductForm: React.FC = () => {
             <div className={s.header}>
                 <h2>{isEdit ? 'Редактирование товара' : 'Создание товара'}</h2>
                 <div className={s.headerActions}>
-                    <Button text="Назад" onClick={() => router.push('/admin/products')} />
+                    <Button text="Назад" onClick={() => navigate('/admin/products')} />
                     <Button
                         text={isEdit ? 'Сохранить' : 'Создать'}
                         onClick={handleSubmit}

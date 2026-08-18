@@ -3,8 +3,10 @@ import { useRouter } from 'next/router';
 import { verifyEmail } from 'src/providers/userProvider'
 import { useAppDispatch } from 'src/store/hooks/redux';
 import { verified } from 'src/store/reducers/menuSlice'
+import { useNavigate } from 'src/store/hooks/redux'
 
 const Verification: React.FC<any> = () => { 
+    const navigate = useNavigate()
     const router = useRouter();
     const verHash = router.query.verHash as string;
     let dispatch = useAppDispatch()
@@ -15,7 +17,7 @@ const Verification: React.FC<any> = () => {
         verifyEmail(verHash, (data) => {
             if (data) {
                 dispatch(verified(true))
-                router.push("/");
+                navigate("/");
             } else {
                 setInfo("Ваш код верификации истек повторите попытку еще раз.")
             }

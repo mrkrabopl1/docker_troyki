@@ -246,8 +246,6 @@ func (s *Server) handleGetMainPage(c *gin.Context) {
 		return
 	}
 
-	fmt.Println(widgetsFromDB)
-
 	// 3. Обновляем кэш в фоне
 	go func() {
 		bgCtx := context.Background()

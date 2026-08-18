@@ -5,7 +5,7 @@ import { getStats } from 'src/providers/adminProductsProvider';
 import s from './style.module.css';
 import { finishLoading } from 'src/store/reducers/loadingSlice';
 import { useAppDispatch } from 'src/store/hooks/redux';
-import { useAppSelector } from 'src/store/hooks/redux';
+import { useAppSelector, useNavigate } from 'src/store/hooks/redux';
 
 interface DashboardStats {
     total_products: number;
@@ -29,6 +29,7 @@ interface DashboardStats {
 }
 
 const AdminDashboard: React.FC = () => {
+    const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const router = useRouter();
     const { user } = useAppSelector(state => state.admin);
@@ -66,7 +67,7 @@ const AdminDashboard: React.FC = () => {
 
     // Навигационные функции
     const navigateTo = (path: string) => {
-        router.push(path);
+        navigate(path);
     };
 
     if (loading) {

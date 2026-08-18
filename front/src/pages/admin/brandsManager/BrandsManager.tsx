@@ -9,8 +9,9 @@ import DiscountManager from 'src/modules/admin/discountManager/DiscountManager';
 import s from './style.module.css';
 import Combobox from 'src/components/combobox/Combobox';
 import NumInput from 'src/components/input/NumInput';
+import PageController from 'src/components/contentSlider/slidersSwitchers/PageController';
 import { finishLoading } from 'src/store/reducers/loadingSlice'
-import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
+import { useAppDispatch, useAppSelector,useNavigate } from 'src/store/hooks/redux'
 import {
     updateBrandData,
     getBrandsStats,
@@ -28,6 +29,7 @@ type SelectMode = 'none' | 'page' | 'all';
 
 const AdminBrandsManager: React.FC = () => {
     const router = useRouter();
+    const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const [brands, setBrands] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -489,10 +491,10 @@ const AdminBrandsManager: React.FC = () => {
                                             />
                                         </td>
                                     )}
-                                    <td data-label="Фото" className={s.imageCell} onClick={() => !bulkMode && router.push("/admin/brands/" + brand.id)} style={{ cursor: bulkMode ? 'default' : 'pointer' }}>
+                                    <td data-label="Фото" className={s.imageCell} onClick={() => !bulkMode && navigate("/admin/brands/" + brand.id)} style={{ cursor: bulkMode ? 'default' : 'pointer' }}>
                                         {brand.image_path ? <img src={brand.image_path} alt={brand.name} /> : <div className={s.noImage}>—</div>}
                                     </td>
-                                    <td data-label="Название" className={s.nameCell} onClick={() => !bulkMode && router.push("/admin/brands/" + brand.id)} style={{ cursor: bulkMode ? 'default' : 'pointer' }}>
+                                    <td data-label="Название" className={s.nameCell} onClick={() => !bulkMode && navigate("/admin/brands/" + brand.id)} style={{ cursor: bulkMode ? 'default' : 'pointer' }}>
                                         <div className={s.brandName}>{brand.name}</div>
                                     </td>
                                     <td data-label="Страна">{brand.country || '—'}</td>
@@ -527,11 +529,9 @@ const AdminBrandsManager: React.FC = () => {
             </div>
 
             {totalPages > 1 && (
-                <div className={s.pagination}>
-                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>←</button>
-                    <span>{currentPage} / {totalPages}</span>
-                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>→</button>
-                </div>
+                <PageController currentPosition={currentPage}
+                    positions={totalPages}
+                    callback={setCurrentPage} />
             )}
 
             <Modal active={showEditModal} onChange={() => { setShowEditModal(false); setSelectedBrand(null); }}>

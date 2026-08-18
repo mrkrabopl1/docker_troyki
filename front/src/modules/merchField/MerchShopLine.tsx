@@ -1,7 +1,7 @@
 import React, { ReactElement, useRef, useState, memo, useCallback } from 'react';
 import s from "./style.module.css";
 import { useRouter } from 'next/router';
-
+import { useNavigate } from 'src/store/hooks/redux';
 interface MerchInterface {
   price: number;
   size: number;
@@ -12,6 +12,7 @@ interface MerchInterface {
 
 const MerchShopLine: React.FC<{ width: string, data: MerchInterface }> = memo(({ width, data }) => {
   const router = useRouter();
+  const navigate = useNavigate()
   const [compOpacity, setOpacity] = useState(1);
   const showAnimation = useRef(false);
   const currentImgIndex = useRef(0);
@@ -64,7 +65,7 @@ const MerchShopLine: React.FC<{ width: string, data: MerchInterface }> = memo(({
   }, [animateTransition, data.imgs.length]);
 
   const handleClick = useCallback(() => {
-    router.push('/product/' + data.id);
+    navigate('/product/' + data.id);
   }, [data.id, router]);
 
   const secondImgStyle: React.CSSProperties = {

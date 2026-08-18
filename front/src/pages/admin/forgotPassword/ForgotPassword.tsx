@@ -42,7 +42,7 @@ const AdminForgotPassword: React.FC = () => {
                     isLoading={isLoading}
                     error={error}
                     onSubmit={handleSubmit}
-                    onBack={() => router.push('/admin/login')}
+                    onBack={() => navigate('/admin/login')}
                 />
             </div>
 

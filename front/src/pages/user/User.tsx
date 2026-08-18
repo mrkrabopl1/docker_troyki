@@ -2,7 +2,7 @@ import React, { Suspense, useEffect, useState, useCallback, lazy, memo } from 'r
 import { useRouter } from 'next/router';
 import { getUserData, unlogin } from 'src/providers/userProvider'
 import UserForm from 'src/modules/sendForm/UserForm'
-import { useAppDispatch } from 'src/store/hooks/redux'
+import { useAppDispatch, useNavigate } from 'src/store/hooks/redux'
 import { verified } from 'src/store/reducers/menuSlice'
 import s from "./s.module.css"
 
@@ -20,10 +20,10 @@ type UserValType = {
   phone: string
 }
 
-const UserTabs = memo(({ 
-  activeTab, 
-  onTabChange, 
-  onLogout 
+const UserTabs = memo(({
+  activeTab,
+  onTabChange,
+  onLogout
 }: {
   activeTab: number
   onTabChange: (tab: number) => void
@@ -46,7 +46,8 @@ const UserTabs = memo(({
 ))
 
 const User: React.FC = () => {
-   const router = useRouter()
+  const navigate = useNavigate();
+  const router = useRouter()
   const dispatch = useAppDispatch()
 
   const [tab, setTab] = useState(0)
@@ -64,7 +65,7 @@ const User: React.FC = () => {
       if (data) {
         setUserVal(prev => ({ ...prev, ...data }))
       } else {
-        router.push("/main")
+        navigate("/main")
       }
     })
   }, [router])
@@ -75,7 +76,7 @@ const User: React.FC = () => {
 
   const handleLogout = useCallback(() => {
     unlogin(() => {
-      router.push("/")
+      navigate("/")
       dispatch(verified(false))
     })
   }, [dispatch, router])
@@ -83,11 +84,11 @@ const User: React.FC = () => {
   const renderTabContent = useCallback(() => {
     switch (tab) {
       case 0:
-        return <UserForm onChange={() => {}} />
+        return <UserForm onChange={() => { }} />
       case 1:
         return (
           <Suspense fallback={<div>Загрузка...</div>}>
-            <AddressForm valid={true} onChange={() => {}} />
+            <AddressForm valid={true} onChange={() => { }} />
           </Suspense>
         )
       default:
@@ -97,12 +98,12 @@ const User: React.FC = () => {
 
   return (
     <div className={s.main}>
-      <UserTabs 
-        activeTab={tab} 
-        onTabChange={handleTabChange} 
-        onLogout={handleLogout} 
+      <UserTabs
+        activeTab={tab}
+        onTabChange={handleTabChange}
+        onLogout={handleLogout}
       />
-      
+
       <div className={s.pages}>
         {renderTabContent()}
       </div>

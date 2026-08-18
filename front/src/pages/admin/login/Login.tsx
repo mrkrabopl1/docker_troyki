@@ -40,7 +40,7 @@ const AdminLogin: React.FC = () => {
     }
 
     const handleForgotPassword = () => {
-        router.push('/admin/forgot-password');
+        navigate('/admin/forgot-password');
     };
 
     const handleChange = (data: Partial<{ email: string; password: string }>) => {

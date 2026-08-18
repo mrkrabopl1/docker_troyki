@@ -178,6 +178,7 @@ export async function getMainPage(): Promise<any> {
 // 🔥 getMainInfo - для SSR
 export async function getMainInfo(): Promise<any> {
   if (isServer()) {
+    console.log(API_URL,"fdnlsdnf")
     const res = await fetch(`${API_URL}/getMainInfo`, {
       headers: { 'Content-Type': 'application/json' }
     });

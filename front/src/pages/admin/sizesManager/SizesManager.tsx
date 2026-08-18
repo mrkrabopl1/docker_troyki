@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Search from 'src/components/search/Search';
 import { finishLoading } from 'src/store/reducers/loadingSlice';
-import { useAppDispatch } from 'src/store/hooks/redux';
+import { useAppDispatch, useNavigate } from 'src/store/hooks/redux';
 import { 
     getSizes, 
     getSizeProducts, 
@@ -16,6 +16,7 @@ import {
 import s from './style.module.css';
 
 const AdminSizeManagement: React.FC = () => {
+    const navigate = useNavigate();
     const router = useRouter();
     const dispatch = useAppDispatch();
     const [sizes, setSizes] = useState<SizeInfo[]>([]);
@@ -288,7 +289,7 @@ const AdminSizeManagement: React.FC = () => {
                                     <div key={product.id} className={s.productItem}>
                                         <div 
                                             className={s.productInfo}
-                                            onClick={() => router.push(`/admin/products/${product.id}`)}
+                                            onClick={() => navigate(`/admin/products/${product.id}`)}
                                         >
                                             <span className={s.productName}>{product.name}</span>
                                             {product.article && (

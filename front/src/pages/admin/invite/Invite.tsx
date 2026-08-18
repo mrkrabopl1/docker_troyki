@@ -74,7 +74,7 @@ const AcceptInvite: React.FC = () => {
                     <h2>Приглашение недействительно</h2>
                     <p>{step === 'expired' ? 'Срок действия приглашения истек или оно уже было использовано.' : 'Недействительный токен приглашения.'}</p>
                     <p>Обратитесь к администратору для получения нового приглашения.</p>
-                    <button className={s.backBtn} onClick={() => router.push('/admin/login')}>Вернуться на страницу входа</button>
+                    <button className={s.backBtn} onClick={() => navigate('/admin/login')}>Вернуться на страницу входа</button>
                 </div>
             </div>
         );
@@ -88,7 +88,7 @@ const AcceptInvite: React.FC = () => {
                     <h2>Аккаунт создан!</h2>
                     <p>Ваш администраторский аккаунт успешно создан.</p>
                     <p>Теперь вы можете войти в панель управления.</p>
-                    <button className={s.loginBtn} onClick={() => router.push('/admin/login')}>Перейти ко входу</button>
+                    <button className={s.loginBtn} onClick={() => navigate('/admin/login')}>Перейти ко входу</button>
                 </div>
             </div>
         );

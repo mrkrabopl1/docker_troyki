@@ -1,7 +1,7 @@
 // src/pages/productsInfo/ProductsInfo.tsx
 import React, { useEffect, useState, useRef, useCallback, memo, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux';
+import { useAppDispatch, useAppSelector,useNavigate } from 'src/store/hooks/redux';
 import { cartCountAction } from 'src/store/reducers/menuSlice';
 import { getMerchInfo } from "src/providers/merchProvider";
 import { createPreorder, updatePreorder } from 'src/providers/orderProvider';
@@ -54,6 +54,7 @@ interface ProductsInfoProps {
 }
 
 const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
+    const navigate = useNavigate()
     const { show, sticky, typesVal, categories, firmMap } = useAppSelector(state => state.menu);
     const router = useRouter();
     const product = router.query.product as string;
@@ -120,8 +121,7 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
 
     // 🔥 Если есть SSR данные - используем их
     useEffect(() => {
-        if (initialData && !isHydrated.current) {
-            console.log('🔥 Using SSR data for product');
+        if (initialData) {
             setMerchInfoHandler(initialData);
             isHydrated.current = true;
             dispatch(finishLoading());
@@ -159,7 +159,7 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
         };
 
         createPreorder(data, (hash) => {
-            router.push(`/form/${hash}`);
+            navigate(`/form/${hash}`);
             dispatch(cartCountAction(1));
         });
     }, [product, router, merchInfo, currentPrice]);
@@ -209,7 +209,7 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
                     elements.push(
                         <img
                             onClick={() => {
-                                router.push('/product/' + el.id);
+                                navigate('/product/' + el.id);
                             }}
                             key={index}
                             className={s.lineImage}
@@ -283,7 +283,7 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
                             onClick={() => {
                                 const firm = Object.values(firmMap).find(f => f.name === merchInfo.firm);
                                 if (firm) {
-                                    router.push(`/search?brand=${firm.slug}`);
+                                    navigate(`/search?brand=${firm.slug}`);
                                 }
                             }} 
                             className={s.firmInfoHolder}
@@ -337,7 +337,7 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
                                             onClick={() => {
                                                 const firm = Object.values(firmMap).find(f => f.name === merchInfo.firm);
                                                 if (firm) {
-                                                    router.push(`/search?brand=${firm.slug}`);
+                                                    navigate(`/search?brand=${firm.slug}`);
                                                 }
                                             }} 
                                             className={s.firmInfoHolder}

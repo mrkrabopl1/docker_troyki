@@ -1,6 +1,6 @@
 import React, { useEffect, useState, memo, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux';
+import { useAppDispatch, useAppSelector,useNavigate } from 'src/store/hooks/redux';
 import { getCartData, deleteCartData } from 'src/providers/shopProvider';
 import { getCookie } from 'src/global';
 import { cartCountAction } from 'src/store/reducers/menuSlice';
@@ -33,6 +33,7 @@ interface BuyMerchFieldProps {
 
 const BuyPage: React.FC<BuyMerchFieldProps>  = memo((props) => {
     const { onActivate } = { ...props };
+    const navigate = useNavigate()
     const router = useRouter();
     const dispatch = useAppDispatch();
     const { cartCount, shop } = useAppSelector(state => state.menu);
@@ -57,7 +58,7 @@ const BuyPage: React.FC<BuyMerchFieldProps>  = memo((props) => {
 
     const handleCheckout = () => {
         onActivate?.();
-        router.push("/form/" + cart)
+        navigate("/form/" + cart)
     };
 
     const deleteProductHandler = useCallback((ind, productId, quantity) => {
@@ -106,7 +107,7 @@ const BuyPage: React.FC<BuyMerchFieldProps>  = memo((props) => {
                 <Button
                     className={`${s.btn} btnStyle`}
                     text='Продолжить покупки'
-                    onClick={() => router.push('/')} // Исправлено: ведем на главную, а не на форму
+                    onClick={() => navigate('/')} // Исправлено: ведем на главную, а не на форму
                 />
             </div>
         );
@@ -153,7 +154,7 @@ const BuyPage: React.FC<BuyMerchFieldProps>  = memo((props) => {
 
                     <div className={s.continueShopping} onClick={() => {
                         onActivate?.();
-                        router.push('/');
+                        navigate('/');
                     }}>
                         ← Продолжить покупки
                     </div>

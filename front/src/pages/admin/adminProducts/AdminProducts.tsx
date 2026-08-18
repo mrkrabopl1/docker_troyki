@@ -10,10 +10,11 @@ import NumInput from 'src/components/input/NumInput'
 import { ReactComponent as Filter } from '/public/filter.svg'
 import { ReactComponent as SortIcon } from '/public/sort.svg'
 import RadioGroup from 'src/components/radio/RadioGroup'
-import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
+import { useAppDispatch, useAppSelector, useNavigate } from 'src/store/hooks/redux'
 import { SizeEditorModal, SizePrice } from 'src/modules/admin/sizeEditor/SizeEditor';
 import { getAdminProductById, updateAdminProduct } from 'src/providers/adminProductsProvider';
 import { ProductInfo } from 'src/types/adminProduct'
+import PageController from 'src/components/contentSlider/slidersSwitchers/PageController'
 import {
   getAdminProducts,
   getAdminProductsAndFilters,
@@ -38,6 +39,7 @@ type SelectMode = 'none' | 'page' | 'all'
 
 const AdminProducts: React.FC = () => {
   const router = useRouter()
+  const navigate = useNavigate();
   const { typesVal, firmMap, discountRules } = useAppSelector(state => state.menu)
 
   // Данные
@@ -682,7 +684,7 @@ const AdminProducts: React.FC = () => {
           <SearchWithList
             val={searchQuery}
             searchCallback={handleSearch}
-            selectList={(data) => router.push('/product/' + data)}
+            selectList={(data) => navigate('/product/' + data)}
           />
         </div>
       </div>
@@ -872,7 +874,7 @@ const AdminProducts: React.FC = () => {
                 <tr
                   key={product.id}
                   className={`${s.productRow} ${!product.is_active ? s.inactive : ''}`}
-                  onClick={() => !bulkMode && router.push(`/admin/products/${product.id}`)}
+                  onClick={() => !bulkMode && navigate(`/admin/products/${product.id}`)}
                   onContextMenu={(e) => {
                     e.preventDefault()
                     handleRowClick(product)
@@ -934,11 +936,10 @@ const AdminProducts: React.FC = () => {
 
       {/* Пагинация */}
       {totalPages > 1 && (
-        <div className={s.pagination}>
-          <button onClick={() => handlePageChange(Math.max(1, currentPage.current - 1))} disabled={currentPage.current === 1}>←</button>
-          <span>{currentPage.current} / {totalPages}</span>
-          <button onClick={() => handlePageChange(Math.min(totalPages, currentPage.current + 1))} disabled={currentPage.current === totalPages}>→</button>
-        </div>
+
+        <PageController currentPosition={currentPage.current}
+          positions={totalPages}
+          callback={handlePageChange} />
       )}
 
       {/* Модальное окно сортировки */}

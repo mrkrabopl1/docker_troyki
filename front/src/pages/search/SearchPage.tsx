@@ -5,7 +5,7 @@ import ProductsFilters from "src/modules/settingsPanels/ProductsFilters"
 import Button from 'src/components/Button'
 import MerchSliderField from 'src/modules/merchField/MerchFieldWithPageSwitcher'
 import s from "./style1.module.css"
-import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
+import { useAppDispatch, useAppSelector,useNavigate } from 'src/store/hooks/redux'
 import { getProductsAndFiltersByCategoryAndType, getProductsAndFiltersByString, getProductsByCategoriesAndFilters } from "src/providers/searchProvider"
 import { ReactComponent as FoureGrid } from '/public/foureGrid.svg'
 import { ReactComponent as SixGrid } from '/public/sixGrid.svg'
@@ -52,6 +52,7 @@ interface SearchPageProps {
 }
 
 const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrParams }) => {
+  const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const router = useRouter();
   const searchParams = router.query;
@@ -718,7 +719,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
             }}
             val={searchWord.current}
             searchCallback={searchNameCallback}
-            selectList={(data) => { router.push('/product/' + data); }}
+            selectList={(data) => { navigate('/product/' + data); }}
           />
           {widthProps ? <div style={{ margin: "auto", width: "30%", padding: "5px" }}>
             <Filter

@@ -1,7 +1,7 @@
 // src/pages/main/Main.tsx
 import React, { memo, useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux';
+import { useAppDispatch, useAppSelector,useNavigate } from 'src/store/hooks/redux';
 import MerchBanner from 'src/modules/merchBanner/MerchBanner';
 import MerchSliderField from 'src/modules/merchField/MerchSliderField';
 import ContentSliderWithLinks from 'src/components/contentSlider/ContentSliderWithLinks';
@@ -20,6 +20,7 @@ interface MainProps {
 
 const Main: React.FC<MainProps> = memo(({ initialData }) => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const router = useRouter();
   const { firmMap } = useAppSelector(state => state.menu);
   
@@ -30,7 +31,7 @@ const Main: React.FC<MainProps> = memo(({ initialData }) => {
   });
 
   const handleBannerClick = useCallback((slug) => {
-    router.push("collections/" + slug);
+    navigate("collections/" + slug);
   }, [router]);
 
   // Загружаем изображения (клиент)
@@ -52,7 +53,7 @@ const Main: React.FC<MainProps> = memo(({ initialData }) => {
   const onFirmClicked = useCallback((firmName) => {
     const firm = Object.values(firmMap).find(f => f.name === firmName);
     if (firm) {
-      router.push(`/search?brand=${firm.slug}`);
+      navigate(`/search?brand=${firm.slug}`);
     }
   }, [firmMap]);
 

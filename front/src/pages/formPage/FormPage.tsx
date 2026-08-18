@@ -3,7 +3,7 @@ import SendForm from "src/modules/sendForm/SendForm"
 import { getCartData } from 'src/providers/shopProvider'
 import s from "./style.module.css"
 import { cartCountAction } from 'src/store/reducers/menuSlice'
-import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux'
+import { useAppDispatch, useAppSelector,useNavigate } from 'src/store/hooks/redux'
 import BuyMerchField from 'src/modules/buyMerchField/BuyMerchField'
 import { createOrder, getOrderDataByHash } from 'src/providers/orderProvider';
 import { checkCustomerData } from 'src/providers/userProvider';
@@ -64,6 +64,7 @@ function formatAddress(address) {
     return parts.join(', ');
 }
 const FormPage: React.FC = () => {
+    const navigate = useNavigate()
     const dispatch = useAppDispatch();
     const router = useRouter();
     const { hash } = router.query;
@@ -382,7 +383,7 @@ const FormPage: React.FC = () => {
                                 if (formId.current === BUY_ROUTE[delivery.current].length - 1) {
                                     createOrder(respData.current, (data) => {
                                         dispatch(cartCountAction(0))
-                                        router.push('/order/' + data.hash);
+                                        navigate('/order/' + data.hash);
                                     });
                                 } else {
                                     if (validSendForm.current) {

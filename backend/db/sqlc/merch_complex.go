@@ -1736,25 +1736,17 @@ func (store *SQLStore) GetManualCollectionProductsPaginated(
 	collectionID int32,
 	limit, offset int,
 ) ([]ProductRow, int32, error) {
-	log.Printf("🚀 [START] GetManualCollectionProductsPaginated")
-	log.Printf("📊 [Params] CollectionID: %d, Limit: %d, Offset: %d", collectionID, limit, offset)
 
-	// Общее количество
-	log.Printf("🔍 [Manual] Getting total count for collection %d", collectionID)
 	total, err := store.GetCollectionProductCount(ctx, collectionID)
 	if err != nil {
 		log.Printf("❌ [Manual] GetCollectionProductCount error: %v", err)
 		return nil, 0, err
 	}
-	log.Printf("✅ [Manual] Total count: %d", total)
-
 	if total == 0 {
 		log.Printf("⚠️ [Manual] No products found, returning empty slice")
 		return []ProductRow{}, 0, nil
 	}
 
-	// Получаем товары из БД
-	log.Printf("🔍 [Manual] Getting products for collection %d, limit: %d, offset: %d", collectionID, limit, offset)
 	rows, err := store.GetManualCollectionProducts(ctx, GetManualCollectionProductsParams{
 		CollectionID: collectionID,
 		Limit:        int32(limit),
@@ -1764,7 +1756,6 @@ func (store *SQLStore) GetManualCollectionProductsPaginated(
 		log.Printf("❌ [Manual] GetManualCollectionProducts error: %v", err)
 		return nil, 0, err
 	}
-	log.Printf("✅ [Manual] Got %d rows from database", len(rows))
 
 	// Конвертируем в ProductRow
 	products := make([]ProductRow, 0, len(rows))
@@ -1811,14 +1802,6 @@ func (store *SQLStore) getDynamicCollectionProducts(
 		return nil, 0, fmt.Errorf("filters required for dynamic collection")
 	}
 
-	log.Printf("📊 [Dynamic] Settings Filters: Sizes: %v, Firms: %v, Lines: %v, Types: %v, Categories: %v, Bodytypes: %v, Price: %v, RuleIDs: %v, InStore: %v, HasDiscount: %v",
-		settings.Filters.Sizes, settings.Filters.Firms, settings.Filters.Lines,
-		settings.Filters.Types, settings.Filters.Categories, settings.Filters.Bodytypes,
-		settings.Filters.Price, settings.Filters.RuleIDs, settings.Filters.InStore,
-		settings.Filters.HasDiscount)
-
-	// Получаем продукты по фильтрам
-	log.Printf("🔍 [Dynamic] Calling getProductsByFilters with limit=%d, offset=%d", limit, offset)
 	productsWithCount, err := store.getProductsByFilters(ctx, GetFiltersByNameCategoryAndTypeParamsNew{}, *settings.Filters, limit, offset, 0, true)
 	if err != nil {
 		log.Printf("❌ [Dynamic] getProductsByFilters error: %v", err)
@@ -1906,11 +1889,10 @@ func (store *SQLStore) getHybridCollectionProducts(
 		log.Printf("❌ [Hybrid] GetProductsForCollectionByFiltersPaginateFull error: %v", err)
 		return nil, 0, err
 	}
-	log.Printf("✅ [Hybrid] Got %d rows from database", len(rows))
 
 	// Конвертируем в ProductRow
 	products := make([]ProductRow, 0, len(rows))
-	for i, row := range rows {
+	for _, row := range rows {
 		products = append(products, ProductRow{
 			ID:              row.ID,
 			Name:            row.Name,
@@ -1920,9 +1902,6 @@ func (store *SQLStore) getHybridCollectionProducts(
 			MaxPrice:        row.MaxPrice,
 			DiscountPercent: row.DiscountPercent,
 		})
-		if i < 5 { // Логируем только первые 5
-			log.Printf("📦 [Hybrid] Product %d: ID=%d, Name=%s, Price=%d-%d", i+1, row.ID, row.Name, row.MinPrice, row.MaxPrice)
-		}
 	}
 	if len(rows) > 5 {
 		log.Printf("📦 [Hybrid] ... and %d more products", len(rows)-5)

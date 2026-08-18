@@ -3,7 +3,7 @@ import s from "./style.module.css"
 import { useRouter } from 'next/router';
 import CloseButton from 'src/components/button/CloseButton';
 import NumStepInput from 'src/components/input/NumStepInput';
-
+import { useNavigate } from 'src/store/hooks/redux';
 interface merchInterface {
     name: string;
     imgs: string;
@@ -23,6 +23,7 @@ const MerchBuyBlockWithControls: React.FC<{
     quantity = 1,
     onDelete
 }) => {
+    const navigate = useNavigate()
     const router = useRouter();
 
     const handleDelete = (e: React.MouseEvent) => {
@@ -38,7 +39,7 @@ const MerchBuyBlockWithControls: React.FC<{
         <div>
             <div
                 className={`${s.merchBuyLine} ${s.merchBuyBlock}`}
-                onClick={() => router.push('/product/' + data.id)}
+                onClick={() => navigate('/product/' + data.id)}
             >
                 {/* Изображение товара */}
                 <img

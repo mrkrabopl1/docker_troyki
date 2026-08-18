@@ -379,6 +379,7 @@ const CollectionsManager: React.FC = () => {
                 rule_ids: filtersInfo.current.rule_ids || [],
                 bodytypes: filtersInfo.current.bodytypes || [],
                 in_store: filtersInfo.current.in_store || false,
+                lines:filtersInfo.current.lines || [],
                 withPrice: true
             }
 

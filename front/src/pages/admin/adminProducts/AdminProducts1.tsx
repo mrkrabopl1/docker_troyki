@@ -6,7 +6,7 @@ import ProductsFilters from "src/modules/settingsPanels/ProductsFilters"
 import Button from 'src/components/Button'
 import RadioGroup from 'src/components/radio/RadioGroup'
 import s from "./style1.module.css"
-import { useAppSelector } from 'src/store/hooks/redux'
+import { useAppSelector, useNavigate } from 'src/store/hooks/redux'
 import { ReactComponent as Filter } from '/public/filter.svg'
 import { ReactComponent as SortIcon } from '/public/sort.svg'
 import AdminMerchField from 'src/modules/merchField/AdminMerchFieldGrid';
@@ -24,6 +24,7 @@ import {
 
 const AdminProducts: React.FC = () => {
   const router = useRouter();
+  const navigate = useNavigate();
   const { typesVal, categories } = useAppSelector(state => state.menu);
 
   const filtersInfo = useRef({
@@ -363,7 +364,7 @@ const AdminProducts: React.FC = () => {
     <div className={s.container}>
       <div className={s.header}>
         <h2>Управление видимостью товаров</h2>
-        <Button text="Назад" onClick={() => router.push('/admin')} />
+        <Button text="Назад" onClick={() => navigate('/admin')} />
       </div>
 
       {/* Статистика */}
@@ -423,7 +424,7 @@ const AdminProducts: React.FC = () => {
           <SearchWithList
             val={searchWord.current}
             searchCallback={searchCallback}
-            selectList={(data) => router.push('/product/' + data)}
+            selectList={(data) => navigate('/product/' + data)}
           />
         </div>
 

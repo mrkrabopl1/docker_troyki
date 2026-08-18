@@ -3595,21 +3595,21 @@ func (s *Server) handleAdminGetFirmsStats(ctx *gin.Context) {
 		return
 	}
 
+	// Инициализируем слайс, если он nil
+	if brandsInfo == nil {
+		brandsInfo = []db.GetBrandsWithStatsAndDiscountsRow{} // или ваш тип данных
+	}
+
 	for i := range brandsInfo {
 		brandsInfo[i].ImagePath.String = s.imageService.ImagePathBuilder.GetImageURLFromPath(brandsInfo[i].ImagePath.String)
 	}
+
 	counts, err := s.store.CountBrands(ctx, params.Name)
 	if err != nil {
 		fmt.Println(err)
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-	// var totalCount float64
-	// if len(brandsInfo) > 0 {
-	// 	totalCount = float64(brandsInfo[0])
-	// } else {
-	// 	totalCount = 0
-	// }
 
 	ctx.JSON(http.StatusOK, BrandsResp{
 		ActiveCount: int32(counts.TotalActiveBrands),

@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useAppSelector } from 'src/store/hooks/redux';
 import MerchSliderField from './MerchSliderField';
 import InstagramScroller from 'src/modules/instagramScroller/InstagramScroller';
-
+import { useNavigate } from 'src/store/hooks/redux';
 interface MerchComplexSliderFieldProps {
   showInstagram?: boolean;
 }
@@ -12,6 +12,7 @@ interface MerchComplexSliderFieldProps {
 const MerchComplexSliderField: React.FC<MerchComplexSliderFieldProps> = memo(({
   showInstagram = true,
 }) => {
+  const navigate = useNavigate()
   const router = useRouter();
   
   // 🔥 Просто берем данные из Redux
@@ -19,7 +20,7 @@ const MerchComplexSliderField: React.FC<MerchComplexSliderFieldProps> = memo(({
   const instagramPhotos = useAppSelector(state => state.instagram.photos);
 
   const handleSliderClick = useCallback((collectionSlug: string) => {
-    router.push(`/collections/${collectionSlug}`);
+    navigate(`/collections/${collectionSlug}`);
   }, [router]);
 
   // Создание слайдеров из pageInfo

@@ -160,7 +160,7 @@ const OrderDetails: React.FC = () => {
         return (
             <div className={s.container}>
                 <div className={s.error}>Заказ не найден</div>
-                <button onClick={() => router.push('/admin/orders')} className={s.backButton}>
+                <button onClick={() => navigate('/admin/orders')} className={s.backButton}>
                     ← Вернуться к списку заказов
                 </button>
             </div>
@@ -174,7 +174,7 @@ const OrderDetails: React.FC = () => {
         <div className={s.container}>
             {/* Хедер */}
             <div className={s.header}>
-                <button onClick={() => router.push('/admin/orders')} className={s.backButton}>
+                <button onClick={() => navigate('/admin/orders')} className={s.backButton}>
                     ← Назад к списку
                 </button>
                 <h1>Заказ #{order.id}</h1>

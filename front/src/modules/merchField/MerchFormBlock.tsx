@@ -3,35 +3,35 @@ import MerchBlock from "./MerchBlock"
 import s from "./style.module.css"
 import { useRouter } from 'next/router';
 import { toPrice } from 'src/global';
-
-interface merchInterface { 
-    name: string, 
-    image_path: string, 
-    id: string, 
-    firm: string, 
-    price: number, 
-    quantity: number, 
-    size: number 
+import { useNavigate } from 'src/store/hooks/redux';
+interface merchInterface {
+    name: string,
+    image_path: string,
+    id: string,
+    firm: string,
+    price: number,
+    quantity: number,
+    size: number
 }
 
 const MerchFormBlock: React.FC<{ data: merchInterface, onChange: () => void }> = (props) => {
     const { data, onChange } = props;
     const router = useRouter();
-
+    const navigate = useNavigate()
     const handleClick = () => {
-        router.push('/product/' + data.id);
+        navigate('/product/' + data.id);
     };
 
     return (
         <div className={s.merchFormContainer}>
-            <div 
-                onClick={handleClick} 
+            <div
+                onClick={handleClick}
                 className={`${s.merchLine} ${s.merchFormLine}`}
             >
                 <div className={s.imageWrapper}>
-                    <img 
-                        className={s.buyImg} 
-                        src={data.image_path} 
+                    <img
+                        className={s.buyImg}
+                        src={data.image_path}
                         alt={data.name}
                         loading="lazy"
                     />
@@ -41,7 +41,7 @@ const MerchFormBlock: React.FC<{ data: merchInterface, onChange: () => void }> =
                         </div>
                     )}
                 </div>
-                
+
                 <div className={s.contentWrapper}>
                     <div className={s.productDetails}>
                         <h3 className={s.productName}>{data.name}</h3>
@@ -49,7 +49,7 @@ const MerchFormBlock: React.FC<{ data: merchInterface, onChange: () => void }> =
                             <p className={s.productSize}>US: {data.size}</p>
                         ) : null}
                     </div>
-                    
+
                     <div className={s.priceWrapper}>
                         <span className={s.productPrice}>
                             {toPrice(data.price)}
