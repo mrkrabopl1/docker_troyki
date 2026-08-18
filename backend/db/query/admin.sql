@@ -665,36 +665,37 @@ SELECT p.id,
     p.maxprice,
     p.status,
     p.updated_at,
-    -- Итоговый процент скидки: максимальный процент из всех размеров в discount
+    -- Итоговый процент скидки через подзапрос
     COALESCE(
         (
             SELECT MAX((item.value->>'percent')::int)
             FROM jsonb_each(d.value) AS item
+            WHERE d.productid = p.id
         ),
         0
     ) AS discount_percent,
-    -- В наличии: есть ли хотя бы один размер в store_house с quantity > 0
+    -- В наличии через подзапрос
     EXISTS (
         SELECT 1 
         FROM store_house sh 
         WHERE sh.productid = p.id 
         AND sh.quantity > 0
     ) AS in_stock,
-    COUNT(*) FILTER (
+    -- Оконные функции с DISTINCT
+    COUNT(DISTINCT p.id) FILTER (
         WHERE p.status = 'active'
     ) OVER() AS active_count,
-    COUNT(*) OVER() AS total_count
+    COUNT(DISTINCT p.id) OVER() AS total_count
 FROM products p
     JOIN brands b ON p.brand_id = b.id
     LEFT JOIN brand_lines bl ON p.line_id = bl.id
-    LEFT JOIN store_house sh ON p.id = sh.productid
-    LEFT JOIN discount d ON p.id = d.productid
-WHERE p.status != 'deleted' -- Статус
+WHERE p.status != 'deleted'
+    -- Фильтры (без изменений)
     AND (
         @status::text IS NULL
         OR @status::text = ''
         OR p.status = @status::text
-    ) -- Размеры
+    )
     AND (
         COALESCE(array_length(@sizes::text [], 1), 0) = 0
         OR EXISTS (
@@ -703,33 +704,33 @@ WHERE p.status != 'deleted' -- Статус
             WHERE size_key = ANY(@sizes::text [])
                 AND (p.sizes->size_key->>'price')::numeric > 0
         )
-    ) -- Поиск
+    )
     AND (
         @name::text IS NULL
         OR @name::text = ''
         OR p.name ILIKE '%' || @name::text || '%'
         OR p.article ILIKE '%' || @name::text || '%'
-    ) -- Категории
+    )
     AND (
         COALESCE(array_length(@categories::int [], 1), 0) = 0
         OR p.category = ANY(@categories::int [])
-    ) -- Типы
+    )
     AND (
         COALESCE(array_length(@product_types::int [], 1), 0) = 0
         OR p.type = ANY(@product_types::int [])
-    ) -- Фирмы
+    )
     AND (
         COALESCE(array_length(@firms::int [], 1), 0) = 0
         OR p.brand_id = ANY(@firms::int [])
-    ) -- Линии
+    )
     AND (
         COALESCE(array_length(@lines::int [], 1), 0) = 0
         OR p.line_id = ANY(@lines::int [])
-    ) -- Типы тела
+    )
     AND (
         COALESCE(array_length(@bodytypes::text [], 1), 0) = 0
         OR p.bodytype = ANY(@bodytypes::body_enum [])
-    ) -- Цены
+    )
     AND (
         sqlc.narg('minprice')::int IS NULL
         OR p.maxprice >= sqlc.narg('minprice')::int
@@ -745,12 +746,15 @@ WHERE p.status != 'deleted' -- Статус
     AND (
         sqlc.narg('updated_from')::timestamptz IS NULL
         OR p.updated_at >= sqlc.narg('updated_from')::timestamptz
-    ) -- Скидка (наличие)
+    )
     AND (
         @has_discount::boolean IS NULL
         OR @has_discount::boolean = false
-        OR d.productid IS NOT NULL
-    ) -- В наличии (фильтр по store_house)
+        OR EXISTS (
+            SELECT 1 FROM discount d 
+            WHERE d.productid = p.id
+        )
+    )
     AND (
         @in_store::boolean IS NULL
         OR @in_store::boolean = false
@@ -760,39 +764,37 @@ WHERE p.status != 'deleted' -- Статус
             WHERE sh2.productid = p.id 
             AND sh2.quantity > 0
         )
-    ) -- Цена > 0
+    )
     AND (
         @with_price::boolean IS NULL
         OR @with_price::boolean = false
         OR p.minprice > 0
     )
-ORDER BY -- Сортировка по имени
+ORDER BY
     CASE
         WHEN @sort_type::int = 1 THEN p.name
     END ASC,
     CASE
         WHEN @sort_type::int = 2 THEN p.name
     END DESC,
-    -- Сортировка по цене
     CASE
         WHEN @sort_type::int = 3 THEN p.minprice
     END ASC,
     CASE
         WHEN @sort_type::int = 4 THEN p.minprice
     END DESC,
-    -- Сортировка по бренду
     CASE
         WHEN @sort_type::int = 5 THEN b.name
     END ASC,
     CASE
         WHEN @sort_type::int = 6 THEN b.name
     END DESC,
-    -- Сортировка по скидке
     CASE
         WHEN @sort_type::int = 7 THEN COALESCE(
             (
                 SELECT MAX((item.value->>'percent')::int)
                 FROM jsonb_each(d.value) AS item
+                WHERE d.productid = p.id
             ),
             0
         )
@@ -802,32 +804,29 @@ ORDER BY -- Сортировка по имени
             (
                 SELECT MAX((item.value->>'percent')::int)
                 FROM jsonb_each(d.value) AS item
+                WHERE d.productid = p.id
             ),
             0
         )
     END DESC,
-    -- Сортировка по дате создания
     CASE
         WHEN @sort_type::int = 9 THEN p.created_at
     END ASC,
     CASE
         WHEN @sort_type::int = 10 THEN p.created_at
     END DESC,
-    -- Сортировка по дате обновления
     CASE
         WHEN @sort_type::int = 11 THEN p.updated_at
     END ASC NULLS LAST,
     CASE
         WHEN @sort_type::int = 12 THEN p.updated_at
     END DESC NULLS LAST,
-    -- Сортировка по статусу
     CASE
         WHEN @sort_type::int = 13 THEN p.status
     END ASC,
     CASE
         WHEN @sort_type::int = 14 THEN p.status
     END DESC,
-    -- Сортировка по наличию (in_stock)
     CASE
         WHEN @sort_type::int = 15 THEN EXISTS (
             SELECT 1 
@@ -844,12 +843,12 @@ ORDER BY -- Сортировка по имени
             AND sh4.quantity > 0
         )::int
     END DESC,
-    -- Вторичная сортировка по id для стабильности
     p.id ASC
 LIMIT CASE
         WHEN @limitVal::integer > 0 THEN @limitVal::integer
         ELSE 50
-    END OFFSET CASE
+    END 
+OFFSET CASE
         WHEN @offsetVal::integer > 0 THEN @offsetVal::integer
         ELSE 0
     END;

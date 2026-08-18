@@ -3223,6 +3223,7 @@ func (s *Server) handleAdminGetProductsAndFilters(ctx *gin.Context) {
 	fmt.Printf("Received params: page=%d, size=%d, sortType=%d\n", postData.Page, postData.Size, postData.SortType)
 
 	products, err := s.store.GetAllProductsAndFilters(ctx, postData.Page, postData.Size, postData.SortType)
+	fmt.Printf("Products retrieved: %+v\n", products.TotalCount)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return

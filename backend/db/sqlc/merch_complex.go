@@ -1763,7 +1763,7 @@ func (store *SQLStore) GetManualCollectionProductsPaginated(
 		products = append(products, ProductRow{
 			ID:              row.GlobalID,
 			Name:            row.Name,
-			ImagePath:       row.ImagePath,
+			ImagePath:       store.ImagePathBuilder.GetProductMainImage(row.ImagePath),
 			Firm:            row.Firm,
 			MinPrice:        row.MinPrice,
 			MaxPrice:        row.MaxPrice,
@@ -1896,7 +1896,7 @@ func (store *SQLStore) getHybridCollectionProducts(
 		products = append(products, ProductRow{
 			ID:              row.ID,
 			Name:            row.Name,
-			ImagePath:       row.ImagePath,
+			ImagePath:       store.ImagePathBuilder.GetProductMainImage(row.ImagePath),
 			Firm:            row.Firm,
 			MinPrice:        row.MinPrice,
 			MaxPrice:        row.MaxPrice,
@@ -2008,7 +2008,7 @@ func (store *SQLStore) GetCollectionProductsByFilters(
 		log.Printf("✅ [Manual] Got %d products from GetManualProductsPaginate", len(rows))
 
 		for _, r := range rows {
-			products = append(products, manualRowToProductRow(r))
+			products = append(products, store.manualRowToProductRow(r))
 		}
 
 		countParams := CountManualProductsByFiltersParams{
@@ -2098,7 +2098,7 @@ func (store *SQLStore) GetCollectionProductsByFilters(
 		log.Printf("✅ [Dynamic/Hybrid] Got %d products from UNION", len(rows))
 
 		for _, r := range rows {
-			products = append(products, fullRowToProductRowCol(r))
+			products = append(products, store.fullRowToProductRowCol(r))
 		}
 
 		// Count
@@ -2254,11 +2254,11 @@ func min(a, b int) int {
 }
 
 // Вспомогательные функции для конвертации разных типов строк в ProductRow
-func manualRowToProductRow(row GetManualProductsPaginateRow) ProductRow {
+func (store *SQLStore) manualRowToProductRow(row GetManualProductsPaginateRow) ProductRow {
 	return ProductRow{
 		ID:              row.ID,
 		Name:            row.Name,
-		ImagePath:       row.ImagePath,
+		ImagePath:       store.ImagePathBuilder.GetProductMainImage(row.ImagePath),
 		Firm:            row.Firm,
 		DiscountPercent: row.DiscountPercent,
 		MaxDiscPrice:    row.DiscountedPrice,
@@ -2268,11 +2268,11 @@ func manualRowToProductRow(row GetManualProductsPaginateRow) ProductRow {
 	}
 }
 
-func fullRowToProductRowCol(row GetProductsForCollectionPaginateFullRow) ProductRow {
+func (store *SQLStore) fullRowToProductRowCol(row GetProductsForCollectionPaginateFullRow) ProductRow {
 	return ProductRow{
 		ID:              row.ID,
 		Name:            row.Name,
-		ImagePath:       row.ImagePath,
+		ImagePath:       store.ImagePathBuilder.GetProductMainImage(row.ImagePath),
 		Firm:            row.Firm,
 		DiscountPercent: row.DiscountPercent,
 		MaxDiscPrice:    row.DiscountedPrice,
