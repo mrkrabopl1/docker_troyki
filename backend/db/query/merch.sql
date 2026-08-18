@@ -3278,41 +3278,7 @@ FROM brands b
 GROUP BY b.id
 ORDER BY b.sort_order ASC,
     b.name ASC;
--- name: CreateBrandLine :one
-INSERT INTO brand_lines (
-        brand_id,
-        name,
-        slug,
-        description,
-        image_path,
-        season,
-        year,
-        is_active,
-        sort_order
-    )
-VALUES (
-        @brand_id,
-        @name,
-        @slug,
-        @description,
-        @image_path,
-        @season,
-        @year,
-        COALESCE(@is_active, true),
-        COALESCE(@sort_order, 0)
-    )
-RETURNING id,
-    brand_id,
-    name,
-    slug,
-    description,
-    image_path,
-    season,
-    year,
-    is_active,
-    sort_order,
-    created_at,
-    updated_at;
+
 -- name: GetBrandLineById :one
 SELECT id,
     brand_id,

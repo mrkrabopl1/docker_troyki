@@ -22,6 +22,8 @@ type Querier interface {
 	BulkAddRuleItems(ctx context.Context, arg BulkAddRuleItemsParams) error
 	BulkUpdateBrandActive(ctx context.Context, arg BulkUpdateBrandActiveParams) error
 	BulkUpdateBrandSortOrder(ctx context.Context, arg BulkUpdateBrandSortOrderParams) error
+	BulkUpdateLineActive(ctx context.Context, arg BulkUpdateLineActiveParams) error
+	BulkUpdateLineSortOrder(ctx context.Context, arg BulkUpdateLineSortOrderParams) error
 	BulkUpdateProductStatus(ctx context.Context, arg BulkUpdateProductStatusParams) error
 	BulkUpsertDiscount(ctx context.Context, arg BulkUpsertDiscountParams) error
 	CheckBrandExistsById(ctx context.Context, id int32) (bool, error)
@@ -45,6 +47,7 @@ type Querier interface {
 	CountActiveBanners(ctx context.Context) (int64, error)
 	CountBrands(ctx context.Context, name string) (CountBrandsRow, error)
 	CountInstagramPosts(ctx context.Context) (int64, error)
+	CountLines(ctx context.Context, arg CountLinesParams) (CountLinesRow, error)
 	CountManualProductsByFilters(ctx context.Context, arg CountManualProductsByFiltersParams) (int32, error)
 	CountPageWidgets(ctx context.Context) (int64, error)
 	CountProductsByFilters(ctx context.Context, arg CountProductsByFiltersParams) (int64, error)
@@ -93,6 +96,7 @@ type Querier interface {
 	DeleteFromVerifivation(ctx context.Context, id int32) error
 	DeleteHardProduct(ctx context.Context, id int32) (DeleteHardProductRow, error)
 	DeleteInstagramPost(ctx context.Context, id int32) error
+	DeleteLine(ctx context.Context, id int32) error
 	DeleteNewsletterSubscriber(ctx context.Context, email string) error
 	DeleteOldPasswordResetTokenByEmail(ctx context.Context, email string) error
 	DeleteOldPasswordResetTokens(ctx context.Context) error
@@ -132,6 +136,7 @@ type Querier interface {
 	GetAllBrandsWithLines(ctx context.Context) ([]GetAllBrandsWithLinesRow, error)
 	GetAllCollections(ctx context.Context) ([]Collection, error)
 	GetAllFiltersForAdmin(ctx context.Context) (GetAllFiltersForAdminRow, error)
+	GetAllLines(ctx context.Context, brandIds []int32) ([]GetAllLinesRow, error)
 	GetAllPageWidgets(ctx context.Context) ([]GetAllPageWidgetsRow, error)
 	GetAllProductsForAdmin(ctx context.Context, arg GetAllProductsForAdminParams) ([]GetAllProductsForAdminRow, error)
 	//-----SIZES
@@ -197,6 +202,10 @@ type Querier interface {
 	GetFullPreorderCount(ctx context.Context, orderid int32) (interface{}, error)
 	GetFullProductsInfoByIds(ctx context.Context, dollar_1 []int32) ([]GetFullProductsInfoByIdsRow, error)
 	GetInstagramPosts(ctx context.Context) ([]InstagramPost, error)
+	GetLineByID(ctx context.Context, id int32) (GetLineByIDRow, error)
+	GetLineIdsBySearch(ctx context.Context, search string) ([]int32, error)
+	// queries/lines.sql
+	GetLinesWithStatsAndDiscounts(ctx context.Context, arg GetLinesWithStatsAndDiscountsParams) ([]GetLinesWithStatsAndDiscountsRow, error)
 	GetMainPageInfo(ctx context.Context, productsPerCategory int32) ([]GetMainPageInfoRow, error)
 	GetManualCollectionProducts(ctx context.Context, arg GetManualCollectionProductsParams) ([]GetManualCollectionProductsRow, error)
 	GetManualProductsPaginate(ctx context.Context, arg GetManualProductsPaginateParams) ([]GetManualProductsPaginateRow, error)
@@ -326,6 +335,7 @@ type Querier interface {
 	UpdateCollection(ctx context.Context, arg UpdateCollectionParams) (Collection, error)
 	UpdateCustomerPass(ctx context.Context, arg UpdateCustomerPassParams) error
 	UpdateDiscountRule(ctx context.Context, arg UpdateDiscountRuleParams) (DiscountRule, error)
+	UpdateLine(ctx context.Context, arg UpdateLineParams) error
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) error
 	UpdatePageWidget(ctx context.Context, arg UpdatePageWidgetParams) (PageWidget, error)
 	UpdatePreorderItems(ctx context.Context, arg UpdatePreorderItemsParams) error

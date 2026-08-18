@@ -72,6 +72,10 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, isMobile, onClose }
                     <span className={s.icon}>🏷️</span>
                     Бренды
                 </NavLink>
+                <NavLink href="/admin/lines">
+                    <span className={s.icon}>📏</span>
+                    Линейки
+                </NavLink>
 
                 {user?.role === 'superadmin' && (
                     <NavLink href="/admin/logs">

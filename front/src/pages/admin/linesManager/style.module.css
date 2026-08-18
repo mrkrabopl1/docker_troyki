@@ -1,0 +1,682 @@
+/* src/pages/admin/LinesManager/style.module.css */
+
+/* ========== Базовые стили ========== */
+.container {
+    background: #f5f5f5;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.titleSection h2 {
+    margin: 0 0 8px 0;
+    font-size: 24px;
+    color: #333;
+}
+
+.stats {
+    font-size: 14px;
+    color: #666;
+}
+
+.headerActions {
+    display: flex;
+    gap: 12px;
+}
+
+.controlsBar {
+    margin-bottom: 20px;
+    background: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.controlsRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.searchWrapper {
+    flex: 1;
+    min-width: 200px;
+    max-width: 400px;
+}
+
+.filterWrapper {
+    min-width: 150px;
+}
+
+.tableWrapper {
+    background: white;
+    border-radius: 12px;
+    overflow-x: auto;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.linesTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.linesTable th,
+.linesTable td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.linesTable th {
+    background: #fafafa;
+    font-weight: 600;
+    color: #555;
+    font-size: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.sortableHeader {
+    cursor: pointer;
+    user-select: none;
+}
+
+.sortableHeader:hover {
+    background: #f0f0f0;
+}
+
+.sortIndicator {
+    margin-left: 4px;
+    font-size: 12px;
+}
+
+.lineRow {
+    transition: background 0.2s;
+}
+
+.lineRow:hover {
+    background: #fafafa;
+}
+
+.lineRow.inactive {
+    opacity: 0.6;
+}
+
+.lineRow.dragging {
+    opacity: 0.5;
+}
+
+.dropAbove {
+    border-top: 2px solid #007bff;
+}
+
+.dropBelow {
+    border-bottom: 2px solid #007bff;
+}
+
+.imageCell {
+    width: 60px;
+}
+
+.imageCell img {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+.noImage {
+    width: 50px;
+    height: 50px;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #999;
+    border-radius: 6px;
+}
+
+.nameCell {
+    min-width: 150px;
+}
+
+.lineName {
+    font-weight: 500;
+    color: #333;
+}
+
+.brandCell {
+    min-width: 120px;
+}
+
+.brandTag {
+    display: inline-block;
+    background: #e8f0fe;
+    color: #1a73e8;
+    padding: 2px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.productsCell {
+    text-align: center;
+}
+
+.totalProducts {
+    font-weight: 600;
+    font-size: 16px;
+    color: #333;
+}
+
+.sortOrderCell {
+    width: 80px;
+}
+
+.sortOrderInput {
+    width: 60px;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.sortOrderInput:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.statusToggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.statusToggle.active {
+    color: #28a745;
+}
+
+.statusToggle.inactive {
+    color: #dc3545;
+}
+
+.discountCell {
+    text-align: center;
+}
+
+.discountBadge {
+    display: inline-block;
+    background: #ff4757;
+    color: white;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.noDiscount {
+    color: #ccc;
+}
+
+.actionsCell {
+    white-space: nowrap;
+    text-align: center;
+}
+
+.actionBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 8px;
+    margin: 0 2px;
+    border-radius: 4px;
+    transition: background 0.2s;
+    font-size: 16px;
+}
+
+.actionBtn:hover {
+    background: #f0f0f0;
+}
+
+.deleteBtn:hover {
+    background: #fee;
+    color: #dc3545;
+}
+
+.loadingCell,
+.emptyCell {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 24px;
+    padding: 16px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* ========== Массовые действия ========== */
+.bulkPanel {
+    background: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.bulkButtons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.bulkButton {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    color: #444;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.bulkButton:hover {
+    background: #f5f5f5;
+    border-color: #aaa;
+    color: #222;
+}
+
+.bulkButton:active {
+    background: #eee;
+}
+
+.bulkButtonIcon {
+    font-size: 15px;
+    line-height: 1;
+}
+
+.bulkButtonDiscount:hover {
+    border-color: #ff4757;
+    color: #ff4757;
+    background: #fff5f5;
+}
+
+.bulkButtonStatus:hover {
+    border-color: #3742fa;
+    color: #3742fa;
+    background: #f5f6ff;
+}
+
+.bulkButtonActive:hover {
+    border-color: #27ae60;
+    color: #27ae60;
+    background: #f5fff9;
+}
+
+.bulkControls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 10px 0;
+}
+
+.bulkInfo {
+    font-size: 14px;
+    font-weight: 500;
+    color: #444;
+    white-space: nowrap;
+}
+
+.bulkActions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.bulkApplyBtn {
+    padding: 7px 20px;
+    background: #3742fa;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.bulkApplyBtn:hover:not(:disabled) {
+    background: #2b32d9;
+}
+
+.bulkApplyBtn:disabled {
+    background: #a0a0a0;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.bulkCancelBtn {
+    padding: 7px 16px;
+    background: #fff;
+    color: #666;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.bulkCancelBtn:hover {
+    background: #f5f5f5;
+    color: #333;
+}
+
+.bulkResult {
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+.bulkResult.success {
+    background: #e8f5e9;
+    color: #27ae60;
+}
+
+.bulkResult.error {
+    background: #fde8e8;
+    color: #e74c3c;
+}
+
+/* ========== Select All Banner ========== */
+.selectAllBanner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background: #f0f7ff;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: #1a73e8;
+}
+
+.selectAllLink {
+    background: none;
+    border: none;
+    color: #1a73e8;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0;
+}
+
+.selectAllLink:hover {
+    color: #0d47a1;
+}
+
+/* ========== Модальное окно ========== */
+.scrollStyle {
+    max-height: 80vh;
+}
+
+.lineModalContent {
+    padding: 20px;
+    min-width: 400px;
+    max-width: 600px;
+}
+/* src/pages/admin/LinesManager/style.module.css */
+
+/* ... существующие стили ... */
+
+/* Brand filter dropdown */
+.brandFilterContainer {
+    position: relative;
+    min-width: 200px;
+}
+
+.brandFilterToggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: #fff;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #444;
+    transition: all 0.15s;
+    width: 100%;
+    min-width: 180px;
+    justify-content: space-between;
+}
+
+.brandFilterToggle:hover {
+    border-color: #aaa;
+    background: #f5f5f5;
+}
+
+.brandFilterCount {
+    background: #007bff;
+    color: #fff;
+    border-radius: 50%;
+    padding: 0 6px;
+    font-size: 11px;
+    min-width: 18px;
+    text-align: center;
+}
+
+.brandFilterArrow {
+    font-size: 10px;
+    color: #888;
+}
+
+.brandFilterDropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #d0d0d0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+    padding: 8px;
+    min-width: 280px;
+    max-width: 400px;
+}
+
+/* Адаптация для мобильных */
+@media (max-width: 768px) {
+    .brandFilterDropdown {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 400px;
+        max-height: 80vh;
+        z-index: 9999;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+}
+/* ========== Мобильная адаптация (карточки) ========== */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .headerActions {
+        width: 100%;
+    }
+
+    .headerActions button {
+        width: 100%;
+    }
+
+    .controlsRow {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .searchWrapper {
+        max-width: 100%;
+    }
+
+    .filterWrapper {
+        width: 100%;
+    }
+
+    .linesTable thead {
+        display: none;
+    }
+
+    .linesTable,
+    .linesTable tbody,
+    .linesTable tr,
+    .linesTable td {
+        display: block;
+        width: 100%;
+    }
+
+    .linesTable tr {
+        margin-bottom: 16px;
+        border: 1px solid #e2e5ea;
+        border-radius: 12px;
+        background: white;
+        padding: 8px 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .linesTable td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 14px;
+        text-align: left;
+    }
+
+    .linesTable td:last-child {
+        border-bottom: none;
+    }
+
+    .linesTable td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #64748b;
+        margin-right: 10px;
+        text-transform: uppercase;
+        font-size: 11px;
+        width: 40%;
+        flex-shrink: 0;
+    }
+
+    .imageCell img,
+    .noImage {
+        width: 60px;
+        height: 60px;
+        margin-right: 0;
+    }
+
+    .statusToggle {
+        font-size: 16px;
+        padding: 4px 12px;
+    }
+
+    .sortOrderInput {
+        width: 70px;
+    }
+
+    .actionsCell {
+        justify-content: flex-end;
+    }
+
+    .bulkControls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .bulkInfo {
+        text-align: center;
+    }
+
+    .bulkActions {
+        justify-content: center;
+    }
+
+    .lineModalContent {
+        min-width: unset;
+        padding: 12px;
+    }
+
+    .brandTag {
+        font-size: 11px;
+        padding: 1px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .linesTable td {
+        font-size: 13px;
+        padding: 8px 0;
+    }
+
+    .linesTable td::before {
+        font-size: 10px;
+        width: 35%;
+    }
+
+    .bulkButton {
+        font-size: 12px;
+        padding: 4px 10px;
+    }
+
+    .bulkApplyBtn,
+    .bulkCancelBtn {
+        font-size: 12px;
+        padding: 5px 14px;
+    }
+}

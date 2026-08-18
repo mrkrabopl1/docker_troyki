@@ -3307,18 +3307,6 @@ type CreateBrandRequest struct {
 	Lines       []CreateLineRequest `json:"lines"`
 }
 
-// CreateLineRequest – без изменений (изображения линий можно обрабатывать аналогично при необходимости)
-type CreateLineRequest struct {
-	Name        string `json:"name" binding:"required"`
-	Slug        string `json:"slug" binding:"required"`
-	Description string `json:"description"`
-	ImagePath   string `json:"image_path"`
-	Season      string `json:"season"`
-	Year        int32  `json:"year"`
-	IsActive    bool   `json:"is_active"`
-	SortOrder   int32  `json:"sort_order"`
-}
-
 func (s *Server) handleAdminCreateBrand(ctx *gin.Context) {
 	// ========== 1. ПОЛУЧАЕМ ДАННЫЕ (ТОЛЬКО JSON) ==========
 	var req CreateBrandRequest

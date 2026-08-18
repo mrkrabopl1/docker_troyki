@@ -177,6 +177,13 @@ func (s *Server) setupRouter() {
 			adminGroup.PUT("/brands/bulk-active", s.handleAdminBulkUpdateBrandActive)
 			adminGroup.GET("/firms/stats", s.handleAdminGetFirmsStats)
 
+			adminGroup.GET("/lines/stats", s.handleAdminGetLinesStats)
+			adminGroup.GET("/lines/:id", s.handleAdminGetLineById)
+			adminGroup.POST("/lines", s.handleAdminCreateLine)
+			adminGroup.POST("/lines/:id", s.handleAdminUpdateLine)
+			adminGroup.DELETE("/lines/:id", s.handleAdminDeleteLine)
+			adminGroup.PUT("/lines/bulk-active", s.handleAdminBulkUpdateLineActive)
+
 			adminGroup.POST("/sql/execute", s.handleAdminExecuteSQL)
 
 			// Управление скидками
