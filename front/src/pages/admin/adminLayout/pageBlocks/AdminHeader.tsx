@@ -1,7 +1,7 @@
 // components/admin/AdminHeader/AdminHeader.tsx
 import React from 'react';
 import { useRouter } from 'next/router';
-import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux';
+import { useAppDispatch, useAppSelector ,useNavigate} from 'src/store/hooks/redux';
 import { logoutAdmin } from 'src/providers/adminAuth';
 import { logout } from 'src/store/reducers/adminSlice';
 import s from './header.style.module.css';
@@ -13,6 +13,7 @@ interface AdminHeaderProps {
 
 const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick, isMobile }) => {
     const router = useRouter();
+    const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const { user } = useAppSelector(state => state.admin);
     
