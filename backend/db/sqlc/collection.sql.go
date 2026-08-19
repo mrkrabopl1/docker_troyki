@@ -41,8 +41,6 @@ SELECT COUNT(*)::int
 FROM products p
 INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
 LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
-LEFT JOIN store_house sh ON p.id = sh.productid
-LEFT JOIN discount d ON p.id = d.productid
 WHERE 
     p.status = 'active'
     AND (p.line_id IS NULL OR bl.id IS NOT NULL)
@@ -134,7 +132,10 @@ WHERE
     AND (
         $13::boolean IS NULL 
         OR $13::boolean = false 
-        OR (sh.id IS NOT NULL AND sh.quantity > 0)
+        OR EXISTS (
+            SELECT 1 FROM store_house sh 
+            WHERE sh.productid = p.id AND sh.quantity > 0
+        )
     )
 `
 
@@ -297,7 +298,6 @@ FROM (
     FROM products p
     INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
     LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
-    LEFT JOIN store_house sh ON p.id = sh.productid
     WHERE 
         p.status = 'active'
         AND (p.line_id IS NULL OR bl.id IS NOT NULL)
@@ -340,7 +340,14 @@ FROM (
             OR
             (array_length($12::int[], 1) IS NULL OR array_length($12::int[], 1) = 0)
         )
-        AND ($13::boolean IS NULL OR $13::boolean = false OR (sh.id IS NOT NULL AND sh.quantity > 0))
+        AND (
+            $13::boolean IS NULL 
+            OR $13::boolean = false 
+            OR EXISTS (
+                SELECT 1 FROM store_house sh 
+                WHERE sh.productid = p.id AND sh.quantity > 0
+            )
+        )
     
     UNION ALL
     
@@ -349,7 +356,6 @@ FROM (
     FROM products p
     INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
     LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
-    LEFT JOIN store_house sh ON p.id = sh.productid
     WHERE 
         p.status = 'active'
         AND (p.line_id IS NULL OR bl.id IS NOT NULL)
@@ -392,7 +398,14 @@ FROM (
             OR
             (array_length($12::int[], 1) IS NULL OR array_length($12::int[], 1) = 0)
         )
-        AND ($13::boolean IS NULL OR $13::boolean = false OR (sh.id IS NOT NULL AND sh.quantity > 0))
+        AND (
+            $13::boolean IS NULL 
+            OR $13::boolean = false 
+            OR EXISTS (
+                SELECT 1 FROM store_house sh 
+                WHERE sh.productid = p.id AND sh.quantity > 0
+            )
+        )
 ) AS combined
 `
 
@@ -976,23 +989,43 @@ func (q *Queries) GetFullFiltersForManualCollection(ctx context.Context, collect
 
 const getManualCollectionProducts = `-- name: GetManualCollectionProducts :many
 SELECT
-    COALESCE(d.min_price, p.minprice) AS min_price,
-    COALESCE(d.max_price, p.maxprice) AS max_price,
     p.id as global_id,
     p.image_path,
     p.name,
     b.name as firm,
-    d.discount_percent,
-    d.original_price,
-    d.discounted_price,
     p.type,
     p.sizes as sizes_jsonb,
-    (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
+    p.minprice,
+    p.maxprice,
+    COALESCE(
+        (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+        0
+    )::int AS discount_percent,
+    COALESCE(
+        (SELECT original_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+        0
+    )::int AS original_price,
+    COALESCE(
+        (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+        0
+    )::int AS discounted_price,
+    COALESCE(
+        (SELECT min_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+        p.minprice
+    )::int AS min_price,
+    COALESCE(
+        (SELECT max_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+        p.maxprice
+    )::int AS max_price,
+    EXISTS (
+        SELECT 1 
+        FROM store_house sh 
+        WHERE sh.productid = p.id 
+        AND sh.quantity > 0
+    ) AS in_store
 FROM products p
 JOIN collection_products cp ON p.id = cp.product_id
-LEFT JOIN discount d ON p.id = d.productid
 JOIN brands b ON p.brand_id = b.id AND b.is_active = true
-LEFT JOIN store_house sh ON p.id = sh.productid
 WHERE cp.collection_id = $1
 ORDER BY cp.created_at ASC
 LIMIT $2 OFFSET $3
@@ -1005,18 +1038,20 @@ type GetManualCollectionProductsParams struct {
 }
 
 type GetManualCollectionProductsRow struct {
-	MinPrice        int32       `json:"min_price"`
-	MaxPrice        int32       `json:"max_price"`
-	GlobalID        int32       `json:"global_id"`
-	ImagePath       string      `json:"image_path"`
-	Name            string      `json:"name"`
-	Firm            string      `json:"firm"`
-	DiscountPercent pgtype.Int4 `json:"discount_percent"`
-	OriginalPrice   pgtype.Int4 `json:"original_price"`
-	DiscountedPrice pgtype.Int4 `json:"discounted_price"`
-	Type            int32       `json:"type"`
-	SizesJsonb      []byte      `json:"sizes_jsonb"`
-	InStore         pgtype.Bool `json:"in_store"`
+	GlobalID        int32  `json:"global_id"`
+	ImagePath       string `json:"image_path"`
+	Name            string `json:"name"`
+	Firm            string `json:"firm"`
+	Type            int32  `json:"type"`
+	SizesJsonb      []byte `json:"sizes_jsonb"`
+	Minprice        int32  `json:"minprice"`
+	Maxprice        int32  `json:"maxprice"`
+	DiscountPercent int32  `json:"discount_percent"`
+	OriginalPrice   int32  `json:"original_price"`
+	DiscountedPrice int32  `json:"discounted_price"`
+	MinPrice        int32  `json:"min_price"`
+	MaxPrice        int32  `json:"max_price"`
+	InStore         bool   `json:"in_store"`
 }
 
 func (q *Queries) GetManualCollectionProducts(ctx context.Context, arg GetManualCollectionProductsParams) ([]GetManualCollectionProductsRow, error) {
@@ -1029,17 +1064,19 @@ func (q *Queries) GetManualCollectionProducts(ctx context.Context, arg GetManual
 	for rows.Next() {
 		var i GetManualCollectionProductsRow
 		if err := rows.Scan(
-			&i.MinPrice,
-			&i.MaxPrice,
 			&i.GlobalID,
 			&i.ImagePath,
 			&i.Name,
 			&i.Firm,
+			&i.Type,
+			&i.SizesJsonb,
+			&i.Minprice,
+			&i.Maxprice,
 			&i.DiscountPercent,
 			&i.OriginalPrice,
 			&i.DiscountedPrice,
-			&i.Type,
-			&i.SizesJsonb,
+			&i.MinPrice,
+			&i.MaxPrice,
 			&i.InStore,
 		); err != nil {
 			return nil, err
@@ -1058,34 +1095,78 @@ SELECT
     p.name, 
     p.image_path,
     b.name as firm,
-    COALESCE(d.discount_percent, 0) AS discount_percent,
-    COALESCE(d.original_price, 0) AS original_price,
-    COALESCE(d.discounted_price, p.minprice) AS discounted_price,
-    COALESCE(d.min_price, p.minprice) AS min_price,
-    COALESCE(d.max_price, p.maxprice) AS max_price,
-    d.id IS NOT NULL AS has_discount,
-    (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
+    COALESCE(
+        (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        0
+    )::int AS discount_percent,
+    COALESCE(
+        (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        0
+    )::int AS original_price,
+    COALESCE(
+        (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        p.minprice
+    )::int AS discounted_price,
+    COALESCE(
+        (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        p.minprice
+    )::int AS min_price,
+    COALESCE(
+        (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        p.maxprice
+    )::int AS max_price,
+    EXISTS (
+        SELECT 1 FROM discount d WHERE d.productid = p.id
+    ) AS has_discount,
+    EXISTS (
+        SELECT 1 FROM store_house sh 
+        WHERE sh.productid = p.id AND sh.quantity > 0
+    ) AS in_store,
+    COALESCE(
+        (
+            SELECT dr2.discount_value::int
+            FROM discount_rule_items dri
+            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE (
+                (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+                OR (dri.item_type = 'line' AND dri.item_id = p.line_id)
+                OR (dri.item_type = 'product' AND dri.item_id = p.id)
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM discount d WHERE d.productid = p.id
+            )
+            ORDER BY dr2.priority DESC
+            LIMIT 1
+        ),
+        0
+    )::int AS discount_value,
+    COALESCE(
+        (
+            SELECT dr2.name::text
+            FROM discount_rule_items dri
+            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE (
+                (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+                OR (dri.item_type = 'line' AND dri.item_id = p.line_id)
+                OR (dri.item_type = 'product' AND dri.item_id = p.id)
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM discount d WHERE d.productid = p.id
+            )
+            ORDER BY dr2.priority DESC
+            LIMIT 1
+        ),
+        ''
+    )::text AS discount_rule_name
 FROM products p
 INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
 LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
-LEFT JOIN discount d ON p.id = d.productid
-LEFT JOIN store_house sh ON p.id = sh.productid
-LEFT JOIN LATERAL (
-    SELECT dr2.discount_value, dr2.name
-    FROM discount_rule_items dri
-    JOIN discount_rules dr2 ON dr2.id = dri.rule_id
-        AND dr2.is_active = true
-        AND dr2.starts_at <= NOW()
-        AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
-    WHERE (
-            (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
-         OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
-         OR (dri.item_type = 'product' AND dri.item_id = p.id)
-        )
-        AND d.id IS NULL
-    ORDER BY dr2.priority DESC
-    LIMIT 1
-) dr ON true
 WHERE 
     p.status = 'active'
     AND (p.line_id IS NULL OR bl.id IS NOT NULL)
@@ -1177,7 +1258,10 @@ WHERE
     AND (
         $13::boolean IS NULL 
         OR $13::boolean = false 
-        OR (sh.id IS NOT NULL AND sh.quantity > 0)
+        OR EXISTS (
+            SELECT 1 FROM store_house sh 
+            WHERE sh.productid = p.id AND sh.quantity > 0
+        )
     )
 ORDER BY
     CASE WHEN $14::int = 1 THEN p.name END ASC,
@@ -1210,17 +1294,19 @@ type GetManualProductsPaginateParams struct {
 }
 
 type GetManualProductsPaginateRow struct {
-	ID              int32       `json:"id"`
-	Name            string      `json:"name"`
-	ImagePath       string      `json:"image_path"`
-	Firm            string      `json:"firm"`
-	DiscountPercent int32       `json:"discount_percent"`
-	OriginalPrice   int32       `json:"original_price"`
-	DiscountedPrice int32       `json:"discounted_price"`
-	MinPrice        int32       `json:"min_price"`
-	MaxPrice        int32       `json:"max_price"`
-	HasDiscount     interface{} `json:"has_discount"`
-	InStore         pgtype.Bool `json:"in_store"`
+	ID               int32  `json:"id"`
+	Name             string `json:"name"`
+	ImagePath        string `json:"image_path"`
+	Firm             string `json:"firm"`
+	DiscountPercent  int32  `json:"discount_percent"`
+	OriginalPrice    int32  `json:"original_price"`
+	DiscountedPrice  int32  `json:"discounted_price"`
+	MinPrice         int32  `json:"min_price"`
+	MaxPrice         int32  `json:"max_price"`
+	HasDiscount      bool   `json:"has_discount"`
+	InStore          bool   `json:"in_store"`
+	DiscountValue    int32  `json:"discount_value"`
+	DiscountRuleName string `json:"discount_rule_name"`
 }
 
 func (q *Queries) GetManualProductsPaginate(ctx context.Context, arg GetManualProductsPaginateParams) ([]GetManualProductsPaginateRow, error) {
@@ -1261,6 +1347,8 @@ func (q *Queries) GetManualProductsPaginate(ctx context.Context, arg GetManualPr
 			&i.MaxPrice,
 			&i.HasDiscount,
 			&i.InStore,
+			&i.DiscountValue,
+			&i.DiscountRuleName,
 		); err != nil {
 			return nil, err
 		}
@@ -1468,42 +1556,87 @@ func (q *Queries) GetProductsForCollectionByFiltersPaginateBase(ctx context.Cont
 }
 
 const getProductsForCollectionByFiltersPaginateFull = `-- name: GetProductsForCollectionByFiltersPaginateFull :many
-SELECT id, name, image_path, firm, discount_percent, original_price, discounted_price, min_price, max_price, has_discount, in_store, priority FROM (
+SELECT id, name, image_path, firm, discount_percent, original_price, discounted_price, min_price, max_price, has_discount, in_store, discount_value, discount_rule_name, priority FROM (
     -- Часть 1: ВСЕ товары из коллекции (БЕЗ ФИЛЬТРОВ!)
     SELECT 
         p.id, 
         p.name, 
         p.image_path,
         b.name as firm,
-        COALESCE(d.discount_percent, 0) AS discount_percent,
-        COALESCE(d.original_price, 0) AS original_price,
-        COALESCE(d.discounted_price, p.minprice) AS discounted_price,
-        COALESCE(d.min_price, p.minprice) AS min_price,
-        COALESCE(d.max_price, p.maxprice) AS max_price,
-        d.id IS NOT NULL AS has_discount,
-        (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store,
+        COALESCE(
+            (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        )::int AS discount_percent,
+        COALESCE(
+            (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        )::int AS original_price,
+        COALESCE(
+            (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            p.minprice
+        )::int AS discounted_price,
+        COALESCE(
+            (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            p.minprice
+        )::int AS min_price,
+        COALESCE(
+            (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            p.maxprice
+        )::int AS max_price,
+        EXISTS (
+            SELECT 1 FROM discount d WHERE d.productid = p.id
+        ) AS has_discount,
+        EXISTS (
+            SELECT 1 FROM store_house sh 
+            WHERE sh.productid = p.id AND sh.quantity > 0
+        ) AS in_store,
+        -- Подзапрос для правила скидки
+        COALESCE(
+            (
+                SELECT dr2.discount_value::int
+                FROM discount_rule_items dri
+                JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                    AND dr2.is_active = true
+                    AND dr2.starts_at <= NOW()
+                    AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+                WHERE (
+                    (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+                    OR (dri.item_type = 'line' AND dri.item_id = p.line_id)
+                    OR (dri.item_type = 'product' AND dri.item_id = p.id)
+                )
+                AND NOT EXISTS (
+                    SELECT 1 FROM discount d WHERE d.productid = p.id
+                )
+                ORDER BY dr2.priority DESC
+                LIMIT 1
+            ),
+            0
+        )::int AS discount_value,
+        COALESCE(
+            (
+                SELECT dr2.name::text
+                FROM discount_rule_items dri
+                JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                    AND dr2.is_active = true
+                    AND dr2.starts_at <= NOW()
+                    AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+                WHERE (
+                    (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+                    OR (dri.item_type = 'line' AND dri.item_id = p.line_id)
+                    OR (dri.item_type = 'product' AND dri.item_id = p.id)
+                )
+                AND NOT EXISTS (
+                    SELECT 1 FROM discount d WHERE d.productid = p.id
+                )
+                ORDER BY dr2.priority DESC
+                LIMIT 1
+            ),
+            ''
+        )::text AS discount_rule_name,
         0 as priority
     FROM products p
     INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
     LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
-    LEFT JOIN discount d ON p.id = d.productid
-    LEFT JOIN store_house sh ON p.id = sh.productid
-    LEFT JOIN LATERAL (
-        SELECT dr2.discount_value, dr2.name
-        FROM discount_rule_items dri
-        JOIN discount_rules dr2 ON dr2.id = dri.rule_id
-            AND dr2.is_active = true
-            AND dr2.starts_at <= NOW()
-            AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
-        WHERE (
-                (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
-             OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
-             OR (dri.item_type = 'product' AND dri.item_id = p.id)
-            )
-            AND d.id IS NULL
-        ORDER BY dr2.priority DESC
-        LIMIT 1
-    ) dr ON true
     WHERE 
         p.status = 'active'
         AND (p.line_id IS NULL OR bl.id IS NOT NULL)
@@ -1522,35 +1655,79 @@ SELECT id, name, image_path, firm, discount_percent, original_price, discounted_
         p.name, 
         p.image_path,
         b.name as firm,
-        COALESCE(d.discount_percent, 0) AS discount_percent,
-        COALESCE(d.original_price, 0) AS original_price,
-        COALESCE(d.discounted_price, p.minprice) AS discounted_price,
-        COALESCE(d.min_price, p.minprice) AS min_price,
-        COALESCE(d.max_price, p.maxprice) AS max_price,
-        d.id IS NOT NULL AS has_discount,
-        (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store,
+        COALESCE(
+            (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        )::int AS discount_percent,
+        COALESCE(
+            (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        )::int AS original_price,
+        COALESCE(
+            (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            p.minprice
+        )::int AS discounted_price,
+        COALESCE(
+            (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            p.minprice
+        )::int AS min_price,
+        COALESCE(
+            (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            p.maxprice
+        )::int AS max_price,
+        EXISTS (
+            SELECT 1 FROM discount d WHERE d.productid = p.id
+        ) AS has_discount,
+        EXISTS (
+            SELECT 1 FROM store_house sh 
+            WHERE sh.productid = p.id AND sh.quantity > 0
+        ) AS in_store,
+        COALESCE(
+            (
+                SELECT dr2.discount_value::int
+                FROM discount_rule_items dri
+                JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                    AND dr2.is_active = true
+                    AND dr2.starts_at <= NOW()
+                    AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+                WHERE (
+                    (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+                    OR (dri.item_type = 'line' AND dri.item_id = p.line_id)
+                    OR (dri.item_type = 'product' AND dri.item_id = p.id)
+                )
+                AND NOT EXISTS (
+                    SELECT 1 FROM discount d WHERE d.productid = p.id
+                )
+                ORDER BY dr2.priority DESC
+                LIMIT 1
+            ),
+            0
+        )::int AS discount_value,
+        COALESCE(
+            (
+                SELECT dr2.name::text
+                FROM discount_rule_items dri
+                JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                    AND dr2.is_active = true
+                    AND dr2.starts_at <= NOW()
+                    AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+                WHERE (
+                    (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+                    OR (dri.item_type = 'line' AND dri.item_id = p.line_id)
+                    OR (dri.item_type = 'product' AND dri.item_id = p.id)
+                )
+                AND NOT EXISTS (
+                    SELECT 1 FROM discount d WHERE d.productid = p.id
+                )
+                ORDER BY dr2.priority DESC
+                LIMIT 1
+            ),
+            ''
+        )::text AS discount_rule_name,
         1 as priority
     FROM products p
     INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
     LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
-    LEFT JOIN discount d ON p.id = d.productid
-    LEFT JOIN store_house sh ON p.id = sh.productid
-    LEFT JOIN LATERAL (
-        SELECT dr2.discount_value, dr2.name
-        FROM discount_rule_items dri
-        JOIN discount_rules dr2 ON dr2.id = dri.rule_id
-            AND dr2.is_active = true
-            AND dr2.starts_at <= NOW()
-            AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
-        WHERE (
-                (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
-             OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
-             OR (dri.item_type = 'product' AND dri.item_id = p.id)
-            )
-            AND d.id IS NULL
-        ORDER BY dr2.priority DESC
-        LIMIT 1
-    ) dr ON true
     WHERE 
         p.status = 'active'
         AND (p.line_id IS NULL OR bl.id IS NOT NULL)
@@ -1620,7 +1797,6 @@ SELECT id, name, image_path, firm, discount_percent, original_price, discounted_
         )
         -- Скидки (ИСПРАВЛЕНО!)
         AND (
-            -- Если передан список правил и он НЕ ПУСТОЙ - фильтруем по скидкам
             (array_length($12::int[], 1) > 0 AND EXISTS (
                 SELECT 1
                 FROM discount_rule_items dri2
@@ -1636,14 +1812,16 @@ SELECT id, name, image_path, firm, discount_percent, original_price, discounted_
                   )
             ))
             OR
-            -- Если список НЕ ПЕРЕДАН или ПУСТОЙ - НЕ ФИЛЬТРУЕМ по скидкам
             (array_length($12::int[], 1) IS NULL OR array_length($12::int[], 1) = 0)
         )
         -- Наличие на складе
         AND (
             $13::boolean IS NULL 
             OR $13::boolean = false 
-            OR (sh.id IS NOT NULL AND sh.quantity > 0)
+            OR EXISTS (
+                SELECT 1 FROM store_house sh 
+                WHERE sh.productid = p.id AND sh.quantity > 0
+            )
         )
 ) AS combined
 ORDER BY
@@ -1678,18 +1856,20 @@ type GetProductsForCollectionByFiltersPaginateFullParams struct {
 }
 
 type GetProductsForCollectionByFiltersPaginateFullRow struct {
-	ID              int32       `json:"id"`
-	Name            string      `json:"name"`
-	ImagePath       string      `json:"image_path"`
-	Firm            string      `json:"firm"`
-	DiscountPercent int32       `json:"discount_percent"`
-	OriginalPrice   int32       `json:"original_price"`
-	DiscountedPrice int32       `json:"discounted_price"`
-	MinPrice        int32       `json:"min_price"`
-	MaxPrice        int32       `json:"max_price"`
-	HasDiscount     interface{} `json:"has_discount"`
-	InStore         pgtype.Bool `json:"in_store"`
-	Priority        int32       `json:"priority"`
+	ID               int32  `json:"id"`
+	Name             string `json:"name"`
+	ImagePath        string `json:"image_path"`
+	Firm             string `json:"firm"`
+	DiscountPercent  int32  `json:"discount_percent"`
+	OriginalPrice    int32  `json:"original_price"`
+	DiscountedPrice  int32  `json:"discounted_price"`
+	MinPrice         int32  `json:"min_price"`
+	MaxPrice         int32  `json:"max_price"`
+	HasDiscount      bool   `json:"has_discount"`
+	InStore          bool   `json:"in_store"`
+	DiscountValue    int32  `json:"discount_value"`
+	DiscountRuleName string `json:"discount_rule_name"`
+	Priority         int32  `json:"priority"`
 }
 
 func (q *Queries) GetProductsForCollectionByFiltersPaginateFull(ctx context.Context, arg GetProductsForCollectionByFiltersPaginateFullParams) ([]GetProductsForCollectionByFiltersPaginateFullRow, error) {
@@ -1730,6 +1910,8 @@ func (q *Queries) GetProductsForCollectionByFiltersPaginateFull(ctx context.Cont
 			&i.MaxPrice,
 			&i.HasDiscount,
 			&i.InStore,
+			&i.DiscountValue,
+			&i.DiscountRuleName,
 			&i.Priority,
 		); err != nil {
 			return nil, err
@@ -1743,26 +1925,46 @@ func (q *Queries) GetProductsForCollectionByFiltersPaginateFull(ctx context.Cont
 }
 
 const getProductsForCollectionPaginateFull = `-- name: GetProductsForCollectionPaginateFull :many
-SELECT id, name, image_path, firm, discount_percent, original_price, discounted_price, min_price, max_price, has_discount, in_store, priority FROM (
+SELECT id, name, image_path, firm, discount_percent, original_price, discounted_price, min_price, max_price, has_discount, in_store, discount_value, discount_rule_name, priority FROM (
     -- Часть 1: ВСЕ товары из коллекции (С ФИЛЬТРАМИ!)
     SELECT 
         p.id, 
         p.name, 
         p.image_path,
         b.name as firm,
-        COALESCE(d.discount_percent, 0) AS discount_percent,
-        COALESCE(d.original_price, 0) AS original_price,
-        COALESCE(d.discounted_price, p.minprice) AS discounted_price,
-        COALESCE(d.min_price, p.minprice) AS min_price,
-        COALESCE(d.max_price, p.maxprice) AS max_price,
-        d.id IS NOT NULL AS has_discount,
-        (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store,
+        COALESCE(
+            (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        )::int AS discount_percent,
+        COALESCE(
+            (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        )::int AS original_price,
+        COALESCE(
+            (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            p.minprice
+        )::int AS discounted_price,
+        COALESCE(
+            (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            p.minprice
+        )::int AS min_price,
+        COALESCE(
+            (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            p.maxprice
+        )::int AS max_price,
+        EXISTS (
+            SELECT 1 FROM discount d WHERE d.productid = p.id
+        ) AS has_discount,
+        EXISTS (
+            SELECT 1 FROM store_house sh 
+            WHERE sh.productid = p.id AND sh.quantity > 0
+        ) AS in_store,
+        COALESCE(dr.discount_value, 0)::int AS discount_value,
+        COALESCE(dr.name, '')::text AS discount_rule_name,
         0 as priority
     FROM products p
     INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
     LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
-    LEFT JOIN discount d ON p.id = d.productid
-    LEFT JOIN store_house sh ON p.id = sh.productid
     LEFT JOIN LATERAL (
         SELECT dr2.discount_value, dr2.name
         FROM discount_rule_items dri
@@ -1775,7 +1977,9 @@ SELECT id, name, image_path, firm, discount_percent, original_price, discounted_
              OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
              OR (dri.item_type = 'product' AND dri.item_id = p.id)
             )
-            AND d.id IS NULL
+            AND NOT EXISTS (
+                SELECT 1 FROM discount d WHERE d.productid = p.id
+            )
         ORDER BY dr2.priority DESC
         LIMIT 1
     ) dr ON true
@@ -1870,7 +2074,10 @@ SELECT id, name, image_path, firm, discount_percent, original_price, discounted_
         AND (
             $13::boolean IS NULL 
             OR $13::boolean = false 
-            OR (sh.id IS NOT NULL AND sh.quantity > 0)
+            OR EXISTS (
+                SELECT 1 FROM store_house sh 
+                WHERE sh.productid = p.id AND sh.quantity > 0
+            )
         )
     
     UNION ALL
@@ -1881,19 +2088,39 @@ SELECT id, name, image_path, firm, discount_percent, original_price, discounted_
         p.name, 
         p.image_path,
         b.name as firm,
-        COALESCE(d.discount_percent, 0) AS discount_percent,
-        COALESCE(d.original_price, 0) AS original_price,
-        COALESCE(d.discounted_price, p.minprice) AS discounted_price,
-        COALESCE(d.min_price, p.minprice) AS min_price,
-        COALESCE(d.max_price, p.maxprice) AS max_price,
-        d.id IS NOT NULL AS has_discount,
-        (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store,
+        COALESCE(
+            (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        )::int AS discount_percent,
+        COALESCE(
+            (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        )::int AS original_price,
+        COALESCE(
+            (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            p.minprice
+        )::int AS discounted_price,
+        COALESCE(
+            (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            p.minprice
+        )::int AS min_price,
+        COALESCE(
+            (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            p.maxprice
+        )::int AS max_price,
+        EXISTS (
+            SELECT 1 FROM discount d WHERE d.productid = p.id
+        ) AS has_discount,
+        EXISTS (
+            SELECT 1 FROM store_house sh 
+            WHERE sh.productid = p.id AND sh.quantity > 0
+        ) AS in_store,
+        COALESCE(dr.discount_value, 0)::int AS discount_value,
+        COALESCE(dr.name, '')::text AS discount_rule_name,
         1 as priority
     FROM products p
     INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
     LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
-    LEFT JOIN discount d ON p.id = d.productid
-    LEFT JOIN store_house sh ON p.id = sh.productid
     LEFT JOIN LATERAL (
         SELECT dr2.discount_value, dr2.name
         FROM discount_rule_items dri
@@ -1906,7 +2133,9 @@ SELECT id, name, image_path, firm, discount_percent, original_price, discounted_
              OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
              OR (dri.item_type = 'product' AND dri.item_id = p.id)
             )
-            AND d.id IS NULL
+            AND NOT EXISTS (
+                SELECT 1 FROM discount d WHERE d.productid = p.id
+            )
         ORDER BY dr2.priority DESC
         LIMIT 1
     ) dr ON true
@@ -2001,7 +2230,10 @@ SELECT id, name, image_path, firm, discount_percent, original_price, discounted_
         AND (
             $13::boolean IS NULL 
             OR $13::boolean = false 
-            OR (sh.id IS NOT NULL AND sh.quantity > 0)
+            OR EXISTS (
+                SELECT 1 FROM store_house sh 
+                WHERE sh.productid = p.id AND sh.quantity > 0
+            )
         )
 ) AS combined
 ORDER BY
@@ -2036,18 +2268,20 @@ type GetProductsForCollectionPaginateFullParams struct {
 }
 
 type GetProductsForCollectionPaginateFullRow struct {
-	ID              int32       `json:"id"`
-	Name            string      `json:"name"`
-	ImagePath       string      `json:"image_path"`
-	Firm            string      `json:"firm"`
-	DiscountPercent int32       `json:"discount_percent"`
-	OriginalPrice   int32       `json:"original_price"`
-	DiscountedPrice int32       `json:"discounted_price"`
-	MinPrice        int32       `json:"min_price"`
-	MaxPrice        int32       `json:"max_price"`
-	HasDiscount     interface{} `json:"has_discount"`
-	InStore         pgtype.Bool `json:"in_store"`
-	Priority        int32       `json:"priority"`
+	ID               int32  `json:"id"`
+	Name             string `json:"name"`
+	ImagePath        string `json:"image_path"`
+	Firm             string `json:"firm"`
+	DiscountPercent  int32  `json:"discount_percent"`
+	OriginalPrice    int32  `json:"original_price"`
+	DiscountedPrice  int32  `json:"discounted_price"`
+	MinPrice         int32  `json:"min_price"`
+	MaxPrice         int32  `json:"max_price"`
+	HasDiscount      bool   `json:"has_discount"`
+	InStore          bool   `json:"in_store"`
+	DiscountValue    int32  `json:"discount_value"`
+	DiscountRuleName string `json:"discount_rule_name"`
+	Priority         int32  `json:"priority"`
 }
 
 func (q *Queries) GetProductsForCollectionPaginateFull(ctx context.Context, arg GetProductsForCollectionPaginateFullParams) ([]GetProductsForCollectionPaginateFullRow, error) {
@@ -2088,6 +2322,8 @@ func (q *Queries) GetProductsForCollectionPaginateFull(ctx context.Context, arg 
 			&i.MaxPrice,
 			&i.HasDiscount,
 			&i.InStore,
+			&i.DiscountValue,
+			&i.DiscountRuleName,
 			&i.Priority,
 		); err != nil {
 			return nil, err

@@ -7355,39 +7355,60 @@ SELECT
     p.image_path,
     p.name,
     b.name as firm,
-    COALESCE(d.discount_percent, 0) AS discount_percent,
-    COALESCE(d.original_price, 0) AS original_price,
-    COALESCE(d.discounted_price, p.minprice) AS discounted_price,
-    COALESCE(d.min_price, p.minprice) AS min_price,
-    COALESCE(d.max_price, p.maxprice) AS max_price,
+    COALESCE(
+        (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        0
+    )::int AS discount_percent,
+    COALESCE(
+        (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        0
+    )::int AS original_price,
+    COALESCE(
+        (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        p.minprice
+    )::int AS discounted_price,
+    COALESCE(
+        (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        p.minprice
+    )::int AS min_price,
+    COALESCE(
+        (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        p.maxprice
+    )::int AS max_price,
     p.type,
     p.article,
     p.category,
     p.status,
-    d.id IS NOT NULL AS has_discount
+    EXISTS (
+        SELECT 1 FROM discount d WHERE d.productid = p.id
+    ) AS has_discount,
+    EXISTS (
+        SELECT 1 FROM store_house sh 
+        WHERE sh.productid = p.id AND sh.quantity > 0
+    ) AS in_store
 FROM products p
 JOIN brands b ON p.brand_id = b.id AND b.is_active = true
-LEFT JOIN discount d ON p.id = d.productid
 WHERE p.id = ANY($1::integer[])
   AND p.status = 'active'
 ORDER BY p.minprice ASC
 `
 
 type GetProductsByIdsRow struct {
-	GlobalID        int32       `json:"global_id"`
-	ImagePath       string      `json:"image_path"`
-	Name            string      `json:"name"`
-	Firm            string      `json:"firm"`
-	DiscountPercent int32       `json:"discount_percent"`
-	OriginalPrice   int32       `json:"original_price"`
-	DiscountedPrice int32       `json:"discounted_price"`
-	MinPrice        int32       `json:"min_price"`
-	MaxPrice        int32       `json:"max_price"`
-	Type            int32       `json:"type"`
-	Article         string      `json:"article"`
-	Category        int32       `json:"category"`
-	Status          string      `json:"status"`
-	HasDiscount     interface{} `json:"has_discount"`
+	GlobalID        int32  `json:"global_id"`
+	ImagePath       string `json:"image_path"`
+	Name            string `json:"name"`
+	Firm            string `json:"firm"`
+	DiscountPercent int32  `json:"discount_percent"`
+	OriginalPrice   int32  `json:"original_price"`
+	DiscountedPrice int32  `json:"discounted_price"`
+	MinPrice        int32  `json:"min_price"`
+	MaxPrice        int32  `json:"max_price"`
+	Type            int32  `json:"type"`
+	Article         string `json:"article"`
+	Category        int32  `json:"category"`
+	Status          string `json:"status"`
+	HasDiscount     bool   `json:"has_discount"`
+	InStore         bool   `json:"in_store"`
 }
 
 func (q *Queries) GetProductsByIds(ctx context.Context, dollar_1 []int32) ([]GetProductsByIdsRow, error) {
@@ -7414,6 +7435,7 @@ func (q *Queries) GetProductsByIds(ctx context.Context, dollar_1 []int32) ([]Get
 			&i.Category,
 			&i.Status,
 			&i.HasDiscount,
+			&i.InStore,
 		); err != nil {
 			return nil, err
 		}

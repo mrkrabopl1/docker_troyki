@@ -91,19 +91,39 @@ SELECT
     p.image_path,
     p.name,
     b.name as firm,
-    COALESCE(d.discount_percent, 0) AS discount_percent,
-    COALESCE(d.original_price, 0) AS original_price,
-    COALESCE(d.discounted_price, p.minprice) AS discounted_price,
-    COALESCE(d.min_price, p.minprice) AS min_price,
-    COALESCE(d.max_price, p.maxprice) AS max_price,
+    COALESCE(
+        (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        0
+    )::int AS discount_percent,
+    COALESCE(
+        (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        0
+    )::int AS original_price,
+    COALESCE(
+        (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        p.minprice
+    )::int AS discounted_price,
+    COALESCE(
+        (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        p.minprice
+    )::int AS min_price,
+    COALESCE(
+        (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        p.maxprice
+    )::int AS max_price,
     p.type,
     p.article,
     p.category,
     p.status,
-    d.id IS NOT NULL AS has_discount
+    EXISTS (
+        SELECT 1 FROM discount d WHERE d.productid = p.id
+    ) AS has_discount,
+    EXISTS (
+        SELECT 1 FROM store_house sh 
+        WHERE sh.productid = p.id AND sh.quantity > 0
+    ) AS in_store
 FROM products p
 JOIN brands b ON p.brand_id = b.id AND b.is_active = true
-LEFT JOIN discount d ON p.id = d.productid
 WHERE p.id = ANY($1::integer[])
   AND p.status = 'active'
 ORDER BY p.minprice ASC;

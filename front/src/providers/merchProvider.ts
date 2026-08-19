@@ -189,4 +189,23 @@ export async function getMainInfo(): Promise<any> {
   const res = await axios.get(`${API_URL}/getMainInfo`);
   return res.data;
 }
-export { getMerchInfo, getSizeTable,  getCollections, getFirms, getHistoryInfo, getDiscontInfo }
+
+const getProductsByIds = function (ids: number[], callback: (val: any) => void) {
+    axios({
+        method: 'post',
+        url: `${API_URL}/products/ids`,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        withCredentials: true,
+        data: {
+            ids: ids
+        }
+    }).then((res: any) => {
+        callback(res.data)
+    }).catch((error: any) => {
+        console.warn(error)
+        callback(null)
+    })
+}
+export { getMerchInfo, getSizeTable,  getCollections, getFirms, getHistoryInfo, getDiscontInfo,getProductsByIds }

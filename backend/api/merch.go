@@ -1030,4 +1030,55 @@ func (s *Server) handleGetCollectionProducts(c *gin.Context) {
 	log.Printf("✅ [END] handleGetCollectionProducts")
 }
 
+type GetProductsByIdsRequest struct {
+	IDs []int32 `json:"ids" binding:"required,min=1,max=100"`
+}
+
 // convertDBProductsToCached - конвертирует продукты из БД в кэшируемый формат
+func (s *Server) handleAdminGetProductsByIds(ctx *gin.Context) {
+	var req GetProductsByIdsRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, err)
+		return
+	}
+
+	if len(req.IDs) == 0 {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "ids array cannot be empty",
+		})
+		return
+	}
+
+	if len(req.IDs) > 100 {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "too many ids, maximum 100 allowed",
+		})
+		return
+	}
+
+	// Получаем продукты
+	rows, err := s.store.GetProductsByIds(ctx, req.IDs)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	// Конвертируем в ProductRow
+	products := make([]db.ProductsAdminResponse, 0, len(rows))
+	for _, row := range rows {
+		product := db.ProductsAdminResponse{
+			Id:       row.GlobalID,
+			Image:    s.imageService.ImagePathBuilder.GetProductMainImage(row.ImagePath),
+			Name:     row.Name,
+			Price:    int(row.MinPrice),
+			Discount: row.DiscountPercent,
+		}
+		products = append(products, product)
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"products": products,
+		"count":    len(products),
+		"total":    len(req.IDs),
+	})
+}

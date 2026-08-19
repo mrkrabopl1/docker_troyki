@@ -5,7 +5,7 @@ import Modal from 'src/components/modal/Modal'
 import ProductsFilters from 'src/modules/settingsPanels/ProductsFilters'
 import ProductSelector from 'src/modules/merchField/ProductSelector'
 import { useAppSelector, useAppDispatch } from 'src/store/hooks/redux'
-import { CheckBoxType, Collection,EditCollection } from 'src/types/modules'
+import { CheckBoxType, Collection, EditCollection } from 'src/types/modules'
 import {
     getCollectionById
 } from 'src/providers/collectionsProvider'
@@ -17,6 +17,7 @@ import {
     deleteCollection,
 } from 'src/providers/adminCollectionProvider'
 import { getAdminProductsAndFilters, getAdminProducts } from 'src/providers/adminProductsProvider'
+import { getProductsByIds } from 'src/providers/merchProvider'
 import { finishLoading } from 'src/store/reducers/loadingSlice'
 import { BODY_TYPES } from 'src/constants/bodytypes'
 import Scroller from 'src/components/scroller/Scroller'
@@ -90,8 +91,6 @@ const CollectionsManager: React.FC = () => {
 
     // Пагинация для выбранных товаров
     const [selectedPage, setSelectedPage] = useState(1)
-    const selectedPageSize = 10
-    const totalSelectedProducts = selectedProducts.length
 
     // Фильтры
     const filtersInfo = useRef<{
@@ -379,7 +378,7 @@ const CollectionsManager: React.FC = () => {
                 rule_ids: filtersInfo.current.rule_ids || [],
                 bodytypes: filtersInfo.current.bodytypes || [],
                 in_store: filtersInfo.current.in_store || false,
-                lines:filtersInfo.current.lines || [],
+                lines: filtersInfo.current.lines || [],
                 withPrice: true
             }
 
@@ -462,20 +461,34 @@ const CollectionsManager: React.FC = () => {
 
         setSelectorLoading(true)
         try {
-            const query = searchQuery !== undefined ? searchQuery : selectorSearch
 
-            await getAdminProducts(
-                (data: any) => {
-                    setSelectorProducts(data.products || [])
-                    setSelectorTotal(data.totalCount || 0)
-                    setSelectorLoading(false)
-                },
-                selectorPage.current,
-                pageSize,
-                filtersInfo.current,
-                0,
-                query
-            )
+            const query = searchQuery !== undefined ? searchQuery : selectorSearch
+            if (selectorViewMode === "all") {
+                await getAdminProducts(
+                    (data: any) => {
+                        setSelectorProducts(data.products || [])
+                        setSelectorTotal(data.totalCount || 0)
+                        setSelectorLoading(false)
+                    },
+                    selectorPage.current,
+                    pageSize,
+                    filtersInfo.current,
+                    0,
+                    query
+                )
+            }
+            else {
+                await getProductsByIds(
+                    selectedProductIds,
+                    (data: any) => {
+                        setSelectedProducts(data.products || [])
+                        setSelectorTotal(data.totalCount || 0)
+                        setSelectorLoading(false)
+                    },
+
+                )
+            }
+
         } catch (error) {
             console.error('Error loading products:', error)
             setSelectorLoading(false)
@@ -495,27 +508,38 @@ const CollectionsManager: React.FC = () => {
 
         setSelectedViewLoading(true)
         try {
-            // Загружаем выбранные товары с фильтром по ID
-            await getAdminProducts(
-                (data: any) => {
-                    // Фильтруем только те, что есть в selectedProductIds
-                    const filtered = (data.products || []).filter((p: any) =>
-                        selectedProductIds.includes(p.id)
-                    )
-                    setSelectedViewProducts(filtered)
-                    setSelectedViewLoading(false)
-                },
-                1,
-                selectedProductIds.length,
-                filtersInfo.current,
-                0,
-                ''
-            )
+            if (selectorViewMode === "all") {
+                await getAdminProducts(
+                    (data: any) => {
+                        // Фильтруем только те, что есть в selectedProductIds
+                        const filtered = (data.products || []).filter((p: any) =>
+                            selectedProductIds.includes(p.id)
+                        )
+                        setSelectedViewProducts(filtered)
+                        setSelectedViewLoading(false)
+                    },
+                    1,
+                    selectedProductIds.length,
+                    filtersInfo.current,
+                    0,
+                    ''
+                )
+            }
+            else {
+                await getProductsByIds(
+                    selectedProductIds,
+                    (data: any) => {
+                        setSelectedProducts(data.products || [])
+                        setSelectorLoading(false)
+                    },
+
+                )
+            }
         } catch (error) {
             console.error('Error loading selected products:', error)
             setSelectedViewLoading(false)
         }
-    }, [selectedProductIds])
+    }, [selectedProductIds,selectorViewMode])
 
     // Загружаем при открытии модалки
     useEffect(() => {
@@ -545,12 +569,7 @@ const CollectionsManager: React.FC = () => {
         }, 300)
     }
 
-    const handleLoadMore = () => {
-        if (selectorProducts.length < selectorTotal) {
-            selectorPage.current += 1
-            loadSelectorProducts()
-        }
-    }
+
 
     // Добавление товара в коллекцию
     const handleAddProducts = (ids: number[]) => {
@@ -581,43 +600,6 @@ const CollectionsManager: React.FC = () => {
         }
     }
 
-    // Удаление товара из коллекции
-    const handleRemoveProduct = (id: number) => {
-        setSelectedProducts(prev => prev.filter(p => p.id !== id))
-        setSelectedProductIds(prev => prev.filter(pid => pid !== id))
-
-        // Обновляем выбранные товары в режиме просмотра
-        if (selectorViewMode === 'selected') {
-            loadSelectedViewProducts()
-        }
-    }
-
-    // Очистка всех товаров
-    const handleClearAllProducts = () => {
-        if (selectedProducts.length === 0) return
-        if (!confirm('Удалить все товары из коллекции?')) return
-        setSelectedProducts([])
-        setSelectedProductIds([])
-        setSelectedPage(1)
-
-        // Обновляем выбранные товары в режиме просмотра
-        if (selectorViewMode === 'selected') {
-            setSelectedViewProducts([])
-        }
-    }
-
-    // Обработчик просмотра выбранных товаров
-    const handleViewModeChange = useCallback((viewMode) => {
-        setSelectorViewMode(viewMode)
-        if (viewMode === "select") {
-            if (selectedProductIds.length > 0) {
-                loadSelectedViewProducts()
-            }
-        }
-        else {
-
-        }
-    }, [selectedProductIds, loadSelectedViewProducts])
 
     const loadCollections = useCallback(async () => {
         setLoading(true)
@@ -705,24 +687,7 @@ const CollectionsManager: React.FC = () => {
                 }
 
                 if (col.type === 'manual' || col.type === 'hybrid') {
-                    let productIds: number[] = []
-
-                    productIds = fullCollection.products.map((p: any) => p.id)
-                    setSelectedProductIds(productIds)
-
-                    if (fullCollection.products && fullCollection.products.length > 0) {
-                        const products = fullCollection.products.map((p: any) => ({
-                            id: p.id,
-                            name: p.name || 'Без названия',
-                            article: p.article || '',
-                            price: p.min_price || 0,
-                            old_price: p.old_price,
-                            firm: p.firm || '—',
-                            image_path: p.image_path,
-                            status: p.status || 'draft'
-                        }))
-                        setSelectedProducts(products)
-                    }
+                    setSelectedProductIds(fullCollection.product_ids)
                 }
 
                 if (col.type === 'dynamic' || col.type === 'hybrid') {
@@ -847,18 +812,10 @@ const CollectionsManager: React.FC = () => {
         return parts.length > 0 ? parts.join('; ') : 'Условия не выбраны'
     }, [filtersVersion, typesVal, firmMap, filtersInfo.current, editingCollection])
 
-    // Пагинация для выбранных товаров
-    const paginatedSelectedProducts = useMemo(() => {
-        const start = (selectedPage - 1) * selectedPageSize
-        const end = start + selectedPageSize
-        return selectedProducts.slice(start, end)
-    }, [selectedProducts, selectedPage])
 
-    const totalSelectedPages = Math.ceil(totalSelectedProducts / selectedPageSize)
 
-    const handleSelectedPageChange = (page: number) => {
-        setSelectedPage(Math.max(1, Math.min(page, totalSelectedPages)))
-    }
+
+
 
     // Определяем какие товары показывать в ProductSelector
     const displayProducts = useMemo(() => {
@@ -1038,7 +995,7 @@ const CollectionsManager: React.FC = () => {
                                     currentPage={selectorCurrentPage}
                                     onSearch={handleSelectorSearch}
                                     onPageChange={handlePageChange}
-                                    onViewSelected={handleViewModeChange}
+                                    onViewSelected={setSelectorViewMode}
                                     multiple={true}
                                     maxItems={500}
                                     placeholder="Поиск товаров для добавления..."

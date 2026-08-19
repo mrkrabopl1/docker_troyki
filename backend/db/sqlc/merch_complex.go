@@ -1686,14 +1686,14 @@ func (store *SQLStore) GetProductsForCollectionByID(ctx context.Context, collect
 					existing.Price = p.MinPrice
 				}
 				if existing.ImagePath == "" && imagePath != "" {
-					existing.ImagePath = imagePath
+					existing.ImagePath = store.ImagePathBuilder.GetProductMainImage(imagePath)
 				}
 				productMap[p.GlobalID] = existing
 			} else {
 				productMap[p.GlobalID] = types.CachedProduct{
 					ID:              p.GlobalID,
 					Name:            p.Name,
-					ImagePath:       imagePath,
+					ImagePath:       store.ImagePathBuilder.GetProductMainImage(p.ImagePath),
 					Price:           p.MinPrice,
 					Discount:        0,
 					DiscountPercent: 0,
@@ -1767,9 +1767,9 @@ func (store *SQLStore) GetManualCollectionProductsPaginated(
 			Firm:            row.Firm,
 			MinPrice:        row.MinPrice,
 			MaxPrice:        row.MaxPrice,
-			DiscountPercent: row.DiscountPercent.Int32,
-			MaxDiscPrice:    row.DiscountedPrice.Int32,
-			InStore:         row.InStore.Bool,
+			DiscountPercent: row.DiscountPercent,
+			MaxDiscPrice:    row.DiscountedPrice,
+			InStore:         row.InStore,
 		})
 		log.Printf("📦 [Manual] Product %d: ID=%d, Name=%s, Price=%d-%d", i+1, row.GlobalID, row.Name, row.MinPrice, row.MaxPrice)
 	}
@@ -2264,7 +2264,7 @@ func (store *SQLStore) manualRowToProductRow(row GetManualProductsPaginateRow) P
 		MaxDiscPrice:    row.DiscountedPrice,
 		MinPrice:        row.MinPrice,
 		MaxPrice:        row.MaxPrice,
-		InStore:         row.InStore.Bool,
+		InStore:         row.InStore,
 	}
 }
 
@@ -2278,6 +2278,6 @@ func (store *SQLStore) fullRowToProductRowCol(row GetProductsForCollectionPagina
 		MaxDiscPrice:    row.DiscountedPrice,
 		MinPrice:        row.MinPrice,
 		MaxPrice:        row.MaxPrice,
-		InStore:         row.InStore.Bool,
+		InStore:         row.InStore,
 	}
 }
