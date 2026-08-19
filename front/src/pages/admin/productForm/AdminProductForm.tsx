@@ -253,8 +253,11 @@ const AdminProductForm: React.FC = () => {
 
     const parseImagesFromData = (data: any): string[] => {
         if (!data.image_count) return [];
-        return Array.from({ length: data.image_count }, (_, i) =>
-            `${data.image_path +  "/img" + i + "." + data.image_extansion}`
+        return Array.from({ length: data.image_count }, (_, i) => {
+            let index = i + 1
+            return `${data.image_path + "/img" + index + "." + data.image_extansion}`
+        }
+
         );
     };
 
