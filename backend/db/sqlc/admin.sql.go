@@ -3169,11 +3169,11 @@ const getProductsLightSince = `-- name: GetProductsLightSince :many
 SELECT 
     p.article,
     p.name,
-    p.updated_at
+    COALESCE(p.updated_at, p.created_at) AS updated_at
 FROM products p
 WHERE p.status != 'deleted'
-  AND p.updated_at >= COALESCE($1::timestamptz, '1970-01-01')
-ORDER BY p.updated_at, p.id
+  AND COALESCE(p.updated_at, p.created_at) >= COALESCE($1::timestamptz, '1970-01-01')
+ORDER BY COALESCE(p.updated_at, p.created_at), p.id
 LIMIT COALESCE($3::int, 1000)
 OFFSET COALESCE($2::int, 0)
 `
