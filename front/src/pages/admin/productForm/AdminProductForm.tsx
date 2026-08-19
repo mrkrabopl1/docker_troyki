@@ -1,7 +1,7 @@
 // pages/admin/ProductForm/AdminProductForm.tsx
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { useAppSelector,useNavigate } from 'src/store/hooks/redux';
+import { useAppSelector, useNavigate } from 'src/store/hooks/redux';
 import Button from 'src/components/Button';
 import Modal from 'src/components/modal/Modal';
 import Scroller from 'src/components/scroller/Scroller';
@@ -102,8 +102,8 @@ const AdminProductForm: React.FC = () => {
     // Данные для комбобоксов
     const brandsData = useMemo(() => {
         let acc = {}
-        Object.values(firmMap).forEach(val=>{
-            acc[val.id] = val.name 
+        Object.values(firmMap).forEach(val => {
+            acc[val.id] = val.name
         })
         return acc;
     }, [firms, firmMap]);
@@ -230,13 +230,13 @@ const AdminProductForm: React.FC = () => {
                 console.log('Firm created successfully:', newFirm);
             });
         } catch (error) {
-             if (error.response?.status === 409) {
-            // The firm already exists
-            setFirmErrorText('Фирма с таким названием уже существует');
-        } else {
-            // Handle other errors
-            setFirmErrorText('Ошибка при создании фирмы. Попробуйте позже.');
-        }
+            if (error.response?.status === 409) {
+                // The firm already exists
+                setFirmErrorText('Фирма с таким названием уже существует');
+            } else {
+                // Handle other errors
+                setFirmErrorText('Ошибка при создании фирмы. Попробуйте позже.');
+            }
             console.error('Error creating firm:', error);
         }
     };
@@ -254,7 +254,7 @@ const AdminProductForm: React.FC = () => {
     const parseImagesFromData = (data: any): string[] => {
         if (!data.image_count) return [];
         return Array.from({ length: data.image_count }, (_, i) =>
-            `${data.image_path}`
+            `${data.image_path + + "/img" + i + "." + data.image_extansion}`
         );
     };
 
@@ -416,7 +416,7 @@ const AdminProductForm: React.FC = () => {
                 await uploadFn(file, (response: any) => {
                     setFormData(prev => ({
                         ...prev,
-                        images: [ ...response.images]
+                        images: [...response.images]
                     }));
                     // Сбрасываем ошибку изображений, если она была
                     setValidationErrors(prev => ({ ...prev, images: false }));
@@ -439,7 +439,7 @@ const AdminProductForm: React.FC = () => {
             });
         } else {
             let imageArr = formData.images[index].split("/");
-            let imageName  = imageArr[imageArr.length-1]
+            let imageName = imageArr[imageArr.length - 1]
             await deleteTempImage(sessionId, imageName, (resp) => {
                 setFormData(prev => ({
                     ...prev,

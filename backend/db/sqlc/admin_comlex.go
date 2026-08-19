@@ -286,18 +286,19 @@ func (store *SQLStore) buildAdminProductsInfoResponse(snInfo GetAdminProductsInf
 	fmt.Println(snInfo.ImagePath, "sssssssssssssssssssssssssssssssssssssssss")
 	return ProductsAdminInfoResponse{
 		ProductsInfoResponse: ProductsInfoResponse{
-			Name:        snInfo.Name,
-			ImageCount:  snInfo.ImageCount,
-			Firm:        snInfo.Firm,
-			Line:        snInfo.Line.String,
-			Info:        jsonData,
-			Discount:    discount,
-			ProductType: snInfo.Type,
-			Category:    snInfo.Category,
-			Article:     snInfo.Article,
-			Store:       snInfo.StoreInfo,
-			ImagePath:   store.ImagePathBuilder.GetProductMainImage(snInfo.ImagePath), // ✅ главное фото
-			Id:          snInfo.ID,
+			Name:           snInfo.Name,
+			ImageCount:     snInfo.ImageCount,
+			Firm:           snInfo.Firm,
+			Line:           snInfo.Line.String,
+			Info:           jsonData,
+			Discount:       discount,
+			ProductType:    snInfo.Type,
+			Category:       snInfo.Category,
+			Article:        snInfo.Article,
+			Store:          snInfo.StoreInfo,
+			ImagePath:      store.ImagePathBuilder.GetImageURLFromPath(snInfo.ImagePath),
+			ImageExtansion: "webp",
+			Id:             snInfo.ID,
 		},
 		Status: snInfo.Status,
 	}
