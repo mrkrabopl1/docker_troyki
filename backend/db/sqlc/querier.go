@@ -60,6 +60,7 @@ type Querier interface {
 	CountProductsByFiltersFullWithSlugs(ctx context.Context, arg CountProductsByFiltersFullWithSlugsParams) (int64, error)
 	CountProductsByFiltersWithDiscount(ctx context.Context, arg CountProductsByFiltersWithDiscountParams) (int64, error)
 	CountProductsByFiltersWithStore(ctx context.Context, arg CountProductsByFiltersWithStoreParams) (int64, error)
+	CountProductsForAdmin(ctx context.Context, arg CountProductsForAdminParams) (CountProductsForAdminRow, error)
 	CountProductsForCollectionByFiltersFull(ctx context.Context, arg CountProductsForCollectionByFiltersFullParams) (int32, error)
 	CountProductsForCollectionFull(ctx context.Context, arg CountProductsForCollectionFullParams) (int32, error)
 	CreateAdmin(ctx context.Context, arg CreateAdminParams) (CreateAdminRow, error)

@@ -73,6 +73,141 @@ func (q *Queries) CountPageWidgets(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countProductsForAdmin = `-- name: CountProductsForAdmin :one
+SELECT 
+    COUNT(*) as total_count,
+    COUNT(*) FILTER (WHERE p.status = 'active') AS active_count
+FROM products p
+    JOIN brands b ON p.brand_id = b.id
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id
+WHERE p.status != 'deleted'
+    AND (
+        $1::text IS NULL
+        OR $1::text = ''
+        OR p.status = $1::text
+    )
+    AND (
+        COALESCE(array_length($2::text [], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($2::text [])
+                AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    AND (
+        $3::text IS NULL
+        OR $3::text = ''
+        OR p.name ILIKE '%' || $3::text || '%'
+        OR p.article ILIKE '%' || $3::text || '%'
+    )
+    AND (
+        COALESCE(array_length($4::int [], 1), 0) = 0
+        OR p.category = ANY($4::int [])
+    )
+    AND (
+        COALESCE(array_length($5::int [], 1), 0) = 0
+        OR p.type = ANY($5::int [])
+    )
+    AND (
+        COALESCE(array_length($6::int [], 1), 0) = 0
+        OR p.brand_id = ANY($6::int [])
+    )
+    AND (
+        COALESCE(array_length($7::int [], 1), 0) = 0
+        OR p.line_id = ANY($7::int [])
+    )
+    AND (
+        COALESCE(array_length($8::text [], 1), 0) = 0
+        OR p.bodytype = ANY($8::body_enum [])
+    )
+    AND (
+        $9::int IS NULL
+        OR p.maxprice >= $9::int
+    )
+    AND (
+        $10::int IS NULL
+        OR p.minprice <= $10::int
+    )
+    AND (
+        $11::timestamptz IS NULL
+        OR p.created_at >= $11::timestamptz
+    )
+    AND (
+        $12::timestamptz IS NULL
+        OR p.updated_at >= $12::timestamptz
+    )
+    AND (
+        $13::boolean IS NULL
+        OR $13::boolean = false
+        OR EXISTS (
+            SELECT 1 FROM discount d2 
+            WHERE d2.productid = p.id
+        )
+    )
+    AND (
+        $14::boolean IS NULL
+        OR $14::boolean = false
+        OR EXISTS (
+            SELECT 1 
+            FROM store_house sh2 
+            WHERE sh2.productid = p.id 
+            AND sh2.quantity > 0
+        )
+    )
+    AND (
+        $15::boolean IS NULL
+        OR $15::boolean = false
+        OR p.minprice > 0
+    )
+`
+
+type CountProductsForAdminParams struct {
+	Status       string             `json:"status"`
+	Sizes        []string           `json:"sizes"`
+	Name         string             `json:"name"`
+	Categories   []int32            `json:"categories"`
+	ProductTypes []int32            `json:"product_types"`
+	Firms        []int32            `json:"firms"`
+	Lines        []int32            `json:"lines"`
+	Bodytypes    []string           `json:"bodytypes"`
+	Minprice     pgtype.Int4        `json:"minprice"`
+	Maxprice     pgtype.Int4        `json:"maxprice"`
+	CreatedFrom  pgtype.Timestamptz `json:"created_from"`
+	UpdatedFrom  pgtype.Timestamptz `json:"updated_from"`
+	HasDiscount  bool               `json:"has_discount"`
+	InStore      bool               `json:"in_store"`
+	WithPrice    bool               `json:"with_price"`
+}
+
+type CountProductsForAdminRow struct {
+	TotalCount  int64 `json:"total_count"`
+	ActiveCount int64 `json:"active_count"`
+}
+
+func (q *Queries) CountProductsForAdmin(ctx context.Context, arg CountProductsForAdminParams) (CountProductsForAdminRow, error) {
+	row := q.db.QueryRow(ctx, countProductsForAdmin,
+		arg.Status,
+		arg.Sizes,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.CreatedFrom,
+		arg.UpdatedFrom,
+		arg.HasDiscount,
+		arg.InStore,
+		arg.WithPrice,
+	)
+	var i CountProductsForAdminRow
+	err := row.Scan(&i.TotalCount, &i.ActiveCount)
+	return i, err
+}
+
 const createAdmin = `-- name: CreateAdmin :one
 INSERT INTO admins (email, password_hash, name, role, is_active)
 VALUES ($1, $2, $3, $4, $5)
@@ -2747,32 +2882,25 @@ SELECT p.id,
     p.maxprice,
     p.status,
     p.updated_at,
-    -- Итоговый процент скидки через подзапрос
     COALESCE(
         (
             SELECT MAX((item.value->>'percent')::int)
-            FROM jsonb_each(d.value) AS item
+            FROM discount d,
+            jsonb_each(d.value) AS item
             WHERE d.productid = p.id
         ),
         0
     ) AS discount_percent,
-    -- В наличии через подзапрос
     EXISTS (
         SELECT 1 
         FROM store_house sh 
         WHERE sh.productid = p.id 
         AND sh.quantity > 0
-    ) AS in_stock,
-    -- Оконные функции с DISTINCT
-    COUNT(DISTINCT p.id) FILTER (
-        WHERE p.status = 'active'
-    ) OVER() AS active_count,
-    COUNT(DISTINCT p.id) OVER() AS total_count
+    ) AS in_stock
 FROM products p
     JOIN brands b ON p.brand_id = b.id
     LEFT JOIN brand_lines bl ON p.line_id = bl.id
 WHERE p.status != 'deleted'
-    -- Фильтры (без изменений)
     AND (
         $1::text IS NULL
         OR $1::text = ''
@@ -2833,8 +2961,8 @@ WHERE p.status != 'deleted'
         $13::boolean IS NULL
         OR $13::boolean = false
         OR EXISTS (
-            SELECT 1 FROM discount d 
-            WHERE d.productid = p.id
+            SELECT 1 FROM discount d2 
+            WHERE d2.productid = p.id
         )
     )
     AND (
@@ -2853,78 +2981,48 @@ WHERE p.status != 'deleted'
         OR p.minprice > 0
     )
 ORDER BY
-    CASE
-        WHEN $16::int = 1 THEN p.name
-    END ASC,
-    CASE
-        WHEN $16::int = 2 THEN p.name
-    END DESC,
-    CASE
-        WHEN $16::int = 3 THEN p.minprice
-    END ASC,
-    CASE
-        WHEN $16::int = 4 THEN p.minprice
-    END DESC,
-    CASE
-        WHEN $16::int = 5 THEN b.name
-    END ASC,
-    CASE
-        WHEN $16::int = 6 THEN b.name
-    END DESC,
-    CASE
-        WHEN $16::int = 7 THEN COALESCE(
-            (
-                SELECT MAX((item.value->>'percent')::int)
-                FROM jsonb_each(d.value) AS item
-                WHERE d.productid = p.id
-            ),
-            0
-        )
-    END ASC,
-    CASE
-        WHEN $16::int = 8 THEN COALESCE(
-            (
-                SELECT MAX((item.value->>'percent')::int)
-                FROM jsonb_each(d.value) AS item
-                WHERE d.productid = p.id
-            ),
-            0
-        )
-    END DESC,
-    CASE
-        WHEN $16::int = 9 THEN p.created_at
-    END ASC,
-    CASE
-        WHEN $16::int = 10 THEN p.created_at
-    END DESC,
-    CASE
-        WHEN $16::int = 11 THEN p.updated_at
-    END ASC NULLS LAST,
-    CASE
-        WHEN $16::int = 12 THEN p.updated_at
-    END DESC NULLS LAST,
-    CASE
-        WHEN $16::int = 13 THEN p.status
-    END ASC,
-    CASE
-        WHEN $16::int = 14 THEN p.status
-    END DESC,
-    CASE
-        WHEN $16::int = 15 THEN EXISTS (
-            SELECT 1 
-            FROM store_house sh3 
-            WHERE sh3.productid = p.id 
-            AND sh3.quantity > 0
-        )::int
-    END ASC,
-    CASE
-        WHEN $16::int = 16 THEN EXISTS (
-            SELECT 1 
-            FROM store_house sh4 
-            WHERE sh4.productid = p.id 
-            AND sh4.quantity > 0
-        )::int
-    END DESC,
+    CASE WHEN $16::int = 1 THEN p.name END ASC,
+    CASE WHEN $16::int = 2 THEN p.name END DESC,
+    CASE WHEN $16::int = 3 THEN p.minprice END ASC,
+    CASE WHEN $16::int = 4 THEN p.minprice END DESC,
+    CASE WHEN $16::int = 5 THEN b.name END ASC,
+    CASE WHEN $16::int = 6 THEN b.name END DESC,
+    CASE WHEN $16::int = 7 THEN COALESCE(
+        (
+            SELECT MAX((item.value->>'percent')::int)
+            FROM discount d3,
+            jsonb_each(d3.value) AS item
+            WHERE d3.productid = p.id
+        ),
+        0
+    ) END ASC,
+    CASE WHEN $16::int = 8 THEN COALESCE(
+        (
+            SELECT MAX((item.value->>'percent')::int)
+            FROM discount d4,
+            jsonb_each(d4.value) AS item
+            WHERE d4.productid = p.id
+        ),
+        0
+    ) END DESC,
+    CASE WHEN $16::int = 9 THEN p.created_at END ASC,
+    CASE WHEN $16::int = 10 THEN p.created_at END DESC,
+    CASE WHEN $16::int = 11 THEN p.updated_at END ASC NULLS LAST,
+    CASE WHEN $16::int = 12 THEN p.updated_at END DESC NULLS LAST,
+    CASE WHEN $16::int = 13 THEN p.status END ASC,
+    CASE WHEN $16::int = 14 THEN p.status END DESC,
+    CASE WHEN $16::int = 15 THEN EXISTS (
+        SELECT 1 
+        FROM store_house sh3 
+        WHERE sh3.productid = p.id 
+        AND sh3.quantity > 0
+    )::int END ASC,
+    CASE WHEN $16::int = 16 THEN EXISTS (
+        SELECT 1 
+        FROM store_house sh4 
+        WHERE sh4.productid = p.id 
+        AND sh4.quantity > 0
+    )::int END DESC,
     p.id ASC
 LIMIT CASE
         WHEN $18::integer > 0 THEN $18::integer
@@ -2970,8 +3068,6 @@ type GetProductsForAdminByFiltersRow struct {
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 	DiscountPercent interface{}        `json:"discount_percent"`
 	InStock         bool               `json:"in_stock"`
-	ActiveCount     int64              `json:"active_count"`
-	TotalCount      int64              `json:"total_count"`
 }
 
 func (q *Queries) GetProductsForAdminByFilters(ctx context.Context, arg GetProductsForAdminByFiltersParams) ([]GetProductsForAdminByFiltersRow, error) {
@@ -3015,8 +3111,6 @@ func (q *Queries) GetProductsForAdminByFilters(ctx context.Context, arg GetProdu
 			&i.UpdatedAt,
 			&i.DiscountPercent,
 			&i.InStock,
-			&i.ActiveCount,
-			&i.TotalCount,
 		); err != nil {
 			return nil, err
 		}

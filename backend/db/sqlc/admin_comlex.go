@@ -24,6 +24,7 @@ type RespSearchProductsAndFiltersByStringForAdmin struct {
 func (store *SQLStore) GetAllProductsAndFilters(ctx context.Context, page int, size int, orderedType int) (RespSearchProductsAndFiltersByStringForAdmin, error) {
 	offset := (page - 1) * size
 
+	// Получаем товары с пагинацией
 	params := GetProductsForAdminByFiltersParams{
 		Offsetval: int32(offset),
 		Limitval:  int32(size),
@@ -47,28 +48,45 @@ func (store *SQLStore) GetAllProductsAndFilters(ctx context.Context, page int, s
 	// Получаем товары
 	data, err := store.GetProductsForAdminByFilters(ctx, params)
 	if err != nil {
+		fmt.Println(err, "ff")
 		return RespSearchProductsAndFiltersByStringForAdmin{}, err
 	}
 
+	// Получаем фильтры
 	filters, err := store.GetAllFiltersForAdmin(ctx)
 	if err != nil {
 		return RespSearchProductsAndFiltersByStringForAdmin{}, err
 	}
 
-	var totalCount float64
-	var activeCount int32
-	if len(data) > 0 {
-		totalCount = float64(data[0].TotalCount)
-		activeCount = int32(data[0].ActiveCount)
-	} else {
-		totalCount = 0
-		activeCount = 0
+	// Получаем ОТДЕЛЬНЫМ запросом общее количество (без фильтров)
+	countParams := CountProductsForAdminParams{
+		Sizes:        []string{},
+		Firms:        []int32{},
+		Bodytypes:    []string{},
+		ProductTypes: []int32{},
+		Lines:        []int32{},
+		Categories:   []int32{},
+		Status:       "",
+		Name:         "",
+		Minprice:     pgtype.Int4{Valid: false},
+		Maxprice:     pgtype.Int4{Valid: false},
+		HasDiscount:  false,
+		InStore:      false,
+		WithPrice:    false,
+		CreatedFrom:  pgtype.Timestamptz{Valid: false},
+		UpdatedFrom:  pgtype.Timestamptz{Valid: false},
+	}
+
+	// Вызываем сгенерированный sqlc метод для подсчета
+	countResult, err := store.CountProductsForAdmin(ctx, countParams)
+	if err != nil {
+		return RespSearchProductsAndFiltersByStringForAdmin{}, err
 	}
 
 	return RespSearchProductsAndFiltersByStringForAdmin{
 		Products:    store.buildAdminProductsResponse(data),
-		TotalCount:  totalCount,
-		ActiveCount: activeCount,
+		TotalCount:  float64(countResult.TotalCount),
+		ActiveCount: int32(countResult.ActiveCount),
 		Filters: FiltersSearchResponse{
 			Price:      [2]int32{filters.MinPrice.(int32), filters.MaxPrice.(int32)},
 			Sizes:      filters.Sizes,
@@ -145,27 +163,62 @@ type RespProductsForAdminByStringStruct struct {
 }
 
 func (store *SQLStore) GetProductsForAdminByFiltersComplex(ctx context.Context, name string, page int, size int, filters types.ProductsForAdminFilterStruct, orderedType int32) (RespProductsForAdminByStringStruct, error) {
+	// Получаем продукты с пагинацией
 	data, err := store.getProductsForAdminByFilters(ctx, GetFiltersByNameCategoryAndTypeParams{Name: pgtype.Text{String: name, Valid: true}}, filters, page, size, int(orderedType), true)
 	if err != nil {
 		return RespProductsForAdminByStringStruct{}, err
 	}
-	var totalCount int32
-	var activeCount int32
-	if len(data) > 0 {
-		totalCount = int32(data[0].TotalCount)
-		activeCount = int32(data[0].ActiveCount)
+
+	// Получаем ОТДЕЛЬНЫМ запросом общее количество
+	// sqlc сгенерировал метод CountProductsForAdmin, который принимает CountProductsForAdminParams
+	params := CountProductsForAdminParams{
+		Sizes:        filters.Sizes,
+		Firms:        filters.Firms,
+		Bodytypes:    filters.Bodytypes,
+		ProductTypes: filters.Types,
+		HasDiscount:  filters.HasDiscount,
+		InStore:      filters.InStore,
+		WithPrice:    filters.WithPrice,
+		Lines:        filters.Lines,
+		Status:       filters.Status,
+		CreatedFrom: pgtype.Timestamptz{
+			Time:  filters.CreatedFrom,
+			Valid: !filters.CreatedFrom.IsZero(),
+		},
+		UpdatedFrom: pgtype.Timestamptz{
+			Time:  filters.UpdatedFrom,
+			Valid: !filters.UpdatedFrom.IsZero(),
+		},
+	}
+
+	// Добавляем поиск по имени
+	if name != "" {
+		params.Name = name
 	} else {
-		totalCount = 0
-		activeCount = 0
+		params.Name = ""
+	}
+
+	// Цены
+	if filters.Price != nil && len(filters.Price) == 2 {
+		params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
+		params.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
+	} else {
+		params.Minprice = pgtype.Int4{Valid: false}
+		params.Maxprice = pgtype.Int4{Valid: false}
+	}
+
+	// Вызываем сгенерированный sqlc метод
+	countResult, err := store.CountProductsForAdmin(ctx, params)
+	if err != nil {
+		return RespProductsForAdminByStringStruct{}, err
 	}
 
 	return RespProductsForAdminByStringStruct{
-		ActiveCount: activeCount,
+		ActiveCount: int32(countResult.ActiveCount), // если в SQL есть active_count
 		Products:    store.buildAdminProductsResponse(data),
-		TotalCount:  totalCount,
+		TotalCount:  int32(countResult.TotalCount),
 	}, nil
 }
-
 func (store *SQLStore) getProductsForAdminByFilters(ctx context.Context, mainFilter GetFiltersByNameCategoryAndTypeParams, filters types.ProductsForAdminFilterStruct, page, size, orderedType int, usePriceFilter bool) ([]GetProductsForAdminByFiltersRow, error) {
 	offset := (page - 1) * size
 
