@@ -782,7 +782,16 @@ func (store *SQLStore) getProductsByFiltersWithSlugs(
 		SortType:     int32(orderedType),
 		HasDiscount:  filters.HasDiscount,
 	}
-
+	log.Printf("🔍 [FULL PARAMS] CategorySlug='%s', TypeSlug='%s', BrandSlug='%s', LineSlug='%s'",
+		categorySlug, typeSlug, brandSlug, lineSlug)
+	log.Printf("🔍 [FULL PARAMS] Sizes=%v, Categories=%v, ProductTypes=%v",
+		filters.Sizes, filters.Categories, filters.Types)
+	log.Printf("🔍 [FULL PARAMS] Firms=%v, Lines=%v, Bodytypes=%v",
+		filters.Firms, filters.Lines, filters.Bodytypes)
+	log.Printf("🔍 [FULL PARAMS] WithPrice=%v, HasDiscount=%v",
+		filters.WithPrice, filters.HasDiscount)
+	log.Printf("🔍 [FULL PARAMS] Limit=%d, Offset=%d, SortType=%d",
+		size, offset, orderedType)
 	if usePriceFilter && len(filters.Price) == 2 {
 		params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
 		params.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}

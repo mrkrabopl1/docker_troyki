@@ -650,7 +650,11 @@ func (s *Server) handleAdminUpdateProduct(c *gin.Context) {
 	}
 
 	log.Printf("Product %d updated successfully", productID)
-
+	go func() {
+		ctx := context.Background()
+		productIDs := map[int32]bool{int32(productID): true}
+		_ = s.store.RecalculateProductsDiscounts(ctx, productIDs)
+	}()
 	// Логируем
 	go func() {
 		ctx := context.Background()
@@ -4016,7 +4020,26 @@ func (s *Server) handleAdminExecuteSQL(ctx *gin.Context) {
 		})
 		return
 	}
+	if summary.Successful > 0 {
+		go func() {
+			ctx := context.Background()
 
+			// Если были изменения в таблицах, которые влияют на скидки
+			if summary.TablesAffected["products"] > 0 ||
+				summary.TablesAffected["product_sizes"] > 0 ||
+				summary.TablesAffected["brands"] > 0 ||
+				summary.TablesAffected["brand_lines"] > 0 {
+
+				fmt.Println("[SQL] 🔄 Пересчет всех скидок...")
+				err := s.store.RecalculateAllDiscounts(ctx)
+				if err != nil {
+					fmt.Printf("[SQL] ❌ Ошибка пересчета скидок: %v\n", err)
+				} else {
+					fmt.Println("[SQL] ✅ Скидки пересчитаны")
+				}
+			}
+		}()
+	}
 	// ========== ЛОГИРУЕМ КАЖДУЮ УСПЕШНУЮ ОПЕРАЦИЮ ==========
 	go func() {
 		logCtx := context.Background()
@@ -4398,14 +4421,12 @@ func (s *Server) handleBulkUpdateProductPrice(c *gin.Context) {
 	var productIDs []int32
 
 	if req.SelectAll {
-		// Получаем все ID товаров по фильтрам
 		var err error
 		productIDs, err = s.store.GetProductIDsForAdminByFilters(c.Request.Context(), convertFiltersToParams(req.Filters, req.Search))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get products"})
 			return
 		}
-
 	} else {
 		productIDs = req.ProductIDs
 	}
@@ -4424,12 +4445,15 @@ func (s *Server) handleBulkUpdateProductPrice(c *gin.Context) {
 
 	// Обновляем цены
 	updatedCount := 0
+	affectedProductIDs := make(map[int32]bool) // Для пересчета скидок
+
 	for _, product := range products {
 		sizesMap := make(map[string]interface{})
 		if product.Sizes != nil {
 			json.Unmarshal(product.Sizes, &sizesMap)
 		}
 
+		priceChanged := false
 		// Обновляем размеры
 		for size, sizeData := range sizesMap {
 			if sizeDataMap, ok := sizeData.(map[string]interface{}); ok {
@@ -4446,12 +4470,19 @@ func (s *Server) handleBulkUpdateProductPrice(c *gin.Context) {
 						newPrice = currentPriceFloat * (1 - req.PriceValue/100)
 					}
 
-					// Округляем до целого
-					sizeDataMap["price"] = math.Round(newPrice)
-					// Обновляем значение в map по ключу size
-					sizesMap[size] = sizeDataMap
+					// Проверяем, изменилась ли цена
+					if math.Abs(newPrice-currentPriceFloat) > 0.001 {
+						sizeDataMap["price"] = math.Round(newPrice)
+						sizesMap[size] = sizeDataMap
+						priceChanged = true
+					}
 				}
 			}
+		}
+
+		// Если цена не изменилась - пропускаем
+		if !priceChanged {
+			continue
 		}
 
 		// Обновляем minprice и maxprice
@@ -4478,8 +4509,15 @@ func (s *Server) handleBulkUpdateProductPrice(c *gin.Context) {
 		}
 
 		updatedCount++
+		affectedProductIDs[product.ID] = true
 	}
 
+	// 🔥 Асинхронно пересчитываем скидки для затронутых товаров
+	if len(affectedProductIDs) > 0 {
+		s.asyncRecalculateDiscountsForProducts(c.Request.Context(), affectedProductIDs)
+	}
+
+	// Логируем действие админа
 	admin, exists := c.Get("admin")
 	if exists {
 		adminDB := admin.(db.GetAdminByIDRow)
@@ -4495,7 +4533,7 @@ func (s *Server) handleBulkUpdateProductPrice(c *gin.Context) {
 				AdminID:    adminDB.ID,
 				Action:     "update",
 				EntityType: pgtype.Text{String: "product", Valid: true},
-				Details:    pgtype.Text{String: fmt.Sprintf("Bulk updated %d products price to %v", len(productIDs), req.PriceValue), Valid: true},
+				Details:    pgtype.Text{String: fmt.Sprintf("Bulk updated %d products price to %v", updatedCount, req.PriceValue), Valid: true},
 				IpAddress:  ipAddr,
 			}
 			_ = s.store.CreateAdminLog(ctx, params)
@@ -4504,8 +4542,35 @@ func (s *Server) handleBulkUpdateProductPrice(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"updated_count": updatedCount,
-		"message":       fmt.Sprintf("Prices updated for %d products", updatedCount),
+		"message":       fmt.Sprintf("Prices updated for %d products. Discount recalculation started for %d products.", updatedCount, len(affectedProductIDs)),
 	})
+}
+
+// asyncRecalculateDiscountsForProducts - асинхронный пересчет скидок для списка продуктов
+func (s *Server) asyncRecalculateDiscountsForProducts(ctx context.Context, productIDs map[int32]bool) {
+	if len(productIDs) == 0 {
+		return
+	}
+
+	go func() {
+		// Создаем новый контекст с таймаутом
+		timeoutCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+		defer cancel()
+
+		start := time.Now()
+		log.Printf("Starting discount recalculation for %d products...", len(productIDs))
+
+		err := s.store.RecalculateProductsDiscounts(timeoutCtx, productIDs)
+
+		if err != nil {
+			log.Printf("Failed to recalculate discounts for products: %v", err)
+			// Здесь можно отправить ошибку в систему мониторинга
+			return
+		}
+
+		log.Printf("Discount recalculation completed for %d products in %v",
+			len(productIDs), time.Since(start))
+	}()
 }
 func convertFiltersToParams(filters *ProductFilters, search string) db.GetProductIDsForAdminByFiltersParams {
 	params := db.GetProductIDsForAdminByFiltersParams{

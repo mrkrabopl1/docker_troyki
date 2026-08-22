@@ -1,0 +1,189 @@
+-- Функция обновления скидки при изменении размеров
+-- Функция обновления скидки при изменении размеров
+-- CREATE OR REPLACE FUNCTION update_discount_on_size_change()
+-- RETURNS TRIGGER AS $$
+-- DECLARE
+--     v_product_id INTEGER;
+--     v_min_price INTEGER;
+--     v_max_price INTEGER;
+--     v_value JSONB;
+--     v_discount_percent INTEGER;
+--     v_original_price INTEGER;
+--     v_discounted_price INTEGER;
+-- BEGIN
+--     -- Определяем ID товара
+--     IF TG_OP = 'DELETE' THEN
+--         v_product_id = OLD.product_id;
+--     ELSE
+--         v_product_id = NEW.product_id;
+--     END IF;
+
+--     -- Получаем актуальные данные по размерам (убираем in_stock)
+--     SELECT 
+--         COALESCE(MIN(price)::INTEGER, 0),
+--         COALESCE(MAX(price)::INTEGER, 0),
+--         COALESCE(jsonb_object_agg(size_key, price), '{}'::jsonb)
+--     INTO 
+--         v_min_price,
+--         v_max_price,
+--         v_value
+--     FROM product_sizes
+--     WHERE product_id = v_product_id
+--       AND quantity > 0;  -- Только те, что есть в наличии
+
+--     -- Получаем текущий процент скидки
+--     SELECT COALESCE(discount_percent, 0)
+--     INTO v_discount_percent
+--     FROM discount
+--     WHERE productid = v_product_id;
+
+--     -- Если скидки нет, создаем запись
+--     IF NOT FOUND THEN
+--         INSERT INTO discount (
+--             productid,
+--             value,
+--             discount_percent,
+--             original_price,
+--             discounted_price,
+--             min_price,
+--             max_price,
+--             created_at,
+--             updated_at
+--         ) VALUES (
+--             v_product_id,
+--             v_value,
+--             0,
+--             v_min_price,
+--             v_min_price,
+--             v_min_price,
+--             v_max_price,
+--             NOW(),
+--             NOW()
+--         );
+--     ELSE
+--         -- Обновляем существующую запись
+--         v_discounted_price = v_min_price - (v_min_price * v_discount_percent / 100);
+        
+--         UPDATE discount
+--         SET 
+--             value = v_value,
+--             original_price = v_min_price,
+--             discounted_price = v_discounted_price,
+--             min_price = v_min_price,
+--             max_price = v_max_price,
+--             updated_at = NOW()
+--         WHERE productid = v_product_id;
+--     END IF;
+
+--     -- Обновляем товар
+--     UPDATE products
+--     SET 
+--         minprice = v_min_price,
+--         maxprice = v_max_price,
+--         updated_at = NOW()
+--     WHERE id = v_product_id;
+
+--     RETURN NULL;
+-- END;
+-- $$ LANGUAGE plpgsql;
+
+-- -- Триггеры на таблицу product_sizes
+-- CREATE TRIGGER trigger_update_discount_on_size_insert
+--     AFTER INSERT ON product_sizes
+--     FOR EACH ROW
+--     EXECUTE FUNCTION update_discount_on_size_change();
+
+-- CREATE TRIGGER trigger_update_discount_on_size_update
+--     AFTER UPDATE ON product_sizes
+--     FOR EACH ROW
+--     EXECUTE FUNCTION update_discount_on_size_change();
+
+-- CREATE TRIGGER trigger_update_discount_on_size_delete
+--     AFTER DELETE ON product_sizes
+--     FOR EACH ROW
+--     EXECUTE FUNCTION update_discount_on_size_change();
+
+
+-- DO $$
+-- DECLARE
+--     v_product RECORD;
+--     v_min_price INTEGER;
+--     v_max_price INTEGER;
+--     v_value JSONB;
+--     v_discount_percent INTEGER;
+--     v_discounted_price INTEGER;
+-- BEGIN
+--     FOR v_product IN (
+--         SELECT DISTINCT p.id
+--         FROM products p
+--         WHERE p.status = 'active'
+--     ) LOOP
+--         -- Получаем данные по размерам (убираем in_stock)
+--         SELECT 
+--             COALESCE(MIN(price)::INTEGER, 0),
+--             COALESCE(MAX(price)::INTEGER, 0),
+--             COALESCE(jsonb_object_agg(size_key, price), '{}'::jsonb)
+--         INTO 
+--             v_min_price,
+--             v_max_price,
+--             v_value
+--         FROM product_sizes
+--         WHERE product_id = v_product.id
+--           AND quantity > 0;
+
+--         -- Получаем скидку
+--         SELECT COALESCE(discount_percent, 0)
+--         INTO v_discount_percent
+--         FROM discount
+--         WHERE productid = v_product.id;
+
+--         -- Если скидки нет - создаем
+--         IF NOT FOUND THEN
+--             INSERT INTO discount (
+--                 productid,
+--                 value,
+--                 discount_percent,
+--                 original_price,
+--                 discounted_price,
+--                 min_price,
+--                 max_price,
+--                 created_at,
+--                 updated_at
+--             ) VALUES (
+--                 v_product.id,
+--                 v_value,
+--                 0,
+--                 v_min_price,
+--                 v_min_price,
+--                 v_min_price,
+--                 v_max_price,
+--                 NOW(),
+--                 NOW()
+--             );
+--         ELSE
+--             -- Обновляем существующую
+--             v_discounted_price = v_min_price - (v_min_price * v_discount_percent / 100);
+            
+--             UPDATE discount
+--             SET 
+--                 value = v_value,
+--                 original_price = v_min_price,
+--                 discounted_price = v_discounted_price,
+--                 min_price = v_min_price,
+--                 max_price = v_max_price,
+--                 updated_at = NOW()
+--             WHERE productid = v_product.id;
+--         END IF;
+
+--         -- Обновляем товар
+--         UPDATE products
+--         SET 
+--             minprice = v_min_price,
+--             maxprice = v_max_price,
+--             updated_at = NOW()
+--         WHERE id = v_product.id;
+--     END LOOP;
+-- END;
+-- $$;
+
+ROLLBACK;

@@ -36,7 +36,7 @@ const PriceHolderComponent: React.FC<PriceHolderProps> = ({
                 price={val.price}
                 discount={val.discount}
                 id={ind}
-                in_stock={!!val.quantity}
+                quantity={val.quantity}
             />
         ));
     }, [elems, activeState, handleActiveChange]);

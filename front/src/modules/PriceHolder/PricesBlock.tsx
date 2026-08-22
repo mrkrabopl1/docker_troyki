@@ -9,18 +9,18 @@ type merchType = {
     price: number,
     discount?: number,
     id: number,
-    in_stock: boolean
+    quantity: number
 }
 
 const PricesBlock: React.FC<merchType> = (props) => {
-    const { price, size, active, id, onChange, discount, in_stock } = props
+    const { price, size, active, id, onChange, discount, quantity } = props
     
     const finalPrice = discount ? price - price*discount/100 : price;
     const hasDiscount = discount && discount > 0;
 
     return (
         <div 
-            onClick={in_stock ? onChange : undefined} 
+            onClick={price > 0 ? onChange : undefined} 
             className={`${s.priceBlock} ${active ? s.active : ''} ${!price ? s.outOfStock : ''}`}
         >
             <div className={s.sizeHolder}>{size}</div>
@@ -29,6 +29,11 @@ const PricesBlock: React.FC<merchType> = (props) => {
                 {hasDiscount && (
                     <div className={s.originalPrice}>
                         {toPrice(price)}
+                    </div>
+                )}
+                {quantity > 0 && (
+                    <div className={s.quantity}>
+                       {quantity}
                     </div>
                 )}
                 <div className={s.finalPrice}>

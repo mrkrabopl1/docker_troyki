@@ -463,6 +463,60 @@ func (s *SQLStore) RecalculateAffectedProducts(ctx context.Context, ruleID int32
 	return nil
 }
 
+func (s *SQLStore) RecalculateProductsDiscounts(ctx context.Context, productIDs map[int32]bool) error {
+
+	if len(productIDs) == 0 {
+		return nil
+	}
+
+	// 3. ID продуктов в слайс
+	ids := make([]int32, 0, len(productIDs))
+	for id := range productIDs {
+		ids = append(ids, id)
+	}
+
+	// 4. Получаем продукты с размерами
+	products, err := s.GetProductsWithSizesByIDs(ctx, ids)
+	if err != nil {
+		return err
+	}
+
+	// 5. Получаем лучшие скидки для этих продуктов
+	discounts, err := s.GetBestDiscountsForProducts(ctx, ids)
+	if err != nil {
+		return err
+	}
+
+	// Собираем map для быстрого доступа
+	best := make(map[int32]GetAllActiveDiscountsRow)
+	for _, d := range discounts {
+		best[d.ProductID] = GetAllActiveDiscountsRow{
+			ProductID:     d.ProductID,
+			DiscountValue: d.DiscountValue,
+			DiscountType:  d.DiscountType,
+			RuleID:        d.RuleID,
+			Priority:      d.Priority,
+		}
+	}
+
+	// 6. Батчами обновляем discount
+	batchSize := 1000
+	for i := 0; i < len(products); i += batchSize {
+		end := i + batchSize
+		if end > len(products) {
+			end = len(products)
+		}
+
+		// Передаём ruleID, чтобы все скидки получили этот rule_id
+		if err := s.processBatch(ctx, products[i:end], best, nil); err != nil {
+			log.Printf("Batch failed: %v", err)
+			continue
+		}
+	}
+
+	return nil
+}
+
 // processBatch – обработка пачки товаров
 func (s *SQLStore) processBatch(
 	ctx context.Context,

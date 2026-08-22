@@ -31,7 +31,7 @@ interface ProductInfo {
     name: string;
     line?: string;
     info: merchType;
-    discount?: Record<string, { value: number }>;
+    discount?: Record<string, {discounted_price: number,percent: number }>;
     store?: Record<string, number>;
     firm?: string;
     id?: string;
@@ -104,11 +104,11 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
         } else {
             pricesArr.current = val.info;
             val.discount && Object.entries(val.discount).forEach(data => {
-                pricesArr.current[data[0]].discount = data[1].value;
+                pricesArr.current[data[0]].discount = data[1].percent;
             });
 
             currentSize.current = Object.keys(val.info)[0] || "";
-            const discount = val.discount?.[currentSize.current]?.value || 0;
+            const discount = val.discount?.[currentSize.current]?.percent || 0;
             const price = Number(Object.values(val.info)[0]?.price) || 0;
 
             setEmptyPage(false);

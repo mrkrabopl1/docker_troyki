@@ -1,8 +1,10 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -116,7 +118,7 @@ func (s *Server) handleAdminBulkDeleteSize(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete size"})
 		return
 	}
-
+	s.asyncRecalculateDiscounts(c.Request.Context())
 	c.JSON(http.StatusOK, gin.H{
 		"success":          true,
 		"affectedProducts": stats.ProductCount,
@@ -161,7 +163,7 @@ func (s *Server) handleAdminRenameSize(c *gin.Context) {
 		return
 	}
 
-	// Переименовываем размер
+	// 1. Переименовываем размер (синхронно, быстро)
 	err = s.store.RenameSize(c.Request.Context(), db.RenameSizeParams{
 		OldSizeKey: req.OldSizeKey,
 		NewSizeKey: req.NewSizeKey,
@@ -172,10 +174,36 @@ func (s *Server) handleAdminRenameSize(c *gin.Context) {
 		return
 	}
 
+	// 2. Запускаем пересчет скидок асинхронно
+	s.asyncRecalculateDiscounts(c.Request.Context())
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": fmt.Sprintf("Size '%s' renamed to '%s'", req.OldSizeKey, req.NewSizeKey),
+		"message": fmt.Sprintf("Size '%s' renamed to '%s'. Discount recalculation started in background.",
+			req.OldSizeKey, req.NewSizeKey),
 	})
+}
+
+// asyncRecalculateDiscounts - асинхронный пересчет скидок
+func (s *Server) asyncRecalculateDiscounts(ctx context.Context) {
+	go func() {
+		// Создаем новый контекст с таймаутом, чтобы не зависеть от запроса
+		timeoutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		start := time.Now()
+		log.Println("Starting async discount recalculation...")
+
+		err := s.store.RecalculateAllDiscounts(timeoutCtx)
+
+		if err != nil {
+			log.Printf("Failed to recalculate discounts: %v", err)
+			// Здесь можно добавить отправку в систему мониторинга/ошибок
+			return
+		}
+
+		log.Printf("Discount recalculation completed in %v", time.Since(start))
+	}()
 }
 
 func (s *Server) handleGetProductsLight(c *gin.Context) {

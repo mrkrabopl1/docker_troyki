@@ -85,6 +85,7 @@ type Store interface {
 	GetPageWidgetsFromDB(ctx context.Context) ([]types.CachedWidget, error)
 	GetProductsForCollectionByID(ctx context.Context, collectionID int32) ([]types.CachedProduct, error)
 	RecalculateAffectedProducts(ctx context.Context, ruleID int32) error
+	RecalculateProductsDiscounts(ctx context.Context, productIDs map[int32]bool) error
 	GetFiltersOptimized(ctx context.Context, params FilterParams) (*FiltersResult, error)
 	GetFiltersOptimizedMemo(ctx context.Context, params FilterParams) (*FiltersResult, error)
 }

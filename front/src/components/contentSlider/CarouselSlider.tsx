@@ -18,6 +18,8 @@ interface ICarouselSliderProps {
     height?: string | number;
     itemWidth?: string | number;
     gap?: string | number;
+    hoverSlowdown?: number; // Коэффициент замедления (0.1 - 0.9, где 0.1 - очень медленно, 0.9 - почти без замедления)
+    slowdownEasing?: 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out';
 }
 
 const CarouselSlider: React.FC<ICarouselSliderProps> = ({
@@ -28,7 +30,9 @@ const CarouselSlider: React.FC<ICarouselSliderProps> = ({
     pauseOnHover = true,
     height = '100%',
     itemWidth = '200px',
-    gap = '20px'
+    gap = '20px',
+    hoverSlowdown = 0.3,
+    slowdownEasing = 'ease-in-out'
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const trackRef = useRef<HTMLDivElement>(null);
@@ -38,6 +42,15 @@ const CarouselSlider: React.FC<ICarouselSliderProps> = ({
     const [singleSetWidth, setSingleSetWidth] = useState(0);
     const [copiesCount, setCopiesCount] = useState(3);
     const [isReady, setIsReady] = useState(false);
+    const [currentSpeedMultiplier, setCurrentSpeedMultiplier] = useState(1);
+    const animationStartTimeRef = useRef<number>(0);
+    const targetSpeedMultiplierRef = useRef<number>(1);
+    const currentSpeedMultiplierRef = useRef<number>(1);
+
+    // Функция для плавного изменения скорости
+    const easeInOut = (t: number): number => {
+        return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    };
 
     // Вычисляем количество копий для заполнения экрана
     const duplicatedItems = useMemo(() => {
@@ -45,45 +58,68 @@ const CarouselSlider: React.FC<ICarouselSliderProps> = ({
         return Array(Math.max(3, copiesCount)).fill(items).flat();
     }, [items, copiesCount]);
 
-    // Анимация с плавным переходом
-    const animate = useCallback(() => {
-        if (!trackRef.current || isPaused || items.length === 0 || !isReady || singleSetWidth === 0) {
+    // Анимация с плавным изменением скорости
+    const animate = useCallback((timestamp: number) => {
+        if (!trackRef.current || items.length === 0 || !isReady || singleSetWidth === 0) {
             animationRef.current = requestAnimationFrame(animate);
             return;
         }
 
-        const step = speed * 0.016;
+        // Плавное изменение скорости
+        if (animationStartTimeRef.current === 0) {
+            animationStartTimeRef.current = timestamp;
+        }
+
+        const deltaTime = timestamp - animationStartTimeRef.current;
+        const duration = 300; // Длительность перехода в мс
+
+        // Плавное приближение к целевой скорости
+        const currentMult = currentSpeedMultiplierRef.current;
+        const targetMult = targetSpeedMultiplierRef.current;
+        const diff = targetMult - currentMult;
+
+        if (Math.abs(diff) > 0.001) {
+            // Используем easing для плавного перехода
+            const progress = Math.min(deltaTime / duration, 1);
+            const easedProgress = easeInOut(progress);
+            const newMult = currentMult + diff * easedProgress;
+            currentSpeedMultiplierRef.current = newMult;
+            setCurrentSpeedMultiplier(newMult);
+        } else {
+            currentSpeedMultiplierRef.current = targetMult;
+            setCurrentSpeedMultiplier(targetMult);
+            animationStartTimeRef.current = timestamp;
+        }
+
+        const effectiveSpeed = speed * currentSpeedMultiplierRef.current;
+        const step = effectiveSpeed * 0.016;
         const directionMultiplier = direction === 'left' ? -1 : 1;
         scrollPositionRef.current += step * directionMultiplier;
 
-        // Плавный сброс - возвращаем на один набор вперед/назад
+        // Плавный сброс
         if (direction === 'left') {
-            // При движении влево: если дошли до конца второго набора
             if (Math.abs(scrollPositionRef.current) >= singleSetWidth * 2) {
-                // Перемещаемся на один набор вперед (вправо)
                 scrollPositionRef.current += singleSetWidth;
             }
         } else {
-            // При движении вправо: если дошли до начала
             if (scrollPositionRef.current >= 0) {
-                // Перемещаемся на один набор назад (влево)
                 scrollPositionRef.current -= singleSetWidth;
             }
         }
         
         trackRef.current.style.transform = `translateX(${scrollPositionRef.current}px)`;
         animationRef.current = requestAnimationFrame(animate);
-    }, [direction, speed, isPaused, singleSetWidth, items.length, isReady]);
+    }, [direction, speed, singleSetWidth, items.length, isReady]);
 
     // Запуск анимации
     useEffect(() => {
         if (items.length === 0 || !isReady || singleSetWidth === 0) return;
         
-        // Останавливаем предыдущую анимацию
         if (animationRef.current) {
             cancelAnimationFrame(animationRef.current);
         }
         
+        animationStartTimeRef.current = 0;
         animationRef.current = requestAnimationFrame(animate);
         
         return () => {
@@ -92,6 +128,23 @@ const CarouselSlider: React.FC<ICarouselSliderProps> = ({
             }
         };
     }, [animate, items.length, isReady, singleSetWidth]);
+
+    // Обработчики наведения с плавным замедлением
+    const handleMouseEnter = useCallback(() => {
+        if (pauseOnHover) {
+            setIsPaused(true);
+            targetSpeedMultiplierRef.current = hoverSlowdown;
+            animationStartTimeRef.current = 0;
+        }
+    }, [pauseOnHover, hoverSlowdown]);
+
+    const handleMouseLeave = useCallback(() => {
+        if (pauseOnHover) {
+            setIsPaused(false);
+            targetSpeedMultiplierRef.current = 1;
+            animationStartTimeRef.current = 0;
+        }
+    }, [pauseOnHover]);
 
     // Измерение ширины и расчет количества копий
     useEffect(() => {
@@ -136,16 +189,12 @@ const CarouselSlider: React.FC<ICarouselSliderProps> = ({
             if (singleSet === 0 || !isFinite(singleSet)) return;
             
             setSingleSetWidth(singleSet);
-            
-            // Начинаем с первого набора (позиция 0)
             scrollPositionRef.current = 0;
             track.style.transform = `translateX(0px)`;
             track.style.transition = 'none';
-            
             setIsReady(true);
         };
 
-        // Ждем рендера
         const timeoutId = setTimeout(() => {
             requestAnimationFrame(measureAndSetPosition);
         }, 100);
@@ -189,8 +238,8 @@ const CarouselSlider: React.FC<ICarouselSliderProps> = ({
             ref={containerRef}
             style={containerStyle}
             className={`carousel-slider ${className}`}
-            onMouseEnter={() => pauseOnHover && setIsPaused(true)}
-            onMouseLeave={() => pauseOnHover && setIsPaused(false)}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
         >
             <div ref={trackRef} style={trackStyle}>
                 {duplicatedItems.map((item, index) => (

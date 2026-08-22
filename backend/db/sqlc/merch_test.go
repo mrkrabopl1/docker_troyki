@@ -355,8 +355,8 @@ func TestGetProductsByFiltersPaginateFullWithSlugs_Base(t *testing.T) {
 		Firms:        []int32{},
 		Lines:        []int32{},
 		Bodytypes:    []string{},
-		WithPrice:    false,
-		Limitval:     10,
+		WithPrice:    true,
+		Limitval:     100,
 		Offsetval:    0,
 		SortType:     0,
 	}
