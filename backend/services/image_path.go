@@ -167,6 +167,7 @@ func (b *ImagePathBuilder) GetImageURLFromPath(relativePath string) string {
 
 func (b *ImagePathBuilder) ExtractRelativePath(url string) string {
 	result := strings.TrimPrefix(url, b.basePath)
+	fmt.Println(result, "result", url, b.basePath)
 	result = strings.TrimPrefix(result, "/")
 	return result
 }

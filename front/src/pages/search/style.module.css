@@ -139,6 +139,8 @@
 .emptyRow{
     padding: 15px;
     text-align: center;
+    margin: auto;
+    height: 600px;
 }
 
 .searchInput{

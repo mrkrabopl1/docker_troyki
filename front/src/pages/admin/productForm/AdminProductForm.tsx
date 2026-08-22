@@ -593,7 +593,7 @@ const AdminProductForm: React.FC = () => {
                                 {formData.images.map((img, idx) => (
                                     <div key={idx} className={s.imageItem}>
                                         <img src={img} alt={`product ${idx + 1}`} />
-                                        <button
+                                        {isEdit && formData.images.length == 1 ? null : <button
                                             className={s.deleteImageBtn}
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -601,7 +601,8 @@ const AdminProductForm: React.FC = () => {
                                             }}
                                         >
                                             <img src={deleteIconUrl} alt="delete" style={{ width: '18px', height: '18px' }} />
-                                        </button>
+                                        </button>}
+
                                     </div>
                                 ))}
                                 <div className={s.addImageBtn} onClick={() => fileInputRef.current?.click()}>

@@ -303,11 +303,221 @@
 -- WHERE COALESCE((value->>'quantity')::INTEGER, 0) > 0;
 
 -- SELECT * FROM products WHERE article = 'MeNY';
-SELECT 
-    column_name, 
-    is_nullable, 
-    data_type,
-    column_default
-FROM information_schema.columns 
-WHERE table_name = 'products' 
-AND column_name = 'brand_id';
+-- SELECT 
+--     column_name, 
+--     is_nullable, 
+--     data_type,
+--     column_default
+-- FROM information_schema.columns 
+-- WHERE table_name = 'products' 
+-- AND column_name = 'brand_id';
+
+-- WITH ids AS (
+--     SELECT 
+--         NULL::integer as cat_id,  -- Явно указываем тип integer
+--         (SELECT id FROM product_types WHERE enum_key = 'boots' LIMIT 1) as typ_id,
+--         NULL::integer as br_id,
+--         NULL::integer as ln_id
+-- )
+-- SELECT p.id, p.name, p.image_path, p.type, p.category,
+--        b.name as firm,
+--        (SELECT enum_key FROM product_types WHERE id = p.type) as type_name,
+--        (SELECT enum_key FROM product_categories WHERE id = p.category) as category_name
+-- FROM products p
+-- INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+-- LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+-- CROSS JOIN ids
+-- WHERE 
+--     p.status = 'active'
+--     AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+--     AND (ids.cat_id IS NULL OR p.category = ids.cat_id)
+--     AND (ids.typ_id IS NULL OR p.type = ids.typ_id)
+--     AND (ids.br_id IS NULL OR p.brand_id = ids.br_id)
+--     AND (ids.ln_id IS NULL OR p.line_id = ids.ln_id)
+-- LIMIT 10;
+
+WITH ids AS (
+    SELECT 
+        CASE 
+            WHEN '' = '' THEN NULL
+            ELSE (SELECT id FROM product_categories WHERE enum_key = 'sneakers' LIMIT 1)
+        END as cat_id,
+        CASE 
+            WHEN 'boots' = '' THEN NULL
+            ELSE (SELECT id FROM product_types WHERE enum_key = 'boots' LIMIT 1)
+        END as typ_id,
+        CASE 
+            WHEN '' = '' THEN NULL
+            ELSE (SELECT id FROM brands WHERE slug = '' LIMIT 1)
+        END as br_id,
+        CASE 
+            WHEN '' = '' THEN NULL
+            ELSE (SELECT id FROM brand_lines WHERE slug = '' LIMIT 1)
+        END as ln_id
+)
+SELECT p.id, p.name, p.image_path, p.type, p.category,
+       b.name as firm,
+       (SELECT enum_key FROM product_types WHERE id = p.type) as type_name,
+       (SELECT enum_key FROM product_categories WHERE id = p.category) as category_name
+FROM products p
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+CROSS JOIN ids
+WHERE 
+    p.status = 'active'
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    AND (ids.cat_id IS NULL OR p.category = ids.cat_id)
+    AND (ids.typ_id IS NULL OR p.type = ids.typ_id)
+    AND (ids.br_id IS NULL OR p.brand_id = ids.br_id)
+    AND (ids.ln_id IS NULL OR p.line_id = ids.ln_id)
+LIMIT 10;
+
+-- ============================================
+-- ТЕСТ 2: Фильтр по категории + типу
+-- ============================================
+-- Ожидаемый результат: Товары категории 'sneakers' и типа 'boots'
+-- WITH ids AS (
+--     SELECT 
+--         CASE 
+--             WHEN 'sneakers' = '' THEN NULL
+--             ELSE (SELECT id FROM product_categories WHERE enum_key = 'sneakers')
+--         END as cat_id,
+--         CASE 
+--             WHEN 'boots' = '' THEN NULL
+--             ELSE (SELECT id FROM product_types WHERE enum_key = 'boots')
+--         END as typ_id,
+--         CASE 
+--             WHEN '' = '' THEN NULL
+--             ELSE (SELECT id FROM brands WHERE slug = '')
+--         END as br_id,
+--         CASE 
+--             WHEN '' = '' THEN NULL
+--             ELSE (SELECT id FROM brand_lines WHERE slug = '')
+--         END as ln_id
+-- )
+-- SELECT p.id, p.name, p.image_path, p.type, p.category,
+--        b.name as firm,
+--        (SELECT enum_key FROM product_types WHERE id = p.type) as type_name,
+--        (SELECT enum_key FROM product_categories WHERE id = p.category) as category_name
+-- FROM products p
+-- INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+-- LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+-- CROSS JOIN ids
+-- WHERE 
+--     p.status = 'active'
+--     AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+--     AND (ids.cat_id IS NULL OR p.category = ids.cat_id)
+--     AND (ids.typ_id IS NULL OR p.type = ids.typ_id)
+--     AND (ids.br_id IS NULL OR p.brand_id = ids.br_id)
+--     AND (ids.ln_id IS NULL OR p.line_id = ids.ln_id)
+-- LIMIT 10;
+
+-- -- ============================================
+-- -- ТЕСТ 3: Проверка существования типа 'boots'
+-- -- ============================================
+-- SELECT id, enum_key, name 
+-- FROM product_types 
+-- WHERE enum_key = 'boots';
+
+-- -- ============================================
+-- -- ТЕСТ 4: Все товары без фильтров
+-- -- ============================================
+-- -- Ожидаемый результат: Все активные товары
+-- WITH ids AS (
+--     SELECT 
+--         NULL as cat_id,
+--         NULL as typ_id,
+--         NULL as br_id,
+--         NULL as ln_id
+-- )
+-- SELECT p.id, p.name, p.image_path, p.type, p.category,
+--        b.name as firm,
+--        (SELECT enum_key FROM product_types WHERE id = p.type) as type_name,
+--        (SELECT enum_key FROM product_categories WHERE id = p.category) as category_name
+-- FROM products p
+-- INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+-- LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+-- CROSS JOIN ids
+-- WHERE 
+--     p.status = 'active'
+--     AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+--     AND (ids.cat_id IS NULL OR p.category = ids.cat_id)
+--     AND (ids.typ_id IS NULL OR p.type = ids.typ_id)
+--     AND (ids.br_id IS NULL OR p.brand_id = ids.br_id)
+--     AND (ids.ln_id IS NULL OR p.line_id = ids.ln_id)
+-- LIMIT 10;
+
+-- -- ============================================
+-- -- ТЕСТ 5: Проверка на несуществующий тип
+-- -- ============================================
+-- -- Ожидаемый результат: Пустой результат (0 строк)
+-- WITH ids AS (
+--     SELECT 
+--         CASE 
+--             WHEN '' = '' THEN NULL
+--             ELSE (SELECT id FROM product_categories WHERE enum_key = '')
+--         END as cat_id,
+--         CASE 
+--             WHEN 'non_existent_type' = '' THEN NULL
+--             ELSE (SELECT id FROM product_types WHERE enum_key = 'non_existent_type')
+--         END as typ_id,
+--         CASE 
+--             WHEN '' = '' THEN NULL
+--             ELSE (SELECT id FROM brands WHERE slug = '')
+--         END as br_id,
+--         CASE 
+--             WHEN '' = '' THEN NULL
+--             ELSE (SELECT id FROM brand_lines WHERE slug = '')
+--         END as ln_id
+-- )
+-- SELECT p.id, p.name, p.image_path, p.type, p.category,
+--        b.name as firm
+-- FROM products p
+-- INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+-- LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+-- CROSS JOIN ids
+-- WHERE 
+--     p.status = 'active'
+--     AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+--     AND (ids.cat_id IS NULL OR p.category = ids.cat_id)
+--     AND (ids.typ_id IS NULL OR p.type = ids.typ_id)
+--     AND (ids.br_id IS NULL OR p.brand_id = ids.br_id)
+--     AND (ids.ln_id IS NULL OR p.line_id = ids.ln_id);
+
+-- -- ============================================
+-- -- ТЕСТ 6: Полный фильтр (категория + тип + бренд + линия)
+-- -- ============================================
+-- WITH ids AS (
+--     SELECT 
+--         CASE 
+--             WHEN 'sneakers' = '' THEN NULL
+--             ELSE (SELECT id FROM product_categories WHERE enum_key = 'sneakers')
+--         END as cat_id,
+--         CASE 
+--             WHEN 'boots' = '' THEN NULL
+--             ELSE (SELECT id FROM product_types WHERE enum_key = 'boots')
+--         END as typ_id,
+--         CASE 
+--             WHEN 'nike' = '' THEN NULL
+--             ELSE (SELECT id FROM brands WHERE slug = 'nike')
+--         END as br_id,
+--         CASE 
+--             WHEN 'air-max' = '' THEN NULL
+--             ELSE (SELECT id FROM brand_lines WHERE slug = 'air-max')
+--         END as ln_id
+-- )
+-- SELECT p.id, p.name, p.image_path, p.type, p.category,
+--        b.name as firm,
+--        bl.name as line_name
+-- FROM products p
+-- INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+-- LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+-- CROSS JOIN ids
+-- WHERE 
+--     p.status = 'active'
+--     AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+--     AND (ids.cat_id IS NULL OR p.category = ids.cat_id)
+--     AND (ids.typ_id IS NULL OR p.type = ids.typ_id)
+--     AND (ids.br_id IS NULL OR p.brand_id = ids.br_id)
+--     AND (ids.ln_id IS NULL OR p.line_id = ids.ln_id)
+-- LIMIT 10;

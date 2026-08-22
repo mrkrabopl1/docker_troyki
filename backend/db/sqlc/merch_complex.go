@@ -761,6 +761,7 @@ func (store *SQLStore) getProductsByFiltersWithSlugs(
 	var total int64
 	var err error
 	var products []ProductRow
+	fmt.Println("fdsfdswwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww")
 	fmt.Println(filters.HasDiscount, "ddddddd")
 
 	params := GetProductsByFiltersPaginateBaseWithSlugsParams{

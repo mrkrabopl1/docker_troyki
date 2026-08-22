@@ -480,18 +480,18 @@ SELECT
 
 -- name: GetFiltersByNameCategoryAndTypeWithSlugs :one
 WITH 
--- 🔥 Переводим slug → ID (один раз, по индексам)
+-- 🔥 Переводим slug → ID (один раз, по индексам) с LIMIT 1
 brand_id AS (
-    SELECT id FROM brands WHERE slug = @brand_slug::text
+    SELECT id FROM brands WHERE slug = @brand_slug::text LIMIT 1
 ),
 category_id AS (
-    SELECT id FROM product_categories WHERE enum_key = @category_slug::text
+    SELECT id FROM product_categories WHERE enum_key = @category_slug::text LIMIT 1
 ),
 type_id AS (
-    SELECT id FROM product_types WHERE enum_key = @type_slug::text
+    SELECT id FROM product_types WHERE enum_key = @type_slug::text LIMIT 1
 ),
 line_id AS (
-    SELECT id FROM brand_lines WHERE slug = @line_slug::text
+    SELECT id FROM brand_lines WHERE slug = @line_slug::text LIMIT 1
 ),
 product_data AS (
     SELECT
@@ -1518,10 +1518,10 @@ LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
 LEFT JOIN discount d ON p.id = d.productid
 CROSS JOIN (
     SELECT 
-        COALESCE((SELECT id FROM product_categories WHERE enum_key = @category_slug::text), 0) as cat_id,
-        COALESCE((SELECT id FROM product_types WHERE enum_key = @type_slug::text), 0) as typ_id,
-        COALESCE((SELECT id FROM brands WHERE slug = @brand_slug::text), 0) as br_id,
-        COALESCE((SELECT id FROM brand_lines WHERE slug = @line_slug::text), 0) as ln_id
+        COALESCE((SELECT id FROM product_categories WHERE enum_key = @category_slug::text LIMIT 1), 0)::integer as cat_id,
+        COALESCE((SELECT id FROM product_types WHERE enum_key = @type_slug::text LIMIT 1), 0)::integer as typ_id,
+        COALESCE((SELECT id FROM brands WHERE slug = @brand_slug::text LIMIT 1), 0)::integer as br_id,
+        COALESCE((SELECT id FROM brand_lines WHERE slug = @line_slug::text LIMIT 1), 0)::integer as ln_id
 ) ids
 WHERE 
     p.status = 'active'
@@ -2274,16 +2274,16 @@ WHERE
 -- name: CountProductsByFiltersBaseWithSlugs :one
 WITH 
 brand_id AS (
-    SELECT id FROM brands WHERE slug = @brand_slug::text
+    SELECT id FROM brands WHERE slug = @brand_slug::text LIMIT 1
 ),
 category_id AS (
-    SELECT id FROM product_categories WHERE enum_key = @category_slug::text
+    SELECT id FROM product_categories WHERE enum_key = @category_slug::text LIMIT 1
 ),
 type_id AS (
-    SELECT id FROM product_types WHERE enum_key = @type_slug::text
+    SELECT id FROM product_types WHERE enum_key = @type_slug::text LIMIT 1
 ),
 line_id AS (
-    SELECT id FROM brand_lines WHERE slug = @line_slug::text
+    SELECT id FROM brand_lines WHERE slug = @line_slug::text LIMIT 1
 )
 SELECT COUNT(*)
 FROM products p

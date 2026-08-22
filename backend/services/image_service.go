@@ -135,7 +135,6 @@ func (s *ImageService) DeleteProductImage(imageURL string) error {
 	fullPath := filepath.Join(s.BaseDir, basePath+".webp")
 	thumbPath := filepath.Join(s.BaseDir, basePath+"_thumb.webp")
 
-	// Удаляем оригинал
 	if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("не удалось удалить изображение: %w", err)
 	}

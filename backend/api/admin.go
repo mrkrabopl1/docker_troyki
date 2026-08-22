@@ -849,28 +849,23 @@ func (s *Server) handleAdminDeleteProductImage(c *gin.Context) {
 
 	// Получаем информацию о товаре
 	product, err := s.store.GetProductsInfoById(c.Request.Context(), int32(productID))
+	newCount := s.imageService.CountExistingProductImages(product.ImagePath)
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get product info"})
 		return
 	}
-
-	// Удаляем файлы (и .webp и _thumb.webp)
-	// req.ImagePath может быть "products/123/img1.webp" или просто "img1.webp"
-	fullPath := filepath.Join(s.imageService.BaseDir, req.ImagePath)
-
-	// Удаляем оригинал
-	if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete image file"})
+	if newCount == 1 {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Not enough images for deletion"})
 		return
 	}
-
-	// Удаляем thumb
-	ext := filepath.Ext(fullPath)
-	thumbPath := strings.Replace(fullPath, ext, "_thumb"+ext, 1)
-	os.Remove(thumbPath) // не страшно если нет
+	s.imageService.DeleteProductImage(req.ImagePath)
+	// Удаляем файлы (и .webp и _thumb.webp)
+	// req.ImagePath может быть "products/123/img1.webp" или просто "img1.webp"
 
 	// Получаем актуальное количество изображений
-	newCount := s.imageService.CountExistingProductImages(product.ImagePath)
+	newCount = s.imageService.CountExistingProductImages(product.ImagePath)
+	fmt.Println(newCount, "newCount")
 	if newCount < 0 {
 		newCount = 0
 	}

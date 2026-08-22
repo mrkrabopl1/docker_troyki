@@ -608,16 +608,16 @@ func (q *Queries) CountProductsByFiltersBase(ctx context.Context, arg CountProdu
 const countProductsByFiltersBaseWithSlugs = `-- name: CountProductsByFiltersBaseWithSlugs :one
 WITH 
 brand_id AS (
-    SELECT id FROM brands WHERE slug = $1::text
+    SELECT id FROM brands WHERE slug = $1::text LIMIT 1
 ),
 category_id AS (
-    SELECT id FROM product_categories WHERE enum_key = $2::text
+    SELECT id FROM product_categories WHERE enum_key = $2::text LIMIT 1
 ),
 type_id AS (
-    SELECT id FROM product_types WHERE enum_key = $3::text
+    SELECT id FROM product_types WHERE enum_key = $3::text LIMIT 1
 ),
 line_id AS (
-    SELECT id FROM brand_lines WHERE slug = $4::text
+    SELECT id FROM brand_lines WHERE slug = $4::text LIMIT 1
 )
 SELECT COUNT(*)
 FROM products p
@@ -4976,16 +4976,16 @@ func (q *Queries) GetFiltersByNameCategoryAndTypeNewWithLine(ctx context.Context
 const getFiltersByNameCategoryAndTypeWithSlugs = `-- name: GetFiltersByNameCategoryAndTypeWithSlugs :one
 WITH 
 brand_id AS (
-    SELECT id FROM brands WHERE slug = $1::text
+    SELECT id FROM brands WHERE slug = $1::text LIMIT 1
 ),
 category_id AS (
-    SELECT id FROM product_categories WHERE enum_key = $2::text
+    SELECT id FROM product_categories WHERE enum_key = $2::text LIMIT 1
 ),
 type_id AS (
-    SELECT id FROM product_types WHERE enum_key = $3::text
+    SELECT id FROM product_types WHERE enum_key = $3::text LIMIT 1
 ),
 line_id AS (
-    SELECT id FROM brand_lines WHERE slug = $4::text
+    SELECT id FROM brand_lines WHERE slug = $4::text LIMIT 1
 ),
 product_data AS (
     SELECT
@@ -5128,7 +5128,7 @@ type GetFiltersByNameCategoryAndTypeWithSlugsRow struct {
 	DiscountRules interface{} `json:"discount_rules"`
 }
 
-// 🔥 Переводим slug → ID (один раз, по индексам)
+// 🔥 Переводим slug → ID (один раз, по индексам) с LIMIT 1
 // 🔥 СЧЕТЧИКИ ДЛЯ ФИЛЬТРОВ
 func (q *Queries) GetFiltersByNameCategoryAndTypeWithSlugs(ctx context.Context, arg GetFiltersByNameCategoryAndTypeWithSlugsParams) (GetFiltersByNameCategoryAndTypeWithSlugsRow, error) {
 	row := q.db.QueryRow(ctx, getFiltersByNameCategoryAndTypeWithSlugs,
@@ -6387,10 +6387,10 @@ LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
 LEFT JOIN discount d ON p.id = d.productid
 CROSS JOIN (
     SELECT 
-        COALESCE((SELECT id FROM product_categories WHERE enum_key = $1::text), 0) as cat_id,
-        COALESCE((SELECT id FROM product_types WHERE enum_key = $2::text), 0) as typ_id,
-        COALESCE((SELECT id FROM brands WHERE slug = $3::text), 0) as br_id,
-        COALESCE((SELECT id FROM brand_lines WHERE slug = $4::text), 0) as ln_id
+        COALESCE((SELECT id FROM product_categories WHERE enum_key = $1::text LIMIT 1), 0)::integer as cat_id,
+        COALESCE((SELECT id FROM product_types WHERE enum_key = $2::text LIMIT 1), 0)::integer as typ_id,
+        COALESCE((SELECT id FROM brands WHERE slug = $3::text LIMIT 1), 0)::integer as br_id,
+        COALESCE((SELECT id FROM brand_lines WHERE slug = $4::text LIMIT 1), 0)::integer as ln_id
 ) ids
 WHERE 
     p.status = 'active'

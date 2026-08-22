@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react'
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/router';
 import SearchWithList from 'src/modules/searchWithList/SearchWithList'
 import ProductsFilters from "src/modules/settingsPanels/ProductsFilters"
 import Button from 'src/components/Button'
 import MerchSliderField from 'src/modules/merchField/MerchFieldWithPageSwitcher'
 import s from "./style1.module.css"
-import { useAppDispatch, useAppSelector,useNavigate } from 'src/store/hooks/redux'
+import { useAppDispatch, useAppSelector, useNavigate } from 'src/store/hooks/redux'
 import { getProductsAndFiltersByCategoryAndType, getProductsAndFiltersByString, getProductsByCategoriesAndFilters } from "src/providers/searchProvider"
 import { ReactComponent as FoureGrid } from '/public/foureGrid.svg'
 import { ReactComponent as SixGrid } from '/public/sixGrid.svg'
@@ -82,6 +82,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
   const isHydrated = useRef(false); // 🔥 Флаг для SSR
   const [hoverSettings, setHoverSettings] = useState(false);
   const emptyData = useRef(false)
+  const emptyStart = useRef(false)
   const [refresh, setRefresh] = useState(false)
   const activeSizes = useRef<string[]>([])
   const orderType = useRef(0)
@@ -120,10 +121,12 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
 
       if (initialData.products.length === 0) {
         emptyData.current = true;
+        emptyStart.current = true;
         emtyText.current = "По запросу ничего не найдено.";
         setRefresh(prev => !prev);
       } else {
         emptyData.current = false;
+        emptyStart.current = false;
         pages.current = Math.ceil(initialData.totalCount / pageSize.current);
         const data = convertFiltersData(initialData.filters);
         setFilters(data);
@@ -214,10 +217,12 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
     dispatch(finishLoading());
     if (respData.products.length === 0) {
       emptyData.current = true
+      emptyStart.current = true
       emtyText.current = "По запросу ничего не найдено. Проверьте правописание или выберите другие слова либо фразу."
       setRefresh(prev => !prev)
     } else {
       emptyData.current = false
+      emptyStart.current = false
       pages.current = Math.ceil(respData.totalCount / pageSize.current);
       setFiltersFromUrl()
       const data = convertFiltersData(respData.filters)
@@ -679,6 +684,13 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
     };
   }, [isSticky, rightBlockRef.current]);
 
+const resetButton = useMemo(() => {
+    const isDataEmpty = emptyData.current && emptyStart.current;
+    const onClick = isDataEmpty ? () => navigate('/search') : resetFilters;
+    
+    return <Button className={s.emptyBtn} text="Сбросить фильтры" onClick={onClick} />;
+}, [emptyData.current, emptyStart.current, resetFilters, navigate]);
+
   return (
     <div ref={pageWrap}>
       <div style={{ position: "relative" }}>
@@ -759,6 +771,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
             <div className={s.emptyRow}>
               {emtyText.current}
               <span onClick={resetFilters}></span>
+              {resetButton}
             </div>
           ) : (
 
@@ -771,8 +784,9 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
               data={merchFieldData}
             />
 
+
           )}
-          {widthProps ? null : <div
+          {widthProps||emptyStart.current ? null : <div
             ref={rightBlockRef}
             style={{
               width: "25%",

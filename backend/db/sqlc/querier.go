@@ -193,7 +193,7 @@ type Querier interface {
 	GetFiltersByNameCategoryAndType(ctx context.Context, arg GetFiltersByNameCategoryAndTypeParams) (GetFiltersByNameCategoryAndTypeRow, error)
 	GetFiltersByNameCategoryAndTypeNew(ctx context.Context, arg GetFiltersByNameCategoryAndTypeNewParams) (GetFiltersByNameCategoryAndTypeNewRow, error)
 	GetFiltersByNameCategoryAndTypeNewWithLine(ctx context.Context, arg GetFiltersByNameCategoryAndTypeNewWithLineParams) (GetFiltersByNameCategoryAndTypeNewWithLineRow, error)
-	// 🔥 Переводим slug → ID (один раз, по индексам)
+	// 🔥 Переводим slug → ID (один раз, по индексам) с LIMIT 1
 	// 🔥 СЧЕТЧИКИ ДЛЯ ФИЛЬТРОВ
 	GetFiltersByNameCategoryAndTypeWithSlugs(ctx context.Context, arg GetFiltersByNameCategoryAndTypeWithSlugsParams) (GetFiltersByNameCategoryAndTypeWithSlugsRow, error)
 	GetFiltersForCollection(ctx context.Context, arg GetFiltersForCollectionParams) (GetFiltersForCollectionRow, error)

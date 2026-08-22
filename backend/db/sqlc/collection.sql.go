@@ -1266,8 +1266,9 @@ WHERE
 ORDER BY
     CASE WHEN $14::int = 1 THEN p.name END ASC,
     CASE WHEN $14::int = 2 THEN p.name END DESC,
-    CASE WHEN $14::int = 3 THEN min_price END ASC,
-    CASE WHEN $14::int = 4 THEN min_price END DESC,
+    -- Используем p.minprice вместо min_price (алиаса)
+    CASE WHEN $14::int = 3 THEN p.minprice END ASC,
+    CASE WHEN $14::int = 4 THEN p.minprice END DESC,
     CASE WHEN $14::int NOT IN (1,2,3,4) THEN p.name END ASC,
     p.id ASC
 LIMIT CASE WHEN $16::integer > 0 THEN $16::integer ELSE 50 END

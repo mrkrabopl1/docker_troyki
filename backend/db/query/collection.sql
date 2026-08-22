@@ -1412,8 +1412,9 @@ WHERE
 ORDER BY
     CASE WHEN @sort_type::int = 1 THEN p.name END ASC,
     CASE WHEN @sort_type::int = 2 THEN p.name END DESC,
-    CASE WHEN @sort_type::int = 3 THEN min_price END ASC,
-    CASE WHEN @sort_type::int = 4 THEN min_price END DESC,
+    -- Используем p.minprice вместо min_price (алиаса)
+    CASE WHEN @sort_type::int = 3 THEN p.minprice END ASC,
+    CASE WHEN @sort_type::int = 4 THEN p.minprice END DESC,
     CASE WHEN @sort_type::int NOT IN (1,2,3,4) THEN p.name END ASC,
     p.id ASC
 LIMIT CASE WHEN @limitval::integer > 0 THEN @limitval::integer ELSE 50 END

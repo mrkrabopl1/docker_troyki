@@ -1,11 +1,12 @@
-import React, { ReactElement, useRef, useState, memo } from 'react'
+import React, { ReactElement, useRef, useState, memo, useCallback } from 'react'
 import s from "./style.module.css"
 import { useRouter } from 'next/router';
 import { toPrice } from 'src/global';
 import { useNavigate } from 'src/store/hooks/redux';
+import Image from 'next/image'
 
 
-interface MerchInterface { name: string, imgs: string[], image_path?: string, id: string, price: string, discount?: number ,discount_percent?:number}
+interface MerchInterface { name: string, imgs: string[], image_path?: string, id: string, price: string, discount?: number, discount_percent?: number }
 
 
 
@@ -14,6 +15,7 @@ const MerchBlock: React.FC<{ className?: string, width?: string, data: MerchInte
     const navigate = useNavigate()
     const router = useRouter();
     let { data, className, width } = { ...props }
+    let [imageError, setImageError] = useState(false)
     let [compOpacity, setOpacity] = useState(0)
 
     let [compScale, setScale] = useState(0.9)
@@ -83,7 +85,13 @@ const MerchBlock: React.FC<{ className?: string, width?: string, data: MerchInte
     //     setOpacity(1)
     // }
 
-
+    const getImageSrc = useCallback(() => {
+        if (imageError) {
+            return '/troyki_logo.svg';
+        }
+        const imageSrc = data.imgs ? data.imgs[0] : data.image_path;
+        return imageSrc || '/troyki_logo.svg';
+    }, [imageError]);
     return (
         <div
             style={width && { width: width }}
@@ -105,7 +113,13 @@ const MerchBlock: React.FC<{ className?: string, width?: string, data: MerchInte
         >
             <div className={s.colorLayout}>
                 <div className={s.imageBlock}>
-                    <img loading={"lazy"} className={s.img} style={firstImgStyle} src={(data.imgs ? data.imgs[0] : data.image_path)} alt={s.imgName} />
+                    <Image loading={"lazy"} className={s.img} style={firstImgStyle} src={getImageSrc()}
+                     alt={s.imgName} width={300} height={300} onError={() => {
+                        console.log('Image failed to load:', getImageSrc());
+                        setImageError(true);
+                    }}
+                    />
+                    {/* <img loading={"lazy"} className={s.img} style={firstImgStyle} src={(data.imgs ? data.imgs[0] : data.image_path)} alt={s.imgName} /> */}
                     {data.discount ? <div className={s.badge_overlay}><div className={s.discountMarker}>
                         {"Sale " + data.discount_percent + "%"}
                     </div></div> : null}
