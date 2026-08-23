@@ -14,7 +14,12 @@ import (
 )
 
 // ==================== СТРУКТУРЫ ОТВЕТОВ ====================
-
+type MainInfoResponse struct {
+	Categories []GetCategoriesWithTypesRow `json:"categories"`
+	Firms      []GetFirmsRow               `json:"firms"`
+	Discounts  []DiscountRule              `json:"discounts"`
+	SizeTables map[string]interface{}      `json:"sizeTables"`
+}
 type ProductsPageAndFilters struct {
 	ProductsPageInfo []types.ProductsSearch
 	PageSize         int
@@ -828,7 +833,23 @@ func (store *SQLStore) getProductsByFiltersWithSlugs(
 		countParams.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
 		countParams.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
 	}
-
+	fmt.Println("========== ПАРАМЕТРЫ ЗАПРОСА WITH SLUGS ==========")
+	fmt.Printf("CategorySlug: '%s'\n", countParams.CategorySlug)
+	fmt.Printf("TypeSlug: '%s'\n", countParams.TypeSlug)
+	fmt.Printf("BrandSlug: '%s'\n", countParams.BrandSlug)
+	fmt.Printf("LineSlug: '%s'\n", countParams.LineSlug)
+	fmt.Printf("Name: '%s'\n", countParams.Name)
+	fmt.Printf("Sizes: %v\n", countParams.Sizes)
+	fmt.Printf("Categories: %v\n", countParams.Categories)
+	fmt.Printf("ProductTypes: %v\n", countParams.ProductTypes)
+	fmt.Printf("Firms: %v\n", countParams.Firms)
+	fmt.Printf("Lines: %v\n", countParams.Lines)
+	fmt.Printf("Bodytypes: %v\n", countParams.Bodytypes)
+	fmt.Printf("WithPrice: %v\n", countParams.WithPrice)
+	fmt.Printf("HasDiscount: %v\n", countParams.HasDiscount)
+	fmt.Printf("Minprice: %v\n", countParams.Minprice)
+	fmt.Printf("Maxprice: %v\n", countParams.Maxprice)
+	fmt.Println("==================================================")
 	total, err = store.CountProductsByFiltersBaseWithSlugs(ctx, countParams)
 	fmt.Println(total, "tooooooooooooooooooootal", categorySlug)
 	if err != nil {
@@ -1364,6 +1385,7 @@ func (store *SQLStore) getProductsByFilters(
 			countParams.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
 			countParams.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
 		}
+		fmt.Println("ddddddddddddddddddddddddddddddaaaaaaaaaaa", countParams, "ddddddddddddddddddddddddddddddaaaaaaaaaaa", countParams.ProductTypes)
 		total, err = store.CountProductsByFiltersBase(ctx, countParams)
 
 	case needDiscount && !needStore:

@@ -373,13 +373,13 @@ func TestGetProductsByFiltersPaginateFullWithSlugs_Base(t *testing.T) {
 func TestCountProductsByFiltersPaginateFullWithSlugs(t *testing.T) {
 	// Подготовка
 	ctx := context.Background()
-	// твоя функция для тестовой БД
-	fmt.Println("eeee")
+
+	// Параметры для обоих запросов (одинаковые)
 	params := CountProductsByFiltersBaseWithSlugsParams{
-		CategorySlug: "sneakers", // пусто → без фильтра
-		TypeSlug:     "",         // пусто → без фильтра
-		BrandSlug:    "",         // пусто → без фильтра
-		LineSlug:     "",         // пусто → без фильтра
+		CategorySlug: "sneakers",
+		TypeSlug:     "boots",
+		BrandSlug:    "",
+		LineSlug:     "",
 		Name:         "",
 		Sizes:        []string{},
 		Categories:   []int32{},
@@ -387,16 +387,40 @@ func TestCountProductsByFiltersPaginateFullWithSlugs(t *testing.T) {
 		Firms:        []int32{},
 		Lines:        []int32{},
 		Bodytypes:    []string{},
+		HasDiscount:  false,
+		WithPrice:    true,
 	}
 
-	// Выполнение
-	rows, err := testStore.CountProductsByFiltersBaseWithSlugs(ctx, params)
+	// Выполнение первого запроса (с slugs)
+	countWithSlugs, err := testStore.CountProductsByFiltersBaseWithSlugs(ctx, params)
+	require.NoError(t, err)
+
+	// Выполнение второго запроса (base)
+	// Для второго запроса нужны те же параметры, но в другом формате
+	paramsBase := CountProductsByFiltersBaseParams{
+		Name:         params.Name,
+		Sizes:        params.Sizes,
+		Categories:   []int32{1},
+		ProductTypes: []int32{6},
+		Firms:        params.Firms,
+		Lines:        params.Lines,
+		Bodytypes:    params.Bodytypes,
+		Minprice:     params.Minprice,
+		Maxprice:     params.Maxprice,
+		WithPrice:    params.WithPrice,
+	}
+
+	countBase, err := testStore.CountProductsByFiltersBase(ctx, paramsBase)
+	require.NoError(t, err)
 
 	// Проверка
-	fmt.Println(rows)
-	require.NoError(t, err)
-	assert.NotNil(t, rows)
+	t.Logf("CountWithSlugs: %d", countWithSlugs)
+	t.Logf("CountBase: %d", countBase)
 
+	// Ожидаем, что результаты будут одинаковыми
+	assert.Equal(t, countBase, countWithSlugs,
+		"Counts should be equal when filters are the same")
+	assert.NotZero(t, countWithSlugs, "Should have at least some products")
 }
 func TestCountProductsForCollectionByFiltersFull(t *testing.T) {
 	// Подготовка

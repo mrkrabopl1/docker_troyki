@@ -2,11 +2,13 @@ package api
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -159,8 +161,6 @@ func (s *Server) handleSearchSnickersAndFiltersBySlugs(ctx *gin.Context) {
 	}
 	bindDuration := time.Since(startBind)
 	log.Printf("⏱️ [1] BindJSON: %v", bindDuration)
-	log.Printf("📥 postData: Name='%s', CategorySlug='%s', TypeSlug='%s', BrandSlug='%s', LineSlug='%s', Page=%d, Size=%d, SortType=%d",
-		postData.Name, postData.CategorySlug, postData.TypeSlug, postData.BrandSlug, postData.LineSlug, postData.Page, postData.Size, postData.SortType)
 
 	// ---- 2. Валидация ----
 	if postData.Page < 1 {
@@ -170,7 +170,26 @@ func (s *Server) handleSearchSnickersAndFiltersBySlugs(ctx *gin.Context) {
 		postData.Size = 24
 	}
 
-	// ---- 3. Получение данных через store ----
+	// ---- 3. Формируем ключ для кэша ----
+	cacheKey := s.buildSearchCacheKey(postData)
+	log.Printf("🔑 Cache key: %s", cacheKey)
+
+	// ---- 4. Проверяем кэш ----
+	cachedData, err := s.taskProcessor.GetSearchCache(ctx.Request.Context(), cacheKey)
+	if err == nil {
+		// Нашли в кэше
+		log.Printf("✅ [CACHE HIT] Search cache found")
+		ctx.Header("X-Cache-Status", "HIT")
+		ctx.Data(http.StatusOK, "application/json", cachedData)
+
+		totalDuration := time.Since(startTotal)
+		log.Printf("⏱️ [TOTAL] handleSearchSnickersAndFiltersBySlugs (CACHE): %v", totalDuration)
+		return
+	}
+
+	log.Printf("⏱️ [CACHE MISS] Search cache miss: %v", err)
+
+	// ---- 5. Получение данных через store ----
 	startStore := time.Now()
 
 	result, err := s.store.GetProductsAndFiltersBySlugs(
@@ -195,8 +214,20 @@ func (s *Server) handleSearchSnickersAndFiltersBySlugs(ctx *gin.Context) {
 		return
 	}
 
-	// ---- 4. JSON ответ ----
+	// ---- 6. Сохраняем в кэш (асинхронно) ----
+	go func() {
+		bgCtx := context.Background()
+		ttl := s.getSearchTTL(postData)
+		if err := s.taskProcessor.SetSearchCache(bgCtx, cacheKey, result, ttl); err != nil {
+			log.Printf("❌ [ERROR] Failed to cache search: %v", err)
+		} else {
+			log.Printf("✅ [CACHE SAVE] Search cache saved (TTL: %v)", ttl)
+		}
+	}()
+
+	// ---- 7. JSON ответ ----
 	startJSON := time.Now()
+	ctx.Header("X-Cache-Status", "MISS")
 	ctx.JSON(http.StatusOK, result)
 	jsonDuration := time.Since(startJSON)
 	log.Printf("⏱️ [3] ctx.JSON: %v", jsonDuration)
@@ -205,6 +236,63 @@ func (s *Server) handleSearchSnickersAndFiltersBySlugs(ctx *gin.Context) {
 	totalDuration := time.Since(startTotal)
 	log.Printf("⏱️ [TOTAL] handleSearchSnickersAndFiltersBySlugs: %v", totalDuration)
 	log.Printf("✅ [END] handleSearchSnickersAndFiltersBySlugs")
+}
+
+// buildSearchCacheKey - формирует ключ для кэша поиска
+func (s *Server) buildSearchCacheKey(postData types.PostDataSnickersAndFiltersBySlugs) string {
+	var filterParts []string
+
+	// Добавляем основные параметры
+	if postData.Name != "" {
+		filterParts = append(filterParts, fmt.Sprintf("name=%s", postData.Name))
+	}
+	if postData.CategorySlug != "" {
+		filterParts = append(filterParts, fmt.Sprintf("category=%s", postData.CategorySlug))
+	}
+	if postData.TypeSlug != "" {
+		filterParts = append(filterParts, fmt.Sprintf("type=%s", postData.TypeSlug))
+	}
+	if postData.BrandSlug != "" {
+		filterParts = append(filterParts, fmt.Sprintf("brand=%s", postData.BrandSlug))
+	}
+	if postData.LineSlug != "" {
+		filterParts = append(filterParts, fmt.Sprintf("line=%s", postData.LineSlug))
+	}
+
+	// Пагинация и сортировка
+	filterParts = append(filterParts, fmt.Sprintf("page=%d", postData.Page))
+	filterParts = append(filterParts, fmt.Sprintf("size=%d", postData.Size))
+	filterParts = append(filterParts, fmt.Sprintf("sort=%d", postData.SortType))
+
+	// Добавляем фильтры в виде JSON (всегда, даже пустые)
+	filterJSON, err := json.Marshal(postData.Filters)
+	if err == nil {
+		filterParts = append(filterParts, fmt.Sprintf("filters=%s", string(filterJSON)))
+	}
+
+	// Формируем строку и хеш
+	keyString := strings.Join(filterParts, "&")
+	hash := sha256.Sum256([]byte(keyString))
+
+	return fmt.Sprintf("%x", hash[:16])
+}
+
+// getSearchTTL - возвращает TTL для кэша поиска
+func (s *Server) getSearchTTL(postData types.PostDataSnickersAndFiltersBySlugs) time.Duration {
+	// Если есть поиск по имени - кешируем меньше (меняется чаще)
+	if postData.Name != "" {
+		return 2 * time.Minute
+	}
+
+	// Если есть сложные фильтры - кешируем меньше
+	if len(postData.Filters.Firms) > 0 ||
+		len(postData.Filters.Lines) > 0 ||
+		len(postData.Filters.Categories) > 0 {
+		return 3 * time.Minute
+	}
+
+	// Простые запросы (категория, бренд) - кешируем дольше
+	return 10 * time.Minute
 }
 func (s *Server) handleSearchProductByCategoriesAndFilters(ctx *gin.Context) {
 	var postData types.PostDataAndFiltersByCategoryAndType
@@ -229,16 +317,16 @@ func (s *Server) handleGetMainPage(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	// 1. Пытаемся получить из кэша
-	// widgets, err := s.taskProcessor.GetPageWidgets(ctx)
-	// // fmt.Println("widgets", widgets)
-	// if err == nil && len(widgets) > 0 {
-	// 	c.Data(http.StatusOK, "application/json", widgets)
-	// 	c.Header("X-Cache", "HIT")
-	// 	return
-	// }
+	widgets, err := s.taskProcessor.GetPageWidgets(ctx)
+	// fmt.Println("widgets", widgets)
+	if err == nil && len(widgets) > 0 {
+		c.Data(http.StatusOK, "application/json", widgets)
+		c.Header("X-Cache", "HIT")
+		return
+	}
 
-	// // 2. Кэша нет - отдаём из БД
-	// c.Header("X-Cache", "MISS")
+	//2. Кэша нет - отдаём из БД
+	c.Header("X-Cache", "MISS")
 
 	widgetsFromDB, err := s.store.GetPageWidgetsFromDB(ctx)
 	if err != nil {

@@ -1,10 +1,10 @@
 import { GetServerSideProps } from 'next';
 import CollectionPage from 'src/pages/collectionPage/CollectionPage';
 import { getCollectionBySlug } from 'src/providers/merchProvider';
+import { withMainDataServer } from 'lib/withMainData'; // 👈 Добавляем
 
-// 🔥 ТОЛЬКО ЗДЕСЬ!
-export const getServerSideProps: GetServerSideProps = async (context) => {
-    const { collection } = context.params || {}
+export const getServerSideProps = withMainDataServer(async (context) => {
+    const { collection } = context.params || {};
     
     if (!collection) {
         return {
@@ -12,11 +12,11 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
                 initialData: null,
                 collectionSlug: null
             }
-        }
+        };
     }
 
     try {
-        const data = await getCollectionBySlug(collection as string)
+        const data = await getCollectionBySlug(collection as string);
         
         return {
             props: {
@@ -29,16 +29,16 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
                 },
                 collectionSlug: collection as string
             }
-        }
+        };
     } catch (error) {
-        console.error('SSR failed for collection:', error)
+        console.error('SSR failed for collection:', error);
         return {
             props: {
                 initialData: null,
                 collectionSlug: collection as string
             }
-        }
+        };
     }
-}
+});
 
 export default CollectionPage;

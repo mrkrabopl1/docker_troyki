@@ -2289,30 +2289,30 @@ SELECT COUNT(*)
 FROM products p
 INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
 LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
-LEFT JOIN discount d ON p.id = d.productid
 WHERE 
-    -- Только активные товары
     p.status = 'active'
-    
-    -- Если есть линия - она должна быть активна
     AND (p.line_id IS NULL OR bl.id IS NOT NULL)
     
-    -- 🔥 Фильтры по SLUG'ам
+    -- 🔥 ИСПРАВЛЕНО: корректная проверка slug'ов
     AND (
-        COALESCE(@brand_slug, '') = '' 
-        OR p.brand_id = (SELECT id FROM brand_id)
+        @brand_slug::text IS NULL 
+        OR @brand_slug::text = '' 
+        OR p.brand_id IN (SELECT id FROM brand_id)
     )
     AND (
-        COALESCE(@category_slug, '') = '' 
-        OR p.category = (SELECT id FROM category_id)
+        @category_slug::text IS NULL 
+        OR @category_slug::text = '' 
+        OR p.category IN (SELECT id FROM category_id)
     )
     AND (
-        COALESCE(@type_slug, '') = '' 
-        OR p.type = (SELECT id FROM type_id)
+        @type_slug::text IS NULL 
+        OR @type_slug::text = '' 
+        OR p.type IN (SELECT id FROM type_id)
     )
     AND (
-        COALESCE(@line_slug, '') = '' 
-        OR p.line_id = (SELECT id FROM line_id)
+        @line_slug::text IS NULL 
+        OR @line_slug::text = '' 
+        OR p.line_id IN (SELECT id FROM line_id)
     )
     
     -- Размеры (если переданы)
@@ -2328,9 +2328,10 @@ WHERE
     
     -- Поиск по имени/артикулу
     AND (
-        COALESCE(@name, '') = ''
-        OR p.name ILIKE '%' || @name || '%'
-        OR p.article ILIKE '%' || @name || '%'
+        @name::text IS NULL 
+        OR @name::text = ''
+        OR p.name ILIKE '%' || @name::text || '%'
+        OR p.article ILIKE '%' || @name::text || '%'
     )
     
     -- Категории (если переданы ID)
@@ -2379,9 +2380,12 @@ WHERE
         OR @with_price::boolean = false 
         OR p.minprice > 0
     )
+    
+    -- 🔥 ИСПРАВЛЕНО: скидки через EXISTS (без JOIN)
     AND (
-        @has_discount::boolean = false 
-        OR (@has_discount::boolean = true AND d.id IS NOT NULL)
+        @has_discount::boolean IS NULL
+        OR @has_discount::boolean = false 
+        OR EXISTS (SELECT 1 FROM discount d WHERE d.productid = p.id)
     );
 -- name: CountProductsByFiltersWithDiscount :one
 SELECT COUNT(*)

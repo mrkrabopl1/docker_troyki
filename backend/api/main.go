@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -46,20 +47,46 @@ type MainInfoResponse struct {
 
 func (s *Server) handleGetMainInfo(ctx *gin.Context) {
 	fmt.Println("handleGetMainInfo")
+
+	// Try to get from cache first
+	cachedData, err := s.taskProcessor.GetMainInfo(ctx)
+	if err == nil {
+		ctx.JSON(http.StatusOK, cachedData)
+		return
+	}
+
+	// If not in cache, fetch from database
 	response, err := s.store.GetCategoriesWithTypes(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
 	firms, err := s.store.GetFirms(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	discounts, _ := s.store.GetAllActiveDiscountRules(ctx)
+
+	discounts, err := s.store.GetAllActiveDiscountRules(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, MainInfoResponse{Categories: response, Firms: firms, Discounts: discounts, SizeTables: size.GetAll()})
+
+	mainInfo := db.MainInfoResponse{
+		Categories: response,
+		Firms:      firms,
+		Discounts:  discounts,
+		SizeTables: size.GetAll(),
+	}
+
+	// Cache the response (async to not block response)
+	go func() {
+		if err := s.taskProcessor.SetMainInfo(context.Background(), mainInfo); err != nil {
+			fmt.Printf("Failed to cache main info: %v\n", err)
+		}
+	}()
+
+	ctx.JSON(http.StatusOK, mainInfo)
 }

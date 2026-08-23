@@ -75,7 +75,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
     bodytypes: [],
     store: false,
     discount: false,
-    withPrice: false,
+    withPrice: true,
     rule_ids: []
   })
 
@@ -364,7 +364,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
       {
         id: 'withPrice',
         enable: true,
-        activeData: false,
+        activeData: true,
         name: "В наличии"
       },
       {

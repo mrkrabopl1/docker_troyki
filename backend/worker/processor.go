@@ -44,6 +44,9 @@ type TaskProcessor interface {
 	GetPageWidgets(ctx context.Context) ([]byte, error)
 	ClearPageWidgetsCache(ctx context.Context) error
 
+	SetMainInfo(ctx context.Context, data db.MainInfoResponse) error
+	GetMainInfo(ctx context.Context) (db.MainInfoResponse, error)
+
 	// ProcessTaskGenerateWidgetLink(ctx context.Context, task *asynq.Task) error
 	RefreshPageWidgetsCache(ctx context.Context) error
 	RefreshSingleWidgetCache(ctx context.Context, widgetID int32) error
@@ -53,6 +56,11 @@ type TaskProcessor interface {
 	ClearCollectionCache(ctx context.Context, slug string) error
 	ClearAllCollectionsCache(ctx context.Context) error
 	RefreshCollectionsCache(ctx context.Context) error
+
+	SetSearchCache(ctx context.Context, cacheKey string, data interface{}, ttl time.Duration) error
+	GetSearchCache(ctx context.Context, cacheKey string) ([]byte, error)
+	ClearSearchCache(ctx context.Context) error
+	ClearSearchCacheByPrefix(ctx context.Context, prefix string) error
 }
 
 type RedisTaskProcessor struct {
@@ -206,6 +214,42 @@ func (p *RedisTaskProcessor) GetPageWidgetsStruct(ctx context.Context) ([]types.
 func (p *RedisTaskProcessor) ClearPageWidgetsCache(ctx context.Context) error {
 	key := "mainpage:widgets:v1"
 	return p.redisClient.Del(ctx, key).Err()
+}
+
+func (p *RedisTaskProcessor) SetMainInfo(ctx context.Context, data db.MainInfoResponse) error {
+	// Convert to JSON
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal main info: %w", err)
+	}
+
+	// Generate unique key
+	key := "main_info:cache"
+
+	// Save with expiration (e.g., 1 hour for main info)
+	return p.redisClient.Set(ctx, key, jsonData, 1*time.Hour).Err()
+}
+
+// GetMainInfo - retrieve cached main info
+func (p *RedisTaskProcessor) GetMainInfo(ctx context.Context) (db.MainInfoResponse, error) {
+	key := "main_info:cache"
+
+	// Fetch data from Redis
+	data, err := p.redisClient.Get(ctx, key).Result()
+	if err == redis.Nil {
+		return db.MainInfoResponse{}, fmt.Errorf("main info not found in cache")
+	} else if err != nil {
+		return db.MainInfoResponse{}, fmt.Errorf("failed to get main info from cache: %w", err)
+	}
+
+	// Convert JSON to struct
+	var mainInfo db.MainInfoResponse
+	err = json.Unmarshal([]byte(data), &mainInfo)
+	if err != nil {
+		return db.MainInfoResponse{}, fmt.Errorf("failed to unmarshal main info: %w", err)
+	}
+
+	return mainInfo, nil
 }
 
 func (processor *RedisTaskProcessor) Start() error {

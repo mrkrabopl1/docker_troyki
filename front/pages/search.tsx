@@ -2,13 +2,11 @@
 import { GetServerSideProps } from 'next';
 import SearchPage from 'src/pages/search/SearchPage';
 import { getProductsAndFiltersByCategoryAndTypeServer } from 'src/providers/searchProvider';
+import { withMainDataServer } from 'lib/withMainData'; // 👈 Добавляем
 
-export const getServerSideProps: GetServerSideProps = async (context) => {
+export const getServerSideProps = withMainDataServer(async (context) => {
     const { query } = context;
     
-    // ============================================================
-    // 1️⃣ ПАРСИМ URL - ТОЛЬКО SLUG'И
-    // ============================================================
     const key_word = query.key_word as string || '';
     const categorySlug = query.category as string || '';
     const typeSlug = query.type as string || '';
@@ -21,10 +19,6 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     const orderType = parseInt(query.orderType as string) || 0;
 
     try {
-        // ============================================================
-        // 2️⃣ ОДИН ЗАПРОС НА СЕРВЕРЕ - передаем SLUG'и
-        //    Бэкенд сам переведет slug → id через JOIN
-        // ============================================================
         const initialData = await getProductsAndFiltersByCategoryAndTypeServer({
             searchName: key_word,
             page,
@@ -34,7 +28,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
             typeSlug,
             brandSlug,
             lineSlug,
-            hasDiscount:discount,
+            hasDiscount: discount,
             filters: {
                 categories: [],
                 sizes: [],
@@ -87,6 +81,6 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
             }
         };
     }
-};
+});
 
 export default SearchPage;

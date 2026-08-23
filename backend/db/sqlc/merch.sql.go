@@ -623,30 +623,30 @@ SELECT COUNT(*)
 FROM products p
 INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
 LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
-LEFT JOIN discount d ON p.id = d.productid
 WHERE 
-    -- Только активные товары
     p.status = 'active'
-    
-    -- Если есть линия - она должна быть активна
     AND (p.line_id IS NULL OR bl.id IS NOT NULL)
     
-    -- 🔥 Фильтры по SLUG'ам
+    -- 🔥 ИСПРАВЛЕНО: корректная проверка slug'ов
     AND (
-        COALESCE($1, '') = '' 
-        OR p.brand_id = (SELECT id FROM brand_id)
+        $1::text IS NULL 
+        OR $1::text = '' 
+        OR p.brand_id IN (SELECT id FROM brand_id)
     )
     AND (
-        COALESCE($2, '') = '' 
-        OR p.category = (SELECT id FROM category_id)
+        $2::text IS NULL 
+        OR $2::text = '' 
+        OR p.category IN (SELECT id FROM category_id)
     )
     AND (
-        COALESCE($3, '') = '' 
-        OR p.type = (SELECT id FROM type_id)
+        $3::text IS NULL 
+        OR $3::text = '' 
+        OR p.type IN (SELECT id FROM type_id)
     )
     AND (
-        COALESCE($4, '') = '' 
-        OR p.line_id = (SELECT id FROM line_id)
+        $4::text IS NULL 
+        OR $4::text = '' 
+        OR p.line_id IN (SELECT id FROM line_id)
     )
     
     -- Размеры (если переданы)
@@ -662,9 +662,10 @@ WHERE
     
     -- Поиск по имени/артикулу
     AND (
-        COALESCE($6, '') = ''
-        OR p.name ILIKE '%' || $6 || '%'
-        OR p.article ILIKE '%' || $6 || '%'
+        $6::text IS NULL 
+        OR $6::text = ''
+        OR p.name ILIKE '%' || $6::text || '%'
+        OR p.article ILIKE '%' || $6::text || '%'
     )
     
     -- Категории (если переданы ID)
@@ -713,19 +714,22 @@ WHERE
         OR $14::boolean = false 
         OR p.minprice > 0
     )
+    
+    -- 🔥 ИСПРАВЛЕНО: скидки через EXISTS (без JOIN)
     AND (
-        $15::boolean = false 
-        OR ($15::boolean = true AND d.id IS NOT NULL)
+        $15::boolean IS NULL
+        OR $15::boolean = false 
+        OR EXISTS (SELECT 1 FROM discount d WHERE d.productid = p.id)
     )
 `
 
 type CountProductsByFiltersBaseWithSlugsParams struct {
-	BrandSlug    interface{} `json:"brand_slug"`
-	CategorySlug interface{} `json:"category_slug"`
-	TypeSlug     interface{} `json:"type_slug"`
-	LineSlug     interface{} `json:"line_slug"`
+	BrandSlug    string      `json:"brand_slug"`
+	CategorySlug string      `json:"category_slug"`
+	TypeSlug     string      `json:"type_slug"`
+	LineSlug     string      `json:"line_slug"`
 	Sizes        []string    `json:"sizes"`
-	Name         interface{} `json:"name"`
+	Name         string      `json:"name"`
 	Categories   []int32     `json:"categories"`
 	ProductTypes []int32     `json:"product_types"`
 	Firms        []int32     `json:"firms"`
