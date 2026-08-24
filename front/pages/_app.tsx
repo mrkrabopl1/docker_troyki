@@ -1,9 +1,9 @@
 // pages/_app.tsx
-import type { AppProps } from 'next/app'; // 👈 Убрал AppContext
+import type { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
 import { Provider } from 'react-redux';
 import { setupStore } from 'src/store/store';
-import React from 'react';
+import React, { useEffect } from 'react';
 import AppContent from 'src/AppContent';
 import ProtectedRoute from 'src/components/admin/ProtectedRoute';
 import AdminLayout from 'src/pages/admin/adminLayout/AdminLayout';
@@ -21,18 +21,72 @@ const SHOP_PAGES = [
   '/brands',
 ];
 
-function MyApp({ Component, pageProps }: AppProps) { // 👈 Убрал mainData
+function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
+
+  // ============================================================
+  // 🔥 ЛОГИ ДЛЯ ОТСЛЕЖИВАНИЯ ДАННЫХ
+  // ============================================================
   console.log('[_APP] ========================================');
   console.log('[_APP] Router path:', router.pathname);
-  console.log('[_APP] pageProps:', pageProps);
+  console.log('[_APP] pageProps КЛЮЧИ:', Object.keys(pageProps || {}));
+  console.log('[_APP] pageProps.initialData КЛЮЧИ:', Object.keys(pageProps.initialData || {}));
+  console.log('[_APP] pageProps.initialData.pageInfo ТИП:', typeof pageProps.initialData?.pageInfo);
+  console.log('[_APP] pageProps.initialData.pageInfo МАССИВ?:', Array.isArray(pageProps.initialData?.pageInfo));
+  console.log('[_APP] pageProps.initialData.pageInfo ДЛИНА:', pageProps.initialData?.pageInfo?.length || 0);
+  console.log('[_APP] pageProps.initialData.pageInfo ПЕРВЫЙ ЭЛЕМЕНТ:', pageProps.initialData?.pageInfo?.[0]?.name || 'НЕТ');
+  console.log('[_APP] pageProps.initialData.mainInfo.categories ДЛИНА:', pageProps.initialData?.mainInfo?.categories?.length || 0);
+  console.log('[_APP] pageProps.initialData.mainInfo.firms ДЛИНА:', pageProps.initialData?.mainInfo?.firms?.length || 0);
   console.log('[_APP] pageProps.mainData:', pageProps.mainData);
-  console.log('[_APP] pageProps.mainData exists?', !!pageProps.mainData);
-  console.log('[_APP] pageProps.mainData keys:', pageProps.mainData ? Object.keys(pageProps.mainData) : 'null');
-  console.log('[_APP] pageProps.mainData.mainInfo:', pageProps.mainData?.mainInfo);
-  console.log('[_APP] pageProps.mainData.mainInfo keys:', pageProps.mainData?.mainInfo ? Object.keys(pageProps.mainData.mainInfo) : 'null');
-  console.log('[_APP] pageProps.initialData:', pageProps.initialData);
   console.log('[_APP] ========================================');
+  useEffect(() => {
+    // @ts-ignore
+    const nextData = window.__NEXT_DATA__;
+    const size = JSON.stringify(nextData).length;
+    console.log('📊 __NEXT_DATA__ size:', (size / 1024 / 1024).toFixed(2), 'MB');
+
+    // @ts-ignore
+    const pageInfo = nextData?.props?.pageProps?.initialData?.pageInfo;
+    console.log('📊 pageInfo in __NEXT_DATA__:', pageInfo?.length || 0);
+  }, []);
+  // 🔥 ПРОВЕРКА НА КЛИЕНТЕ - ЧТО ПРИШЛО В __NEXT_DATA__
+  useEffect(() => {
+    console.log('[_APP useEffect] ========================================');
+    console.log('[_APP useEffect] pageProps.initialData.pageInfo ДЛИНА:', pageProps.initialData?.pageInfo?.length || 0);
+    console.log('[_APP useEffect] pageProps.initialData.pageInfo ПЕРВЫЙ:', pageProps.initialData?.pageInfo?.[0]?.name || 'НЕТ');
+
+    // @ts-ignore
+    const nextData = window.__NEXT_DATA__?.props?.pageProps?.initialData;
+    console.log('[_APP useEffect] __NEXT_DATA__ ДОСТУПЕН?', !!nextData);
+    console.log('[_APP useEffect] __NEXT_DATA__.pageInfo ДЛИНА:', nextData?.pageInfo?.length || 0);
+    console.log('[_APP useEffect] __NEXT_DATA__.pageInfo ПЕРВЫЙ:', nextData?.pageInfo?.[0]?.name || 'НЕТ');
+
+    // РАЗМЕР __NEXT_DATA__
+    // @ts-ignore
+    const nextDataSize = JSON.stringify(window.__NEXT_DATA__ || {}).length;
+    console.log('[_APP useEffect] __NEXT_DATA__ РАЗМЕР:', (nextDataSize / 1024 / 1024).toFixed(2), 'MB');
+
+    // СРАВНИВАЕМ pageProps и __NEXT_DATA__
+    const fromProps = pageProps.initialData?.pageInfo?.length || 0;
+    const fromNextData = nextData?.pageInfo?.length || 0;
+    console.log('[_APP useEffect] pageProps.pageInfo:', fromProps);
+    console.log('[_APP useEffect] __NEXT_DATA__.pageInfo:', fromNextData);
+
+    if (fromProps === 0 && fromNextData > 0) {
+      console.log('[_APP useEffect] ⚠️ ДАННЫЕ ЕСТЬ В __NEXT_DATA__, НО НЕТ В pageProps!');
+      console.log('[_APP useEffect] ⚠️ ЭТО ПРОБЛЕМА ГИДРАТАЦИИ!');
+    }
+
+    if (fromProps === 0 && fromNextData === 0) {
+      console.log('[_APP useEffect] ❌ ДАННЫХ НЕТ НИГДЕ!');
+    }
+
+    if (fromProps > 0) {
+      console.log('[_APP useEffect] ✅ ДАННЫЕ ЕСТЬ В pageProps!');
+    }
+    console.log('[_APP useEffect] ========================================');
+  }, [pageProps]);
+
   const isAdmin = router.pathname.startsWith('/admin') &&
     !router.pathname.startsWith('/admin/login') &&
     !router.pathname.startsWith('/admin/forgot-password') &&
@@ -73,24 +127,30 @@ function MyApp({ Component, pageProps }: AppProps) { // 👈 Убрал mainData
     return <Component {...pageProps} />;
   };
 
-  // ✅ Добавил console.log для проверки
-  console.log('🔥 pageProps in _app:', pageProps);
-  console.log('🔥 mainData:', pageProps.mainData);
-  console.log('🔥 initialData:', pageProps.initialData);
+  // 🔥 ПРОВЕРКА ПЕРЕД ПЕРЕДАЧЕЙ В AppContent
+  const mainInfo = pageProps.mainData?.mainInfo || pageProps.initialData?.mainInfo || {};
+  const instagramPosts = pageProps.mainData?.instagramPosts || pageProps.initialData?.instagramPosts || [];
+  const widgetsInfo = pageProps.mainData?.pageInfo || pageProps.initialData?.pageInfo || [];
+
+  console.log('[_APP ПЕРЕД AppContent] ========================================');
+  console.log('[_APP ПЕРЕД AppContent] mainInfo.categories ДЛИНА:', mainInfo?.categories?.length || 0);
+  console.log('[_APP ПЕРЕД AppContent] widgetsInfo ТИП:', typeof widgetsInfo);
+  console.log('[_APP ПЕРЕД AppContent] widgetsInfo МАССИВ?:', Array.isArray(widgetsInfo));
+  console.log('[_APP ПЕРЕД AppContent] widgetsInfo ДЛИНА:', widgetsInfo?.length || 0);
+  console.log('[_APP ПЕРЕД AppContent] widgetsInfo ПЕРВЫЙ:', widgetsInfo?.[0]?.name || 'НЕТ');
+  console.log('[_APP ПЕРЕД AppContent] ========================================');
 
   return (
     <Provider store={store}>
       <AppContent
-        initialMainInfo={pageProps.mainData?.mainInfo || pageProps.initialData?.mainInfo || {}}
-        initialInstagramPhotos={pageProps.mainData?.instagramPosts || pageProps.initialData?.instagramPosts || []}
-        initialWidgetsInfo={pageProps.mainData?.pageInfo || pageProps.initialData?.pageInfo || {}}
+        initialMainInfo={mainInfo}
+        initialInstagramPhotos={instagramPosts}
+        initialWidgetsInfo={widgetsInfo}
       >
         {renderContent()}
       </AppContent>
     </Provider>
   );
 }
-
-// ❌ УДАЛИЛ getInitialProps полностью
 
 export default MyApp;

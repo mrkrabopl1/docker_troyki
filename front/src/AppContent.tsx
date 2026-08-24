@@ -198,17 +198,7 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
   // Загрузка Instagram фото на клиенте (fallback)
   const loadInstagramPhotos = useCallback(async () => {
     try {
-      // Пробуем взять из localStorage
-      const cached = localStorage.getItem('instagramPhotosCache');
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < 60 * 60 * 1000) { // 1 час
-          dispatch(setInstagramPhotos(data));
-          return;
-        }
-      }
-
-      // Иначе запрашиваем с сервера
+      
       const photos = await getInstagramPhotos();
       dispatch(setInstagramPhotos(photos));
       localStorage.setItem('instagramPhotosCache', JSON.stringify({
@@ -225,17 +215,6 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
   // Загрузка основных данных на клиенте (fallback)
   const loadMainInfo = useCallback(async () => {
     try {
-      // Пробуем взять из localStorage (с TTL)
-      const cached = localStorage.getItem('mainInfoCache');
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < 60 * 60 * 1000) { // 1 час
-          applyDataToRedux(data);
-          return;
-        }
-      }
-
-      // Иначе запрашиваем с сервера
       const data = await getMainInfo();
       applyDataToRedux(data);
       localStorage.setItem('mainInfoCache', JSON.stringify({
@@ -257,14 +236,14 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
       applyDataToRedux(initialMainInfo);
     } else {
       // Если нет SSR данных - загружаем на клиенте
-      loadMainInfo();
+    //  loadMainInfo();
     }
     if (initialWidgetsInfo) {
       console.log('🔥 Redux initialized from SSR data');
       dispatch(setPageInfo(initialWidgetsInfo));
     } else {
       // Если нет SSR данных - загружаем на клиенте
-      loadMainInfo();
+     // loadMainInfo();
     }
 
     // 2. Инициализируем Instagram фото
