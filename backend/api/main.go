@@ -51,6 +51,7 @@ func (s *Server) handleGetMainInfo(ctx *gin.Context) {
 	// Try to get from cache first
 	cachedData, err := s.taskProcessor.GetMainInfo(ctx)
 	if err == nil {
+		fmt.Println(cachedData, "mainData")
 		ctx.JSON(http.StatusOK, cachedData)
 		return
 	}

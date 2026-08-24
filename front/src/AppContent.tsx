@@ -7,7 +7,7 @@ import { show, sticky, types, categories, setFirmMap, setFirms, collections, set
 import { setFooter } from 'src/store/reducers/dispetcherSlice';
 import { setWidthProps } from 'src/store/reducers/resizeSlice';
 import { setInstagramPhotos } from 'src/store/reducers/instagramSlice';
-import { setPageInfo,SliderData } from 'src/store/reducers/widgetSlice';
+import { setPageInfo, SliderData } from 'src/store/reducers/widgetSlice';
 import { getCookie } from './global';
 import { setUniqueCustomer } from './providers/userProvider';
 import { getCartCount } from './providers/shopProvider';
@@ -66,6 +66,25 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
   // Выносим applyDataToRedux в useCallback для переиспользования
   const applyDataToRedux = useCallback((data: any) => {
     // 1. Категории и типы
+    console.log('[APPLY_DATA] ========================================');
+    console.log('[APPLY_DATA] Full data received:', JSON.stringify(data, null, 2));
+    console.log('[APPLY_DATA] Data type:', typeof data);
+    console.log('[APPLY_DATA] Data keys:', Object.keys(data || {}));
+
+    console.log('[APPLY_DATA] categories:', data.categories);
+    console.log('[APPLY_DATA] categories type:', typeof data.categories);
+    console.log('[APPLY_DATA] categories isArray:', Array.isArray(data.categories));
+    console.log('[APPLY_DATA] categories keys if object:', data.categories ? Object.keys(data.categories) : 'null');
+
+    console.log('[APPLY_DATA] firms:', data.firms);
+    console.log('[APPLY_DATA] firms type:', typeof data.firms);
+    console.log('[APPLY_DATA] firms isArray:', Array.isArray(data.firms));
+
+    console.log('[APPLY_DATA] discounts:', data.discounts);
+    console.log('[APPLY_DATA] discounts type:', typeof data.discounts);
+    console.log('[APPLY_DATA] discounts isArray:', Array.isArray(data.discounts));
+
+    console.log('[APPLY_DATA] ========================================');
     const categoriesVal: any = {};
     const typesVal: any = {};
     data.categories.forEach((d: any) => {
@@ -227,7 +246,7 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
       // Если нет SSR данных - загружаем на клиенте
       loadMainInfo();
     }
-     if (initialWidgetsInfo) {
+    if (initialWidgetsInfo) {
       console.log('🔥 Redux initialized from SSR data');
       dispatch(setPageInfo(initialWidgetsInfo));
     } else {
@@ -245,7 +264,7 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
     }
 
     isHydrated.current = true;
-  }, [initialMainInfo,initialWidgetsInfo, initialInstagramPhotos, applyDataToRedux, loadMainInfo, loadInstagramPhotos, dispatch]);
+  }, [initialMainInfo, initialWidgetsInfo, initialInstagramPhotos, applyDataToRedux, loadMainInfo, loadInstagramPhotos, dispatch]);
 
   // Остальные эффекты без изменений
   useEffect(() => {

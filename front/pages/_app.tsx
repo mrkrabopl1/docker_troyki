@@ -23,7 +23,16 @@ const SHOP_PAGES = [
 
 function MyApp({ Component, pageProps }: AppProps) { // 👈 Убрал mainData
   const router = useRouter();
-
+  console.log('[_APP] ========================================');
+  console.log('[_APP] Router path:', router.pathname);
+  console.log('[_APP] pageProps:', pageProps);
+  console.log('[_APP] pageProps.mainData:', pageProps.mainData);
+  console.log('[_APP] pageProps.mainData exists?', !!pageProps.mainData);
+  console.log('[_APP] pageProps.mainData keys:', pageProps.mainData ? Object.keys(pageProps.mainData) : 'null');
+  console.log('[_APP] pageProps.mainData.mainInfo:', pageProps.mainData?.mainInfo);
+  console.log('[_APP] pageProps.mainData.mainInfo keys:', pageProps.mainData?.mainInfo ? Object.keys(pageProps.mainData.mainInfo) : 'null');
+  console.log('[_APP] pageProps.initialData:', pageProps.initialData);
+  console.log('[_APP] ========================================');
   const isAdmin = router.pathname.startsWith('/admin') &&
     !router.pathname.startsWith('/admin/login') &&
     !router.pathname.startsWith('/admin/forgot-password') &&
