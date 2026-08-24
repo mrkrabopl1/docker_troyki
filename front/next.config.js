@@ -10,6 +10,7 @@ const nextConfig = {
   poweredByHeader: false,
 
   experimental: {
+    largePageDataBytes: 1024 * 1024 * 10,
     forceSwcTransforms: true,
   },
 
