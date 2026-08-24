@@ -94,36 +94,40 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
     console.log('[APPLY_DATA] ========================================');
     const categoriesVal: any = {};
     const typesVal: any = {};
-    data?.categories.forEach((d: any) => {
-      if (categoriesVal[d.category_key]) {
-        categoriesVal[d.category_key].types[d.type_key] = d.type_id;
-        typesVal[d.type_id] = {
-          name: d.type_name,
-          categoryName: d.category_name,
-          category_key: d.category_key,
-          type_key: d.type_key,
-          category_id: d.category_id,
-        };
-      } else {
-        typesVal[d.type_id] = {
-          name: d.type_name,
-          categoryName: d.category_name,
-          category_key: d.category_key,
-          type_key: d.type_key,
-          category_id: d.category_id,
-        };
-        categoriesVal[d.category_key] = {
-          id: d.category_id,
-          image_path: d.image_path,
-          category_name: d.category_name,
-          types: {},
-        };
-      }
-    });
+    if (data?.categories) {
+      data?.categories.forEach((d: any) => {
+        if (categoriesVal[d.category_key]) {
+          categoriesVal[d.category_key].types[d.type_key] = d.type_id;
+          typesVal[d.type_id] = {
+            name: d.type_name,
+            categoryName: d.category_name,
+            category_key: d.category_key,
+            type_key: d.type_key,
+            category_id: d.category_id,
+          };
+        } else {
+          typesVal[d.type_id] = {
+            name: d.type_name,
+            categoryName: d.category_name,
+            category_key: d.category_key,
+            type_key: d.type_key,
+            category_id: d.category_id,
+          };
+          categoriesVal[d.category_key] = {
+            id: d.category_id,
+            image_path: d.image_path,
+            category_name: d.category_name,
+            types: {},
+          };
+        }
+      });
+    }
+
 
     // Загрузка изображений (только на клиенте)
     if (typeof window !== 'undefined') {
-      const imageUrls = data.categories.map((cat: any) => "/" + cat.image_path);
+      let imageUrls = []
+      if (data?.categories) { imageUrls = data?.categories.map((cat: any) => "/" + cat.image_path) };
       dispatch(addImageToLoad(imageUrls.length));
       imageUrls.forEach((url: string) => {
         const img = new Image();
@@ -144,30 +148,32 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
     const fieldData: Record<string, Record<string, string>> = {};
     const firmMap: Record<string, Firm> = {};
     const lineMap: Record<string, Line> = {};
-    data.firms.forEach((row: any) => {
-      firmMap[row.brand_slug] = {
-        id: row.brand_id,
-        name: row.firm,
-        slug: row.brand_slug,
-      };
+    if (data.firms) {
+      data.firms.forEach((row: any) => {
+        firmMap[row.brand_slug] = {
+          id: row.brand_id,
+          name: row.firm,
+          slug: row.brand_slug,
+        };
 
-      if (!fieldData[row.firm]) fieldData[row.firm] = {};
-      if (row.collection_name) {
-        fieldData[row.firm][row.line_id] = row.collection_name;
-      }
 
-      if (row.collection_name && row.line_id) {
-        if (!lineMap[row.collection_slug]) {
-          lineMap[row.collection_slug] = {
-            id: row.line_id,
-            name: row.collection_name,
-            slug: row.collection_slug,
-            brand_id: row.brand_id,
-          };
+        if (!fieldData[row.firm]) fieldData[row.firm] = {};
+        if (row.collection_name) {
+          fieldData[row.firm][row.line_id] = row.collection_name;
         }
-      }
-    });
 
+        if (row.collection_name && row.line_id) {
+          if (!lineMap[row.collection_slug]) {
+            lineMap[row.collection_slug] = {
+              id: row.line_id,
+              name: row.collection_name,
+              slug: row.collection_slug,
+              brand_id: row.brand_id,
+            };
+          }
+        }
+      });
+    }
     dispatch(setFirms(Object.keys(fieldData)));
     dispatch(setFirmMap(firmMap));
     dispatch(collections(fieldData));
