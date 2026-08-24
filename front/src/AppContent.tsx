@@ -37,7 +37,14 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const animationFrameRef = useRef<number>();
   const isHydrated = useRef(false); // Флаг, чтобы не дублировать инициализацию
-
+  console.log('🔥 [APP_CONTENT CLIENT] ========================================');
+  console.log('🔥 [APP_CONTENT CLIENT] initialMainInfo:', initialMainInfo);
+  console.log('🔥 [APP_CONTENT CLIENT] initialMainInfo type:', typeof initialMainInfo);
+  console.log('🔥 [APP_CONTENT CLIENT] initialMainInfo keys:', Object.keys(initialMainInfo || {}));
+  console.log('🔥 [APP_CONTENT CLIENT] initialMainInfo is empty?', JSON.stringify(initialMainInfo) === '{}');
+  console.log('🔥 [APP_CONTENT CLIENT] initialInstagramPhotos:', initialInstagramPhotos);
+  console.log('🔥 [APP_CONTENT CLIENT] initialWidgetsInfo:', initialWidgetsInfo);
+  console.log('🔥 [APP_CONTENT CLIENT] ========================================');
   useRouteChange();
 
   const handleCookieAccept = useCallback(() => {
