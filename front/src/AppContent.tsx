@@ -94,7 +94,7 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
     console.log('[APPLY_DATA] ========================================');
     const categoriesVal: any = {};
     const typesVal: any = {};
-    data.categories.forEach((d: any) => {
+    data?.categories.forEach((d: any) => {
       if (categoriesVal[d.category_key]) {
         categoriesVal[d.category_key].types[d.type_key] = d.type_id;
         typesVal[d.type_id] = {
