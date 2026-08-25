@@ -28,6 +28,7 @@ function MyApp({ Component, pageProps }: AppProps) {
   // 🔥 ПРОВЕРЯЕМ ВСЕ ТЕСТЫ
   console.log('[_APP] testData:', pageProps.testData);
   console.log('[_APP] testArray:', pageProps.testArray);
+  console.log('[_APP] banners:', pageProps.banners);
   console.log('[_APP] testStringArray:', pageProps.testStringArray);
   console.log('[_APP] testSimpleObject:', pageProps.testSimpleObject);
   console.log('[_APP] testObjectArray:', pageProps.testObjectArray);

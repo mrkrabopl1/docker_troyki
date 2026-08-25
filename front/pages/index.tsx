@@ -59,6 +59,7 @@ export const getStaticProps = async () => {
       testStringArray: testStringArray,
       testSimpleObject: testSimpleObject,
       testObjectArray: testObjectArray,
+      banners:banners,
       
       // 🔥 ОРИГИНАЛЬНЫЕ ДАННЫЕ
       initialData: {
