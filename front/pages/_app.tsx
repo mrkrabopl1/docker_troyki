@@ -23,22 +23,19 @@ const SHOP_PAGES = [
 
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
-  console.log('🔥🔥🔥 ТЕСТ:', pageProps.testData);
-  console.log('🔥🔥🔥 ТЕСТ.hello:', pageProps.testData?.hello);
-  // ============================================================
-  // 🔥 ЛОГИ ДЛЯ ОТСЛЕЖИВАНИЯ ДАННЫХ
-  // ============================================================
   console.log('[_APP] ========================================');
-  console.log('[_APP] Router path:', router.pathname);
-  console.log('[_APP] pageProps КЛЮЧИ:', Object.keys(pageProps || {}));
-  console.log('[_APP] pageProps.initialData КЛЮЧИ:', Object.keys(pageProps.initialData || {}));
-  console.log('[_APP] pageProps.initialData.pageInfo ТИП:', typeof pageProps.initialData?.pageInfo);
-  console.log('[_APP] pageProps.initialData.pageInfo МАССИВ?:', Array.isArray(pageProps.initialData?.pageInfo));
-  console.log('[_APP] pageProps.initialData.pageInfo ДЛИНА:', pageProps.initialData?.pageInfo?.length || 0);
-  console.log('[_APP] pageProps.initialData.pageInfo ПЕРВЫЙ ЭЛЕМЕНТ:', pageProps.initialData?.pageInfo?.[0]?.name || 'НЕТ');
-  console.log('[_APP] pageProps.initialData.mainInfo.categories ДЛИНА:', pageProps.initialData?.mainInfo?.categories?.length || 0);
-  console.log('[_APP] pageProps.initialData.mainInfo.firms ДЛИНА:', pageProps.initialData?.mainInfo?.firms?.length || 0);
-  console.log('[_APP] pageProps.mainData:', pageProps.mainData);
+
+  // 🔥 ПРОВЕРЯЕМ ТЕСТОВЫЙ ОБЪЕКТ
+  console.log('[_APP] testData:', pageProps.testData);
+  console.log('[_APP] testData.hello:', pageProps.testData?.hello);
+
+  // 🔥 ПРОВЕРЯЕМ РЕАЛЬНЫЕ ДАННЫЕ
+  console.log('[_APP] initialData:', pageProps.initialData);
+  console.log('[_APP] initialData.pageInfo length:', pageProps.initialData?.pageInfo?.length || 0);
+  console.log('[_APP] initialData.pageInfo[0]:', pageProps.initialData?.pageInfo?.[0]?.name);
+  console.log('[_APP] initialData.mainInfo.categories length:', pageProps.initialData?.mainInfo?.categories?.length || 0);
+  console.log('[_APP] initialData.mainInfo.firms length:', pageProps.initialData?.mainInfo?.firms?.length || 0);
+
   console.log('[_APP] ========================================');
   useEffect(() => {
     // @ts-ignore
