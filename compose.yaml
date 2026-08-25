@@ -15,12 +15,19 @@ services:
     environment:
       - API_URL=${API_URL}
     depends_on:
-      - goapp1
+        goapp1:
+          condition: service_healthy
     networks:
       - front_networks
     restart: unless-stopped
   goapp1:
     container_name: goapp1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8100/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     image: goapp1:1.0.0
     volumes:
       - ./front/images:/app/front/images

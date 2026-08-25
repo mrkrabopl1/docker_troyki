@@ -27,7 +27,7 @@ export const getStaticProps = async () => {
         banners
       }
     },
-    revalidate: 300
+    revalidate: 60
   };
   
   console.log('[INDEX] ОТПРАВЛЯЮ В ПРОПС:');

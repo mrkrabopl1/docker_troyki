@@ -147,6 +147,7 @@ func (s *Server) setupRouter() {
 		api.GET("/admin/verify-invite", s.handleAdminVerifyInvite)
 		api.POST("/admin/accept-invite", s.handleAdminAcceptInvite)
 
+		api.GET("/health", s.HealthCheckHandler)
 		// Admin group с middleware
 		adminGroup := api.Group("/admin")
 		adminGroup.Use(s.AdminAuthMiddleware())

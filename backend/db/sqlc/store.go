@@ -88,6 +88,7 @@ type Store interface {
 	RecalculateProductsDiscounts(ctx context.Context, productIDs map[int32]bool) error
 	GetFiltersOptimized(ctx context.Context, params FilterParams) (*FiltersResult, error)
 	GetFiltersOptimizedMemo(ctx context.Context, params FilterParams) (*FiltersResult, error)
+	HealthCheck(ctx context.Context) error
 }
 
 // SQLStore provides all functions to execute SQL queries and transactions
