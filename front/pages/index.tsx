@@ -2,11 +2,8 @@
 import Main from 'src/pages/main/Main';
 import { getMainBanners } from 'src/providers/shopProvider';
 
-// 🔥 АСИНХРОННАЯ ФУНКЦИЯ, КОТОРАЯ ВОЗВРАЩАЕТ ТЕСТОВЫЙ ОБЪЕКТ С ЗАДЕРЖКОЙ
 const getTestData = async () => {
   console.log('[TEST] Начинаю загрузку тестовых данных...');
-  
-  // 🔥 СИМУЛИРУЕМ АСИНХРОННУЮ ЗАГРУЗКУ (НАПРИМЕР, С БД)
   await new Promise(resolve => setTimeout(resolve, 1000));
   
   const testData = {
@@ -25,22 +22,45 @@ export const getStaticProps = async () => {
   console.log('[INDEX] ========================================');
   console.log('[INDEX] НАЧАЛО ЗАГРУЗКИ');
   
-  // 🔥 ЗАГРУЖАЕМ ВСЁ АСИНХРОННО
   const startTime = Date.now();
   
   const [testData, banners] = await Promise.all([
-    getTestData(),           // 👈 АСИНХРОННЫЙ ТЕСТ
-    getMainBanners().catch(() => [])  // 👈 ТВОЙ БАННЕР
+    getTestData(),
+    getMainBanners().catch(() => [])
   ]);
   
   const duration = Date.now() - startTime;
   console.log('[INDEX] ВСЕ ДАННЫЕ ЗАГРУЖЕНЫ ЗА', duration, 'ms');
   console.log('[INDEX] testData:', testData);
-  console.log('[INDEX] banners:', banners.length);
+  console.log('[INDEX] banners:', banners);
+  console.log('[INDEX] banners length:', banners.length);
+  
+  // 🔥🔥🔥 ТЕСТ 1: ОБЫЧНЫЙ МАССИВ
+  const testArray = [1, 2, 3, 4, 5];
+  
+  // 🔥🔥🔥 ТЕСТ 2: МАССИВ СТРОК
+  const testStringArray = ['a', 'b', 'c', 'd'];
+  
+  // 🔥🔥🔥 ТЕСТ 3: ПРОСТОЙ ОБЪЕКТ
+  const testSimpleObject = { foo: 'bar', baz: 123 };
+  
+  // 🔥🔥🔥 ТЕСТ 4: МАССИВ ОБЪЕКТОВ (КАК БАННЕРЫ)
+  const testObjectArray = [
+    { id: 1, name: 'test1' },
+    { id: 2, name: 'test2' },
+    { id: 3, name: 'test3' }
+  ];
   
   return {
     props: {
-      testData: testData,     // 👈 АСИНХРОННЫЙ ТЕСТ
+      // 🔥 ВСЕ ТЕСТЫ
+      testData: testData,
+      testArray: testArray,
+      testStringArray: testStringArray,
+      testSimpleObject: testSimpleObject,
+      testObjectArray: testObjectArray,
+      
+      // 🔥 ОРИГИНАЛЬНЫЕ ДАННЫЕ
       initialData: {
         banners: banners || []
       }

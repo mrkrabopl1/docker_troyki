@@ -25,16 +25,20 @@ function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
   console.log('[_APP] ========================================');
 
-  // 🔥 ПРОВЕРЯЕМ ТЕСТОВЫЙ ОБЪЕКТ
+  // 🔥 ПРОВЕРЯЕМ ВСЕ ТЕСТЫ
   console.log('[_APP] testData:', pageProps.testData);
-  console.log('[_APP] testData.hello:', pageProps.testData?.hello);
+  console.log('[_APP] testArray:', pageProps.testArray);
+  console.log('[_APP] testStringArray:', pageProps.testStringArray);
+  console.log('[_APP] testSimpleObject:', pageProps.testSimpleObject);
+  console.log('[_APP] testObjectArray:', pageProps.testObjectArray);
+  console.log('[_APP] testObjectArray length:', pageProps.testObjectArray?.length || 0);
 
-  // 🔥 ПРОВЕРЯЕМ РЕАЛЬНЫЕ ДАННЫЕ
+  // 🔥 ПРОВЕРЯЕМ INITIALDATA
   console.log('[_APP] initialData:', pageProps.initialData);
-  console.log('[_APP] initialData.pageInfo length:', pageProps.initialData?.pageInfo?.length || 0);
-  console.log('[_APP] initialData.pageInfo[0]:', pageProps.initialData?.pageInfo?.[0]?.name);
-  console.log('[_APP] initialData.mainInfo.categories length:', pageProps.initialData?.mainInfo?.categories?.length || 0);
-  console.log('[_APP] initialData.mainInfo.firms length:', pageProps.initialData?.mainInfo?.firms?.length || 0);
+  console.log('[_APP] initialData.banners:', pageProps.initialData?.banners);
+  console.log('[_APP] initialData.banners length:', pageProps.initialData?.banners?.length || 0);
+
+  console.log('[_APP] ========================================');
 
   console.log('[_APP] ========================================');
   useEffect(() => {
