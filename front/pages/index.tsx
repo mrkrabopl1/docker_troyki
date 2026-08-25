@@ -41,9 +41,9 @@ export const getStaticProps = async () => {
     props: {
       testData: testData,
       // 🔥 ПЕРЕДАЁМ КОПИЮ, А НЕ ОРИГИНАЛ!
-      banners: safeBanners[0]?.title|| "no data",
+      banners: safeBanners[0]|| "no data",
       initialData: {
-        banners: safeBanners[0]?.title|| "no data"
+        banners: safeBanners[0]|| "no data"
       }
     },
     revalidate: 300
