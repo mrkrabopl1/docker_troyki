@@ -20,50 +20,30 @@ const getTestData = async () => {
 
 export const getStaticProps = async () => {
   console.log('[INDEX] ========================================');
-  console.log('[INDEX] НАЧАЛО ЗАГРУЗКИ');
-  
-  const startTime = Date.now();
   
   const [testData, banners] = await Promise.all([
     getTestData(),
     getMainBanners().catch(() => [])
   ]);
   
-  const duration = Date.now() - startTime;
-  console.log('[INDEX] ВСЕ ДАННЫЕ ЗАГРУЖЕНЫ ЗА', duration, 'ms');
-  console.log('[INDEX] testData:', testData);
-  console.log('[INDEX] banners:', banners);
-  console.log('[INDEX] banners length:', banners.length);
+  // 🔥 ДЕЛАЕМ ГЛУБОКУЮ КОПИЮ!
+  // const safeBanners = JSON.parse(JSON.stringify(banners));
+  // // ИЛИ
+  // const safeBanners = banners.map(b => ({ ...b }));
+  // // ИЛИ
+  let safeBanners = structuredClone(banners); // 👈 СОВРЕМЕННЫЙ СПОСОБ
   
-  // 🔥🔥🔥 ТЕСТ 1: ОБЫЧНЫЙ МАССИВ
-  const testArray = [1, 2, 3, 4, 5];
-  
-  // 🔥🔥🔥 ТЕСТ 2: МАССИВ СТРОК
-  const testStringArray = ['a', 'b', 'c', 'd'];
-  
-  // 🔥🔥🔥 ТЕСТ 3: ПРОСТОЙ ОБЪЕКТ
-  const testSimpleObject = { foo: 'bar', baz: 123 };
-  
-  // 🔥🔥🔥 ТЕСТ 4: МАССИВ ОБЪЕКТОВ (КАК БАННЕРЫ)
-  const testObjectArray = [
-    { id: 1, name: 'test1' },
-    { id: 2, name: 'test2' },
-    { id: 3, name: 'test3' }
-  ];
+  console.log('[INDEX] original banners:', banners);
+  console.log('[INDEX] safe banners copy:', safeBanners);
+  console.log("testData",testData)
   
   return {
     props: {
-      // 🔥 ВСЕ ТЕСТЫ
       testData: testData,
-      testArray: testArray,
-      testStringArray: testStringArray,
-      testSimpleObject: testSimpleObject,
-      testObjectArray: testObjectArray,
-      banners:banners,
-      
-      // 🔥 ОРИГИНАЛЬНЫЕ ДАННЫЕ
+      // 🔥 ПЕРЕДАЁМ КОПИЮ, А НЕ ОРИГИНАЛ!
+      banners: safeBanners,
       initialData: {
-        banners: banners || []
+        banners: safeBanners
       }
     },
     revalidate: 300
