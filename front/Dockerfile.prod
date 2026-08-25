@@ -2,9 +2,6 @@
 FROM node:19-bullseye AS builder
 WORKDIR /app
 
-# Устанавливаем netcat для проверки доступности goapp1
-RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
-
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 
@@ -13,14 +10,7 @@ COPY . .
 ARG API_URL
 ENV API_URL=${API_URL}
 
-# 🔥 ЖДЕМ goapp1 ПЕРЕД БИЛДОМ!
-RUN echo "⏳ Ожидаем goapp1:8100..." && \
-    while ! nc -z goapp1 8100; do \
-        echo "⏳ goapp1 еще не готов, ждем 2 секунды..."; \
-        sleep 2; \
-    done && \
-    echo "✅ goapp1 готов! Начинаем сборку..." && \
-    yarn build
+RUN yarn build
 
 # Stage 2: Продакшн
 FROM node:19-bullseye-slim AS runner
@@ -32,6 +22,7 @@ RUN apt-get update && \
 
 ENV NODE_ENV production
 
+# ← Добавь это:
 ARG API_URL
 ENV API_URL=${API_URL}
 
@@ -48,7 +39,7 @@ RUN if [ -d "/app/public/images" ]; then \
 
 EXPOSE 80
 
-HEALTHCHECK --interval=60s --timeout=3s --start-period=30s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:80/ || exit 1
 
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
