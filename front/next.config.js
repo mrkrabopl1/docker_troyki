@@ -23,7 +23,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://goapp1:8100/api/:path*',
+        destination: 'http://127.0.0.1:8100/api/:path*',
       },
     ];
   },
@@ -33,8 +33,8 @@ const nextConfig = {
       new webpack.DefinePlugin({
         'API_URL': JSON.stringify(
           isServer
-            ? (process.env.API_URL || 'http://goapp1:8100/api')
-            : '/api'
+            ? (process.env.API_URL || 'http://127.0.0.1:8100/api')
+            : 'http://127.0.0.1/api'
         ),
       })
     );

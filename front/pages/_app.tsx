@@ -23,7 +23,8 @@ const SHOP_PAGES = [
 
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
-
+  console.log('🔥🔥🔥 ТЕСТ:', pageProps.testData);
+  console.log('🔥🔥🔥 ТЕСТ.hello:', pageProps.testData?.hello);
   // ============================================================
   // 🔥 ЛОГИ ДЛЯ ОТСЛЕЖИВАНИЯ ДАННЫХ
   // ============================================================
