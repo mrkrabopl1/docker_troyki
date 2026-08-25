@@ -6558,19 +6558,17 @@ func (q *Queries) GetProductsByFiltersPaginateBaseWithSlugs(ctx context.Context,
 }
 
 const getProductsByFiltersPaginateFull = `-- name: GetProductsByFiltersPaginateFull :many
-SELECT 
+SELECT DISTINCT ON (p.id)
     p.id, 
     p.name, 
     p.image_path,
     b.name as firm,
-    -- Данные о скидке из таблицы discount
     COALESCE(d.discount_percent, 0) AS discount_percent,
     COALESCE(d.original_price, 0) AS original_price,
     COALESCE(d.discounted_price, p.minprice) AS discounted_price,
     COALESCE(d.min_price, p.minprice) AS min_price,
     COALESCE(d.max_price, p.maxprice) AS max_price,
     d.id IS NOT NULL AS has_discount,
-    -- Наличие на складе
     (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
 FROM products p
 INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
