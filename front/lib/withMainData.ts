@@ -51,7 +51,7 @@ export function withMainData<T extends object>(
         ...pageProps,
         initialData, // 👈 Передаем как единый объект
       },
-      revalidate: pageResult?.revalidate || 300,
+      revalidate: pageResult?.revalidate || 10,
     };
     
     // 🔥 Проверяем финальные данные
