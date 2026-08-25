@@ -253,7 +253,6 @@ type Querier interface {
 	// Самый лёгкий – без скидок, без склада
 	GetProductsByFiltersPaginateBase(ctx context.Context, arg GetProductsByFiltersPaginateBaseParams) ([]GetProductsByFiltersPaginateBaseRow, error)
 	GetProductsByFiltersPaginateBaseWithSlugs(ctx context.Context, arg GetProductsByFiltersPaginateBaseWithSlugsParams) ([]GetProductsByFiltersPaginateBaseWithSlugsRow, error)
-	// Всё вместе: и скидки, и склад (только товары со скидками И в наличии)
 	GetProductsByFiltersPaginateFull(ctx context.Context, arg GetProductsByFiltersPaginateFullParams) ([]GetProductsByFiltersPaginateFullRow, error)
 	// Всё вместе: и скидки, и склад
 	// 🔥 СНАЧАЛА ПОЛУЧАЕМ ID ПО SLUG'АМ (1 РАЗ)

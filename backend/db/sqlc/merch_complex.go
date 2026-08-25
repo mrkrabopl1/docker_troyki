@@ -1291,7 +1291,7 @@ func fullRowToProductRow(r GetProductsByFiltersPaginateFullRow) ProductRow {
 		MaxPrice:        r.MaxPrice,
 		MaxDiscPrice:    r.DiscountedPrice,
 		DiscountPercent: r.DiscountPercent,
-		InStore:         r.InStore.Bool,
+		InStore:         r.InStore,
 	}
 }
 
@@ -1560,9 +1560,11 @@ func (store *SQLStore) getProductsByFilters(
 			params.Minprice = pgtype.Int4{Int32: int32(filters.Price[0]), Valid: true}
 			params.Maxprice = pgtype.Int4{Int32: int32(filters.Price[1]), Valid: true}
 		}
+		fmt.Println(params.Maxprice, params.Minprice, "df,;dmf;lsdmf;sdmf;")
 		// fmt.Println("%v", params, "ddddddddddddddddddddddddddddddaaaaaaaaaaa")
 		rows, err := store.GetProductsByFiltersPaginateFull(ctx, params)
 		if err != nil {
+			fmt.Println(err, "eeeeeeee")
 			return productsWithCount{}, err
 		}
 		for _, r := range rows {

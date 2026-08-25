@@ -1791,7 +1791,6 @@ LIMIT CASE WHEN @limitval::integer > 0 THEN @limitval::integer ELSE 50 END
 OFFSET CASE WHEN @offsetval::integer > 0 THEN @offsetval::integer ELSE 0 END;
 
 -- name: GetProductsByFiltersPaginateFull :many
--- Всё вместе: и скидки, и склад (только товары со скидками И в наличии)
 SELECT DISTINCT ON (p.id)
     p.id, 
     p.name, 
@@ -1803,12 +1802,12 @@ SELECT DISTINCT ON (p.id)
     COALESCE(d.min_price, p.minprice) AS min_price,
     COALESCE(d.max_price, p.maxprice) AS max_price,
     d.id IS NOT NULL AS has_discount,
-    (sh.id IS NOT NULL AND sh.quantity > 0) AS in_store
+    TRUE AS in_store
 FROM products p
 INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
 LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
-INNER JOIN discount d ON p.id = d.productid  -- INNER JOIN - только товары со скидкой
-INNER JOIN store_house sh ON p.id = sh.productid AND sh.quantity > 0  -- INNER JOIN - только товары в наличии
+INNER JOIN discount d ON p.id = d.productid
+INNER JOIN store_house sh ON p.id = sh.productid AND sh.quantity > 0
 LEFT JOIN LATERAL (
     SELECT dr2.discount_value, dr2.name
     FROM discount_rule_items dri
@@ -1826,9 +1825,7 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) dr ON true
 WHERE 
-    -- Только активные товары
     p.status = 'active'
-    -- Если есть линия - она должна быть активна
     AND (p.line_id IS NULL OR bl.id IS NOT NULL)
     -- Размеры
     AND (
@@ -1882,9 +1879,8 @@ WHERE
     AND (
         @with_price::boolean IS NULL OR @with_price::boolean = false OR p.minprice > 0
     )
-    -- 🔥 Фильтр по скидкам (с обработкой rule_ids)
+    -- Фильтр по скидкам
     AND (
-        -- Если передан список правил и он НЕ ПУСТОЙ - фильтруем по конкретным правилам
         (COALESCE(array_length(@rule_ids::int[], 1), 0) > 0 AND EXISTS (
             SELECT 1
             FROM discount_rule_items dri2
@@ -1900,19 +1896,17 @@ WHERE
               )
         ))
         OR
-        -- Если список НЕ ПЕРЕДАН или ПУСТОЙ - показываем все товары со скидкой (без фильтрации по правилам)
         (COALESCE(array_length(@rule_ids::int[], 1), 0) = 0)
     )
-ORDER BY
+ORDER BY 
+    p.id,  -- 👈 ВАЖНО: p.id должен быть первым!
     CASE WHEN @sort_type::int = 1 THEN p.name END ASC,
     CASE WHEN @sort_type::int = 2 THEN p.name END DESC,
     CASE WHEN @sort_type::int = 3 THEN p.minprice END ASC,
     CASE WHEN @sort_type::int = 4 THEN p.minprice END DESC,
-    CASE WHEN @sort_type::int NOT IN (1,2,3,4) THEN p.name END ASC,
-    p.id ASC
+    CASE WHEN @sort_type::int NOT IN (1,2,3,4) THEN p.name END ASC
 LIMIT CASE WHEN @limitval::integer > 0 THEN @limitval::integer ELSE 50 END
 OFFSET CASE WHEN @offsetval::integer > 0 THEN @offsetval::integer ELSE 0 END;
-
 
 -- name: CountProductsByFiltersFullWithSlugs :one
 WITH 
