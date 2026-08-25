@@ -42,6 +42,7 @@ type Querier interface {
 	CheckSizeExists(ctx context.Context, oldSizeKey string) (bool, error)
 	CheckTypeExists(ctx context.Context, arg CheckTypeExistsParams) (bool, error)
 	CheckTypeExistsByIds(ctx context.Context, arg CheckTypeExistsByIdsParams) (bool, error)
+	CleanupAllInactiveRuleDiscounts(ctx context.Context) error
 	ClearCollectionProducts(ctx context.Context, collectionID int32) error
 	ClearDiscounts(ctx context.Context) error
 	CountActiveBanners(ctx context.Context) (int64, error)

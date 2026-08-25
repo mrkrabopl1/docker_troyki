@@ -1753,3 +1753,12 @@ SELECT EXISTS (
     FROM products p
     WHERE p.sizes ? @old_size_key::text
 ) AS exists;  
+
+
+-- name: CleanupAllInactiveRuleDiscounts :exec
+DELETE FROM discount
+WHERE rule_id IN (
+    SELECT id FROM discount_rules
+    WHERE is_active = false
+       OR (ends_at IS NOT NULL AND ends_at <= NOW())
+);

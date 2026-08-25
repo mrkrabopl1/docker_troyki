@@ -315,6 +315,10 @@ type DiscountInfo struct {
 // RecalculateAllDiscounts – полный пересчёт всех скидок
 func (s *SQLStore) RecalculateAllDiscounts(ctx context.Context) error {
 	// 1. Все активные скидки (прямые, бренд, линия)
+	err := s.CleanupAllInactiveRuleDiscounts(ctx)
+	if err != nil {
+		return err
+	}
 	discounts, err := s.GetAllActiveDiscounts(ctx)
 	if err != nil {
 		return err
@@ -378,10 +382,15 @@ func (s *SQLStore) RecalculateAllDiscounts(ctx context.Context) error {
 // RecalculateAffectedProducts – пересчёт скидок для товаров, затронутых правилом
 func (s *SQLStore) RecalculateAffectedProducts(ctx context.Context, ruleID int32) error {
 	// 1. Получаем элементы правила
+	err := s.CleanupAllInactiveRuleDiscounts(ctx)
+	if err != nil {
+		return err
+	}
 	items, err := s.GetRuleItems(ctx, ruleID)
 	if err != nil {
 		return err
 	}
+	fmt.Println(items, "l,fd;l,f;sl")
 
 	// 2. Собираем ID продуктов, затронутых этим правилом
 	productIDs := make(map[int32]bool)
@@ -426,13 +435,13 @@ func (s *SQLStore) RecalculateAffectedProducts(ctx context.Context, ruleID int32
 	if err != nil {
 		return err
 	}
-
+	fmt.Println(products, ",,,sss")
 	// 5. Получаем лучшие скидки для этих продуктов
 	discounts, err := s.GetBestDiscountsForProducts(ctx, ids)
 	if err != nil {
 		return err
 	}
-
+	fmt.Println(discounts, ids)
 	// Собираем map для быстрого доступа
 	best := make(map[int32]GetAllActiveDiscountsRow)
 	for _, d := range discounts {
@@ -444,7 +453,7 @@ func (s *SQLStore) RecalculateAffectedProducts(ctx context.Context, ruleID int32
 			Priority:      d.Priority,
 		}
 	}
-
+	fmt.Println(best, "ddd")
 	// 6. Батчами обновляем discount
 	batchSize := 1000
 	for i := 0; i < len(products); i += batchSize {
@@ -529,6 +538,7 @@ func (s *SQLStore) processBatch(
 	}
 
 	var params BulkUpsertDiscountParams
+	fmt.Println(params.ProductIds, "fmfjeoe")
 	params.ProductIds = make([]int32, 0, len(batch))
 	params.Values = make([][]byte, 0, len(batch))
 	params.DiscountPercents = make([]int32, 0, len(batch))

@@ -62,6 +62,20 @@ func (q *Queries) CheckSizeExists(ctx context.Context, oldSizeKey string) (bool,
 	return exists, err
 }
 
+const cleanupAllInactiveRuleDiscounts = `-- name: CleanupAllInactiveRuleDiscounts :exec
+DELETE FROM discount
+WHERE rule_id IN (
+    SELECT id FROM discount_rules
+    WHERE is_active = false
+       OR (ends_at IS NOT NULL AND ends_at <= NOW())
+)
+`
+
+func (q *Queries) CleanupAllInactiveRuleDiscounts(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, cleanupAllInactiveRuleDiscounts)
+	return err
+}
+
 const countPageWidgets = `-- name: CountPageWidgets :one
 SELECT COUNT(*) FROM page_widgets
 `
