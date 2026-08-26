@@ -165,7 +165,11 @@ func (s *Server) handleAdminLogin(c *gin.Context) {
 }
 
 // ========== УПРАВЛЕНИЕ ТОВАРАМИ ==========
-
+type SizeData struct {
+	Price    int32 `json:"price"`
+	Quantity int32 `json:"quantity"`
+	Discount int32 `json:"discount"`
+}
 type CreateProductRequest struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`

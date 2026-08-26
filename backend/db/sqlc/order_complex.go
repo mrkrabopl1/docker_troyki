@@ -271,6 +271,171 @@ func (store *SQLStore) CreateOrder(ctx context.Context, orderData *CreateOrderTy
 	return orderId, userId, hashedStr, nil
 }
 
+func (store *SQLStore) CreateOrderWithStockUpdate(ctx context.Context, orderData *CreateOrderType) (int32, int32, string, error) {
+	// Начинаем транзакцию
+	tx, err := store.BeginTx(ctx)
+	if err != nil {
+		return 0, 0, "", fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// 1. Создаем пользователя (если не зарегистрирован)
+	userId, err := tx.Queries.SetUnregisterCustomer(ctx, SetUnregisterCustomerParams{
+		Name: orderData.PersonalData.Name,
+		Secondname: pgtype.Text{
+			String: orderData.PersonalData.SecondName,
+		},
+		Mail:  orderData.PersonalData.Mail,
+		Phone: orderData.PersonalData.Phone,
+		Town:  orderData.Address.Town,
+		Street: pgtype.Text{
+			String: orderData.Address.Street,
+			Valid:  true,
+		},
+		Region: pgtype.Text{
+			String: orderData.Address.Region,
+			Valid:  true,
+		},
+		Index: orderData.Address.Index,
+		House: pgtype.Text{
+			String: orderData.Address.House,
+		},
+		Flat: pgtype.Text{
+			String: orderData.Address.Flat,
+		},
+		Settlement: pgtype.Text{
+			String: orderData.Address.Settlement,
+		},
+		Deliverycomment: pgtype.Text{
+			String: orderData.Delivery.DeliveryComment,
+			Valid:  true,
+		},
+	})
+	if err != nil {
+		return 0, 0, "", fmt.Errorf("set unregister customer: %w", err)
+	}
+
+	// 2. Создаем заказ
+	currentTime := time.Now()
+	hashedStr := fmt.Sprint(xxhash.Sum64([]byte((currentTime.String() + fmt.Sprint(orderData.PreorderHash)))))
+	orderId, err := tx.Queries.InsertOrder(ctx, InsertOrderParams{
+		Status:        StatusEnumPending,
+		Deliveryprice: int32(orderData.Delivery.DeliveryPrice),
+		Deliverytype:  orderData.Delivery.Type,
+		Deliverycomment: pgtype.Text{
+			String: orderData.Delivery.DeliveryComment,
+			Valid:  true,
+		},
+		Unregistercustomerid: pgtype.Int4{
+			Int32: userId,
+			Valid: true,
+		},
+		Hash: hashedStr,
+	})
+	if err != nil {
+		return 0, 0, "", fmt.Errorf("insert order: %w", err)
+	}
+
+	// 3. Добавляем адрес доставки (если не самовывоз)
+	if orderData.Delivery.Type != DeliveryEnumOwn {
+		_, err := tx.Queries.SetOrderAddress(ctx, SetOrderAddressParams{
+			Town: orderData.Address.Town,
+			Street: pgtype.Text{
+				String: orderData.Address.Street,
+				Valid:  true,
+			},
+			Region: pgtype.Text{
+				String: orderData.Address.Region,
+				Valid:  true,
+			},
+			Index: orderData.Address.Index,
+			House: pgtype.Text{
+				String: orderData.Address.House,
+			},
+			Flat: pgtype.Text{
+				String: orderData.Address.Flat,
+			},
+			Coordinates: orderData.Address.Coordinates,
+			Orderid:     orderId,
+		})
+		if err != nil {
+			return 0, 0, "", fmt.Errorf("set order address: %w", err)
+		}
+	}
+
+	// 4. Получаем данные из корзины (preorder)
+	preorderId, err := tx.Queries.GetPreorderIdByHashUrl(ctx, orderData.PreorderHash)
+	if err != nil {
+		return 0, 0, "", fmt.Errorf("get preorder id: %w", err)
+	}
+
+	prData, err := tx.Queries.GetPreorderDataById(ctx, preorderId)
+	if err != nil {
+		return 0, 0, "", fmt.Errorf("get preorder data: %w", err)
+	}
+
+	// 5. Подготавливаем данные для вставки в orderitems
+	productIDs := make([]int32, len(prData))
+	quantities := make([]int32, len(prData))
+	sizes := make([]string, len(prData))
+	prices := make([]int32, len(prData))
+	image_paths := make([]string, len(prData))
+	names := make([]string, len(prData))
+
+	for i, item := range prData {
+		productIDs[i] = item.ID
+		quantities[i] = item.Quantity
+		sizes[i] = item.Size.String
+		image_paths[i] = item.ImagePath
+		names[i] = item.Name
+		prices[i] = item.Price
+	}
+
+	// 6. Вставляем товары в orderitems
+	err = tx.Queries.InsertManyOrderItems(ctx, InsertManyOrderItemsParams{
+		ProductIds: productIDs,
+		Quantities: quantities,
+		Sizes:      sizes,
+		Prices:     prices,
+		Names:      names,
+		ImagePaths: image_paths,
+		OrderID:    orderId,
+	})
+	if err != nil {
+		return 0, 0, "", fmt.Errorf("insert order items: %w", err)
+	}
+
+	// 7. ОБНОВЛЯЕМ ОСТАТКИ НА СКЛАДЕ
+	for _, item := range prData {
+		// item.Size.String - размер (например "42")
+		// item.Quantity - количество в заказе
+		// item.ID - ID товара
+
+		_, err := tx.Queries.UpdateProductStock(ctx, UpdateProductStockParams{
+			SizeKey:   item.Size.String,
+			Quantity:  item.Quantity,
+			ProductID: item.ID,
+		})
+
+		if err != nil {
+			return 0, 0, "", fmt.Errorf("update stock for product %d: %w", item.ID, err)
+		}
+	}
+
+	// 8. Удаляем корзину
+	err = tx.Queries.DeleteCartData(ctx, preorderId)
+	if err != nil {
+		return 0, 0, "", fmt.Errorf("delete cart: %w", err)
+	}
+
+	// Коммитим транзакцию
+	if err = tx.Commit(ctx); err != nil {
+		return 0, 0, "", fmt.Errorf("commit transaction: %w", err)
+	}
+
+	return orderId, userId, hashedStr, nil
+}
+
 type GetOrderData struct {
 	UserInfo     Unregistercustomer
 	State        string

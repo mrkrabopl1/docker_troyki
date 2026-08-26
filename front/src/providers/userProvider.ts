@@ -67,7 +67,7 @@ const verifyChangePass = function (verHash: string, callback: (val: any) => void
     axios({
         withCredentials: true,
         method: 'post',
-        url: `${API_URL}/verifyChangePass`,
+        url: `${API_URL}/users/password/verify`,
         headers: {
             'Content-Type': 'application/json'
         },
@@ -86,7 +86,7 @@ const changForgetPass = function (pass: string, callback: (val: any) => void) {
     axios({
         withCredentials: true,
         method: 'post',
-        url: `${API_URL}/changeForgetPass`,
+        url: `${API_URL}/users/password/reset`,
         headers: {
             'Content-Type': 'application/json'
         },
@@ -153,7 +153,7 @@ const changeUserPass = function (data: changePassType, callback: (val: any) => v
     let json = JSON.stringify(data)
     axios({
         method: 'post',
-        url: `${API_URL}/changePass`,
+        url: `${API_URL}/users/password`,
         headers: {
             'Content-Type': 'application/json'
         },
@@ -188,7 +188,7 @@ const jwtAutorise = function (callback: (val: any) => void) {
 const updatePass = function (mail: string, callback: (val: any) => void) {
     axios({
         method: 'get',
-        url: `${API_URL}/forgetPass` + "?" + "mail=" + mail,
+        url: `${API_URL}/users/password/forgot` + "?" + "mail=" + mail,
         headers: {}
     }
     ).then((res: any) => {
@@ -230,7 +230,7 @@ const checkCustomerData = function (callback: (val: any) => void) {
     axios({
         withCredentials: true,
         method: 'get',
-        url: `${API_URL}/checkCustomerData`,
+        url: `${API_URL}/customers/check`,
         headers: {}
     }
     ).then((res: any) => {

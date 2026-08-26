@@ -4250,3 +4250,14 @@ FROM brands b
 ORDER BY b.id
 LIMIT COALESCE(sqlc.narg('limit_val')::int, 1000)
 OFFSET COALESCE(sqlc.narg('offset_val')::int, 0);
+
+-- name: UpdateProductStock :execresult
+UPDATE products
+SET sizes = jsonb_set(
+    sizes,
+    ARRAY[@size_key::text, 'quantity'],
+    to_jsonb(greatest(CAST(sizes->>@size_key::text->>'quantity' AS integer) - @quantity::integer, 0))
+),
+updated_at = NOW()
+WHERE id = @product_id::integer
+  AND CAST(sizes->>@size_key::text->>'quantity' AS integer) >= @quantity::integer;

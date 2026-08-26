@@ -46,14 +46,14 @@ const getCartCount = function (callback: (val: any) => void) {
 const getMainInfo = async () => {
     console.log("Fetching main banners...", API_URL);
     if (isServer()) {
-        const res = await fetch(`${API_URL}/getMainInfo`, {
+        const res = await fetch(`${API_URL}/main/info`, {
             headers: { 'Content-Type': 'application/json' }
         });
         if (!res.ok) throw new Error(`Failed to fetch banners: ${res.status}`);
         return res.json();
     }
 
-    const res = await axios.get(`${API_URL}/getMainInfo`);
+    const res = await axios.get(`${API_URL}/main/info`);
     return res.data;
 }
 

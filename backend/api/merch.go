@@ -17,12 +17,6 @@ import (
 	"github.com/mrkrabopl1/go_db/types"
 )
 
-type SizeData struct {
-	Price    int32 `json:"price"`
-	Quantity int32 `json:"quantity"`
-	Discount int32 `json:"discount"`
-}
-
 func (s *Server) handleGetFirms(ctx *gin.Context) {
 	firms, err := s.store.GetFirms(ctx)
 	if err != nil {
@@ -31,17 +25,6 @@ func (s *Server) handleGetFirms(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, firms)
-}
-
-func (s *Server) handleGetSnickersByFirmName(ctx *gin.Context) {
-	firm := ctx.Query("firm")
-	snickers, err := s.store.GetSnickersByFirmName(ctx, firm)
-	if err != nil {
-		//log.WithCaller().Err(err)
-		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
-		return
-	}
-	ctx.JSON(http.StatusOK, snickers)
 }
 
 // func (s *Server) handleGetSizes(ctx *gin.Context) {
@@ -83,28 +66,13 @@ func (s *Server) handleGetProductsInfoById(ctx *gin.Context) {
 		fmt.Println(err1)
 	} else {
 		fmt.Println(user, user.UserID, "fdslfsd;mfdskmf;sdmfs")
-		err := s.store.SetSnickersHistory(ctx, int32(numId), user.UserID)
+		err := s.store.SetProductsHistory(ctx, int32(numId), user.UserID)
 		if err != nil {
 			fmt.Println(user, user.UserID, "blya")
 		}
 	}
 }
 
-type ProductsResponseD struct {
-	Name     string      `json:"name"`
-	Id       int32       `json:"id"`
-	Image    []string    `json:"imgs"`
-	Discount interface{} `json:"discount"`
-	Price    int         `json:"price"`
-}
-
-type Clothes struct {
-	S   int64 `json:"s"`
-	M   int64 `json:"m"`
-	L   int64 `json:"l"`
-	XL  int64 `json:"xl"`
-	XXL int64 `json:"xxl"`
-}
 type ProductsFilterStruct struct {
 	Firms      []string               `json:"firmsCount"`
 	Sizes      map[string]interface{} `json:"sizes"`
@@ -313,7 +281,7 @@ func (s *Server) handleSearchProductByCategoriesAndFilters(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, resp)
 }
 
-func (s *Server) handleGetMainPage(c *gin.Context) {
+func (s *Server) handleGetPageWidgets(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	// 1. Пытаемся получить из кэша
@@ -365,9 +333,6 @@ func (s *Server) handleSearchProductAndByCategoriesAndFilters(ctx *gin.Context) 
 	ctx.JSON(http.StatusOK, resp)
 }
 
-type GetFiltersByNameCategoryAndTypeReq struct {
-}
-
 func (s *Server) handleGetFiltersByNameCategoryAndType(ctx *gin.Context) {
 	var params db.GetFiltersByNameCategoryAndTypeParams
 	if err := ctx.BindJSON(&params); err != nil {
@@ -382,11 +347,6 @@ func (s *Server) handleGetFiltersByNameCategoryAndType(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, resp)
-}
-
-type RespSearchProductsByString struct {
-	Products []ProductsResponseD `json:"products"`
-	Pages    int                 `json:"pages"`
 }
 
 func (s *Server) handleSearchProductsByString(ctx *gin.Context) {
@@ -438,49 +398,6 @@ func (s *Server) handleGetDiscounts(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, searchData)
 }
 
-type DiscountsData struct {
-	ProductId        int32       `json:"productid"`
-	Minprice         int         `json:"minprice"`
-	MaxDiscountPrice int         `json:"maxdiscountprice"`
-	Value            interface{} `json:"value"`
-}
-
-// func (s *Server) createDiscounts(ctx *gin.Context) {
-// 	var discounts []int32
-// 	if err := ctx.BindJSON(&discounts); err != nil {
-// 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-// 		return
-// 	}
-// 	products, err := s.store.GetProductsByIds(ctx, discounts)
-
-// 	var discountsData map[int32]types.DiscountData
-
-// 	if err != nil {
-// 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-// 		return
-// 	}
-// 	if len(products) == 0 {
-// 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "No products found for the provided IDs"})
-// 		return
-// 	} else {
-// 		for _, product := range products {
-// 			if product.Maxdiscprice.Int32 == 0 {
-
-// 			} else {
-
-// 			}
-// 		}
-
-// 	}
-
-//		err1 := s.store.CreateDiscounts(ctx, discountsData)
-//		if err1 != nil {
-//			//log.WithCaller().Err(err1).Msg("")
-//			ctx.JSON(http.StatusBadRequest, errorResponse(err))
-//			return
-//		}
-//		ctx.JSON(http.StatusOK, 0)
-//	}
 func toJSONRawMessage(v interface{}, defaultVal string) json.RawMessage {
 	if v == nil {
 		return json.RawMessage(defaultVal)

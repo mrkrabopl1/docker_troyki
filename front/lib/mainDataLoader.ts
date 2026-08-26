@@ -1,5 +1,5 @@
 // lib/mainDataLoader.ts
-import { getMainPage } from 'src/providers/merchProvider';
+import { getWidgets } from 'src/providers/merchProvider';
 import { getMainInfo } from 'src/providers/shopProvider';
 import { getInstagramPhotosServer } from 'src/providers/instagramProvider';
 
@@ -46,7 +46,7 @@ export async function getMainData() {
     try {
       console.log('[MAIN_DATA_LOADER] Calling getMainPage()...');
       const pageInfoStart = Date.now();
-      const pageInfo = await getMainPage().catch((e) => {
+      const pageInfo = await getWidgets().catch((e) => {
         console.error('[MAIN_DATA_LOADER] ❌ getMainPage failed:', e.message || e);
         return [];
       });

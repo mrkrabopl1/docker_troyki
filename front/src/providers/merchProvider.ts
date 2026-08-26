@@ -156,11 +156,11 @@ const getSizeTable = function (category: string, callback: (val: any) => void) {
 }
 
 
-export async function getMainPage(): Promise<any> {
+export async function getWidgets(): Promise<any> {
    console.log("Fetching main page...", API_URL,isServer());
   if (isServer()) {
     // Сервер: используем fetch
-    const res = await fetch(`${API_URL}/main`, {
+    const res = await fetch(`${API_URL}/widgets`, {
       headers: { 'Content-Type': 'application/json' }
     });
     if (!res.ok) throw new Error(`Failed to fetch main page: ${res.status}`);
@@ -168,7 +168,7 @@ export async function getMainPage(): Promise<any> {
   }
   
   // Клиент: используем axios
-  const res = await axios.get(`${API_URL}/main`);
+  const res = await axios.get(`${API_URL}/widgets`);
   return res.data;
 }
 
@@ -179,14 +179,14 @@ export async function getMainPage(): Promise<any> {
 export async function getMainInfo(): Promise<any> {
   if (isServer()) {
     console.log(API_URL,"fdnlsdnf")
-    const res = await fetch(`${API_URL}/getMainInfo`, {
+    const res = await fetch(`${API_URL}/main/info`, {
       headers: { 'Content-Type': 'application/json' }
     });
     if (!res.ok) throw new Error(`Failed to fetch main info: ${res.status}`);
     return res.json();
   }
   
-  const res = await axios.get(`${API_URL}/getMainInfo`);
+  const res = await axios.get(`${API_URL}/main/info`);
   return res.data;
 }
 

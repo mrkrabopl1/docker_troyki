@@ -15,7 +15,7 @@ type Store interface {
 	DB() *pgxpool.Pool
 	BeginTx(ctx context.Context) (*Tx, error)
 	//InsertIntoOrderItems(ctx context.Context, products []types.ProductsInsert, orderID int) error
-	SetSnickersHistory(ctx context.Context, idSnickers int32, idCustomer int32) error
+	SetProductsHistory(ctx context.Context, productID int32, idCustomer int32) error
 	CreatePreorder(ctx context.Context, id int32, size string, price int32, name string, image_path string) (string, error)
 	GetProductsByNameComplex(ctx context.Context, name string, limit int32) ([]types.ProductsSearchResponse, error)
 	UpdatePreorder(ctx context.Context, id int32, size string, price int32, name string, image_path string, hash string) (int32, error)
@@ -88,6 +88,7 @@ type Store interface {
 	RecalculateProductsDiscounts(ctx context.Context, productIDs map[int32]bool) error
 	GetFiltersOptimized(ctx context.Context, params FilterParams) (*FiltersResult, error)
 	GetFiltersOptimizedMemo(ctx context.Context, params FilterParams) (*FiltersResult, error)
+	CreateOrderWithStockUpdate(ctx context.Context, orderData *CreateOrderType) (int32, int32, string, error)
 	HealthCheck(ctx context.Context) error
 }
 

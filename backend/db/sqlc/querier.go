@@ -7,6 +7,7 @@ package db
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -344,6 +345,7 @@ type Querier interface {
 	UpdateProductImageCount(ctx context.Context, arg UpdateProductImageCountParams) error
 	UpdateProductPrice(ctx context.Context, arg UpdateProductPriceParams) error
 	UpdateProductStatus(ctx context.Context, arg UpdateProductStatusParams) error
+	UpdateProductStock(ctx context.Context, arg UpdateProductStockParams) (pgconn.CommandTag, error)
 	UpdateUniqueCustomerHistry(ctx context.Context, arg UpdateUniqueCustomerHistryParams) error
 	VerifyNewsletterSubscriber(ctx context.Context, verificationToken string) error
 }

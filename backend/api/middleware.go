@@ -252,7 +252,7 @@ func CachedMiddleware(s *Server) gin.HandlerFunc {
 			} else {
 				numId, err := strconv.ParseInt(idStr, 10, 32)
 				if err == nil {
-					s.store.SetSnickersHistory(ctx, int32(numId), user.UserID)
+					s.store.SetProductsHistory(ctx, int32(numId), user.UserID)
 				}
 			}
 			ctx.Abort()
@@ -261,7 +261,20 @@ func CachedMiddleware(s *Server) gin.HandlerFunc {
 		ctx.Next()
 	}
 }
+func CartMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		cartID, err := ctx.Cookie("cart")
+		if err != nil {
+			// Если нет cookie - просто прерываем с ошибкой
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, errorResponse(fmt.Errorf("cart not found")))
+			return
+		}
 
+		// Сохраняем в контекст для использования в хендлерах
+		ctx.Set("cart_id", cartID)
+		ctx.Next()
+	}
+}
 func CachedBannersMiddleware(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// fmt.Println("CachedBannersMiddleware")

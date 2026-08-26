@@ -94,6 +94,7 @@ func (s *Server) setupRouter() {
 		api.POST("/search", s.handleSearchProducts)
 		api.POST("/search/with-filters", s.handleSearchWithFilters)
 		api.POST("/search-by-slug", s.handleSearchSnickersAndFiltersBySlugs)
+		api.POST("/search/filters", s.handleSearchProductByCategoriesAndFilters)
 
 		api.GET("/products/light", s.handleGetProductsLight)
 		api.GET("/products/light/since", s.handleGetProductsLightSince)
@@ -109,7 +110,7 @@ func (s *Server) setupRouter() {
 
 		api.GET("/customers/unique", s.handleSetUniqueCustomer)
 
-		api.GET("/cart/count", s.handleGetCartCount)
+		api.GET("/cart/count", CartMiddleware(), s.handleGetCartCount)
 		api.GET("/cart", s.handleGetCart)
 		api.POST("/delete/cart", s.handleDeleteCartData)
 
@@ -118,7 +119,7 @@ func (s *Server) setupRouter() {
 		api.GET("/orders/by-hash/:hash", s.handleGetOrderDataByHash)
 		api.POST("/orders/by-email", s.handleGetOrderDataByMail)
 		api.POST("/preorders", s.handleCreatePreorder)
-		api.PUT("/preorders/:id", s.handleUpdatePreorder)
+		api.PUT("/preorders/:id", CartMiddleware(), s.handleUpdatePreorder)
 
 		// public routes (для клиента)
 		api.GET("/instagram", s.handleGetInstagramPhotos)
@@ -130,14 +131,19 @@ func (s *Server) setupRouter() {
 		api.GET("/pasetoAutorise", s.handlePasetoAutorise)
 		api.GET("/getUserData", s.handleGetUserData)
 		api.POST("/verify", s.handleVerifyUser)
-		api.POST("/changePass", s.handleChangePass)
-		api.GET("/forgetPass", s.handleForgetPass)
-		api.POST("/verifyChangePass", s.handleVerifyForgetPass)
-		api.POST("/changeForgetPass", s.handleChangeForgetPass)
-		api.POST("/getDataByCategoriesAndFilters", s.handleSearchProductByCategoriesAndFilters)
-		api.GET("/main", s.handleGetMainPage)
-		api.GET("/getMainInfo", s.handleGetMainInfo)
-		api.GET("/checkCustomerData", s.handleCheckCustomerData)
+
+		// Изменение пароля авторизованного пользователя
+		api.POST("/users/password", s.handleChangePass)
+		// Запрос на восстановление пароля (отправка email)
+		api.POST("/users/password/forgot", s.handleForgetPass)
+		// Подтверждение смены пароля (верификация кода)
+		api.POST("/users/password/verify", s.handleVerifyForgetPass)
+		// Смена забытого пароля (с новым паролем)
+		api.POST("/users/password/reset", s.handleChangeForgetPass)
+
+		api.GET("/widgets", s.handleGetPageWidgets)
+		api.GET("/main/info", s.handleGetMainInfo)
+		api.GET("/customers/check", s.handleCheckCustomerData)
 
 		// Admin auth (без middleware)
 		api.POST("/admin/auth/login", s.handleAdminLogin)

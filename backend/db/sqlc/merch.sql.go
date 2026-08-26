@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -8462,4 +8463,26 @@ type UpdateProductStatusParams struct {
 func (q *Queries) UpdateProductStatus(ctx context.Context, arg UpdateProductStatusParams) error {
 	_, err := q.db.Exec(ctx, updateProductStatus, arg.Status, arg.ID)
 	return err
+}
+
+const updateProductStock = `-- name: UpdateProductStock :execresult
+UPDATE products
+SET sizes = jsonb_set(
+    sizes,
+    ARRAY[$1::text, 'quantity'],
+    to_jsonb(greatest(CAST(sizes->>@size_key::text->>'quantity' AS integer) - $2::integer, 0))
+),
+updated_at = NOW()
+WHERE id = $3::integer
+  AND CAST(sizes->>@size_key::text->>'quantity' AS integer) >= $2::integer
+`
+
+type UpdateProductStockParams struct {
+	SizeKey   string `json:"size_key"`
+	Quantity  int32  `json:"quantity"`
+	ProductID int32  `json:"product_id"`
+}
+
+func (q *Queries) UpdateProductStock(ctx context.Context, arg UpdateProductStockParams) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, updateProductStock, arg.SizeKey, arg.Quantity, arg.ProductID)
 }

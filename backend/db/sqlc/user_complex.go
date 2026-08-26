@@ -10,13 +10,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (store *SQLStore) SetSnickersHistory(ctx context.Context, idSnickers int32, idCustomer int32) error {
+func (store *SQLStore) SetProductsHistory(ctx context.Context, productID int32, idCustomer int32) error {
 	history, err := store.Queries.SelectHistoryFromUniqueCustomer(ctx, idCustomer)
 	if err != nil {
 		fmt.Println("fdkmlsfknsdkfms")
 		return err
 	}
-	history = append(history, idSnickers)
+	history = append(history, productID)
 	params := UpdateUniqueCustomerHistryParams{
 		History: history,
 		ID:      idCustomer,

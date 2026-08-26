@@ -51,7 +51,7 @@ const getSnickersByString = function (searchName:string,callback:(val:any)=>void
 const getProductsByCategoriesAndFilters = function(params:any,callback:(val:any)=>void, page:number,size:number, filters:any, sortType:number){
      axios({
         method: 'post',
-        url: `${API_URL}/getDataByCategoriesAndFilters`,
+        url: `${API_URL}/search/filters`,
         headers: {
             'Content-Type': 'application/json'
         },

@@ -70,7 +70,7 @@ func (s *Server) handleCreateOrder(ctx *gin.Context) {
 		return
 	}
 
-	orderID, unregUserId, hash, err := s.store.CreateOrder(ctx, &orderData)
+	orderID, unregUserId, hash, err := s.store.CreateOrderWithStockUpdate(ctx, &orderData)
 
 	if err != nil {
 		fmt.Println(err, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
@@ -162,15 +162,20 @@ func (s *Server) handleUpdatePreorder(ctx *gin.Context) {
 		return
 	}
 
-	// 2. Получаем корзину из cookie
-	cartID, err := ctx.Cookie("cart")
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("cart not found")))
+	// 2. Получаем корзину ИЗ КОНТЕКСТА
+	cartID, exists := ctx.Get("cart_id")
+	if !exists {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("cart not in context")))
+		return
+	}
+
+	cartIDStr, ok := cartID.(string)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("invalid cart type")))
 		return
 	}
 
 	// 3. Парсим тело запроса
-
 	var preorderData UpdataPreorderType
 	if err := ctx.ShouldBindJSON(&preorderData); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("invalid request: %w", err)))
@@ -180,12 +185,12 @@ func (s *Server) handleUpdatePreorder(ctx *gin.Context) {
 	// 4. Обновляем предзаказ
 	quantity, err := s.store.UpdatePreorder(
 		ctx,
-		int32(preorderID), // ID из URL
+		int32(preorderID),
 		preorderData.Size,
 		preorderData.Price,
 		preorderData.Name,
 		preorderData.Image_path,
-		cartID,
+		cartIDStr, // ← из контекста
 	)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("failed to update preorder: %w", err)))
@@ -200,23 +205,24 @@ func (s *Server) handleUpdatePreorder(ctx *gin.Context) {
 	})
 }
 func (s *Server) handleGetCartCount(ctx *gin.Context) {
-
-	cookie, err := ctx.Cookie("cart")
-	if err != nil {
-		fmt.Println(err, "error")
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return
-	}
-	fmt.Println(cookie, "cookie")
-	quantity, err := s.store.GetCartCount(ctx, cookie)
-
-	if err != nil {
-		//log.WithCaller().Err(err)
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+	// Получаем корзину из контекста
+	cartID, exists := ctx.Get("cart_id")
+	if !exists {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("cart not in context")))
 		return
 	}
 
-	//log.InfoFields(fmt.Sprintf("count %d", quantity))
+	cartIDStr, ok := cartID.(string)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(fmt.Errorf("invalid cart type")))
+		return
+	}
+
+	quantity, err := s.store.GetCartCount(ctx, cartIDStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
 
 	ctx.JSON(http.StatusOK, quantity)
 }
