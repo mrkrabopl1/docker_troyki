@@ -14,7 +14,7 @@ const useRouteChange = () => {
 
     useEffect(() => {
         // Сбрасываем состояние загрузки при каждом переходе
-        dispatch(resetLoading());
+        // dispatch(resetLoading());
         
         // Прокручиваем страницу вверх
         window.scrollTo(0, 0);
@@ -86,6 +86,7 @@ const useContentHeight = () => {
 const useNavigate = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  dispatch(resetLoading())
 
   const navigate = (path: string, options?: { showMenu?: boolean }) => {
     // Показываем меню при навигации
