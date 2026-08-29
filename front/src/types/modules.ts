@@ -104,7 +104,7 @@ export interface PromoCode {
     usage_count: number;
     created_at: string;
     updated_at: string;
-    matching_products:number[]
+    matching_products?:number[]
 }
 
 export interface PromoCodeFormData {
