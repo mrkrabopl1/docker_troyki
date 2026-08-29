@@ -76,23 +76,38 @@ SELECT
     p.minprice,
     p.maxprice,
     COALESCE(
-        (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+        NULLIF(
+            (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+            0
+        ),
         0
     )::int AS discount_percent,
     COALESCE(
-        (SELECT original_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+        NULLIF(
+            (SELECT original_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+            0
+        ),
         0
     )::int AS original_price,
     COALESCE(
-        (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+        NULLIF(
+            (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+            0
+        ),
         0
     )::int AS discounted_price,
     COALESCE(
-        (SELECT min_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+        NULLIF(
+            (SELECT min_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+            0
+        ),
         p.minprice
     )::int AS min_price,
     COALESCE(
-        (SELECT max_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+        NULLIF(
+            (SELECT max_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+            0
+        ),
         p.maxprice
     )::int AS max_price,
     EXISTS (
@@ -107,7 +122,6 @@ JOIN brands b ON p.brand_id = b.id AND b.is_active = true
 WHERE cp.collection_id = $1
 ORDER BY cp.created_at ASC
 LIMIT $2 OFFSET $3;
-
 
 
 -- name: GetFullFiltersForCollection :one
@@ -322,23 +336,38 @@ SELECT * FROM (
         p.image_path,
         b.name as firm,
         COALESCE(
-            (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS discount_percent,
         COALESCE(
-            (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS original_price,
         COALESCE(
-            (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS discounted_price,
         COALESCE(
-            (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS min_price,
         COALESCE(
-            (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.maxprice
         )::int AS max_price,
         EXISTS (
@@ -348,7 +377,6 @@ SELECT * FROM (
             SELECT 1 FROM store_house sh 
             WHERE sh.productid = p.id AND sh.quantity > 0
         ) AS in_store,
-        -- Подзапрос для правила скидки
         COALESCE(
             (
                 SELECT dr2.discount_value::int
@@ -414,23 +442,38 @@ SELECT * FROM (
         p.image_path,
         b.name as firm,
         COALESCE(
-            (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS discount_percent,
         COALESCE(
-            (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS original_price,
         COALESCE(
-            (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS discounted_price,
         COALESCE(
-            (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS min_price,
         COALESCE(
-            (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.maxprice
         )::int AS max_price,
         EXISTS (
@@ -553,7 +596,7 @@ SELECT * FROM (
             OR @with_price::boolean = false 
             OR p.minprice > 0
         )
-        -- Скидки (ИСПРАВЛЕНО!)
+        -- Скидки
         AND (
             (array_length(@rule_ids::int[], 1) > 0 AND EXISTS (
                 SELECT 1
@@ -802,23 +845,38 @@ SELECT * FROM (
         p.image_path,
         b.name as firm,
         COALESCE(
-            (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS discount_percent,
         COALESCE(
-            (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS original_price,
         COALESCE(
-            (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS discounted_price,
         COALESCE(
-            (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS min_price,
         COALESCE(
-            (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.maxprice
         )::int AS max_price,
         EXISTS (
@@ -958,23 +1016,38 @@ SELECT * FROM (
         p.image_path,
         b.name as firm,
         COALESCE(
-            (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS discount_percent,
         COALESCE(
-            (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS original_price,
         COALESCE(
-            (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS discounted_price,
         COALESCE(
-            (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS min_price,
         COALESCE(
-            (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.maxprice
         )::int AS max_price,
         EXISTS (
@@ -1521,3 +1594,93 @@ WHERE
             WHERE sh.productid = p.id AND sh.quantity > 0
         )
     );
+
+
+
+
+-- name: CheckProductsInCollection :many
+WITH product_check AS (
+    SELECT 
+        p.id AS product_id,
+        p.name AS product_name,
+        p.category,
+        p.brand_id,
+        p.line_id,
+        p.type,
+        p.bodytype,
+        p.minprice,
+        p.maxprice,
+        p.sizes,
+        -- Проверка по прямым ID
+        EXISTS (
+            SELECT 1 
+            FROM collection_products cp 
+            WHERE cp.collection_id = @collection_id::int 
+            AND cp.product_id = p.id
+        ) AS in_collection_by_id,
+        -- Проверка по фильтрам
+        EXISTS (
+            SELECT 1
+            WHERE (
+                -- Размеры
+                COALESCE(array_length(@sizes::text[], 1), 0) = 0
+                OR EXISTS (
+                    SELECT 1
+                    FROM jsonb_object_keys(p.sizes) AS size_key
+                    WHERE size_key = ANY(@sizes::text[])
+                    AND (p.sizes->size_key->>'price')::numeric > 0
+                )
+            )
+            AND (
+                COALESCE(array_length(@categories::int[], 1), 0) = 0
+                OR p.category = ANY(@categories::int[])
+            )
+            AND (
+                COALESCE(array_length(@product_types::int[], 1), 0) = 0
+                OR p.type = ANY(@product_types::int[])
+            )
+            AND (
+                COALESCE(array_length(@firms::int[], 1), 0) = 0
+                OR p.brand_id = ANY(@firms::int[])
+            )
+            AND (
+                COALESCE(array_length(@lines::int[], 1), 0) = 0
+                OR p.line_id = ANY(@lines::int[])
+            )
+            AND (
+                COALESCE(array_length(@bodytypes::text[], 1), 0) = 0
+                OR p.bodytype = ANY(@bodytypes::body_enum[])
+            )
+            AND (
+                sqlc.narg('minprice')::int IS NULL 
+                OR p.maxprice >= sqlc.narg('minprice')::int
+            )
+            AND (
+                sqlc.narg('maxprice')::int IS NULL 
+                OR p.minprice <= sqlc.narg('maxprice')::int
+            )
+            AND (
+                @with_price::boolean IS NULL 
+                OR @with_price::boolean = false 
+                OR p.minprice > 0
+            )
+            AND (
+                @in_store::boolean IS NULL 
+                OR @in_store::boolean = false 
+                OR EXISTS (
+                    SELECT 1 FROM store_house sh 
+                    WHERE sh.productid = p.id AND sh.quantity > 0
+                )
+            )
+        ) AS in_collection_by_filters
+    FROM products p
+    WHERE p.id = ANY(@product_ids::int[])
+      AND p.status = 'active'
+)
+SELECT 
+    product_id,
+    product_name,
+    in_collection_by_id,
+    in_collection_by_filters,
+    (in_collection_by_id OR in_collection_by_filters) AS is_in_collection
+FROM product_check;    

@@ -555,5 +555,61 @@
 --    OR p.sizes = '{}'::jsonb;
 
 
-DELETE FROM discount 
-WHERE discounted_price = 0;
+-- DELETE FROM discount 
+-- WHERE discounted_price = 0;
+
+UPDATE products
+SET 
+    minprice = subquery.min_price,
+    maxprice = subquery.max_price
+FROM (
+    SELECT 
+        id,
+        (
+            SELECT MIN((value->>'price')::INTEGER)
+            FROM jsonb_each(sizes) 
+            WHERE value->>'price' IS NOT NULL
+        ) AS min_price,
+        (
+            SELECT MAX((value->>'price')::INTEGER)
+            FROM jsonb_each(sizes) 
+            WHERE value->>'price' IS NOT NULL
+        ) AS max_price
+    FROM products
+    WHERE sizes IS NOT NULL AND sizes != '{}'::jsonb
+) AS subquery
+WHERE products.id = subquery.id;
+
+CREATE OR REPLACE FUNCTION update_product_stock(
+    p_product_id INTEGER,
+    p_size_key TEXT,
+    p_quantity INTEGER
+) RETURNS BOOLEAN AS $$
+DECLARE
+    current_qty INTEGER;
+BEGIN
+    -- Получаем текущее количество с блокировкой строки
+    SELECT COALESCE((sizes->p_size_key->>'quantity')::integer, 0)
+    INTO current_qty
+    FROM products
+    WHERE id = p_product_id
+    FOR UPDATE;
+    
+    -- Проверяем наличие достаточного количества
+    IF current_qty < p_quantity THEN
+        RETURN FALSE;
+    END IF;
+    
+    -- Обновляем остаток
+    UPDATE products
+    SET sizes = jsonb_set(
+        sizes,
+        ARRAY[p_size_key, 'quantity'],
+        to_jsonb(GREATEST(current_qty - p_quantity, 0))
+    ),
+    updated_at = NOW()
+    WHERE id = p_product_id;
+    
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;

@@ -39,6 +39,8 @@ type Querier interface {
 	CheckProductExistsById(ctx context.Context, id int32) (bool, error)
 	CheckProductInOrders(ctx context.Context, productid int32) (bool, error)
 	CheckProductInPreorders(ctx context.Context, productid int32) (bool, error)
+	CheckProductsInCollection(ctx context.Context, arg CheckProductsInCollectionParams) ([]CheckProductsInCollectionRow, error)
+	CheckPromoCodeUsageByCustomer(ctx context.Context, arg CheckPromoCodeUsageByCustomerParams) (int64, error)
 	// Проверяем, существует ли размер
 	CheckSizeExists(ctx context.Context, oldSizeKey string) (bool, error)
 	CheckTypeExists(ctx context.Context, arg CheckTypeExistsParams) (bool, error)
@@ -65,6 +67,7 @@ type Querier interface {
 	CountProductsForAdmin(ctx context.Context, arg CountProductsForAdminParams) (CountProductsForAdminRow, error)
 	CountProductsForCollectionByFiltersFull(ctx context.Context, arg CountProductsForCollectionByFiltersFullParams) (int32, error)
 	CountProductsForCollectionFull(ctx context.Context, arg CountProductsForCollectionFullParams) (int32, error)
+	CountPromoCodesWithFilters(ctx context.Context, arg CountPromoCodesWithFiltersParams) (int64, error)
 	CreateAdmin(ctx context.Context, arg CreateAdminParams) (CreateAdminRow, error)
 	CreateAdminInvite(ctx context.Context, arg CreateAdminInviteParams) (AdminInvite, error)
 	CreateAdminLog(ctx context.Context, arg CreateAdminLogParams) error
@@ -82,9 +85,12 @@ type Querier interface {
 	CreatePageWidget(ctx context.Context, arg CreatePageWidgetParams) (PageWidget, error)
 	CreateProduct(ctx context.Context, arg CreateProductParams) (CreateProductRow, error)
 	CreateProductWithIds(ctx context.Context, arg CreateProductWithIdsParams) (CreateProductWithIdsRow, error)
+	CreatePromoCode(ctx context.Context, arg CreatePromoCodeParams) (PromoCode, error)
+	CreatePromoCodeUsage(ctx context.Context, arg CreatePromoCodeUsageParams) (PromoCodeUsage, error)
 	CreateUniqueCustomer(ctx context.Context, creationtime pgtype.Date) (int32, error)
 	DeactivateBrand(ctx context.Context, id int32) error
 	DeactivateBrandLine(ctx context.Context, id int32) error
+	DeactivateExpiredPromoCodes(ctx context.Context) error
 	DeleteAdmin(ctx context.Context, id int32) error
 	DeleteAdminByEmail(ctx context.Context, email string) error
 	DeleteAllRuleBasedDiscounts(ctx context.Context) error
@@ -104,6 +110,7 @@ type Querier interface {
 	DeleteOldPasswordResetTokenByEmail(ctx context.Context, email string) error
 	DeleteOldPasswordResetTokens(ctx context.Context) error
 	DeletePageWidget(ctx context.Context, id int32) error
+	DeletePromoCode(ctx context.Context, id int32) error
 	// Удаляем размер у всех товаров с защитой от удаления последнего размера
 	DeleteSizeFromAllProducts(ctx context.Context, dollar_1 string) error
 	DeleteVerification(ctx context.Context, id int32) error
@@ -114,6 +121,7 @@ type Querier interface {
 	GetActiveCollections(ctx context.Context) ([]Collection, error)
 	GetActiveDiscountRules(ctx context.Context) ([]DiscountRule, error)
 	GetActivePageWidgets(ctx context.Context) ([]GetActivePageWidgetsRow, error)
+	GetActivePromoCodes(ctx context.Context) ([]GetActivePromoCodesRow, error)
 	GetAdminBanners(ctx context.Context) ([]GetAdminBannersRow, error)
 	GetAdminByEmail(ctx context.Context, email string) (GetAdminByEmailRow, error)
 	GetAdminByID(ctx context.Context, id int32) (GetAdminByIDRow, error)
@@ -231,6 +239,7 @@ type Querier interface {
 	GetOrderEvents(ctx context.Context, orderID int32) ([]GetOrderEventsRow, error)
 	GetOrderIdByHashUrl(ctx context.Context, hash string) (int32, error)
 	GetOrderInfo(ctx context.Context, orderid int32) ([]GetOrderInfoRow, error)
+	GetOrderPromoInfo(ctx context.Context, orderID int32) (GetOrderPromoInfoRow, error)
 	GetOrderStatusHistory(ctx context.Context, orderID int32) ([]OrderEvent, error)
 	GetOrdersCount(ctx context.Context, arg GetOrdersCountParams) (int64, error)
 	GetOrdersWithFilters(ctx context.Context, arg GetOrdersWithFiltersParams) ([]GetOrdersWithFiltersRow, error)
@@ -277,6 +286,10 @@ type Querier interface {
 	GetProductsWithSizesByIDs(ctx context.Context, productIds []int32) ([]GetProductsWithSizesByIDsRow, error)
 	// queries/products.sql
 	GetProductsWithoutImages(ctx context.Context) ([]GetProductsWithoutImagesRow, error)
+	GetPromoCodeByCode(ctx context.Context, code string) (GetPromoCodeByCodeRow, error)
+	GetPromoCodeByID(ctx context.Context, id int32) (GetPromoCodeByIDRow, error)
+	GetPromoCodeUsageByOrder(ctx context.Context, orderID int32) (GetPromoCodeUsageByOrderRow, error)
+	GetPromoCodeUsageStats(ctx context.Context, id int32) (GetPromoCodeUsageStatsRow, error)
 	GetRecentActivity(ctx context.Context) ([]GetRecentActivityRow, error)
 	GetRecentOrders(ctx context.Context) ([]GetRecentOrdersRow, error)
 	GetRuleItems(ctx context.Context, ruleID int32) ([]GetRuleItemsRow, error)
@@ -302,6 +315,8 @@ type Querier interface {
 	InsertPreorderItem(ctx context.Context, arg InsertPreorderItemParams) (int32, error)
 	InsertVerification(ctx context.Context, arg InsertVerificationParams) error
 	ListAdmins(ctx context.Context, arg ListAdminsParams) ([]ListAdminsRow, error)
+	ListPromoCodes(ctx context.Context) ([]ListPromoCodesRow, error)
+	ListPromoCodesWithFilters(ctx context.Context, arg ListPromoCodesWithFiltersParams) ([]ListPromoCodesWithFiltersRow, error)
 	MarkAdminPasswordResetTokenUsed(ctx context.Context, id int32) error
 	MarkInviteAsUsed(ctx context.Context, arg MarkInviteAsUsedParams) error
 	MarkProductsAsDeleted(ctx context.Context, dollar_1 []int32) error
@@ -346,7 +361,9 @@ type Querier interface {
 	UpdateProductPrice(ctx context.Context, arg UpdateProductPriceParams) error
 	UpdateProductStatus(ctx context.Context, arg UpdateProductStatusParams) error
 	UpdateProductStock(ctx context.Context, arg UpdateProductStockParams) (pgconn.CommandTag, error)
+	UpdatePromoCode(ctx context.Context, arg UpdatePromoCodeParams) (PromoCode, error)
 	UpdateUniqueCustomerHistry(ctx context.Context, arg UpdateUniqueCustomerHistryParams) error
+	ValidatePromoCode(ctx context.Context, code string) (ValidatePromoCodeRow, error)
 	VerifyNewsletterSubscriber(ctx context.Context, verificationToken string) error
 }
 

@@ -1,9 +1,8 @@
-import React, { ReactElement, useEffect, useRef, useState, memo } from 'react'
-import MerchBlock from "./MerchBlock"
+import React, { memo } from 'react'
 import s from "./style.module.css"
-import { useRouter } from 'next/router';
 import { toPrice } from 'src/global';
 import { useNavigate } from 'src/store/hooks/redux';
+
 interface merchInterface {
     name: string,
     image_path: string,
@@ -11,13 +10,14 @@ interface merchInterface {
     firm: string,
     price: number,
     quantity: number,
-    size: number
+    size: number,
+    discount_percent?: number // добавлено
 }
 
 const MerchFormBlock: React.FC<{ data: merchInterface, onChange: () => void }> = (props) => {
     const { data, onChange } = props;
-    const router = useRouter();
     const navigate = useNavigate()
+    
     const handleClick = () => {
         navigate('/product/' + data.id);
     };
@@ -44,7 +44,12 @@ const MerchFormBlock: React.FC<{ data: merchInterface, onChange: () => void }> =
 
                 <div className={s.contentWrapper}>
                     <div className={s.productDetails}>
-                        <h3 className={s.productName}>{data.name}</h3>
+                        <h3 className={s.productName}>
+                            {data.name}
+                            {data.discount_percent && (
+                                <span className={s.discountBadge}>-{data.discount_percent}%</span>
+                            )}
+                        </h3>
                         {data.size ? (
                             <p className={s.productSize}>US: {data.size}</p>
                         ) : null}

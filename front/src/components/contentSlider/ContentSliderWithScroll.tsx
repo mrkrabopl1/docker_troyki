@@ -30,16 +30,13 @@ const ContentSliderWithScroll: React.FC<ContentSliderProps> = ({ content, classN
     }, [sliderState.totalSteps]);
 
     // Обработчик изменения общего количества шагов
-    const handleTotalStepsChange = useCallback((totalWidth: number) => {
+    const handleTotalStepsChange = useCallback((totalSteps: number) => {
         const container = document.querySelector('[data-slider-container]') as HTMLElement;
         if (!container) return;
         
-        const containerWidth = container.clientWidth;
-        const steps = Math.max(1, Math.ceil(totalWidth - containerWidth));
-        
         setSliderState(prev => ({
-            totalSteps: steps,
-            currentStep: prev.currentStep >= steps ? steps - 1 : prev.currentStep
+            totalSteps: totalSteps,
+            currentStep: prev.currentStep >= totalSteps ? totalSteps - 1 : prev.currentStep
         }));
     }, []);
 

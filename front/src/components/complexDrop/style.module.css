@@ -73,6 +73,12 @@
   scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
 }
 
+.dropField.rightAligned {
+  left: auto;
+  right: 16px;
+  transform-origin: top right;
+}
+
 .dropField::-webkit-scrollbar {
   width: 4px;
 }

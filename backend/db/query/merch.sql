@@ -92,25 +92,40 @@ SELECT
     p.name,
     b.name as firm,
     COALESCE(
-        (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        NULLIF(
+            (SELECT discount_percent FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        ),
         0
     )::int AS discount_percent,
     COALESCE(
-        (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        NULLIF(
+            (SELECT original_price FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        ),
         0
     )::int AS original_price,
     COALESCE(
-        (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        NULLIF(
+            (SELECT discounted_price FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        ),
         p.minprice
     )::int AS discounted_price,
     COALESCE(
-        (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        NULLIF(
+            (SELECT min_price FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        ),
         p.minprice
-    )::int AS min_price,
+    ) AS min_price,
     COALESCE(
-        (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        NULLIF(
+            (SELECT max_price FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        ),
         p.maxprice
-    )::int AS max_price,
+    ) AS max_price,
     p.type,
     p.article,
     p.category,
@@ -4252,12 +4267,4 @@ LIMIT COALESCE(sqlc.narg('limit_val')::int, 1000)
 OFFSET COALESCE(sqlc.narg('offset_val')::int, 0);
 
 -- name: UpdateProductStock :execresult
-UPDATE products
-SET sizes = jsonb_set(
-    sizes,
-    ARRAY[@size_key::text, 'quantity'],
-    to_jsonb(greatest(CAST(sizes->>@size_key::text->>'quantity' AS integer) - @quantity::integer, 0))
-),
-updated_at = NOW()
-WHERE id = @product_id::integer
-  AND CAST(sizes->>@size_key::text->>'quantity' AS integer) >= @quantity::integer;
+SELECT update_product_stock(@product_id::integer, @size_key::text, @quantity::integer) AS success;

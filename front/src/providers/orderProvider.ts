@@ -12,11 +12,11 @@ const createPreorder = function (data: { id: number, size: string }, callback: (
     })
 }
 
-const updatePreorder = function (data: { id: number, hashUrl: string,  size: string  }, callback: (val: any) => void) {
+const updatePreorder = function (data: { id: number, hashUrl: string, size: string }, callback: (val: any) => void) {
     let jsonData = JSON.stringify(data)
     axios({
         withCredentials: true,
-        url: `${API_URL}/preorders?id=${data.id}`,
+        url: `${API_URL}/preorders/${data.id}`, // ← меняем на /:id
         headers: { "content-type": "application/json" },
         data: jsonData,
         method: 'put',
@@ -68,7 +68,7 @@ const createOrder = function (data: clientDataType, callback: (val: any) => void
 const getOrderDataByHash = function (hash: string, callback: (val: any) => void) {
     axios({
         withCredentials: true,
-        url: `${API_URL}/orders/by-hash?hash=` + hash,
+        url: `${API_URL}/orders/by-hash/${hash}`, // ← меняем на /:hash
         headers: { "content-type": "application/json" },
         method: 'get',
     }).then((res) => {

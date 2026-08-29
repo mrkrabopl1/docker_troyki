@@ -325,6 +325,30 @@ func (q *Queries) GetOrderInfo(ctx context.Context, orderid int32) ([]GetOrderIn
 	return items, nil
 }
 
+const getOrderPromoInfo = `-- name: GetOrderPromoInfo :one
+SELECT 
+    pc.code AS promo_code_name,
+    pu.discount_amount AS promo_discount,
+    pu.promo_code_id AS promo_code_id
+FROM promo_code_usage pu
+LEFT JOIN promo_codes pc ON pc.id = pu.promo_code_id
+WHERE pu.order_id = $1
+LIMIT 1
+`
+
+type GetOrderPromoInfoRow struct {
+	PromoCodeName pgtype.Text `json:"promo_code_name"`
+	PromoDiscount int32       `json:"promo_discount"`
+	PromoCodeID   int32       `json:"promo_code_id"`
+}
+
+func (q *Queries) GetOrderPromoInfo(ctx context.Context, orderID int32) (GetOrderPromoInfoRow, error) {
+	row := q.db.QueryRow(ctx, getOrderPromoInfo, orderID)
+	var i GetOrderPromoInfoRow
+	err := row.Scan(&i.PromoCodeName, &i.PromoDiscount, &i.PromoCodeID)
+	return i, err
+}
+
 const getOrdersWithPagination = `-- name: GetOrdersWithPagination :many
 SELECT 
     o.id,

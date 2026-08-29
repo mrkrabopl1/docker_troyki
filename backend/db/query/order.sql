@@ -24,6 +24,17 @@ SELECT
     name
 FROM orderItems
 WHERE orderid = $1;
+
+-- name: GetOrderPromoInfo :one
+SELECT 
+    pc.code AS promo_code_name,
+    pu.discount_amount AS promo_discount,
+    pu.promo_code_id AS promo_code_id
+FROM promo_code_usage pu
+LEFT JOIN promo_codes pc ON pc.id = pu.promo_code_id
+WHERE pu.order_id = $1
+LIMIT 1;
+
 -- name: GetOrderAddressById :one
 SELECT  id,
         town,

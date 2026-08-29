@@ -27,6 +27,156 @@ func (q *Queries) AddProductsToCollection(ctx context.Context, arg AddProductsTo
 	return err
 }
 
+const checkProductsInCollection = `-- name: CheckProductsInCollection :many
+WITH product_check AS (
+    SELECT 
+        p.id AS product_id,
+        p.name AS product_name,
+        p.category,
+        p.brand_id,
+        p.line_id,
+        p.type,
+        p.bodytype,
+        p.minprice,
+        p.maxprice,
+        p.sizes,
+        -- Проверка по прямым ID
+        EXISTS (
+            SELECT 1 
+            FROM collection_products cp 
+            WHERE cp.collection_id = $1::int 
+            AND cp.product_id = p.id
+        ) AS in_collection_by_id,
+        -- Проверка по фильтрам
+        EXISTS (
+            SELECT 1
+            WHERE (
+                -- Размеры
+                COALESCE(array_length($2::text[], 1), 0) = 0
+                OR EXISTS (
+                    SELECT 1
+                    FROM jsonb_object_keys(p.sizes) AS size_key
+                    WHERE size_key = ANY($2::text[])
+                    AND (p.sizes->size_key->>'price')::numeric > 0
+                )
+            )
+            AND (
+                COALESCE(array_length($3::int[], 1), 0) = 0
+                OR p.category = ANY($3::int[])
+            )
+            AND (
+                COALESCE(array_length($4::int[], 1), 0) = 0
+                OR p.type = ANY($4::int[])
+            )
+            AND (
+                COALESCE(array_length($5::int[], 1), 0) = 0
+                OR p.brand_id = ANY($5::int[])
+            )
+            AND (
+                COALESCE(array_length($6::int[], 1), 0) = 0
+                OR p.line_id = ANY($6::int[])
+            )
+            AND (
+                COALESCE(array_length($7::text[], 1), 0) = 0
+                OR p.bodytype = ANY($7::body_enum[])
+            )
+            AND (
+                $8::int IS NULL 
+                OR p.maxprice >= $8::int
+            )
+            AND (
+                $9::int IS NULL 
+                OR p.minprice <= $9::int
+            )
+            AND (
+                $10::boolean IS NULL 
+                OR $10::boolean = false 
+                OR p.minprice > 0
+            )
+            AND (
+                $11::boolean IS NULL 
+                OR $11::boolean = false 
+                OR EXISTS (
+                    SELECT 1 FROM store_house sh 
+                    WHERE sh.productid = p.id AND sh.quantity > 0
+                )
+            )
+        ) AS in_collection_by_filters
+    FROM products p
+    WHERE p.id = ANY($12::int[])
+      AND p.status = 'active'
+)
+SELECT 
+    product_id,
+    product_name,
+    in_collection_by_id,
+    in_collection_by_filters,
+    (in_collection_by_id OR in_collection_by_filters) AS is_in_collection
+FROM product_check
+`
+
+type CheckProductsInCollectionParams struct {
+	CollectionID int32       `json:"collection_id"`
+	Sizes        []string    `json:"sizes"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	WithPrice    bool        `json:"with_price"`
+	InStore      bool        `json:"in_store"`
+	ProductIds   []int32     `json:"product_ids"`
+}
+
+type CheckProductsInCollectionRow struct {
+	ProductID             int32       `json:"product_id"`
+	ProductName           string      `json:"product_name"`
+	InCollectionByID      bool        `json:"in_collection_by_id"`
+	InCollectionByFilters bool        `json:"in_collection_by_filters"`
+	IsInCollection        pgtype.Bool `json:"is_in_collection"`
+}
+
+func (q *Queries) CheckProductsInCollection(ctx context.Context, arg CheckProductsInCollectionParams) ([]CheckProductsInCollectionRow, error) {
+	rows, err := q.db.Query(ctx, checkProductsInCollection,
+		arg.CollectionID,
+		arg.Sizes,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.WithPrice,
+		arg.InStore,
+		arg.ProductIds,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CheckProductsInCollectionRow
+	for rows.Next() {
+		var i CheckProductsInCollectionRow
+		if err := rows.Scan(
+			&i.ProductID,
+			&i.ProductName,
+			&i.InCollectionByID,
+			&i.InCollectionByFilters,
+			&i.IsInCollection,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const clearCollectionProducts = `-- name: ClearCollectionProducts :exec
 DELETE FROM collection_products WHERE collection_id = $1
 `
@@ -998,23 +1148,38 @@ SELECT
     p.minprice,
     p.maxprice,
     COALESCE(
-        (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+        NULLIF(
+            (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+            0
+        ),
         0
     )::int AS discount_percent,
     COALESCE(
-        (SELECT original_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+        NULLIF(
+            (SELECT original_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+            0
+        ),
         0
     )::int AS original_price,
     COALESCE(
-        (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+        NULLIF(
+            (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+            0
+        ),
         0
     )::int AS discounted_price,
     COALESCE(
-        (SELECT min_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+        NULLIF(
+            (SELECT min_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+            0
+        ),
         p.minprice
     )::int AS min_price,
     COALESCE(
-        (SELECT max_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+        NULLIF(
+            (SELECT max_price::int FROM discount d WHERE d.productid = p.id ORDER BY discount_percent DESC LIMIT 1),
+            0
+        ),
         p.maxprice
     )::int AS max_price,
     EXISTS (
@@ -1565,23 +1730,38 @@ SELECT id, name, image_path, firm, discount_percent, original_price, discounted_
         p.image_path,
         b.name as firm,
         COALESCE(
-            (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS discount_percent,
         COALESCE(
-            (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS original_price,
         COALESCE(
-            (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS discounted_price,
         COALESCE(
-            (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS min_price,
         COALESCE(
-            (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.maxprice
         )::int AS max_price,
         EXISTS (
@@ -1591,7 +1771,6 @@ SELECT id, name, image_path, firm, discount_percent, original_price, discounted_
             SELECT 1 FROM store_house sh 
             WHERE sh.productid = p.id AND sh.quantity > 0
         ) AS in_store,
-        -- Подзапрос для правила скидки
         COALESCE(
             (
                 SELECT dr2.discount_value::int
@@ -1657,23 +1836,38 @@ SELECT id, name, image_path, firm, discount_percent, original_price, discounted_
         p.image_path,
         b.name as firm,
         COALESCE(
-            (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS discount_percent,
         COALESCE(
-            (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS original_price,
         COALESCE(
-            (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS discounted_price,
         COALESCE(
-            (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS min_price,
         COALESCE(
-            (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.maxprice
         )::int AS max_price,
         EXISTS (
@@ -1796,7 +1990,7 @@ SELECT id, name, image_path, firm, discount_percent, original_price, discounted_
             OR $11::boolean = false 
             OR p.minprice > 0
         )
-        -- Скидки (ИСПРАВЛЕНО!)
+        -- Скидки
         AND (
             (array_length($12::int[], 1) > 0 AND EXISTS (
                 SELECT 1
@@ -1934,23 +2128,38 @@ SELECT id, name, image_path, firm, discount_percent, original_price, discounted_
         p.image_path,
         b.name as firm,
         COALESCE(
-            (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS discount_percent,
         COALESCE(
-            (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS original_price,
         COALESCE(
-            (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS discounted_price,
         COALESCE(
-            (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS min_price,
         COALESCE(
-            (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.maxprice
         )::int AS max_price,
         EXISTS (
@@ -2090,23 +2299,38 @@ SELECT id, name, image_path, firm, discount_percent, original_price, discounted_
         p.image_path,
         b.name as firm,
         COALESCE(
-            (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS discount_percent,
         COALESCE(
-            (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             0
         )::int AS original_price,
         COALESCE(
-            (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS discounted_price,
         COALESCE(
-            (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.minprice
         )::int AS min_price,
         COALESCE(
-            (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+            NULLIF(
+                (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
             p.maxprice
         )::int AS max_price,
         EXISTS (

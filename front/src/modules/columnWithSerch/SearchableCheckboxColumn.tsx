@@ -37,20 +37,31 @@ const CheckboxRow = ({
                 alignItems: 'center', 
                 padding: '4px 8px',
                 height: '100%',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                minWidth: 0, // ← Важно для работы flex
             }}>
                 <input
                     type="checkbox"
                     checked={selectedIds.has(item.id)}
                     onChange={() => onToggle(item.id)}
-                    style={{ marginRight: '8px' }}
+                    style={{ 
+                        marginRight: '8px',
+                        flexShrink: 0, // ← Чекбокс не сжимается
+                    }}
                 />
-                <span>{item.name}</span>
+                <span style={{
+                    whiteSpace: 'nowrap',      // ← Запрещаем перенос
+                    overflow: 'hidden',        // ← Скрываем overflow
+                    textOverflow: 'ellipsis',  // ← Добавляем ...
+                    flex: 1,                   // ← Занимает всё свободное место
+                    minWidth: 0,               // ← Важно для flex
+                }}>
+                    {item.name}
+                </span>
             </div>
         </div>
     );
 };
-
 const SearchableCheckboxColumn: React.FC<SearchableCheckboxColumnProps> = ({
     data,
     onChange,

@@ -113,6 +113,26 @@ const CollectionsManager: React.FC = () => {
         bodytypes: []
     })
 
+    const filtersInfoForManual = useRef<{
+        sizes: string[]
+        firms: number[]
+        types: number[]
+        price: [number, number]
+        rule_ids: number[]
+        in_store: boolean,
+        bodytypes: string[],
+        lines?: number[],
+    }>({
+        sizes: [],
+        firms: [],
+        lines: [],
+        types: [],
+        price: [0, 100000],
+        rule_ids: [],
+        in_store: false,
+        bodytypes: []
+    })
+
     const [filtersState, setFiltersState] = useState<FiltersState>({
         priceProps: { min: 0, max: 100000, dataLeft: 0, dataRight: 100000 },
         checboxsProps: [],
@@ -472,7 +492,7 @@ const CollectionsManager: React.FC = () => {
                     },
                     selectorPage.current,
                     pageSize,
-                    filtersInfo.current,
+                    filtersInfoForManual.current,
                     0,
                     query
                 )
@@ -531,6 +551,8 @@ const CollectionsManager: React.FC = () => {
                     (data: any) => {
                         setSelectedProducts(data.products || [])
                         setSelectorLoading(false)
+                        setSelectedViewLoading(false)
+                        setLoading(false)
                     },
 
                 )
@@ -1029,7 +1051,7 @@ const CollectionsManager: React.FC = () => {
                 )}
 
                 {showFiltersPanel && (
-                    <div className={s.modalOverlay} onClick={() => setShowFiltersPanel(false)}>
+                    <div className={s.modalOverlay} onClick={(e) =>{ e.stopPropagation(); setShowFiltersPanel(false)} }>
                         <div className={s.modalPanel} onClick={e => e.stopPropagation()}>
                             <div className={s.modalHeader}>
                                 <h3>Выберите условия показа</h3>

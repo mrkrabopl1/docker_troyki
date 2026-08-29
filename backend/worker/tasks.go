@@ -61,18 +61,20 @@ type PayloadSendVerifyEmail struct {
 }
 
 type PayloadSendOrderEmail struct {
-	Name         string          `json:"name"`
-	SecondName   string          `json:"second_name"`
-	Id           int32           `json:"id"`
-	Town         string          `json:"town"`
-	Street       string          `json:"street"`
-	House        string          `json:"house"`
-	Flat         string          `json:"flat"`
-	Index        string          `json:"index"`
-	Phone        string          `json:"phone"`
-	DeliveryType db.DeliveryEnum `json:"delivery_type"`
-	Email        string          `json:"email"`
-	OrderPrice   int             `json:"order_price"`
+	Name          string          `json:"name"`
+	SecondName    string          `json:"second_name"`
+	Id            int32           `json:"id"`
+	Town          string          `json:"town"`
+	Street        string          `json:"street"`
+	House         string          `json:"house"`
+	Flat          string          `json:"flat"`
+	Index         string          `json:"index"`
+	Phone         string          `json:"phone"`
+	DeliveryType  db.DeliveryEnum `json:"delivery_type"`
+	Email         string          `json:"email"`
+	OrderPrice    int             `json:"order_price"`
+	PromoCode     string          `json:"promocode"`
+	PromoDiscount int             `json:"promocodeDiscount"`
 }
 
 // Новые структуры для новостной рассылки

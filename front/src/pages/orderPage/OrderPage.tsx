@@ -37,10 +37,91 @@ interface OrderState {
     deliverytype: string;
 }
 
+interface PromoState {
+    code: string;
+    discount: number;
+    id: number | null;
+    isValid: boolean;
+    message: string;
+}
+
+// Функция применения скидки к matching_products
+const applyDiscountToMatchingProducts = (products: any[], promoData: any) => {
+    if (!promoData?.matching_products?.length) {
+        return products.map(item => ({
+            ...item,
+            has_discount: false,
+            original_price: item.price,
+            discount_percent: 0,
+            discount_applied: 0
+        }));
+    }
+
+    const matchingIds = new Set(promoData.matching_products);
+    const matchingProducts = products.filter(item => matchingIds.has(item.id));
+    const matchingTotal = matchingProducts.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    if (matchingTotal === 0) {
+        return products.map(item => ({
+            ...item,
+            has_discount: false,
+            original_price: item.price,
+            discount_percent: 0,
+            discount_applied: 0
+        }));
+    }
+
+    let totalDiscount = 0;
+    if (promoData.discount_type === 'percent') {
+        totalDiscount = (matchingTotal * promoData.discount_value) / 100;
+        if (promoData.max_discount && promoData.max_discount > 0) {
+            totalDiscount = Math.min(totalDiscount, promoData.max_discount);
+        }
+    } else {
+        totalDiscount = Math.min(promoData.discount_value, matchingTotal);
+        if (promoData.max_discount && promoData.max_discount > 0) {
+            totalDiscount = Math.min(totalDiscount, promoData.max_discount);
+        }
+    }
+
+    return products.map(item => {
+        const isMatching = matchingIds.has(item.id);
+        if (!isMatching) {
+            return {
+                ...item,
+                has_discount: false,
+                original_price: item.price,
+                discount_percent: 0,
+                discount_applied: 0
+            };
+        }
+
+        const itemTotal = item.price * item.quantity;
+        const itemDiscount = matchingTotal > 0 ? (itemTotal / matchingTotal) * totalDiscount : 0;
+        const newPrice = Math.round((item.price - (itemDiscount / item.quantity)) * 100) / 100;
+
+        return {
+            ...item,
+            original_price: item.price,
+            price: Math.max(newPrice, 0.01),
+            discount_applied: Math.round(itemDiscount * 100) / 100,
+            has_discount: true,
+            discount_percent: promoData.discount_value
+        };
+    });
+};
+
 const OrderPage: React.FC = () => {
     const router = useRouter();
     const dispatch = useAppDispatch();
     const [products, setProducts] = useState([]);
+    const [promoState, setPromoState] = useState<PromoState>({
+        code: '',
+        discount: 0,
+        id: null,
+        isValid: false,
+        message: ''
+    });
     const [order, setOrder] = useState<OrderState>({
         orderData: {
             name: "",
@@ -77,8 +158,46 @@ const OrderPage: React.FC = () => {
 
         if (cookie.current) {
             getOrderDataByHash(hash, (data) => {
+                if(!data)return
                 dispatch(finishLoading());
-                setProducts(data.cartData || []);
+                
+                // Применяем скидку к товарам, если есть промокод
+                let productsData = data.cartData || [];
+                let promoDiscount = 0;
+                let promoCodeId = null;
+                let promoCodeName = '';
+               
+                if (data.promocode) {
+                    const promoData = data.promocode;
+                    promoCodeName = promoData.code || '';
+                    promoCodeId = data.promoCodeId || null;
+                    
+                    // Применяем скидку к товарам
+                    productsData = applyDiscountToMatchingProducts(productsData, promoData);
+                    
+                    // Считаем общую скидку
+                    promoDiscount = Math.round(productsData
+                        .filter(item => item.has_discount)
+                        .reduce((sum, item) => sum + (item.discount_applied || 0), 0));
+                    
+                    setPromoState({
+                        code: promoCodeName,
+                        discount: promoDiscount,
+                        id: promoCodeId,
+                        isValid: true,
+                        message: `Промокод применён! Скидка: ${promoDiscount} ₽`
+                    });
+                } else {
+                    setPromoState({
+                        code: '',
+                        discount: 0,
+                        id: null,
+                        isValid: false,
+                        message: ''
+                    });
+                }
+                
+                setProducts(productsData);
                 setOrder({
                     address: data.address,
                     orderData: data.userInfo,
@@ -90,7 +209,36 @@ const OrderPage: React.FC = () => {
             getOrderCartData(hash, (data) => {
                 dispatch(finishLoading());
                 fullPrice.current = data.fullPrice;
-                setProducts(data);
+                
+                // Применяем скидку к товарам, если есть промокод
+                let productsData = data.items || [];
+                
+                if (data.promo_code_snapshot) {
+                    const promoData = data.promo_code_snapshot;
+                    productsData = applyDiscountToMatchingProducts(productsData, promoData);
+                    
+                    const totalDiscount = productsData
+                        .filter(item => item.has_discount)
+                        .reduce((sum, item) => sum + (item.discount_applied || 0), 0);
+                    
+                    setPromoState({
+                        code: promoData.code || '',
+                        discount: totalDiscount,
+                        id: data.promo_code_id || null,
+                        isValid: true,
+                        message: `Промокод применён! Скидка: ${totalDiscount} ₽`
+                    });
+                } else {
+                    setPromoState({
+                        code: '',
+                        discount: 0,
+                        id: null,
+                        isValid: false,
+                        message: ''
+                    });
+                }
+                
+                setProducts(productsData);
             });
         }
     }, [router.isReady, router.query.hash, dispatch]);
@@ -101,16 +249,42 @@ const OrderPage: React.FC = () => {
 
         getOrderDataByMail(data.mail, data.orderId, (resp) => {
             cookie.current = getCookie(hash);
+            
+            // Применяем скидку к товарам, если есть промокод
+            let productsData = resp.cartData || [];
+            
+            if (resp.promoCodeSnapshot) {
+                const promoData = resp.promoCodeSnapshot;
+                productsData = applyDiscountToMatchingProducts(productsData, promoData);
+                
+                const totalDiscount = productsData
+                    .filter(item => item.has_discount)
+                    .reduce((sum, item) => sum + (item.discount_applied || 0), 0);
+                
+                setPromoState({
+                    code: promoData.code || '',
+                    discount: totalDiscount,
+                    id: resp.promoCodeId || null,
+                    isValid: true,
+                    message: `Промокод применён! Скидка: ${totalDiscount} ₽`
+                });
+            } else {
+                setPromoState({
+                    code: '',
+                    discount: 0,
+                    id: null,
+                    isValid: false,
+                    message: ''
+                });
+            }
+            
+            setProducts(productsData);
             setOrder({
                 address: resp.address,
                 orderData: resp.userInfo,
                 orderId: resp.orderId,
                 deliverytype: resp.deliverytype
             });
-            
-            if (resp.cartData) {
-                setProducts(resp.cartData);
-            }
         });
     }, []);
 
@@ -149,7 +323,15 @@ const OrderPage: React.FC = () => {
             </div>
 
             <div className={s.merchSection}>
-                <BuyMerchField data={products} />
+                <BuyMerchField 
+                    edit={false}
+                    data={products}
+                    promoState={promoState}
+                    onPromoCodeChange={() => {}} // Для просмотра заказа промокод менять нельзя
+                    onPromoCodeApply={() => {}}
+                    onPromoCodeRemove={() => {}}
+                    isCheckingPromo={false}
+                />
             </div>
         </div>
     );

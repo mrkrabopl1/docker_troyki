@@ -30,7 +30,7 @@ type Store interface {
 	GetProductsInfoByIdComplex(ctx context.Context, id int32) (ProductsInfoResponse, error)
 	GetMainPageInfoComplex(ctx context.Context, limit int32) (map[int32]CategoryData, error)
 	VerifyUser(ctx context.Context, token string) (int32, error)
-	GetCartDataFromOrderByHash(ctx context.Context, hash string) ([]GetOrderDataByIdRow, error)
+	GetCartDataFromOrderByHash(ctx context.Context, hash string) (*OrderDataResponse, error)
 	SetUnregisterCustomer(ctx context.Context, arg SetUnregisterCustomerParams) (int32, error)
 	UpdateCustomerPass(ctx context.Context, arg UpdateCustomerPassParams) error
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (int32, error)

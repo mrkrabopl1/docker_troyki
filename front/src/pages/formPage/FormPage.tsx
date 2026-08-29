@@ -1,29 +1,30 @@
-import React, { ReactElement, useEffect, useRef, useState, memo, useCallback } from 'react'
+import React, { useEffect, useRef, useState, memo, useCallback } from 'react'
 import SendForm from "src/modules/sendForm/SendForm"
 import { getCartData } from 'src/providers/shopProvider'
 import s from "./style.module.css"
 import { cartCountAction } from 'src/store/reducers/menuSlice'
-import { useAppDispatch, useAppSelector,useNavigate } from 'src/store/hooks/redux'
+import { useAppDispatch, useNavigate } from 'src/store/hooks/redux'
 import BuyMerchField from 'src/modules/buyMerchField/BuyMerchField'
-import { createOrder, getOrderDataByHash } from 'src/providers/orderProvider';
+import { createOrder } from 'src/providers/orderProvider';
 import { checkCustomerData } from 'src/providers/userProvider';
-import OrderInfo from 'src/components/orderInfo/orderInfo';
-import MailInputWithValidation from 'src/components/input/MailInputWithValidation';
 import { useRouter } from 'next/router';
 import DeliveryRadioGroup from './pageElements/DeliveryRadio';
 import Button from 'src/components/Button';
-import DeliveryTypeRadioGroup from './pageElements/DeliveryTypeRadio';
 import DeliveryPage from './pageElements/DeliveryPage';
 import PayBlock from './pageElements/PayBlock';
 import LinkButton from 'src/components/LinkButton';
 import ContactForm from 'src/modules/sendForm/ContactForm';
 import MapComponent from 'src/modules/map/Map';
 import { finishLoading } from 'src/store/reducers/loadingSlice';
+import { validatePromoCode } from 'src/providers/adminPromoCodesProvider';
 
-interface merchInterface { name: string, img: string, id: string, firm: string, price: string, count: number }
-type urlParamsType = {
-    hash: string;
-};
+interface PromoState {
+    code: string;
+    discount: number;
+    id: number | null;
+    isValid: boolean;
+    message: string;
+}
 
 const BUY_ROUTE = [
     ["Перейти к доставке", "Перейти к оплате", "Завершить заказ"],
@@ -34,41 +35,24 @@ const BACK_ROUTE = [
     ["Вернуться к экрану с информацией", "Вернуться к доставке"],
     ["Вернуться к экрану с информацией"]
 ];
+
 function formatAddress(address) {
     const parts = [];
-
-    // Город
-
-    if (address.town) {
-        parts.push(`г.${address.town}`);
-    }
-    if (address.settlement) {
-        parts.push(`${address.settlement}`);
-    }
-    // Улица и дом
-    if (address.street && address.house) {
-        parts.push(`ул. ${address.street}`);
-    }
-    if (address.house) {
-        parts.push(`д. ${address.house}`);
-    }
-
-
-    // Квартира
-    if (address.flat) {
-        parts.push(`кв. ${address.flat}`);
-    }
-
-
-
+    if (address.town) parts.push(`г.${address.town}`);
+    if (address.settlement) parts.push(`${address.settlement}`);
+    if (address.street && address.house) parts.push(`ул. ${address.street}`);
+    if (address.house) parts.push(`д. ${address.house}`);
+    if (address.flat) parts.push(`кв. ${address.flat}`);
     return parts.join(', ');
 }
+
 const FormPage: React.FC = () => {
     const navigate = useNavigate()
     const dispatch = useAppDispatch();
     const router = useRouter();
     const { hash } = router.query;
     const [products, setProducts] = useState<any[]>([]);
+    const [originalProducts, setOriginalProducts] = useState<any[]>([]);
     const delivery = useRef(0);
     const contactInfo = useRef<Record<string, string>>({
         "Имя": "",
@@ -100,15 +84,96 @@ const FormPage: React.FC = () => {
         secondName: "",
         address: null,
         phone: "",
-        deliveryType: delivery.current === 0 ? "curier" : "own",
+        deliveryType: "curier",
         deliveryComment: ""
     });
+    const matchingProductsRef = useRef<number[]>([]);
 
+    const [promoState, setPromoState] = useState<PromoState>({
+        code: '',
+        discount: 0,
+        id: null,
+        isValid: false,
+        message: ''
+    });
+
+    const [totalPrice, setTotalPrice] = useState(0);
+
+    const applyDiscountToMatchingProducts = (products: any[], promoData: any) => {
+        if (!promoData?.matching_products?.length) {
+            return products.map(item => ({
+                ...item,
+                has_discount: false,
+                price: item.price,
+                discount_percent: 0,
+                discount_applied: 0
+            }));
+        }
+
+        const matchingIds = new Set(promoData.matching_products);
+        const matchingProducts = products.filter(item => matchingIds.has(item.id));
+        const matchingTotal = matchingProducts.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+        if (matchingTotal === 0) {
+            return products.map(item => ({
+                ...item,
+                has_discount: false,
+                price: item.price,
+                discount_percent: 0,
+                discount_applied: 0
+            }));
+        }
+
+        let totalDiscount = 0;
+        if (promoData.discount_type === 'percent') {
+            totalDiscount = (matchingTotal * promoData.discount_value) / 100;
+            if (promoData.max_discount && promoData.max_discount > 0) {
+                totalDiscount = Math.min(totalDiscount, promoData.max_discount);
+            }
+        } else {
+            totalDiscount = Math.min(promoData.discount_value, matchingTotal);
+            if (promoData.max_discount && promoData.max_discount > 0) {
+                totalDiscount = Math.min(totalDiscount, promoData.max_discount);
+            }
+        }
+
+        return products.map(item => {
+            const isMatching = matchingIds.has(item.id);
+            if (!isMatching) {
+                return {
+                    ...item,
+                    has_discount: false,
+                    price: item.price,
+                    discount_percent: 0,
+                    discount_applied: 0
+                };
+            }
+
+            const itemTotal = item.price * item.quantity;
+            const itemDiscount = matchingTotal > 0 ? (itemTotal / matchingTotal) * totalDiscount : 0;
+            const newPrice = Math.round(((item.price - (itemDiscount / item.quantity)) * 100)/ 100) ;
+
+            return {
+                ...item,
+                discount_price:Math.max(newPrice, 0.01),
+                price: item.price,
+                discount_applied: Math.round(itemDiscount * 100) / 100,
+                has_discount: true,
+                discount_percent: promoData.discount_value
+            };
+        });
+    };
+
+    // Загрузка корзины
     useEffect(() => {
         getCartData(hash, (data) => {
             dispatch(finishLoading());
             fullPrice.current = data.fullPrice;
+            const total = data.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            setTotalPrice(total);
             setProducts(data);
+            setOriginalProducts(data);
+
             checkCustomerData((customerData) => {
                 if (customerData) {
                     memoSendForm.current = !memoSendForm.current;
@@ -120,6 +185,107 @@ const FormPage: React.FC = () => {
             });
         });
     }, [hash]);
+
+    // Пересчёт totalPrice при изменении продуктов
+    useEffect(() => {
+        if (products.length > 0) {
+            const total = products.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            setTotalPrice(total);
+            fullPrice.current = total;
+        }
+    }, [products]);
+
+    const handlePromoCodeChange = useCallback((code: string) => {
+        if (promoState.isValid) {
+            setPromoState({
+                code: code,
+                discount: 0,
+                id: null,
+                isValid: false,
+                message: ''
+            });
+            setProducts(originalProducts);
+            const total = originalProducts.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            setTotalPrice(total);
+            fullPrice.current = total;
+            matchingProductsRef.current = [];
+        } else {
+            setPromoState(prev => ({ ...prev, code }));
+        }
+    }, [promoState.isValid, originalProducts]);
+
+    const handlePromoCodeApply = useCallback(async () => {
+        const trimmedCode = promoState.code.trim();
+        if (!trimmedCode) {
+            setPromoState(prev => ({ ...prev, message: 'Введите промокод', isValid: false }));
+            return;
+        }
+
+        setPromoState(prev => ({ ...prev, message: 'Проверка...', isValid: false }));
+
+        try {
+            const response = await validatePromoCode({ code: trimmedCode, hash });
+
+            if (!response.is_active) {
+                setPromoState(prev => ({ ...prev, message: 'Промокод неактивен', isValid: false, discount: 0, id: null }));
+                matchingProductsRef.current = [];
+                return;
+            }
+
+            if (response.min_order && totalPrice < response.min_order) {
+                setPromoState(prev => ({ ...prev, message: `Минимальная сумма заказа: ${(response.min_order / 100).toFixed(2)} ₽`, isValid: false }));
+                matchingProductsRef.current = [];
+                return;
+            }
+
+            if (response.max_order && totalPrice > response.max_order) {
+                setPromoState(prev => ({ ...prev, message: `Максимальная сумма заказа: ${(response.max_order / 100).toFixed(2)} ₽`, isValid: false }));
+                matchingProductsRef.current = [];
+                return;
+            }
+
+            matchingProductsRef.current = response.matching_products || [];
+
+            const updatedProducts = applyDiscountToMatchingProducts(originalProducts, response);
+            setProducts(updatedProducts);
+
+            const newTotal = updatedProducts.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            setTotalPrice(newTotal);
+            fullPrice.current = newTotal;
+
+            const totalDiscount = Math.round(updatedProducts
+                .filter(item => item.has_discount)
+                .reduce((sum, item) => sum + (item.discount_applied || 0), 0));
+
+            setPromoState({
+                code: trimmedCode,
+                discount: totalDiscount,
+                id: response.id || null,
+                isValid: true,
+                message: `Промокод применён! Скидка: ${totalDiscount.toFixed(2)} ₽`
+            });
+
+        } catch (error) {
+            console.error('Error checking promo code:', error);
+            setPromoState(prev => ({ ...prev, message: 'Промокод не найден или истёк', isValid: false, discount: 0, id: null }));
+            matchingProductsRef.current = [];
+        }
+    }, [promoState.code, totalPrice, originalProducts, hash]);
+
+    const handlePromoCodeRemove = useCallback(() => {
+        setPromoState({
+            code: '',
+            discount: 0,
+            id: null,
+            isValid: false,
+            message: ''
+        });
+        setProducts(originalProducts);
+        const total = originalProducts.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        setTotalPrice(total);
+        fullPrice.current = total;
+        matchingProductsRef.current = [];
+    }, [originalProducts]);
 
     const contactInfoChange = useCallback((data: any) => {
         contactInfo.current.Имя = data.name;
@@ -211,45 +377,17 @@ const FormPage: React.FC = () => {
                             onChange={contactInfoChange}
                         />
                         <MapComponent
-                            location={[37.67575303913705,
-                                55.77123033359646]}
+                            location={[37.67575303913705, 55.77123033359646]}
                             path={[
-                                [
-                                    37.67872961851563,
-                                    55.77235933513177
-                                ],
-                                [
-                                    37.678807584960055,
-                                    55.77199699513815
-                                ],
-                                [
-                                    37.67807365625907,
-                                    55.771894140358
-                                ],
-                                [
-                                    37.67739957099823,
-                                    55.771977085319776
-                                ],
-                                [
-                                    37.67668956233416,
-                                    55.77173756626368
-                                ],
-                                [
-                                    37.67651327214742,
-                                    55.77175072741187
-                                ],
-                                [
-                                    37.675834007076304,
-                                    55.77139685269603
-                                ],
-                                [
-                                    37.67578345483358,
-                                    55.771320747312586
-                                ],
-                                [
-                                    37.67569282878247,
-                                    55.7712895064023
-                                ]
+                                [37.67872961851563, 55.77235933513177],
+                                [37.678807584960055, 55.77199699513815],
+                                [37.67807365625907, 55.771894140358],
+                                [37.67739957099823, 55.771977085319776],
+                                [37.67668956233416, 55.77173756626368],
+                                [37.67651327214742, 55.77175072741187],
+                                [37.675834007076304, 55.77139685269603],
+                                [37.67578345483358, 55.771320747312586],
+                                [37.67569282878247, 55.7712895064023]
                             ]}
                         />
                     </div>;
@@ -257,7 +395,7 @@ const FormPage: React.FC = () => {
             case 1:
                 if (!delivery.current) {
                     return <DeliveryPage
-                        coords={formData.current.address.coordinates}
+                        coords={formData.current.address?.coordinates}
                         onChangeInfo={() => {
                             if (formId.current === 0) return;
                             formId.current = formId.current - 1;
@@ -286,7 +424,7 @@ const FormPage: React.FC = () => {
                                     name: formData.current.name,
                                     phone: formData.current.phone,
                                     mail: formData.current.mail,
-                                    secondName: formData.current.secondName ? formData.current.secondName : ""
+                                    secondName: formData.current.secondName || ""
                                 },
                                 address: {},
                                 save: formData.current.save,
@@ -316,7 +454,7 @@ const FormPage: React.FC = () => {
                                 name: formData.current.name,
                                 phone: formData.current.phone,
                                 mail: formData.current.mail,
-                                secondName: formData.current.secondName ? formData.current.secondName : ""
+                                secondName: formData.current.secondName || ""
                             },
                             address: {},
                             save: formData.current.save,
@@ -358,8 +496,6 @@ const FormPage: React.FC = () => {
             <div className={s.fieldHolder}>
                 {getFullForm()}
                 <div>
-
-
                     <div className={s.buttonHolder}>
                         {formId.current ? (
                             <LinkButton
@@ -374,14 +510,19 @@ const FormPage: React.FC = () => {
                             />
                         ) : null}
 
-
-
                         <Button
                             className={"btnStyle dark " + s.mainButton}
                             text={BUY_ROUTE[delivery.current][formId.current]}
                             onClick={() => {
                                 if (formId.current === BUY_ROUTE[delivery.current].length - 1) {
-                                    createOrder(respData.current, (data) => {
+                                    const orderData = {
+                                        ...respData.current,
+                                        promoCode: promoState.isValid ? promoState.code : null,
+                                        promoDiscount: promoState.isValid ? promoState.discount : 0,
+                                        promoCodeId: promoState.isValid ? promoState.id : null,
+                                        matchingProducts: matchingProductsRef.current,
+                                    };
+                                    createOrder(orderData, (data) => {
                                         dispatch(cartCountAction(0))
                                         navigate('/order/' + data.hash);
                                     });
@@ -405,8 +546,14 @@ const FormPage: React.FC = () => {
                     </p>
                 </div>
             </div>
-            <div className={s.buyMerchFieldHolder} >
-                <BuyMerchField data={products} />
+            <div className={s.buyMerchFieldHolder}>
+                <BuyMerchField
+                    data={products}
+                    promoState={promoState}
+                    onPromoCodeChange={handlePromoCodeChange}
+                    onPromoCodeApply={handlePromoCodeApply}
+                    onPromoCodeRemove={handlePromoCodeRemove}
+                />
             </div>
         </div>
     );

@@ -82,3 +82,45 @@ export interface PageWidget {
     updated_at?: string;
 }
 
+export interface PromoCode {
+    id: number;
+    code: string;
+    name: string;
+    description: string;
+    discount_type: 'percent' | 'fixed';
+    discount_value: number;
+    applies_to: 'global' | 'collection';
+    collection_id: number | null;
+    collection_slug?: string | null;
+    collection_name?: string | null;
+    min_order: number | null;
+    max_order: number | null;
+    max_discount: number | null;
+    starts_at: string;
+    ends_at: string | null;
+    usage_limit: number | null;
+    per_user_limit: number | null;
+    is_active: boolean;
+    usage_count: number;
+    created_at: string;
+    updated_at: string;
+    matching_products:number[]
+}
+
+export interface PromoCodeFormData {
+    code: string;
+    name: string;
+    description: string;
+    discount_type: 'percent' | 'fixed';
+    discount_value: number;
+    applies_to: 'global' | 'collection';
+    collection_id: number | null;
+    min_order: number | null;
+    max_order: number | null;
+    max_discount: number | null;
+    starts_at: string;
+    ends_at: string | null;
+    usage_limit: number | null;
+    per_user_limit: number | null;
+    is_active: boolean;
+}

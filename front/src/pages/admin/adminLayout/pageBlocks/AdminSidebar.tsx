@@ -64,14 +64,23 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, isMobile, onClose }
                     <span className={s.icon}>💰</span>
                     Скидки
                 </NavLink>
+
                 <NavLink href="/admin/page-blocks">
                     <span className={s.icon}>🧩</span>
                     Блоки страниц
                 </NavLink>
+
+                {/* ===== ПРОМОКОДЫ ===== */}
+                <NavLink href="/admin/promocodes">
+                    <span className={s.icon}>🎫</span>
+                    Промокоды
+                </NavLink>
+
                 <NavLink href="/admin/brands">
                     <span className={s.icon}>🏷️</span>
                     Бренды
                 </NavLink>
+
                 <NavLink href="/admin/lines">
                     <span className={s.icon}>📏</span>
                     Линейки
@@ -90,12 +99,14 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, isMobile, onClose }
                         Управление размерами
                     </NavLink>
                 )}
+
                 {user?.role === 'superadmin' && (
                     <NavLink href="/admin/collections">
                         <span className={s.icon}>⭐</span>
                         Коллекции
                     </NavLink>
                 )}
+
                 {user?.role === 'superadmin' && (
                     <NavLink href="/admin/sqlConsole">
                         <span className={s.icon}>💻</span>
@@ -107,6 +118,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, isMobile, onClose }
                     <span className={s.icon}>🖼️</span>
                     Баннеры
                 </NavLink>
+
                 {user?.role === 'superadmin' && (
                     <NavLink href="/admin/instagram">
                         <span className={s.icon}>📸</span>

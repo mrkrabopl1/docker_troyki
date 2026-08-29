@@ -7354,25 +7354,40 @@ SELECT
     p.name,
     b.name as firm,
     COALESCE(
-        (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        NULLIF(
+            (SELECT discount_percent FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        ),
         0
     )::int AS discount_percent,
     COALESCE(
-        (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        NULLIF(
+            (SELECT original_price FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        ),
         0
     )::int AS original_price,
     COALESCE(
-        (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        NULLIF(
+            (SELECT discounted_price FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        ),
         p.minprice
     )::int AS discounted_price,
     COALESCE(
-        (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        NULLIF(
+            (SELECT min_price FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        ),
         p.minprice
-    )::int AS min_price,
+    ) AS min_price,
     COALESCE(
-        (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        NULLIF(
+            (SELECT max_price FROM discount d WHERE d.productid = p.id LIMIT 1),
+            0
+        ),
         p.maxprice
-    )::int AS max_price,
+    ) AS max_price,
     p.type,
     p.article,
     p.category,
@@ -8466,23 +8481,15 @@ func (q *Queries) UpdateProductStatus(ctx context.Context, arg UpdateProductStat
 }
 
 const updateProductStock = `-- name: UpdateProductStock :execresult
-UPDATE products
-SET sizes = jsonb_set(
-    sizes,
-    ARRAY[$1::text, 'quantity'],
-    to_jsonb(greatest(CAST(sizes->>@size_key::text->>'quantity' AS integer) - $2::integer, 0))
-),
-updated_at = NOW()
-WHERE id = $3::integer
-  AND CAST(sizes->>@size_key::text->>'quantity' AS integer) >= $2::integer
+SELECT update_product_stock($1::integer, $2::text, $3::integer) AS success
 `
 
 type UpdateProductStockParams struct {
+	ProductID int32  `json:"product_id"`
 	SizeKey   string `json:"size_key"`
 	Quantity  int32  `json:"quantity"`
-	ProductID int32  `json:"product_id"`
 }
 
 func (q *Queries) UpdateProductStock(ctx context.Context, arg UpdateProductStockParams) (pgconn.CommandTag, error) {
-	return q.db.Exec(ctx, updateProductStock, arg.SizeKey, arg.Quantity, arg.ProductID)
+	return q.db.Exec(ctx, updateProductStock, arg.ProductID, arg.SizeKey, arg.Quantity)
 }

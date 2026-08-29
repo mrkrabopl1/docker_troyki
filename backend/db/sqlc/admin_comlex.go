@@ -168,6 +168,7 @@ func (store *SQLStore) GetProductsForAdminByFiltersComplex(ctx context.Context, 
 	if err != nil {
 		return RespProductsForAdminByStringStruct{}, err
 	}
+	fmt.Println(data, "ddllsqswed")
 
 	// Получаем ОТДЕЛЬНЫМ запросом общее количество
 	// sqlc сгенерировал метод CountProductsForAdmin, который принимает CountProductsForAdminParams
@@ -272,7 +273,59 @@ func (store *SQLStore) getProductsForAdminByFilters(ctx context.Context, mainFil
 	// Отладка
 	log.Printf("Query params: sizes=%v, firms=%v, categories=%v, name=%q",
 		params.Sizes, params.Firms, params.Categories, params.Name)
+	log.Printf("========== GET PRODUCTS FILTERS ==========")
+	log.Printf("Pagination:")
+	log.Printf("  Limitval:  %d", params.Limitval)
+	log.Printf("  Offsetval: %d", params.Offsetval)
+	log.Printf("  SortType:  %d", params.SortType)
 
+	log.Printf("Array filters:")
+	log.Printf("  Sizes:        %v (len=%d)", params.Sizes, len(params.Sizes))
+	log.Printf("  Firms:        %v (len=%d)", params.Firms, len(params.Firms))
+	log.Printf("  Bodytypes:    %v (len=%d)", params.Bodytypes, len(params.Bodytypes))
+	log.Printf("  ProductTypes: %v (len=%d)", params.ProductTypes, len(params.ProductTypes))
+	log.Printf("  Lines:        %v (len=%d)", params.Lines, len(params.Lines))
+	log.Printf("  Categories:   %v (len=%d)", params.Categories, len(params.Categories))
+
+	log.Printf("Boolean filters:")
+	log.Printf("  HasDiscount: %v", params.HasDiscount)
+	log.Printf("  InStore:     %v", params.InStore)
+	log.Printf("  WithPrice:   %v", params.WithPrice)
+
+	log.Printf("String filters:")
+	log.Printf("  Name:   %q", params.Name)
+	log.Printf("  Status: %q", params.Status)
+
+	log.Printf("Price filters:")
+	if params.Minprice.Valid {
+		log.Printf("  Minprice: %d (valid)", params.Minprice.Int32)
+	} else {
+		log.Printf("  Minprice: nil (invalid)")
+	}
+	if params.Maxprice.Valid {
+		log.Printf("  Maxprice: %d (valid)", params.Maxprice.Int32)
+	} else {
+		log.Printf("  Maxprice: nil (invalid)")
+	}
+
+	log.Printf("Date filters:")
+	if params.CreatedFrom.Valid {
+		log.Printf("  CreatedFrom: %v (valid)", params.CreatedFrom.Time)
+	} else {
+		log.Printf("  CreatedFrom: nil (invalid)")
+	}
+	if params.UpdatedFrom.Valid {
+		log.Printf("  UpdatedFrom: %v (valid)", params.UpdatedFrom.Time)
+	} else {
+		log.Printf("  UpdatedFrom: nil (invalid)")
+	}
+
+	log.Printf("Main filter (search):")
+	log.Printf("  Name:     %q (valid=%v)", mainFilter.Name.String, mainFilter.Name.Valid)
+	log.Printf("  Category: %v (valid=%v)", mainFilter.Category.Int32, mainFilter.Category.Valid)
+	log.Printf("  Type:     %v (valid=%v)", mainFilter.Type.Int32, mainFilter.Type.Valid)
+
+	log.Printf("==========================================")
 	return store.GetProductsForAdminByFilters(ctx, params)
 }
 func (store *SQLStore) buildAdminProductsInfoResponse(snInfo GetAdminProductsInfoByIdRow) ProductsAdminInfoResponse {

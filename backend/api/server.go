@@ -132,6 +132,8 @@ func (s *Server) setupRouter() {
 		api.GET("/getUserData", s.handleGetUserData)
 		api.POST("/verify", s.handleVerifyUser)
 
+		api.GET("/promo-codes/:code", s.handleGetPromoCodeByCode)
+
 		// Изменение пароля авторизованного пользователя
 		api.POST("/users/password", s.handleChangePass)
 		// Запрос на восстановление пароля (отправка email)
@@ -221,6 +223,13 @@ func (s *Server) setupRouter() {
 			adminGroup.PUT("/page-widgets/:id", s.handleAdminUpdatePageWidget)
 			adminGroup.DELETE("/page-widgets/:id", s.handleAdminDeletePageWidget)
 			adminGroup.PATCH("/page-widgets/reorder", s.handleAdminReorderPageWidgets)
+
+			adminGroup.GET("/promo-codes", s.handleAdminGetPromoCodes)
+			adminGroup.POST("/promo-codes", s.handleAdminCreatePromoCode)
+			adminGroup.GET("/promo-codes/:id", s.handleAdminGetPromoCode)
+			adminGroup.PUT("/promo-codes/:id", s.handleAdminUpdatePromoCode)
+			adminGroup.DELETE("/promo-codes/:id", s.handleAdminDeletePromoCode)
+			adminGroup.GET("/promo-codes/:id/usage", s.handleAdminCheckPromoCodeUsage)
 
 			adminGroup.GET("/collections", s.handleAdminGetCollections)
 			adminGroup.GET("/collections/:id", s.handleAdminGetCollection)

@@ -1,7 +1,7 @@
 .mainBanner{
     width:100%;
     flex-shrink: 0;
-    height:700px;
+    aspect-ratio: 16/9;
     position: relative;
 }
 
@@ -27,9 +27,7 @@
 }
 
 @media (max-width: 768px) {
-    .mainBanner{
-        height: 500px;
-    }
+   
     .contentHolder{
         top: 75%;
     }

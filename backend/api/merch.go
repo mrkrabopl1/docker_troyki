@@ -284,19 +284,20 @@ func (s *Server) handleSearchProductByCategoriesAndFilters(ctx *gin.Context) {
 func (s *Server) handleGetPageWidgets(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// 1. Пытаемся получить из кэша
-	widgets, err := s.taskProcessor.GetPageWidgets(ctx)
-	// fmt.Println("widgets", widgets)
-	if err == nil && len(widgets) > 0 {
-		c.Data(http.StatusOK, "application/json", widgets)
-		c.Header("X-Cache", "HIT")
-		return
-	}
+	// // 1. Пытаемся получить из кэша
+	// widgets, err := s.taskProcessor.GetPageWidgets(ctx)
+	// // fmt.Println("widgets", widgets)
+	// if err == nil && len(widgets) > 0 {
+	// 	c.Data(http.StatusOK, "application/json", widgets)
+	// 	c.Header("X-Cache", "HIT")
+	// 	return
+	// }
 
-	//2. Кэша нет - отдаём из БД
-	c.Header("X-Cache", "MISS")
+	// //2. Кэша нет - отдаём из БД
+	// c.Header("X-Cache", "MISS")
 
 	widgetsFromDB, err := s.store.GetPageWidgetsFromDB(ctx)
+	fmt.Println(widgetsFromDB, "Sd;flsm")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -1067,6 +1068,8 @@ func (s *Server) handleAdminGetProductsByIds(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
 	}
+
+	fmt.Println(rows[0].MaxPrice, "roooooooooows")
 
 	// Конвертируем в ProductRow
 	products := make([]db.ProductsAdminResponse, 0, len(rows))

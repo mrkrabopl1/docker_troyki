@@ -119,11 +119,15 @@ type Delivery struct {
 	DeliveryComment string       `json:"deliveryComment"`
 }
 type CreateOrderType struct {
-	PreorderHash string             `json:"preorderHash"`
-	PersonalData types.PersonalData `json:"personalData"`
-	Address      types.Address      `json:"address"`
-	Delivery     Delivery           `json:"delivery"`
-	Save         bool               `json:"save"`
+	PreorderHash     string             `json:"preorderHash"`
+	PersonalData     types.PersonalData `json:"personalData"`
+	Address          types.Address      `json:"address"`
+	Delivery         Delivery           `json:"delivery"`
+	Save             bool               `json:"save"`
+	PromoCode        string             `json:"promoCode"`
+	PromoCodeID      *int32             `json:"promoCodeId"`
+	PromoDiscount    int                `json:"promoDiscount"`
+	MatchingProducts []int32            `json:"matchingProducts"`
 }
 
 type OrderItemJSON struct {
@@ -410,7 +414,7 @@ func (store *SQLStore) CreateOrderWithStockUpdate(ctx context.Context, orderData
 		// item.Size.String - размер (например "42")
 		// item.Quantity - количество в заказе
 		// item.ID - ID товара
-
+		fmt.Println(item.Size.String, item.Quantity, item.ID, "updating stock for product")
 		_, err := tx.Queries.UpdateProductStock(ctx, UpdateProductStockParams{
 			SizeKey:   item.Size.String,
 			Quantity:  item.Quantity,
@@ -437,12 +441,13 @@ func (store *SQLStore) CreateOrderWithStockUpdate(ctx context.Context, orderData
 }
 
 type GetOrderData struct {
-	UserInfo     Unregistercustomer
-	State        string
-	SnickersCart []GetOrderDataByIdRow
-	OrderId      int
-	DeliveryType DeliveryEnum
-	Address      GetOrderAddressByIdRow
+	UserInfo          Unregistercustomer
+	State             string
+	SnickersCart      []GetOrderDataByIdRow
+	OrderId           int
+	DeliveryType      DeliveryEnum
+	PromoCodeSnapshot []byte
+	Address           GetOrderAddressByIdRow
 }
 
 func (store *SQLStore) GetOrderData(ctx context.Context, hash string) (GetOrderData, error) {
@@ -470,6 +475,16 @@ func (store *SQLStore) GetOrderData(ctx context.Context, hash string) (GetOrderD
 			}
 		}
 
+		// === ПОЛУЧАЕМ ПРОМОКОД ===
+		var promoUsage GetPromoCodeUsageByOrderRow
+		var promoCodeSnapshot []byte
+
+		promoUsage, err = store.Queries.GetPromoCodeUsageByOrder(ctx, orderInfo.ID)
+		if err == nil {
+			promoCodeSnapshot = promoUsage.PromoCodeSnapshot
+		}
+		// Если нет промокода - игнорируем
+
 		if orderInfo.Unregistercustomerid.Valid {
 			unregData, err1 := store.Queries.GetUnregisterCustomer(ctx, orderInfo.Unregistercustomerid.Int32)
 			if err1 != nil {
@@ -477,12 +492,13 @@ func (store *SQLStore) GetOrderData(ctx context.Context, hash string) (GetOrderD
 				return GetOrderData{}, err1
 			}
 			return GetOrderData{
-				State:        string(orderInfo.Status),
-				UserInfo:     unregData,
-				SnickersCart: snickers,
-				OrderId:      int(orderInfo.ID),
-				DeliveryType: orderInfo.Deliverytype,
-				Address:      address,
+				State:             string(orderInfo.Status),
+				UserInfo:          unregData,
+				SnickersCart:      snickers,
+				OrderId:           int(orderInfo.ID),
+				DeliveryType:      orderInfo.Deliverytype,
+				Address:           address,
+				PromoCodeSnapshot: promoCodeSnapshot,
 			}, nil
 
 		} else {
@@ -514,16 +530,49 @@ func (store *SQLStore) GetCartData(ctx context.Context, hash string) ([]GetPreor
 	return prData, nil
 }
 
-func (store *SQLStore) GetCartDataFromOrderByHash(ctx context.Context, hash string) ([]GetOrderDataByIdRow, error) {
+type OrderDataResponse struct {
+	Items         []GetOrderDataByIdRow `json:"items"`
+	PromoCodeName string                `json:"promo_code_name"`
+	PromoDiscount int32                 `json:"promo_discount"`
+	PromoCodeID   int32                 `json:"promo_code_id"`
+}
+
+func (store *SQLStore) GetCartDataFromOrderByHash(ctx context.Context, hash string) (*OrderDataResponse, error) {
+	// 1. Получаем ID заказа по хэшу
 	orderId, err := store.Queries.GetOrderIdByHashUrl(ctx, hash)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get order id by hash: %w", err)
 	}
-	snickers, err1 := store.GetOrderDataById(ctx, orderId)
-	if err1 != nil {
-		return nil, err1
+
+	// 2. Получаем товары из заказа
+	items, err := store.Queries.GetOrderDataById(ctx, orderId)
+	if err != nil {
+		return nil, fmt.Errorf("get order items: %w", err)
 	}
-	return snickers, nil
+
+	// 3. Получаем информацию о промокоде (если есть)
+	promo, err := store.Queries.GetOrderPromoInfo(ctx, orderId)
+	if err != nil {
+		// Если промокода нет, это не ошибка - просто возвращаем пустые значения
+		// Проверяем, что это ошибка "no rows" (sql.ErrNoRows)
+		if err == sql.ErrNoRows {
+			return &OrderDataResponse{
+				Items:         items,
+				PromoCodeName: "",
+				PromoDiscount: 0,
+				PromoCodeID:   0,
+			}, nil
+		}
+		return nil, fmt.Errorf("get promo info: %w", err)
+	}
+
+	// 4. Возвращаем объединенный ответ
+	return &OrderDataResponse{
+		Items:         items,
+		PromoCodeName: promo.PromoCodeName.String,
+		PromoDiscount: promo.PromoDiscount,
+		PromoCodeID:   promo.PromoCodeID,
+	}, nil
 }
 
 func (store *SQLStore) GetCartDataFromPreorderByHash(ctx context.Context, hash string) ([]GetOrderDataByIdRow, error) {
