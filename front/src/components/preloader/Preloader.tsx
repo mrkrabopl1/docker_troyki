@@ -6,7 +6,7 @@ const Preloader: React.FC = () => {
     const { isLoading, totalImages, loadedCount } = useAppSelector(state => state.loading);
     const [isHidden, setIsHidden] = useState(false);
     useEffect(() => {
-        if (loadedCount >= totalImages) {
+        if (!isLoading && loadedCount >= totalImages) {
             const timer = setTimeout(() => setIsHidden(true), 300);
             return () => clearTimeout(timer);
         }else{

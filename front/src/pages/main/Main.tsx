@@ -9,7 +9,7 @@ import FirmsScroller from 'src/modules/firmsScroller/FirmsScroller';
 import InstagramScroller from 'src/modules/instagramScroller/InstagramScroller';
 import { addImageToLoad, imageLoaded } from 'src/store/reducers/loadingSlice';
 import s from "./s.module.css";
-
+import { finishLoading } from 'src/store/reducers/loadingSlice';
 interface MainProps {
   initialData: {
     pageInfo: any;
@@ -20,6 +20,7 @@ interface MainProps {
 
 const Main: React.FC<MainProps> = memo(({ initialData }) => {
   const dispatch = useAppDispatch();
+  dispatch(finishLoading());
   const navigate = useNavigate();
   const router = useRouter();
   const { firmMap } = useAppSelector(state => state.menu);

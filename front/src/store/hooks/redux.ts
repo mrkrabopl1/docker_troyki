@@ -86,7 +86,7 @@ const useContentHeight = () => {
 const useNavigate = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  dispatch(resetLoading())
+ //dispatch(resetLoading())
 
   const navigate = (path: string, options?: { showMenu?: boolean }) => {
     // Показываем меню при навигации
