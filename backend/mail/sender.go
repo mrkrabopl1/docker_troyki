@@ -83,15 +83,21 @@ func (sender *GmailSender) SendEmail(
 	// Определяем порт из адреса
 	addr := sender.smtpServerAddress
 
-	// Для порта 465 используем SendWithTLS
-	if strings.Contains(addr, ":465") {
-		fmt.Println("Using SSL/TLS for port 465")
-		return e.SendWithTLS(addr, smtpAuth, &tls.Config{
-			ServerName: sender.smtpAuthAddress, // используем из конфига
-		})
+	// Настраиваем TLS
+	tlsConfig := &tls.Config{
+		ServerName:         sender.smtpAuthAddress,
+		InsecureSkipVerify: true, // ← Добавляем эту строку
 	}
 
-	// Для порта 587 используем обычный Send
+	// Для порта 465 используем SSL
+	if strings.Contains(addr, ":465") {
+		fmt.Println("Using SSL/TLS for port 465")
+		return e.SendWithTLS(addr, smtpAuth, tlsConfig)
+	}
+
+	// Для порта 587 используем STARTTLS
 	fmt.Println("Using STARTTLS for port 587")
-	return e.Send(addr, smtpAuth)
+
+	// Используем SendWithTLS вместо Send
+	return e.SendWithTLS(addr, smtpAuth, tlsConfig)
 }
