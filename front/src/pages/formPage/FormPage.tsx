@@ -151,11 +151,11 @@ const FormPage: React.FC = () => {
 
             const itemTotal = item.price * item.quantity;
             const itemDiscount = matchingTotal > 0 ? (itemTotal / matchingTotal) * totalDiscount : 0;
-            const newPrice = Math.round(((item.price - (itemDiscount / item.quantity)) * 100)/ 100) ;
+            const newPrice = Math.round(((item.price - (itemDiscount / item.quantity)) * 100) / 100);
 
             return {
                 ...item,
-                discount_price:Math.max(newPrice, 0.01),
+                discount_price: Math.max(newPrice, 0.01),
                 price: item.price,
                 discount_applied: Math.round(itemDiscount * 100) / 100,
                 has_discount: true,
@@ -243,19 +243,29 @@ const FormPage: React.FC = () => {
                 matchingProductsRef.current = [];
                 return;
             }
+            let totalDiscount
+            if (response.applies_to === "global") {
+                if (response.discount_type === "fixed") {
+                    totalDiscount = response.discount_value
+                }else{
+                    totalDiscount = Math.round((response.discount_value * totalPrice / 100))
+                }
 
-            matchingProductsRef.current = response.matching_products || [];
+            } else {
+                matchingProductsRef.current = response.matching_products || [];
 
-            const updatedProducts = applyDiscountToMatchingProducts(originalProducts, response);
-            setProducts(updatedProducts);
+                const updatedProducts = applyDiscountToMatchingProducts(originalProducts, response);
+                setProducts(updatedProducts);
 
-            const newTotal = updatedProducts.reduce((sum, item) => sum + item.price * item.quantity, 0);
-            setTotalPrice(newTotal);
-            fullPrice.current = newTotal;
+                const newTotal = updatedProducts.reduce((sum, item) => sum + item.price * item.quantity, 0);
+                setTotalPrice(newTotal);
+                fullPrice.current = newTotal;
 
-            const totalDiscount = Math.round(updatedProducts
-                .filter(item => item.has_discount)
-                .reduce((sum, item) => sum + (item.discount_applied || 0), 0));
+                totalDiscount = Math.round(updatedProducts
+                    .filter(item => item.has_discount)
+                    .reduce((sum, item) => sum + (item.discount_applied || 0), 0));
+
+            }
 
             setPromoState({
                 code: trimmedCode,
