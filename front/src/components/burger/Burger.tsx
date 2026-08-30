@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback,memo } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import s from "./style.module.css";
 
 interface BurgerProps {
@@ -18,15 +18,16 @@ const Burger: React.FC<BurgerProps> = ({
         onChange(newActive);
     }, [active, onChange]);
 
+    useEffect(()=>{
+        setActive(activeProps);
+    },[activeProps])
+
     const getMainClassName = useCallback(() => {
         const baseClasses = [s.hamburger, s.hamburger_slider];
         if (active) baseClasses.push(s.is_active);
         return baseClasses.join(' ');
     }, [active]);
 
-    useEffect(() => {
-        setActive(activeProps);
-    }, [activeProps]);
 
     return (
         <div 
@@ -43,4 +44,10 @@ const Burger: React.FC<BurgerProps> = ({
     );
 };
 
-export default memo(Burger);
+// Функция сравнения пропсов для memo
+const arePropsEqual = (prevProps: BurgerProps, nextProps: BurgerProps) => {
+    
+    return prevProps.activeProps === nextProps.activeProps ;
+};
+
+export default memo(Burger, arePropsEqual);

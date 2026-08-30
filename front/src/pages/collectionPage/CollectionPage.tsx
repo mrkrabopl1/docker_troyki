@@ -295,7 +295,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
     // 🔥 ИСПОЛЬЗОВАНИЕ SSR ДАННЫХ (с проверкой firmMap)
     // ============================================================
     useEffect(() => {
-        if (initialData && !isHydrated.current && isMounted.current && isFirmMapReady) {
+        if (initialData  && isMounted.current && isFirmMapReady) {
             console.log('🔥 Using SSR data for collection')
 
             if (initialData.collection) {

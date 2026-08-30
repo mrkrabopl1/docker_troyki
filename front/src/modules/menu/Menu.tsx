@@ -37,7 +37,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
     const [loginActive, setLoginActive] = useState(false);
     const { setSearchData } = searchSlice.actions;
     const [showBurgerMenu, setShowBurgerMenu] = useState(false);
-    const actibeBurger = useRef(false);
+    const activeBurger = useRef(false);
     const turnActive = useCallback((active: boolean) => {
         setGlobalScroller(active);
         setActive(active);
@@ -73,6 +73,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
         return convertedData;
     }, [categories, typesVal]);
     const handleComplexDrop = useCallback((data: { main?: string; sub?: string }) => {
+        activeBurger.current = false
         setShowBurgerMenu(false)
         if (!data.sub) {
             navigate(`/search?category=${data.main}`);
@@ -95,7 +96,11 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
     return (
         <div ref={menuWrap} className={s.menuStyle}>
             <div className={"dependSize vrtCntr"}>
-                <Burger activeProps={actibeBurger.current} onChange={setShowBurgerMenu} />
+                <Burger activeProps={activeBurger.current} onChange={(val)=>{
+                    activeBurger.current = val
+                    setShowBurgerMenu(val)
+
+                    }} />
             </div>
 
             <div onClick={handleLogoClick} className={s.logoWrapStyle}>
@@ -135,26 +140,26 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                         <span className={s.dividerIcon}>✦</span>
                     </div>
                     <div className={s.link} onClick={() => {
-                        actibeBurger.current = false;
+                        activeBurger.current = false;
                         setShowBurgerMenu(false)
                         setActiveAlphabet(true)
                     }}>
                         Фирмы
                     </div>
                     <div onClick={() => {
-                        actibeBurger.current = false;
+                        activeBurger.current = false;
                         navigate('/search?discount=true');
                     }} className={s.link}>
                         Скидки
                     </div>
                     <div onClick={() => {
-                        actibeBurger.current = false;
+                        activeBurger.current = false;
                         navigate('/about');
                     }} className={s.link}>
                         О нас
                     </div>
                     <div onClick={() => {
-                        actibeBurger.current = false;
+                        activeBurger.current = false;
                         navigate('/reviews');
                     }} className={s.link}>
                         Отзывы
