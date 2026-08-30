@@ -321,7 +321,7 @@ const AppContent: React.FC<AppContentProps> = ({
 
 
 
-  const loadFirmsPhotos = useCallback(async () => {
+  const loadFirms = useCallback(async () => {
     try {
       const cached = localStorage.getItem(
         'firmsWithLinesCache'
@@ -420,6 +420,7 @@ const AppContent: React.FC<AppContentProps> = ({
       // запускаем отдельно
       void loadInstagramPhotos();
     }
+    void loadFirms()
   }, [
     initialMainInfo,
     initialWidgetsInfo,
@@ -427,6 +428,7 @@ const AppContent: React.FC<AppContentProps> = ({
     applyDataToRedux,
     loadInstagramPhotos,
     dispatch,
+    loadFirms
   ]);
 
   // ============================================================
