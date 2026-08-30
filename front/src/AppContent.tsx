@@ -484,44 +484,47 @@ const AppContent: React.FC<AppContentProps> = ({
   // ============================================================
 
   useEffect(() => {
-    const element = contRef.current;
+  const element = contRef.current;
+  if (!element) return;
 
-    if (!element) return;
+  let frameId: number | null = null;
+  let counter = 0;
 
-    let frameId: number | null = null;
+  console.log('🔄 [ResizeObserver] Создан');
 
-    const observer = new ResizeObserver(() => {
-      if (frameId) {
-        cancelAnimationFrame(frameId);
+  const observer = new ResizeObserver(() => {
+    counter++;
+    console.log(`🔄 [ResizeObserver] Сработал #${counter}`);
+
+    if (frameId) {
+      console.log(`🔄 [ResizeObserver] Отмена предыдущего frame #${counter - 1}`);
+      cancelAnimationFrame(frameId);
+    }
+
+    frameId = requestAnimationFrame(() => {
+      const offsetHeight = element.offsetHeight;
+      const { innerHeight, scrollY } = window;
+
+      console.log(`🔄 [ResizeObserver] frame #${counter}: offsetHeight=${offsetHeight}, innerHeight=${innerHeight}, scrollY=${scrollY}`);
+
+      if (innerHeight >= offsetHeight || scrollY < 150) {
+        console.log(`🔄 [ResizeObserver] dispatch(show(true)) #${counter}`);
+        dispatch(show(true));
+      } else {
+        console.log(`🔄 [ResizeObserver] dispatch(show(false)) #${counter}`);
+        dispatch(show(false));
       }
-
-      frameId = requestAnimationFrame(() => {
-        const offsetHeight = element.offsetHeight;
-
-        const {
-          innerHeight,
-          scrollY,
-        } = window;
-
-        if (
-          innerHeight >= offsetHeight ||
-          scrollY < 150
-        ) {
-          dispatch(show(true));
-        }
-      });
     });
+  });
 
-    observer.observe(element);
+  observer.observe(element);
 
-    return () => {
-      observer.disconnect();
-
-      if (frameId) {
-        cancelAnimationFrame(frameId);
-      }
-    };
-  }, [dispatch]);
+  return () => {
+    console.log(`🔄 [ResizeObserver] Уничтожен, было ${counter} срабатываний`);
+    observer.disconnect();
+    if (frameId) cancelAnimationFrame(frameId);
+  };
+}, [dispatch]);
 
   // ============================================================
   // WHEEL

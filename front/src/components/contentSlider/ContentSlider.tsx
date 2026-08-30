@@ -111,11 +111,11 @@ const ContentSlider: React.FC<SliderProps> = ({
   }, []); // Пустой массив - только при монтировании
 
   // Перерасчет при изменении content (кроме первого раза)
-  useEffect(() => {
-    console.log('Content changed, triggering recalculation');
-    const timeoutId = setTimeout(handleResize, 100);
-    return () => clearTimeout(timeoutId);
-  }, [content]);
+  // useEffect(() => {
+  //   console.log('Content changed, triggering recalculation');
+  //   const timeoutId = setTimeout(handleResize, 100);
+  //   return () => clearTimeout(timeoutId);
+  // }, [content]);
 
   const trackStyle = useMemo((): CSSProperties => ({
     display: 'flex',
