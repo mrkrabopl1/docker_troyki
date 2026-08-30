@@ -222,7 +222,7 @@ function MyApp({ Component, pageProps }: AppProps) {
   };
 
   // 🔥 ПРОВЕРКА ПЕРЕД ПЕРЕДАЧЕЙ В AppContent
-  const mainInfo = pageProps.mainData?.mainInfo || pageProps.initialData?.mainInfo || {};
+  const mainInfo = pageProps.mainData?.mainInfo || pageProps.initialData?.menuInfo || {};
   const instagramPosts = pageProps.mainData?.instagramPosts || pageProps.initialData?.instagramPosts || [];
   const widgetsInfo = pageProps.mainData?.pageInfo || pageProps.initialData?.pageInfo || [];
 

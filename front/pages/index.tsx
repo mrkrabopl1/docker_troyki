@@ -17,7 +17,7 @@ export const getStaticProps = async () => {
   console.log('[INDEX] - mainData.pageInfo ПЕРВЫЙ:', mainData?.pageInfo?.[0]?.name || 'НЕТ');
   console.log('[INDEX] - mainData.pageInfo ТИП:', typeof mainData?.pageInfo);
   console.log('[INDEX] - mainData.pageInfo МАССИВ?:', Array.isArray(mainData?.pageInfo));
-  console.log('[INDEX] - mainData.mainInfo.categories ДЛИНА:', mainData?.mainInfo?.categories?.length || 0);
+  console.log('[INDEX] - mainData.mainInfo.categories ДЛИНА:', mainData?.menuInfo?.categories?.length || 0);
   console.log('[INDEX] - banners ДЛИНА:', banners.length);
   
   const result = {

@@ -58,7 +58,7 @@ export function withMainData<T extends object>(
 
     const initialData: MainData = {
       pageInfo: mainData?.pageInfo ?? [],
-      mainInfo: mainData?.mainInfo ?? {},
+      mainInfo: mainData?.menuInfo ?? {},
     };
 
     return {
@@ -106,7 +106,7 @@ export function withMainDataServer<T extends object>(
 
     const initialData: MainData = {
       pageInfo: mainData?.pageInfo ?? [],
-      mainInfo: mainData?.mainInfo ?? {},
+      mainInfo: mainData?.menuInfo ?? {},
     };
 
     return {

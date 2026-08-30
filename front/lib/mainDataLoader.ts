@@ -1,9 +1,9 @@
 import { getWidgets } from 'src/providers/merchProvider';
-import { getMainInfo } from 'src/providers/shopProvider';
+import { getMainInfo,getMenuInfo } from 'src/providers/shopProvider';
 
 interface MainData {
   pageInfo: any[];
-  mainInfo: Record<string, any>;
+  menuInfo: Record<string, any>;
 }
 
 // ==================== CACHE ====================
@@ -18,11 +18,9 @@ let loadPromise: Promise<MainData> | null = null;
 
 const EMPTY_DATA: MainData = {
   pageInfo: [],
-  mainInfo: {
+  menuInfo: {
     categories: [],
-    firms: [],
     discounts: null,
-    sizeTables: {},
   },
 };
 
@@ -75,7 +73,7 @@ export async function getMainData(): Promise<MainData> {
           return [];
         }),
 
-        getMainInfo().catch((error) => {
+        getMenuInfo().catch((error) => {
           const elapsed = Date.now() - loadStart;
           console.error(`⏱️ [MAIN_DATA] ❌ getMainInfo failed after ${elapsed}ms:`, error);
           return {};
@@ -87,20 +85,18 @@ export async function getMainData(): Promise<MainData> {
 
       const data: MainData = {
         pageInfo: Array.isArray(pageInfo) ? pageInfo : [],
-        mainInfo:
+        menuInfo:
           mainInfo && typeof mainInfo === 'object'
             ? mainInfo
             : {},
       };
 
       // Статистика
-      const categoriesCount = data.mainInfo?.categories?.length || 0;
-      const firmsCount = data.mainInfo?.firms?.length || 0;
+      const categoriesCount = data.menuInfo?.categories?.length || 0;
       const pageInfoCount = data.pageInfo?.length || 0;
 
       console.log(`⏱️ [MAIN_DATA] 📊 Data stats:`);
       console.log(`   - categories: ${categoriesCount}`);
-      console.log(`   - firms: ${firmsCount}`);
       console.log(`   - pageInfo: ${pageInfoCount}`);
 
       cachedData = data;

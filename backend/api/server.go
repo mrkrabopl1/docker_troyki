@@ -145,6 +145,9 @@ func (s *Server) setupRouter() {
 
 		api.GET("/widgets", s.handleGetPageWidgets)
 		api.GET("/main/info", s.handleGetMainInfo)
+		api.GET("/menu", s.handleGetMenuInfo)
+		api.GET("/brands/lines", s.handleGetBrandsWithLines)
+
 		api.GET("/customers/check", s.handleCheckCustomerData)
 
 		// Admin auth (без middleware)

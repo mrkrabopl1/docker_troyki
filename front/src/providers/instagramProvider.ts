@@ -43,6 +43,21 @@ export const getInstagramPhotos = function(): Promise<InstagramPhoto[]> {
     })
 }
 
+export const getBrandsWithLines = function(): Promise<InstagramPhoto[]> {
+    return new Promise((resolve, reject) => {
+        axios({
+            method: 'get',
+            url: `${API_URL}/brands/lines`,
+            headers: {}
+        }).then((res: any) => {
+            resolve(res.data)
+        }).catch((error: any) => {
+            console.warn(error)
+            reject(error)
+        })
+    })
+}
+
 // ========== ПОЛУЧИТЬ ФОТО ДЛЯ КЛИЕНТА (callback) ==========
 export const getInstagramPhotosCallback = function(
     callback: (val: InstagramPhoto[]) => void

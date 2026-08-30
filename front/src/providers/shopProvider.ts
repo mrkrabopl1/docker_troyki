@@ -57,6 +57,21 @@ const getMainInfo = async () => {
     return res.data;
 }
 
+const getMenuInfo = async () => {
+    console.log("Fetching main banners...", API_URL);
+    if (isServer()) {
+        const res = await fetch(`${API_URL}/menu`, {
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) throw new Error(`Failed to fetch banners: ${res.status}`);
+        return res.json();
+    }
+
+    const res = await axios.get(`${API_URL}/menu`);
+    return res.data;
+}
+
+
 const getOrderCartData = function (cartHash: any, callback: (val: any) => void) {
     const data = new FormData();
     axios({
@@ -93,4 +108,4 @@ const deleteCartData = function (preorderId, callback: (val: any) => void) {
 
 
 
-export { getCartData, deleteCartData, getOrderCartData, getCartCount, getMainInfo }
+export { getCartData, deleteCartData, getOrderCartData, getCartCount, getMainInfo,getMenuInfo }

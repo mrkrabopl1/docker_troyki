@@ -33,7 +33,7 @@ import {
 import { getCookie } from './global';
 import { setUniqueCustomer } from './providers/userProvider';
 import { getCartCount } from './providers/shopProvider';
-import { getInstagramPhotos } from './providers/instagramProvider';
+import { getInstagramPhotos, getBrandsWithLines } from './providers/instagramProvider';
 
 import {
   addImageToLoad,
@@ -133,6 +133,61 @@ const AppContent: React.FC<AppContentProps> = ({
   // APPLY MAIN INFO
   // ============================================================
 
+  const applyFirmsToRedux = useCallback((data) => {
+    // --------------------------------------------------------
+    // FIRMS / COLLECTIONS
+    // --------------------------------------------------------
+
+    const fieldData: Record<
+      string,
+      Record<string, string>
+    > = {};
+
+    const firmMap: Record<string, Firm> = {};
+    const lineMap: Record<string, Line> = {};
+
+    const firms = Array.isArray(data.firms)
+      ? data.firms
+      : [];
+
+    firms.forEach((row: any) => {
+      if (!row?.brand_slug) return;
+
+      firmMap[row.brand_slug] = {
+        id: row.brand_id,
+        name: row.firm,
+        slug: row.brand_slug,
+      };
+
+      if (!fieldData[row.firm]) {
+        fieldData[row.firm] = {};
+      }
+
+      if (row.collection_name && row.line_id) {
+        fieldData[row.firm][row.line_id] =
+          row.collection_name;
+      }
+
+      if (
+        row.collection_name &&
+        row.line_id &&
+        row.collection_slug &&
+        !lineMap[row.collection_slug]
+      ) {
+        lineMap[row.collection_slug] = {
+          id: row.line_id,
+          name: row.collection_name,
+          slug: row.collection_slug,
+          brand_id: row.brand_id,
+        };
+      }
+    });
+
+    dispatch(setFirms(Object.keys(fieldData)));
+    dispatch(setFirmMap(firmMap));
+    dispatch(collections(fieldData));
+    dispatch(setLineMap(lineMap));
+  }, [dispatch])
   const applyDataToRedux = useCallback(
     (data: any) => {
       if (!data) return;
@@ -177,59 +232,7 @@ const AppContent: React.FC<AppContentProps> = ({
       dispatch(types(typesVal));
       dispatch(categories(categoriesVal));
 
-      // --------------------------------------------------------
-      // FIRMS / COLLECTIONS
-      // --------------------------------------------------------
 
-      const fieldData: Record<
-        string,
-        Record<string, string>
-      > = {};
-
-      const firmMap: Record<string, Firm> = {};
-      const lineMap: Record<string, Line> = {};
-
-      const firms = Array.isArray(data.firms)
-        ? data.firms
-        : [];
-
-      firms.forEach((row: any) => {
-        if (!row?.brand_slug) return;
-
-        firmMap[row.brand_slug] = {
-          id: row.brand_id,
-          name: row.firm,
-          slug: row.brand_slug,
-        };
-
-        if (!fieldData[row.firm]) {
-          fieldData[row.firm] = {};
-        }
-
-        if (row.collection_name && row.line_id) {
-          fieldData[row.firm][row.line_id] =
-            row.collection_name;
-        }
-
-        if (
-          row.collection_name &&
-          row.line_id &&
-          row.collection_slug &&
-          !lineMap[row.collection_slug]
-        ) {
-          lineMap[row.collection_slug] = {
-            id: row.line_id,
-            name: row.collection_name,
-            slug: row.collection_slug,
-            brand_id: row.brand_id,
-          };
-        }
-      });
-
-      dispatch(setFirms(Object.keys(fieldData)));
-      dispatch(setFirmMap(firmMap));
-      dispatch(collections(fieldData));
-      dispatch(setLineMap(lineMap));
 
       // --------------------------------------------------------
       // DISCOUNTS
@@ -306,6 +309,57 @@ const AppContent: React.FC<AppContentProps> = ({
           })
         );
       }
+    } catch (error) {
+      console.error(
+        '[APP_CONTENT] Instagram failed:',
+        error
+      );
+    }
+  }, [dispatch]);
+
+
+
+
+
+  const loadFirmsPhotos = useCallback(async () => {
+    try {
+      const cached = localStorage.getItem(
+        'firmsWithLinesCache'
+      );
+
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+
+          const age = Date.now() - parsed.timestamp;
+
+          // 10 минут
+          if (
+            age < 10 * 60 * 1000 &&
+            Array.isArray(parsed.data)
+          ) {
+            applyFirmsToRedux(parsed.data);
+
+            // Не ждём API
+            // Обновление можно сделать в фоне
+            return;
+          }
+        } catch {
+          localStorage.removeItem('firmsWithLinesCache');
+        }
+      }
+
+      const data = await getBrandsWithLines();
+
+      applyFirmsToRedux(data);
+
+      localStorage.setItem(
+        'instagramPhotosCache',
+        JSON.stringify({
+          data: data,
+          timestamp: Date.now(),
+        })
+      );
     } catch (error) {
       console.error(
         '[APP_CONTENT] Instagram failed:',
