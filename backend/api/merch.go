@@ -37,38 +37,55 @@ func (s *Server) handleGetFirms(ctx *gin.Context) {
 // }
 
 func (s *Server) handleGetProductsInfoById(ctx *gin.Context) {
+	startTime := time.Now()
+	fmt.Printf("⏱️ [handleGetProductsInfoById] START\n")
+
 	id := ctx.Param("id")
-	fmt.Println(id, "ididididididididididididididid")
+	fmt.Printf("⏱️ [handleGetProductsInfoById] ID: %s\n", id)
+
 	numId, err := strconv.ParseInt(id, 10, 32)
 	if err != nil {
+		fmt.Printf("⏱️ [handleGetProductsInfoById] ❌ Parse error: %v\n", err)
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
+	fmt.Printf("⏱️ [handleGetProductsInfoById] ✅ Parse OK\n")
 
 	ProductsInfo, err2 := s.store.GetProductsInfoByIdComplex(ctx, int32(numId))
 	if err2 != nil {
-		fmt.Println(err, "wssssssssssss")
+		fmt.Printf("⏱️ [handleGetProductsInfoById] ❌ DB error after %dms: %v\n", time.Since(startTime).Milliseconds(), err2)
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
+	fmt.Printf("⏱️ [handleGetProductsInfoById] ✅ DB query: %dms\n", time.Since(startTime).Milliseconds())
 
 	err = s.taskProcessor.SetProductsInfo(ctx, id, ProductsInfo)
+	if err != nil {
+		fmt.Printf("⏱️ [handleGetProductsInfoById] ❌ Cache save error: %v\n", err)
+	} else {
+		fmt.Printf("⏱️ [handleGetProductsInfoById] ✅ Cache saved\n")
+	}
+
+	fmt.Printf("⏱️ [handleGetProductsInfoById] 🏁 TOTAL: %dms\n", time.Since(startTime).Milliseconds())
 	ctx.JSON(http.StatusOK, ProductsInfo)
 
+	// История
 	cookie, errC := ctx.Cookie("unique")
-
 	if errC != nil {
-		//log.WithCaller().Err(errC).Msg("")
+		fmt.Printf("⏱️ [handleGetProductsInfoById] ❌ No cookie\n")
 		return
 	}
+
 	user, err1 := s.tokenMaker.VerifyToken(cookie)
 	if err1 != nil {
-		fmt.Println(err1)
+		fmt.Printf("⏱️ [handleGetProductsInfoById] ❌ Token error: %v\n", err1)
 	} else {
-		fmt.Println(user, user.UserID, "fdslfsd;mfdskmf;sdmfs")
+		fmt.Printf("⏱️ [handleGetProductsInfoById] ✅ User: %s\n", user.UserID)
 		err := s.store.SetProductsHistory(ctx, int32(numId), user.UserID)
 		if err != nil {
-			fmt.Println(user, user.UserID, "blya")
+			fmt.Printf("⏱️ [handleGetProductsInfoById] ❌ History save error: %v\n", err)
+		} else {
+			fmt.Printf("⏱️ [handleGetProductsInfoById] ✅ History saved\n")
 		}
 	}
 }
@@ -282,34 +299,67 @@ func (s *Server) handleSearchProductByCategoriesAndFilters(ctx *gin.Context) {
 }
 
 func (s *Server) handleGetPageWidgets(c *gin.Context) {
+	startTime := time.Now()
+	fmt.Printf("⏱️ [handleGetPageWidgets] START at %s\n", startTime.Format(time.RFC3339Nano))
+
 	ctx := c.Request.Context()
 
-	// // 1. Пытаемся получить из кэша
-	// widgets, err := s.taskProcessor.GetPageWidgets(ctx)
-	// // fmt.Println("widgets", widgets)
-	// if err == nil && len(widgets) > 0 {
-	// 	c.Data(http.StatusOK, "application/json", widgets)
-	// 	c.Header("X-Cache", "HIT")
-	// 	return
-	// }
+	// 1. Пытаемся получить из кэша
+	cacheStart := time.Now()
+	fmt.Printf("⏱️ [handleGetPageWidgets] 🔍 Checking cache...\n")
 
-	// //2. Кэша нет - отдаём из БД
-	// c.Header("X-Cache", "MISS")
+	widgets, err := s.taskProcessor.GetPageWidgets(ctx)
+	if err == nil && len(widgets) > 0 {
+		cacheElapsed := time.Since(cacheStart)
+		fmt.Printf("⏱️ [handleGetPageWidgets] ✅ FROM CACHE in %dms, %d widgets\n", cacheElapsed.Milliseconds(), len(widgets))
+		c.Data(http.StatusOK, "application/json", widgets)
+		c.Header("X-Cache", "HIT")
+		return
+	}
 
-	widgetsFromDB, err := s.store.GetPageWidgetsFromDB(ctx)
-	fmt.Println(widgetsFromDB, "Sd;flsm")
+	cacheElapsed := time.Since(cacheStart)
 	if err != nil {
+		fmt.Printf("⏱️ [handleGetPageWidgets] ❌ CACHE ERROR in %dms: %v\n", cacheElapsed.Milliseconds(), err)
+	} else {
+		fmt.Printf("⏱️ [handleGetPageWidgets] ❌ CACHE MISS in %dms (empty)\n", cacheElapsed.Milliseconds())
+	}
+
+	// 2. Кэша нет - отдаём из БД
+	c.Header("X-Cache", "MISS")
+	fmt.Printf("⏱️ [handleGetPageWidgets] 📡 Fetching from database...\n")
+
+	dbStart := time.Now()
+	widgetsFromDB, err := s.store.GetPageWidgetsFromDB(ctx)
+	if err != nil {
+		dbElapsed := time.Since(dbStart)
+		fmt.Printf("⏱️ [handleGetPageWidgets] ❌ DB ERROR after %dms: %v\n", dbElapsed.Milliseconds(), err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	dbElapsed := time.Since(dbStart)
+	fmt.Printf("⏱️ [handleGetPageWidgets] ✅ DB query: %dms, %d widgets\n", dbElapsed.Milliseconds(), len(widgetsFromDB))
+
 	// 3. Обновляем кэш в фоне
+	cacheUpdateStart := time.Now()
+	fmt.Printf("⏱️ [handleGetPageWidgets] 💾 Updating cache in background...\n")
+
 	go func() {
 		bgCtx := context.Background()
+		bgStart := time.Now()
+
 		if err := s.taskProcessor.RefreshPageWidgetsCache(bgCtx); err != nil {
-			fmt.Printf("[Redis] Failed to refresh cache: %v\n", err)
+			fmt.Printf("⏱️ [handleGetPageWidgets] ❌ Cache refresh FAILED after %dms: %v\n", time.Since(bgStart).Milliseconds(), err)
+		} else {
+			fmt.Printf("⏱️ [handleGetPageWidgets] ✅ Cache refreshed in %dms\n", time.Since(bgStart).Milliseconds())
 		}
 	}()
+
+	fmt.Printf("⏱️ [handleGetPageWidgets] 💾 Cache update triggered in %dms\n", time.Since(cacheUpdateStart).Milliseconds())
+
+	totalElapsed := time.Since(startTime)
+	fmt.Printf("⏱️ [handleGetPageWidgets] 🏁 TOTAL TIME: %dms\n", totalElapsed.Milliseconds())
+	fmt.Printf("⏱️ [handleGetPageWidgets] 📊 Data stats: widgets=%d\n", len(widgetsFromDB))
 
 	c.JSON(http.StatusOK, widgetsFromDB)
 }
