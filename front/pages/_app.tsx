@@ -3,13 +3,14 @@ import type { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
 import { Provider } from 'react-redux';
 import { setupStore } from 'src/store/store';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import AppContent from 'src/AppContent';
 import ProtectedRoute from 'src/components/admin/ProtectedRoute';
 import AdminLayout from 'src/pages/admin/adminLayout/AdminLayout';
 import MerchComplexSliderField from 'src/modules/merchField/MerchComplexSliderField';
 import 'src/global.css';
-
+import { setHydrated } from 'src/store/reducers/loadingSlice';
+import { setupNavigationMonitoring } from 'lib/navigationDiagnostic';
 const store = setupStore();
 
 const SHOP_PAGES = [
@@ -23,25 +24,115 @@ const SHOP_PAGES = [
 
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setupNavigationMonitoring();
+    }
+  }, []);
+
+  // 🆕 Отслеживаем события роутера
+  useEffect(() => {
+    const handleRouteChangeStart = (url: string) => {
+      console.log(`🔵 [ROUTER] Начало смены маршрута: ${url}`);
+      console.log(`   ⏱️ ${new Date().toISOString()}`);
+
+      // Проверяем размер данных в __NEXT_DATA__
+      try {
+        // @ts-ignore
+        const nextData = window.__NEXT_DATA__;
+        const size = JSON.stringify(nextData).length;
+        console.log(`   📊 Размер __NEXT_DATA__: ${(size / 1024 / 1024).toFixed(2)} MB`);
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    const handleRouteChangeComplete = (url: string) => {
+      console.log(`🟢 [ROUTER] Смена маршрута завершена: ${url}`);
+      console.log(`   ⏱️ ${new Date().toISOString()}`);
+    };
+
+    const handleRouteChangeError = (err: Error, url: string) => {
+      console.error(`🔴 [ROUTER] Ошибка при смене маршрута: ${url}`);
+      console.error(err);
+    };
+
+    router.events.on('routeChangeStart', handleRouteChangeStart);
+    router.events.on('routeChangeComplete', handleRouteChangeComplete);
+    router.events.on('routeChangeError', handleRouteChangeError);
+
+    return () => {
+      router.events.off('routeChangeStart', handleRouteChangeStart);
+      router.events.off('routeChangeComplete', handleRouteChangeComplete);
+      router.events.off('routeChangeError', handleRouteChangeError);
+    };
+  }, [router]);
+  // 👈 Отмечаем гидратацию
+  useEffect(() => {
+    setIsClient(true);
+    // Диспатчим setHydrated после гидратации
+    store.dispatch(setHydrated());
+  }, []);
   console.log('[_APP] ========================================');
+  // pages/_app.tsx - временно добавить для измерения
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // 1. Размер __NEXT_DATA__
+      const nextData = window.__NEXT_DATA__;
+      const size = JSON.stringify(nextData).length;
+      console.log('📊 __NEXT_DATA__ size:', (size / 1024 / 1024).toFixed(2), 'MB');
 
-  // 🔥 ПРОВЕРЯЕМ ВСЕ ТЕСТЫ
-  console.log('[_APP] testData:', pageProps.testData);
-  console.log('[_APP] testArray:', pageProps.testArray);
-  console.log('[_APP] banners:', pageProps.banners);
-  console.log('[_APP] testStringArray:', pageProps.testStringArray);
-  console.log('[_APP] testSimpleObject:', pageProps.testSimpleObject);
-  console.log('[_APP] testObjectArray:', pageProps.testObjectArray);
-  console.log('[_APP] testObjectArray length:', pageProps.testObjectArray?.length || 0);
+      // 2. Время до гидратации
+      const start = performance.now();
+      requestAnimationFrame(() => {
+        const end = performance.now();
+        console.log('⏱️ Time to hydration:', (end - start).toFixed(0), 'ms');
+      });
 
-  // 🔥 ПРОВЕРЯЕМ INITIALDATA
-  console.log('[_APP] initialData:', pageProps.initialData);
-  console.log('[_APP] initialData.banners:', pageProps.initialData?.banners);
-  console.log('[_APP] initialData.banners length:', pageProps.initialData?.banners?.length || 0);
+      // 3. Размер JS бандла - ИСПРАВЛЕННАЯ ВЕРСИЯ
+      setTimeout(() => {
+        const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+        const jsFiles = resources.filter(r =>
+          r.name.includes('.js') &&
+          (r.name.includes('_next') || r.name.includes('chunks'))
+        );
+        const totalJS = jsFiles.reduce((sum, r) => sum + (r.transferSize || 0), 0);
+        console.log('📦 Total JS size:', (totalJS / 1024 / 1024).toFixed(2), 'MB');
 
-  console.log('[_APP] ========================================');
+        // Дополнительно: размер каждого чанка
+        jsFiles.forEach(r => {
+          console.log(`  - ${r.name.split('/').pop()}: ${(r.transferSize / 1024).toFixed(0)}KB`);
+        });
+      }, 1000);
 
-  console.log('[_APP] ========================================');
+      // 4. 🔥 Время до First Paint (самый важный показатель)
+      const paintEntries = performance.getEntriesByType('paint');
+      const firstPaint = paintEntries.find(e => e.name === 'first-paint');
+      const firstContentfulPaint = paintEntries.find(e => e.name === 'first-contentful-paint');
+      if (firstPaint) {
+        console.log('🖌️ First Paint:', firstPaint.startTime.toFixed(0), 'ms');
+      }
+      if (firstContentfulPaint) {
+        console.log('🖌️ First Contentful Paint:', firstContentfulPaint.startTime.toFixed(0), 'ms');
+      }
+
+      // 5. 🔥 Время до LCP (Largest Contentful Paint)
+      const observer = new PerformanceObserver((list) => {
+        const entries = list.getEntries();
+        const lastEntry = entries[entries.length - 1] as PerformanceEntry;
+        console.log('🖼️ LCP:', lastEntry.startTime.toFixed(0), 'ms');
+      });
+      observer.observe({ entryTypes: ['largest-contentful-paint'] });
+
+      // 6. Время до TTI (Time to Interactive) - приблизительно
+      setTimeout(() => {
+        const tti = performance.now();
+        console.log('⚡ Time to Interactive (approx):', tti.toFixed(0), 'ms');
+      }, 3000);
+    }
+  }, []);
+
   useEffect(() => {
     // @ts-ignore
     const nextData = window.__NEXT_DATA__;

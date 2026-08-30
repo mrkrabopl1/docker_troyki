@@ -3,16 +3,16 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface LoadingState {
     isLoading: boolean;
-    loadedImages: Set<string>; // или используйте массив
     totalImages: number;
     loadedCount: number;
+    isHydrated: boolean; // 👈 Добавляем флаг гидратации
 }
 
 const initialState: LoadingState = {
     isLoading: true,
-    loadedImages: new Set(),
     totalImages: 0,
-    loadedCount: 0
+    loadedCount: 0,
+    isHydrated: false, // 👈 По умолчанию false
 };
 
 export const loadingSlice = createSlice({
@@ -32,10 +32,14 @@ export const loadingSlice = createSlice({
         finishLoading: (state) => {
             state.isLoading = false;
         },
+        setHydrated: (state) => {
+            state.isHydrated = true; // 👈 Отмечаем, что гидратация завершена
+        },
         resetLoading: (state) => {
             state.isLoading = true;
             state.totalImages = 0;
             state.loadedCount = 0;
+            state.isHydrated = false;
         }
     }
 });
@@ -45,6 +49,7 @@ export const {
     addImageToLoad, 
     imageLoaded, 
     finishLoading,
+    setHydrated,
     resetLoading 
 } = loadingSlice.actions;
 

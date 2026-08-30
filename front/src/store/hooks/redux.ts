@@ -9,97 +9,97 @@ export const useAppDispatch = () => useDispatch<AppDispatch>();
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 
 const useRouteChange = () => {
-    const router = useRouter();
-    const dispatch = useAppDispatch();
+  const router = useRouter();
+  const dispatch = useAppDispatch();
 
-    useEffect(() => {
-        // Сбрасываем состояние загрузки при каждом переходе
-        // dispatch(resetLoading());
-        
-        // Прокручиваем страницу вверх
-        window.scrollTo(0, 0);
-        
-        // Опционально: очистка при размонтировании
-        return () => {
-            // Можно добавить очистку если нужно
-        };
-    }, [router.pathname, dispatch]);
+  useEffect(() => {
+    // Сбрасываем состояние загрузки при каждом переходе
+    // dispatch(resetLoading());
+
+    // Прокручиваем страницу вверх
+    window.scrollTo(0, 0);
+
+    // Опционально: очистка при размонтировании
+    return () => {
+      // Можно добавить очистку если нужно
+    };
+  }, [router.pathname, dispatch]);
 };
 
 const useMediaQuery = (query: string): boolean => {
-    const [matches, setMatches] = useState(false);
+  const [matches, setMatches] = useState(false);
 
-    useEffect(() => {
-        const media = window.matchMedia(query);
-        if (media.matches !== matches) {
-            setMatches(media.matches);
-        }
-        const listener = () => setMatches(media.matches);
-        media.addEventListener('change', listener);
-        return () => media.removeEventListener('change', listener);
-    }, [matches, query]);
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    if (media.matches !== matches) {
+      setMatches(media.matches);
+    }
+    const listener = () => setMatches(media.matches);
+    media.addEventListener('change', listener);
+    return () => media.removeEventListener('change', listener);
+  }, [matches, query]);
 
-    return matches;
+  return matches;
 };
 
 const useContentHeight = () => {
-    const [contentHeight, setContentHeight] = useState(0);
-    const contentRef = useRef<HTMLDivElement>(null);
-  
-    useEffect(() => {
-      const element = contentRef.current;
-      if (!element) return;
-  
-      // Функция для обновления высоты
-      const updateHeight = () => {
-        const height = element.getBoundingClientRect().height;
-        setContentHeight(height);
-      };
-  
-      // Инициализация начальной высоты
-      updateHeight();
-  
-      // Создание наблюдателя за изменениями размеров
-      const observer = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          if (entry.target === element) {
-            setContentHeight(entry.contentRect.height);
-          }
-        }
-      });
-  
-      observer.observe(element);
-  
-      // Очистка при размонтировании
-      return () => {
-        observer.disconnect();
-      };
-    }, []);
-  
-    return { 
-      contentRef, 
-      contentHeight
+  const [contentHeight, setContentHeight] = useState(0);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const element = contentRef.current;
+    if (!element) return;
+
+    // Функция для обновления высоты
+    const updateHeight = () => {
+      const height = element.getBoundingClientRect().height;
+      setContentHeight(height);
     };
+
+    // Инициализация начальной высоты
+    updateHeight();
+
+    // Создание наблюдателя за изменениями размеров
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === element) {
+          setContentHeight(entry.contentRect.height);
+        }
+      }
+    });
+
+    observer.observe(element);
+
+    // Очистка при размонтировании
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  return {
+    contentRef,
+    contentHeight
+  };
 };
 
 // Вариант 1: Кастомный хук для навигации с меню
 const useNavigate = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
- //dispatch(resetLoading())
 
   const navigate = (path: string, options?: { showMenu?: boolean }) => {
     // Показываем меню при навигации
-    dispatch(show(options?.showMenu ?? true));
     router.push(path);
+    dispatch(show(options?.showMenu ?? true));
+    dispatch(resetLoading())
   };
 
   return navigate;
 };
 
-export { 
-  useContentHeight, 
-  useMediaQuery, 
+export {
+  useContentHeight,
+  useMediaQuery,
   useRouteChange,
   useNavigate
 };

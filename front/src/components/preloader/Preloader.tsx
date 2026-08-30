@@ -1,22 +1,50 @@
 // src/components/preloader/Preloader.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppSelector } from 'src/store/hooks/redux';
 
 const Preloader: React.FC = () => {
-    const { isLoading, totalImages, loadedCount } = useAppSelector(state => state.loading);
-    const [isHidden, setIsHidden] = useState(false);
+    const { isLoading, totalImages, loadedCount, isHydrated } = useAppSelector(state => state.loading);
+    const [isHidden, setIsHidden] = useState(true); // 👈 По умолчанию скрыт
+    const [isClient, setIsClient] = useState(false);
+
+    // Отмечаем, что мы на клиенте
     useEffect(() => {
-        if (!isLoading && loadedCount >= totalImages) {
-            const timer = setTimeout(() => setIsHidden(true), 300);
-            return () => clearTimeout(timer);
-        }else{
-            setIsHidden(false)
+        setIsClient(true);
+    }, []);
+
+    // Управление видимостью прелоадера
+    useEffect(() => {
+        // На сервере или до гидратации - не показываем
+        if (!isClient || !isHydrated) {
+            setIsHidden(true);
+            return;
         }
-    }, [isLoading, totalImages, loadedCount]);
-    
-    if (isHidden) return null;
-    
-    
+
+        // Если загрузка завершена - скрываем
+        if (!isLoading && loadedCount >= totalImages) {
+            setIsHidden(true);
+            return;
+        }
+
+        // Если идет загрузка - показываем
+        if (isLoading && totalImages > 0) {
+            setIsHidden(false);
+            return;
+        }
+
+        // Если нет изображений - скрываем
+        if (totalImages === 0) {
+            setIsHidden(true);
+            return;
+        }
+
+    }, [isLoading, totalImages, loadedCount, isHydrated, isClient]);
+
+    // Не рендерим на сервере и если скрыт
+    if (!isClient || isHidden) return null;
+
+    const progress = totalImages > 0 ? Math.round((loadedCount / totalImages) * 100) : 0;
+
     return (
         <div style={{
             position: 'fixed',
@@ -31,6 +59,7 @@ const Preloader: React.FC = () => {
             justifyContent: 'center',
             background: '#ffffff',
             zIndex: 999999,
+            transition: 'opacity 0.3s ease',
         }}>
             <div style={{
                 display: 'flex',
@@ -58,19 +87,32 @@ const Preloader: React.FC = () => {
                 </div>
                 
                 <div style={{
-                    width: '200px',
-                    height: '2px',
-                    background: '#f0f0f0',
-                    borderRadius: '2px',
-                    overflow: 'hidden',
+                    width: '280px',
+                    maxWidth: '80vw',
                 }}>
                     <div style={{
-                        height: '100%',
-                        width: '0%',
-                        background: '#000',
-                        borderRadius: '2px',
-                        animation: 'loading 2s ease-in-out infinite',
-                    }} />
+                        width: '100%',
+                        height: '3px',
+                        background: '#f0f0f0',
+                        borderRadius: '3px',
+                        overflow: 'hidden',
+                    }}>
+                        <div style={{
+                            height: '100%',
+                            width: `${progress}%`,
+                            background: '#000',
+                            borderRadius: '3px',
+                            transition: 'width 0.3s ease',
+                        }} />
+                    </div>
+                </div>
+                
+                <div style={{
+                    fontSize: '13px',
+                    color: '#999',
+                    letterSpacing: '1px',
+                }}>
+                    {totalImages > 0 ? `${progress}%` : 'Загрузка...'}
                 </div>
             </div>
             
@@ -82,11 +124,6 @@ const Preloader: React.FC = () => {
                 @keyframes pulse {
                     0%, 100% { opacity: 1; }
                     50% { opacity: 0.5; }
-                }
-                @keyframes loading {
-                    0% { width: 0%; transform: translateX(0); }
-                    50% { width: 70%; transform: translateX(0); }
-                    100% { width: 100%; transform: translateX(100%); }
                 }
             `}</style>
         </div>

@@ -6,7 +6,8 @@ import { withMainDataServer } from 'lib/withMainData'; // 👈 Добавляе�
 
 export const getServerSideProps = withMainDataServer(async (context) => {
     const { query } = context;
-    
+    const startTime = performance.now();
+    console.log(`🔵 [SSR] getServerSideProps START for search`); 
     const key_word = query.key_word as string || '';
     const categorySlug = query.category as string || '';
     const typeSlug = query.type as string || '';
@@ -19,6 +20,7 @@ export const getServerSideProps = withMainDataServer(async (context) => {
     const orderType = parseInt(query.orderType as string) || 0;
 
     try {
+        const apiStart = performance.now();
         const initialData = await getProductsAndFiltersByCategoryAndTypeServer({
             searchName: key_word,
             page,
@@ -43,7 +45,21 @@ export const getServerSideProps = withMainDataServer(async (context) => {
                 rule_ids: []
             }
         });
+        const apiEnd = performance.now();
 
+        console.log(`⏱️ [SSR] API запрос занял: ${(apiEnd - apiStart).toFixed(0)}ms`);
+        console.log(`📊 [SSR] Получено товаров: ${initialData?.products?.length || 0}`);
+
+        const dataSize = JSON.stringify(initialData).length;
+        console.log(`📊 [SSR] Размер данных: ${(dataSize / 1024 / 1024).toFixed(2)} MB`);
+
+        // Если данные слишком большие - предупреждение
+        if (dataSize > 500 * 1024) { // > 500KB
+            console.warn(`⚠️ [SSR] Данные слишком большие! ${(dataSize / 1024).toFixed(0)} KB`);
+        }
+
+        const endTime = performance.now();
+        console.log(`⏱️ [SSR] getServerSideProps TOTAL: ${(endTime - startTime).toFixed(0)}ms`);
         return {
             props: {
                 initialData: initialData || null,

@@ -1,20 +1,45 @@
-// src/AppContent.tsx
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from 'react';
+
 import { useAppDispatch } from 'src/store/hooks/redux';
 import { useRouteChange } from 'src/store/hooks/redux';
-import { cartCountAction, setDiscountRules, setSizeTables } from 'src/store/reducers/menuSlice';
-import { show, sticky, types, categories, setFirmMap, setFirms, collections, setLineMap } from 'src/store/reducers/menuSlice';
+
+import {
+  cartCountAction,
+  setDiscountRules,
+  setSizeTables,
+  show,
+  sticky,
+  types,
+  categories,
+  setFirmMap,
+  setFirms,
+  collections,
+  setLineMap,
+} from 'src/store/reducers/menuSlice';
+
 import { setFooter } from 'src/store/reducers/dispetcherSlice';
 import { setWidthProps } from 'src/store/reducers/resizeSlice';
 import { setInstagramPhotos } from 'src/store/reducers/instagramSlice';
-import { setPageInfo, SliderData } from 'src/store/reducers/widgetSlice';
+import {
+  setPageInfo,
+  SliderData,
+} from 'src/store/reducers/widgetSlice';
+
 import { getCookie } from './global';
 import { setUniqueCustomer } from './providers/userProvider';
 import { getCartCount } from './providers/shopProvider';
-import { getMainInfo } from './providers/shopProvider';
 import { getInstagramPhotos } from './providers/instagramProvider';
-import { addImageToLoad, imageLoaded } from 'src/store/reducers/loadingSlice';
-// Components (общие для всех страниц)
+
+import {
+  addImageToLoad,
+  imageLoaded,
+} from 'src/store/reducers/loadingSlice';
+
 import ScrollToTop from './scrollToTop';
 import Preloader from './components/preloader/Preloader';
 import CookieInfo from './components/cookieInfo/CookieInfo';
@@ -22,34 +47,69 @@ import ComplexDropMenuWithRequest from './modules/menu/ComplexDropMenuWithReques
 import StickyDispetcherButton from 'src/modules/stickyDispetcherButton/StickyDispetcherButton';
 import Footer from './modules/footer/Footer';
 
-import { Firm, Line } from "src/types/modules";
+import { Firm, Line } from 'src/types/modules';
 
 interface AppContentProps {
   children: React.ReactNode;
-  initialMainInfo?: any; // SSR данные
-  initialInstagramPhotos?: any[]; // SSR данные для Instagram
+
+  // SSR
+  initialMainInfo?: any;
+
+  // Instagram теперь НЕ приходит с SSR
+  initialInstagramPhotos?: any[];
+
+  // SSR
   initialWidgetsInfo?: SliderData;
 }
 
-const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, initialInstagramPhotos, initialWidgetsInfo }) => {
+const AppContent: React.FC<AppContentProps> = ({
+  children,
+  initialMainInfo,
+  initialInstagramPhotos,
+  initialWidgetsInfo,
+}) => {
   const dispatch = useAppDispatch();
+  useEffect(() => {
+    // Проверяем размер переданных данных
+    if (initialMainInfo) {
+      const size = JSON.stringify(initialMainInfo).length;
+      console.log(`📊 [AppContent] initialMainInfo размер: ${(size / 1024 / 1024).toFixed(2)} MB`);
+      console.log(`   - categories: ${initialMainInfo.categories?.length || 0}`);
+      console.log(`   - firms: ${initialMainInfo.firms?.length || 0}`);
+    }
+
+    if (initialWidgetsInfo) {
+      const size = JSON.stringify(initialWidgetsInfo).length;
+      console.log(`📊 [AppContent] initialWidgetsInfo размер: ${(size / 1024 / 1024).toFixed(2)} MB`);
+      console.log(`   - количество: ${initialWidgetsInfo.length || 0}`);
+    }
+
+    if (initialInstagramPhotos) {
+      const size = JSON.stringify(initialInstagramPhotos).length;
+      console.log(`📊 [AppContent] initialInstagramPhotos размер: ${(size / 1024 / 1024).toFixed(2)} MB`);
+    }
+  }, [initialMainInfo, initialWidgetsInfo, initialInstagramPhotos]);
   const contRef = useRef<HTMLDivElement>(null);
-  const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const animationFrameRef = useRef<number>();
-  const isHydrated = useRef(false); // Флаг, чтобы не дублировать инициализацию
-  console.log('🔥 [APP_CONTENT CLIENT] ========================================');
-  console.log('🔥 [APP_CONTENT CLIENT] initialMainInfo:', initialMainInfo);
-  console.log('🔥 [APP_CONTENT CLIENT] initialMainInfo type:', typeof initialMainInfo);
-  console.log('🔥 [APP_CONTENT CLIENT] initialMainInfo keys:', Object.keys(initialMainInfo || {}));
-  console.log('🔥 [APP_CONTENT CLIENT] initialMainInfo is empty?', JSON.stringify(initialMainInfo) === '{}');
-  console.log('🔥 [APP_CONTENT CLIENT] initialInstagramPhotos:', initialInstagramPhotos);
-  console.log('🔥 [APP_CONTENT CLIENT] initialWidgetsInfo:', initialWidgetsInfo);
-  console.log('🔥 [APP_CONTENT CLIENT] ========================================');
+
+  const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const animationFrameRef = useRef<number | null>(null);
+
+  const initializedRef = useRef(false);
+
   useRouteChange();
 
+  // ============================================================
+  // COOKIE
+  // ============================================================
+
   const handleCookieAccept = useCallback(() => {
-    console.log('Cookie accepted');
+    // ничего тяжёлого здесь не делаем
   }, []);
+
+  // ============================================================
+  // RESIZE
+  // ============================================================
 
   const handleResize = useCallback(() => {
     if (resizeTimeoutRef.current) {
@@ -58,315 +118,475 @@ const AppContent: React.FC<AppContentProps> = ({ children, initialMainInfo, init
 
     resizeTimeoutRef.current = setTimeout(() => {
       const width = document.body.clientWidth;
-      requestAnimationFrame(() => {
-        if (width < 300) {
-          dispatch(setWidthProps(2));
-        } else if (width < 700) {
-          dispatch(setWidthProps(1));
-        } else {
-          dispatch(setWidthProps(0));
-        }
-      });
+
+      if (width < 300) {
+        dispatch(setWidthProps(2));
+      } else if (width < 700) {
+        dispatch(setWidthProps(1));
+      } else {
+        dispatch(setWidthProps(0));
+      }
     }, 100);
   }, [dispatch]);
 
-  // Выносим applyDataToRedux в useCallback для переиспользования
-  const applyDataToRedux = useCallback((data: any) => {
-    // 1. Категории и типы
-    console.log('[APPLY_DATA] ========================================');
-    console.log('[APPLY_DATA] Full data received:', JSON.stringify(data, null, 2));
-    console.log('[APPLY_DATA] Data type:', typeof data);
-    console.log('[APPLY_DATA] Data keys:', Object.keys(data || {}));
+  // ============================================================
+  // APPLY MAIN INFO
+  // ============================================================
 
-    console.log('[APPLY_DATA] categories:', data.categories);
-    console.log('[APPLY_DATA] categories type:', typeof data.categories);
-    console.log('[APPLY_DATA] categories isArray:', Array.isArray(data.categories));
-    console.log('[APPLY_DATA] categories keys if object:', data.categories ? Object.keys(data.categories) : 'null');
+  const applyDataToRedux = useCallback(
+    (data: any) => {
+      if (!data) return;
 
-    console.log('[APPLY_DATA] firms:', data.firms);
-    console.log('[APPLY_DATA] firms type:', typeof data.firms);
-    console.log('[APPLY_DATA] firms isArray:', Array.isArray(data.firms));
+      // --------------------------------------------------------
+      // CATEGORIES / TYPES
+      // --------------------------------------------------------
 
-    console.log('[APPLY_DATA] discounts:', data.discounts);
-    console.log('[APPLY_DATA] discounts type:', typeof data.discounts);
-    console.log('[APPLY_DATA] discounts isArray:', Array.isArray(data.discounts));
+      const categoriesVal: Record<string, any> = {};
+      const typesVal: Record<string, any> = {};
 
-    console.log('[APPLY_DATA] ========================================');
-    const categoriesVal: any = {};
-    const typesVal: any = {};
-    if (data?.categories) {
-      data?.categories.forEach((d: any) => {
-        if (categoriesVal[d.category_key]) {
-          categoriesVal[d.category_key].types[d.type_key] = d.type_id;
-          typesVal[d.type_id] = {
-            name: d.type_name,
-            categoryName: d.category_name,
-            category_key: d.category_key,
-            type_key: d.type_key,
-            category_id: d.category_id,
-          };
-        } else {
-          typesVal[d.type_id] = {
-            name: d.type_name,
-            categoryName: d.category_name,
-            category_key: d.category_key,
-            type_key: d.type_key,
-            category_id: d.category_id,
-          };
-          categoriesVal[d.category_key] = {
-            id: d.category_id,
-            image_path: d.image_path,
-            category_name: d.category_name,
+      const categoryRows = Array.isArray(data.categories)
+        ? data.categories
+        : [];
+
+      categoryRows.forEach((row: any) => {
+        if (!row?.category_key) return;
+
+        if (!categoriesVal[row.category_key]) {
+          categoriesVal[row.category_key] = {
+            id: row.category_id,
+            image_path: row.image_path,
+            category_name: row.category_name,
             types: {},
           };
         }
+
+        if (row.type_id) {
+          categoriesVal[row.category_key].types[row.type_key] =
+            row.type_id;
+
+          typesVal[row.type_id] = {
+            name: row.type_name,
+            categoryName: row.category_name,
+            category_key: row.category_key,
+            type_key: row.type_key,
+            category_id: row.category_id,
+          };
+        }
       });
-    }
 
+      dispatch(types(typesVal));
+      dispatch(categories(categoriesVal));
 
-    // Загрузка изображений (только на клиенте)
-    if (typeof window !== 'undefined') {
-      let imageUrls = []
-      if (data?.categories) { imageUrls = data?.categories.map((cat: any) => "/" + cat.image_path) };
-      dispatch(addImageToLoad(imageUrls.length));
-      imageUrls.forEach((url: string) => {
-        const img = new Image();
-        img.onload = () => {
-          dispatch(imageLoaded());
-        };
-        img.onerror = () => {
-          dispatch(imageLoaded());
-        };
-        img.src = url;
-      });
-    }
+      // --------------------------------------------------------
+      // FIRMS / COLLECTIONS
+      // --------------------------------------------------------
 
-    dispatch(types(typesVal));
-    dispatch(categories(categoriesVal));
+      const fieldData: Record<
+        string,
+        Record<string, string>
+      > = {};
 
-    // 2. Фирмы и коллекции
-    const fieldData: Record<string, Record<string, string>> = {};
-    const firmMap: Record<string, Firm> = {};
-    const lineMap: Record<string, Line> = {};
-    if (data.firms) {
-      data.firms.forEach((row: any) => {
+      const firmMap: Record<string, Firm> = {};
+      const lineMap: Record<string, Line> = {};
+
+      const firms = Array.isArray(data.firms)
+        ? data.firms
+        : [];
+
+      firms.forEach((row: any) => {
+        if (!row?.brand_slug) return;
+
         firmMap[row.brand_slug] = {
           id: row.brand_id,
           name: row.firm,
           slug: row.brand_slug,
         };
 
-
-        if (!fieldData[row.firm]) fieldData[row.firm] = {};
-        if (row.collection_name) {
-          fieldData[row.firm][row.line_id] = row.collection_name;
+        if (!fieldData[row.firm]) {
+          fieldData[row.firm] = {};
         }
 
         if (row.collection_name && row.line_id) {
-          if (!lineMap[row.collection_slug]) {
-            lineMap[row.collection_slug] = {
-              id: row.line_id,
-              name: row.collection_name,
-              slug: row.collection_slug,
-              brand_id: row.brand_id,
-            };
-          }
+          fieldData[row.firm][row.line_id] =
+            row.collection_name;
+        }
+
+        if (
+          row.collection_name &&
+          row.line_id &&
+          row.collection_slug &&
+          !lineMap[row.collection_slug]
+        ) {
+          lineMap[row.collection_slug] = {
+            id: row.line_id,
+            name: row.collection_name,
+            slug: row.collection_slug,
+            brand_id: row.brand_id,
+          };
         }
       });
-    }
-    dispatch(setFirms(Object.keys(fieldData)));
-    dispatch(setFirmMap(firmMap));
-    dispatch(collections(fieldData));
-    dispatch(setLineMap(lineMap));
 
-    // 3. Скидки
-    const activeDiscounts = (data.discounts || [])
-      .filter((rule: any) => rule.is_active)
-      .map((rule: any) => ({
-        id: rule.id,
-        name: rule.name,
-        discount_type: rule.discount_type,
-        discount_value: rule.discount_value,
-      }));
-    dispatch(setDiscountRules(activeDiscounts));
+      dispatch(setFirms(Object.keys(fieldData)));
+      dispatch(setFirmMap(firmMap));
+      dispatch(collections(fieldData));
+      dispatch(setLineMap(lineMap));
 
-    if (data.sizeTables) {
-      dispatch(setSizeTables(data.sizeTables));
-    }
-  }, [dispatch]);
+      // --------------------------------------------------------
+      // DISCOUNTS
+      // --------------------------------------------------------
 
-  // Загрузка Instagram фото на клиенте (fallback)
+      const discounts = Array.isArray(data.discounts)
+        ? data.discounts
+        : [];
+
+      const activeDiscounts = discounts
+        .filter((rule: any) => rule?.is_active)
+        .map((rule: any) => ({
+          id: rule.id,
+          name: rule.name,
+          discount_type: rule.discount_type,
+          discount_value: rule.discount_value,
+        }));
+
+      dispatch(setDiscountRules(activeDiscounts));
+
+      // --------------------------------------------------------
+      // SIZE TABLES
+      // --------------------------------------------------------
+
+      if (data.sizeTables) {
+        dispatch(setSizeTables(data.sizeTables));
+      }
+    },
+    [dispatch]
+  );
+
+  // ============================================================
+  // INSTAGRAM
+  // ============================================================
+
   const loadInstagramPhotos = useCallback(async () => {
     try {
-      
+      const cached = localStorage.getItem(
+        'instagramPhotosCache'
+      );
+
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+
+          const age = Date.now() - parsed.timestamp;
+
+          // 10 минут
+          if (
+            age < 10 * 60 * 1000 &&
+            Array.isArray(parsed.data)
+          ) {
+            dispatch(setInstagramPhotos(parsed.data));
+
+            // Не ждём API
+            // Обновление можно сделать в фоне
+            return;
+          }
+        } catch {
+          localStorage.removeItem('instagramPhotosCache');
+        }
+      }
+
       const photos = await getInstagramPhotos();
-      dispatch(setInstagramPhotos(photos));
-      localStorage.setItem('instagramPhotosCache', JSON.stringify({
-        data: photos,
-        timestamp: Date.now(),
-      }));
+
+      if (Array.isArray(photos)) {
+        dispatch(setInstagramPhotos(photos));
+
+        localStorage.setItem(
+          'instagramPhotosCache',
+          JSON.stringify({
+            data: photos,
+            timestamp: Date.now(),
+          })
+        );
+      }
     } catch (error) {
-      console.error('Failed to load instagram photos', error);
-      // Если ошибка, просто оставляем пустой массив
-      dispatch(setInstagramPhotos([]));
+      console.error(
+        '[APP_CONTENT] Instagram failed:',
+        error
+      );
     }
   }, [dispatch]);
 
-  // Загрузка основных данных на клиенте (fallback)
-  const loadMainInfo = useCallback(async () => {
-    try {
-      const data = await getMainInfo();
-      applyDataToRedux(data);
-      localStorage.setItem('mainInfoCache', JSON.stringify({
-        data,
-        timestamp: Date.now(),
-      }));
-    } catch (error) {
-      console.error('Failed to load main info', error);
-    }
-  }, [applyDataToRedux]);
-
-  // Инициализация Redux из SSR данных или загрузка на клиенте
+  // ============================================================
+  // INITIALIZATION
+  // ============================================================
+  const hasData = useMemo(() => {
+    return (
+      initialMainInfo?.categories?.length > 0 ||
+      initialMainInfo?.firms?.length > 0
+    );
+  }, [initialMainInfo]);
   useEffect(() => {
-    // if (isHydrated.current) return; // Уже инициализировали
+    if (initializedRef.current) {
+      return;
+    }
+    if (!hasData) {
+      console.log('⏳ [AppContent] Данных нет, пропускаем инициализацию');
+      return;
+    }
+    initializedRef.current = true;
 
-    // 1. Инициализируем основные данные
+    // ----------------------------------------------------------
+    // MAIN INFO
+    // ----------------------------------------------------------
+
     if (initialMainInfo) {
-      console.log('🔥 Redux initialized from SSR data');
       applyDataToRedux(initialMainInfo);
-    } else {
-      // Если нет SSR данных - загружаем на клиенте
-    //  loadMainInfo();
     }
+
+    // ----------------------------------------------------------
+    // WIDGETS
+    // ----------------------------------------------------------
+
     if (initialWidgetsInfo) {
-      console.log('🔥 Redux initialized from SSR data');
       dispatch(setPageInfo(initialWidgetsInfo));
-    } else {
-      // Если нет SSR данных - загружаем на клиенте
-     // loadMainInfo();
     }
 
-    // 2. Инициализируем Instagram фото
-    if (initialInstagramPhotos && initialInstagramPhotos.length > 0) {
-      console.log('📸 Instagram photos initialized from SSR data:', initialInstagramPhotos.length);
-      dispatch(setInstagramPhotos(initialInstagramPhotos));
+    // ----------------------------------------------------------
+    // INSTAGRAM
+    //
+    // Не блокирует страницу.
+    // ----------------------------------------------------------
+
+    if (
+      initialInstagramPhotos &&
+      initialInstagramPhotos.length > 0
+    ) {
+      dispatch(
+        setInstagramPhotos(initialInstagramPhotos)
+      );
     } else {
-      // Если нет SSR данных - загружаем на клиенте
-      loadInstagramPhotos();
+      // запускаем отдельно
+      void loadInstagramPhotos();
     }
+  }, [
+    initialMainInfo,
+    initialWidgetsInfo,
+    initialInstagramPhotos,
+    applyDataToRedux,
+    loadInstagramPhotos,
+    dispatch,
+  ]);
 
-    isHydrated.current = true;
-  }, [initialMainInfo, initialWidgetsInfo, initialInstagramPhotos, applyDataToRedux, loadMainInfo, loadInstagramPhotos, dispatch]);
+  // ============================================================
+  // INITIAL CLIENT SETUP
+  // ============================================================
 
-  // Остальные эффекты без изменений
   useEffect(() => {
     handleResize();
-    window.addEventListener("resize", handleResize);
 
-    if (!getCookie("unique")) {
+    window.addEventListener(
+      'resize',
+      handleResize
+    );
+
+    // ----------------------------------------------------------
+    // UNIQUE CUSTOMER
+    // ----------------------------------------------------------
+
+    if (!getCookie('unique')) {
       setUniqueCustomer(() => { });
     }
 
-    const cartCookie = getCookie("cart");
+    // ----------------------------------------------------------
+    // CART
+    // ----------------------------------------------------------
+
+    const cartCookie = getCookie('cart');
+
     if (cartCookie) {
-      getCartCount((data: any) => dispatch(cartCountAction(data)));
+      getCartCount((data: any) => {
+        dispatch(cartCountAction(data));
+      });
     }
 
     return () => {
-      window.removeEventListener("resize", handleResize);
-      clearTimeout(resizeTimeoutRef.current);
+      window.removeEventListener(
+        'resize',
+        handleResize
+      );
+
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
+
       if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+        cancelAnimationFrame(
+          animationFrameRef.current
+        );
       }
     };
   }, [dispatch, handleResize]);
 
+  // ============================================================
+  // CONTENT HEIGHT
+  // ============================================================
+
   useEffect(() => {
     const element = contRef.current;
+
     if (!element) return;
 
-    let animationFrameId: number;
-    const observer = new ResizeObserver((entries) => {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
+    let frameId: number | null = null;
+
+    const observer = new ResizeObserver(() => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
       }
 
-      animationFrameId = requestAnimationFrame(() => {
-        for (const entry of entries) {
-          if (entry.target === element) {
-            const { offsetHeight } = element;
-            const { innerHeight, scrollY } = window;
+      frameId = requestAnimationFrame(() => {
+        const offsetHeight = element.offsetHeight;
 
-            if (innerHeight >= offsetHeight || scrollY < 150) {
-              dispatch(show(true));
-            }
-          }
+        const {
+          innerHeight,
+          scrollY,
+        } = window;
+
+        if (
+          innerHeight >= offsetHeight ||
+          scrollY < 150
+        ) {
+          dispatch(show(true));
         }
       });
     });
 
     observer.observe(element);
+
     return () => {
       observer.disconnect();
-      cancelAnimationFrame(animationFrameId);
+
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
     };
   }, [dispatch]);
 
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    if (!contRef.current) return;
+  // ============================================================
+  // WHEEL
+  // ============================================================
 
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
+  const handleWheel = useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      const element = contRef.current;
 
-    animationFrameRef.current = requestAnimationFrame(() => {
-      const { scrollHeight, clientHeight } = contRef.current!;
-      const { innerHeight, scrollY } = window;
+      if (!element) return;
 
-      if (e.deltaY > 0) {
-        if (Math.ceil(scrollY + innerHeight + 3) >= scrollHeight) return;
-
-        if (scrollY + e.deltaY < 150) {
-          dispatch(sticky(false));
-        } else if (scrollHeight - innerHeight > 150) {
-          dispatch(show(false));
-        }
-      } else {
-        if (scrollY === 0) {
-          dispatch(show(true));
-          return;
-        }
-        dispatch(show(true));
-        if (scrollY + e.deltaY >= 150) {
-          dispatch(sticky(true));
-        }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(
+          animationFrameRef.current
+        );
       }
 
-      if (Math.ceil(scrollY + innerHeight + e.deltaY) >= scrollHeight - 100) {
-        dispatch(setFooter(true));
-      } else if (Math.ceil(scrollY + innerHeight) <= scrollHeight - 100) {
-        dispatch(setFooter(false));
-      }
-    });
-  }, [dispatch]);
+      const deltaY = e.deltaY;
+
+      animationFrameRef.current =
+        requestAnimationFrame(() => {
+          const {
+            scrollHeight,
+            clientHeight,
+          } = element;
+
+          const {
+            scrollY,
+            innerHeight,
+          } = window;
+
+          if (deltaY > 0) {
+            if (
+              Math.ceil(
+                scrollY +
+                innerHeight +
+                3
+              ) >= scrollHeight
+            ) {
+              return;
+            }
+
+            if (scrollY + deltaY < 150) {
+              dispatch(sticky(false));
+            } else if (
+              scrollHeight -
+              innerHeight >
+              150
+            ) {
+              dispatch(show(false));
+            }
+          } else {
+            if (scrollY === 0) {
+              dispatch(show(true));
+              return;
+            }
+
+            dispatch(show(true));
+
+            if (scrollY + deltaY >= 150) {
+              dispatch(sticky(true));
+            }
+          }
+
+          if (
+            Math.ceil(
+              scrollY +
+              innerHeight +
+              deltaY
+            ) >=
+            scrollHeight - 100
+          ) {
+            dispatch(setFooter(true));
+          } else if (
+            Math.ceil(
+              scrollY + innerHeight
+            ) <=
+            scrollHeight - 100
+          ) {
+            dispatch(setFooter(false));
+          }
+        });
+    },
+    [dispatch]
+  );
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
     <>
       <ScrollToTop />
+
       <Preloader />
+
       <CookieInfo
         showAfter={3000}
         onAccept={handleCookieAccept}
         policyLink="/cookie-policy"
       />
+
       <div
-        style={{ display: "flex", flexDirection: "column" }}
         ref={contRef}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+        }}
         onWheel={handleWheel}
       >
         <ComplexDropMenuWithRequest />
-        <StickyDispetcherButton top="10%" left="10%" />
+
+        <StickyDispetcherButton
+          top="10%"
+          left="10%"
+        />
+
         {children}
+
         <Footer />
       </div>
     </>
