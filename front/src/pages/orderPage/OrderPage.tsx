@@ -8,7 +8,7 @@ import BuyMerchField from 'src/modules/buyMerchField/BuyMerchField';
 import MapComponent from 'src/modules/map/Map';
 import { getCookie } from 'src/global';
 import s from "./style.module.css";
-import finishLoading from 'src/store/reducers/loadingSlice';
+import { finishLoading } from 'src/store/reducers/loadingSlice';
 import { useAppDispatch } from 'src/store/hooks/redux';
 
 interface OrderData {
