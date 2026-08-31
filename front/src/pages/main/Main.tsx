@@ -51,12 +51,9 @@ const Main: React.FC<MainProps> = memo(({ initialData }) => {
 
  
 
-  const onFirmClicked = useCallback((firmName) => {
-    const firm = Object.values(firmMap).find(f => f.name === firmName);
-    if (firm) {
-      navigate(`/search?brand=${firm.slug}`);
-    }
-  }, [firmMap]);
+  const onFirmClicked = useCallback((firmSlug) => {
+   navigate(`/search?brand=${firmSlug}`);
+  }, [navigate]);
 
   const createBanners = useCallback(() => {
     return mainData.banners.map((btnVal, i) => (

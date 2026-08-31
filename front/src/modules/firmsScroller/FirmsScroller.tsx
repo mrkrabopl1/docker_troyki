@@ -10,23 +10,21 @@ interface IFirmsScrollerProps {
 }
 const FirmsScroller: React.FC<IFirmsScrollerProps> = ({onChange}) => {
     const router = useRouter();
-    const { firms } = useAppSelector(state => state.menu);
+    const { firmMap } = useAppSelector(state => state.menu);
     
     const firmsLines = useMemo(() => {
-        if (!Array.isArray(firms) || firms.length === 0) {
-            return [];
-        }
+       
 
-        return firms.map(value => {
+        return Object.values(firmMap).map(value => {
             return <img 
-                onClick={()=>onChange(value)} 
+                onClick={()=>onChange(value.slug)} 
                 style={{ "height": "100%", cursor: "pointer" }} 
                 src={`/images/brandLogos/${value}/image.png`} 
                 alt="" 
-                key={value} 
+                key={value.slug} 
             />
         });
-    }, [firms, router]);
+    }, [firmMap, router]);
 
     return (
         <div className={s.wrap}>

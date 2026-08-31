@@ -11,7 +11,7 @@ import { getMainData } from './mainDataLoader';
 
 type MainData = {
   pageInfo: any[];
-  mainInfo: any;
+  menuInfo: any;
   instagramPosts?: any[];
 };
 
@@ -58,7 +58,7 @@ export function withMainData<T extends object>(
 
     const initialData: MainData = {
       pageInfo: mainData?.pageInfo ?? [],
-      mainInfo: mainData?.menuInfo ?? {},
+      menuInfo: mainData?.menuInfo ?? {},
     };
 
     return {
@@ -106,7 +106,7 @@ export function withMainDataServer<T extends object>(
 
     const initialData: MainData = {
       pageInfo: mainData?.pageInfo ?? [],
-      mainInfo: mainData?.menuInfo ?? {},
+      menuInfo: mainData?.menuInfo ?? {},
     };
 
     return {
