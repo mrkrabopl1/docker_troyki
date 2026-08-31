@@ -19,7 +19,7 @@ const FirmsScroller: React.FC<IFirmsScrollerProps> = ({onChange}) => {
             return <img 
                 onClick={()=>onChange(value.slug)} 
                 style={{ "height": "100%", cursor: "pointer" }} 
-                src={`/images/brandLogos/${value}/image.png`} 
+                src={`/images/brandLogos/${value.slug}/image.png`} 
                 alt="" 
                 key={value.slug} 
             />
