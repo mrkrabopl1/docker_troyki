@@ -34,8 +34,8 @@ const nextConfig = {
       new webpack.DefinePlugin({
         'API_URL': JSON.stringify(
           isServer
-            ? (process.env.API_URL || 'http://127.0.0.1:8100/api')
-            : 'http://127.0.0.1:8100/api'
+            ? (process.env.API_URL || 'http://goapp1:8100/api')
+            : '/api'
         ),
       })
     );
