@@ -401,6 +401,7 @@ func (s *ImageService) SaveBannerImage(file *multipart.FileHeader) (string, erro
 	if err != nil {
 		return "", err
 	}
+	fmt.Println(fullPath, "sssssssssssss")
 
 	if err := s.SaveWebP(img, fullPath); err != nil {
 		return "", err
