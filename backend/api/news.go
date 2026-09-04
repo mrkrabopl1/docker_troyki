@@ -46,12 +46,16 @@ func (s *Server) handleAdminGetNewsBlock(c *gin.Context) {
 		return
 	}
 
+	block.CoverImageUrl = pgtype.Text{String: s.imageService.ImagePathBuilder.GetImageURLFromPath(block.CoverImageUrl.String), Valid: true}
+
 	items, err := s.store.GetNewsItemsByBlock(c.Request.Context(), int32(id))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get block items"})
 		return
 	}
-
+	for i := range items {
+		items[i].ImageUrl = pgtype.Text{String: s.imageService.ImagePathBuilder.GetImageURLFromPath(items[i].ImageUrl.String), Valid: true}
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"block": block,
 		"items": items,
@@ -414,6 +418,10 @@ func (s *Server) handleAdminGetNewsItems(c *gin.Context) {
 	if items == nil {
 		items = []db.NewsItem{}
 	}
+	for i := range items {
+		items[i].ImageUrl = pgtype.Text{String: s.imageService.ImagePathBuilder.GetImageURLFromPath(items[i].ImageUrl.String), Valid: true}
+	}
+
 	c.JSON(http.StatusOK, items)
 }
 
@@ -777,6 +785,9 @@ func (s *Server) handleGetActiveNewsBlocks(c *gin.Context) {
 		Limitval:  int32(limit),
 		Offsetval: int32(offset),
 	})
+	for i := range rows {
+		rows[i].CoverImageUrl = pgtype.Text{String: s.imageService.ImagePathBuilder.GetImageURLFromPath(rows[i].CoverImageUrl.String), Valid: true}
+	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get news"})
 		return
