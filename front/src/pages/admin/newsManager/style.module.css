@@ -1,0 +1,409 @@
+/* src/pages/admin/News/NewsBlocksManager.module.css */
+
+/* ============================================
+   MAIN CONTAINER
+   ============================================ */
+
+.container {
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.header h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #1a1a2e;
+}
+
+/* ============================================
+   LOADER & EMPTY STATE
+   ============================================ */
+
+.loader {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.emptyState {
+    text-align: center;
+    padding: 60px;
+    color: #999;
+    background: #f5f5f5;
+    border-radius: 8px;
+}
+
+/* ============================================
+   BLOCKS GRID
+   ============================================ */
+
+.blocksGrid {
+    display: grid;
+    gap: 16px;
+}
+
+/* ============================================
+   BLOCK CARD
+   ============================================ */
+
+.blockCard {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s;
+}
+
+.blockCard:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.blockCard.inactive {
+    opacity: 0.7;
+    background: #fafafa;
+}
+
+/* ============================================
+   BLOCK INFO
+   ============================================ */
+
+.blockInfo {
+    flex: 1;
+}
+
+.blockHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.blockTitle {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0;
+}
+
+/* ============================================
+   BADGES
+   ============================================ */
+
+.activeBadge {
+    background: #4caf50;
+    color: white;
+    padding: 2px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.inactiveBadge {
+    background: #999;
+    color: white;
+    padding: 2px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+/* ============================================
+   COVER PREVIEW
+   ============================================ */
+
+.coverPreview {
+    margin: 8px 0;
+}
+
+.coverPreview img {
+    max-height: 60px;
+    border-radius: 4px;
+}
+
+/* ============================================
+   BLOCK META
+   ============================================ */
+
+.blockMeta {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    color: #666;
+}
+
+/* ============================================
+   BLOCK ACTIONS
+   ============================================ */
+
+.blockActions {
+    display: flex;
+    gap: 8px;
+}
+
+.blockActions button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.toggleBtn {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.toggleBtn:hover {
+    background: #bbdefb;
+}
+
+.editBtn {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.editBtn:hover {
+    background: #ffe0b2;
+}
+
+.contentBtn {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.contentBtn:hover {
+    background: #c8e6c9;
+}
+
+.deleteBtn {
+    background: #fbe9e7;
+    color: #d32f2f;
+}
+
+.deleteBtn:hover {
+    background: #ffcdd2;
+}
+
+/* ============================================
+   MODAL
+   ============================================ */
+
+.modalContent {
+    padding: 24px;
+    min-width: 500px;
+    /* max-width: 600px; */
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modalHeader h3 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.closeBtn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #999;
+}
+
+.closeBtn:hover {
+    color: #333;
+}
+
+/* ============================================
+   FORM
+   ============================================ */
+
+.formGroup {
+    margin-bottom: 16px;
+}
+
+.formGroup label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.required {
+    color: #d32f2f;
+}
+
+.input,
+.select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.input:focus,
+.select:focus {
+    outline: none;
+    border-color: #1976d2;
+}
+
+.checkboxLabel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.checkboxLabel input {
+    width: 18px;
+    height: 18px;
+}
+
+/* ============================================
+   MODAL ACTIONS
+   ============================================ */
+
+.modalActions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+.fileUpload {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.fileInput {
+    display: none;
+}
+
+.fileLabel {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #f0f0f0;
+    border: 1px dashed #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+
+.fileLabel:hover {
+    background: #e8e8e8;
+    border-color: #1976d2;
+}
+
+.removeImage {
+    background: #fee;
+    border: 1px solid #fcc;
+    color: #d32f2f;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.removeImage:hover {
+    background: #fdd;
+}
+
+.imagePreview {
+    margin-top: 8px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 8px;
+    background: #fafafa;
+    max-width: 200px;
+}
+
+.imagePreview img {
+    max-height: 100px;
+    max-width: 100%;
+    border-radius: 4px;
+    object-fit: contain;
+}
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .container {
+        padding: 16px;
+    }
+
+    .blockCard {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .blockActions {
+        flex-wrap: wrap;
+    }
+
+    .blockActions button {
+        flex: 1;
+        text-align: center;
+        font-size: 12px;
+        padding: 8px;
+    }
+
+    .modalContent {
+        min-width: auto;
+        max-width: 100%;
+        padding: 16px;
+    }
+
+    .modalHeader {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .blockHeader {
+        flex-wrap: wrap;
+    }
+
+    .blockMeta {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .blockActions button {
+        font-size: 11px;
+        padding: 6px 10px;
+    }
+
+    .modalActions {
+        flex-direction: column;
+    }
+
+    .modalActions button {
+        width: 100%;
+    }
+}

@@ -372,6 +372,10 @@ func (s *SQLStore) RecalculateAllDiscounts(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	err = s.RestoreDiscounts(ctx)
+	if err != nil {
+		return err
+	}
 	discounts, err := s.GetAllActiveDiscounts(ctx)
 	if err != nil {
 		return err

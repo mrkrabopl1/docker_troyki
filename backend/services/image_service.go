@@ -404,10 +404,54 @@ func (s *ImageService) SaveBannerImage(file *multipart.FileHeader) (string, erro
 	fmt.Println(fullPath, "sssssssssssss")
 
 	if err := s.SaveWebP(img, fullPath); err != nil {
+		fmt.Println(err)
 		return "", err
 	}
 
 	return filepath.Join(relativePath, filename), nil
+}
+
+func (s *ImageService) SaveNewsImage(file *multipart.FileHeader) (string, error) {
+	if err := s.validateFile(file); err != nil {
+		return "", err
+	}
+
+	filename := fmt.Sprintf("news_%d.webp", time.Now().UnixNano())
+	relativePath := "news"
+	fullPath := filepath.Join(s.BaseDir, relativePath, filename)
+
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+		return "", err
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return "", err
+	}
+	defer src.Close()
+
+	img, _, err := image.Decode(src)
+	if err != nil {
+		return "", err
+	}
+
+	if err := s.SaveWebP(img, fullPath); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(relativePath, filename), nil
+}
+
+// DeleteNewsImage - удаляет изображение новости
+func (s *ImageService) DeleteNewsImage(imagePath string) error {
+	if imagePath == "" {
+		return nil
+	}
+	fullPath := filepath.Join(s.BaseDir, imagePath)
+	if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }
 
 // ========== ВАЛИДАЦИЯ ==========

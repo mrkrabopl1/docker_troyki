@@ -9,24 +9,6 @@
   background-color: #fff;
 }
 
-.loupe {
-  width: 36px;
-  height: 36px;
-  cursor: pointer;
-}
-@media (max-width: 500px) {
-  .loupe {
-    width: 32px;
-    height: 32px;
-  }
-}
-
-@media (max-width: 400px) {
-  .loupe {
-    width: 28px;
-    height: 28px;
-  }
-}
 .menuWrapWithList {
   width: 100%;
   left: 0;
@@ -57,8 +39,6 @@
   top: 100%;
   border: 1px solid #e0e0e0;
   background-color: #ffffff;
-
-  /* padding:20px; */
   width: 200px;
   z-index: 201;
   border-radius: 12px;
@@ -67,14 +47,11 @@
 }
 
 @media (min-width: 600px) {
-
-
   .drop_list {
     width: 55%;
     top: 100%;
     border: solid 1px black;
   }
-
 }
 
 @media (max-width:430px) {
@@ -115,14 +92,11 @@
   }
 }
 
-
 @media (max-width: 600px) {
   .cartModalWrap {
     width: 100%
   }
 }
-
-
 
 .modalWrap {
   position: absolute;
@@ -137,18 +111,9 @@
   font-family: 'Open Sans', 'Helvetica Neue', 'Segoe UI', 'Calibri', 'Arial', sans-serif;
 }
 
-/* .burger {
-  background-color: black;
-  width: 100px;
-  height: 100px;
-} */
-
-/* Уберите 'screen and' */
 .is_hidden {
-
   transform: translateY(-200%);
 }
-
 
 .shopCounter {
   bottom: 5px;
@@ -170,7 +135,7 @@
   right: 0;
 }
 
-
+/* ========== НАВИГАЦИОННЫЕ ССЫЛКИ ========== */
 .linkHolder {
   position: relative;
   margin: auto 0;
@@ -178,6 +143,14 @@
   justify-content: space-between;
   width: 100%;
   padding: 0 10%;
+  transition: all 0.3s ease;
+}
+
+/* Скрываем ссылки при открытом поиске */
+.linkHolderHidden {
+  display: none !important;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .divider {
@@ -215,9 +188,28 @@
   transform: translateY(0);
 }
 
+.link.active {
+  color: #000000;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 2px;
+  background: #2a2a2a;
+  border-radius: 1px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
 @media (max-width: 750px) {
   .linkHolder {
-    display: none;
+    display: none !important;
   }
 }
 
@@ -226,31 +218,92 @@
     font-size: 16px;
     padding: 8px 8px;
   }
-
   .linkHolder {
     padding: 0 2%;
   }
 }
 
-.link.active {
-  color: #000000;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.9);
+/* ========== ДЕСКТОПНЫЙ ПОИСК (ПОЯВЛЯЕТСЯ ВМЕСТО ССЫЛОК) ========== */
+.desktopSearchContainer {
+  display: none;
+  width: 100%;
+  padding: 0 10%;
+  position: relative;
+  margin: auto 0;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
 
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60%;
-    height: 2px;
-    background: #2a2a2a;
-    border-radius: 1px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+.desktopSearchVisible {
+  display: block;
+  opacity: 1;
+  animation: fadeInSearch 0.3s ease forwards;
+}
+
+.desktopSearchInput {
+  width: 100%;
+  padding: 10px 20px;
+  border: 2px solid #e0e0e0;
+  border-radius: 25px;
+  font-size: 18px;
+  outline: none;
+  background: #f8f8f8;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.desktopSearchInput:focus {
+  border-color: #000000;
+  background: #ffffff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+@keyframes fadeInSearch {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
+@media (max-width: 750px) {
+  .desktopSearchContainer {
+    display: none !important;
+  }
+}
+
+/* ========== ЛУПА ========== */
+.loupe {
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  margin-right: 10px;
+}
+
+.loupe:hover {
+  transform: scale(1.1);
+}
+
+@media (max-width: 500px) {
+  .loupe {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 400px) {
+  .loupe {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* ========== ОСТАЛЬНЫЕ СТИЛИ ========== */
 .search {
   margin: auto;
 }
@@ -313,7 +366,6 @@
   }
 }
 
-
 .imgStyle {
   width: 100%;
   height: 100%;
@@ -340,14 +392,6 @@
   }
 }
 
-/* .menuStyle {
-  display: flex;
-  justify-content: space-between;
-  height: 100px;
-  position: relative;
-  transition: none;
-} */
-
 .menuStyle {
   display: flex;
   justify-content: space-between;
@@ -372,13 +416,10 @@
   .menuStyle {
     padding: 0 12px;
   }
-
   .rightMenuStyle {
     margin: auto 5px;
   }
 }
-
-
 
 .buyButton {
   position: relative;
@@ -393,15 +434,6 @@
   height: 100%;
 }
 
-.shopCounter {
-  position: absolute;
-  /* остальные стили для счетчика */
-}
-
-.spanShop {
-  /* стили для текста счетчика */
-}
-
 @media (max-width: 500px) {
   .buyButton {
     width: 32px;
@@ -414,4 +446,14 @@
     width: 28px;
     height: 28px;
   }
+}
+.navContainer {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  position: relative;
+  margin: auto 0;
+  justify-content: right;
+  gap: 0;
+  min-height: 40px;
 }

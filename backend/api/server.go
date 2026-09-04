@@ -132,6 +132,12 @@ func (s *Server) setupRouter() {
 		api.GET("/getUserData", s.handleGetUserData)
 		api.POST("/verify", s.handleVerifyUser)
 
+		api.GET("/news", s.handleGetActiveNewsBlocks)
+		api.POST("/news/:id/view", s.handleIncrementNewsView)
+		api.POST("/news/:id/like", s.handleToggleNewsLike)
+		api.GET("/news/:id", s.handleGetNewsBlockByID) // 🔥 ДОБАВИТЬ ЭТОТ МАРШРУТ
+		api.GET("/news/:id/related", s.handleGetRelatedNews)
+
 		api.GET("/promo-codes/:code", s.handleGetPromoCodeByCode)
 
 		// Изменение пароля авторизованного пользователя
@@ -240,10 +246,30 @@ func (s *Server) setupRouter() {
 			adminGroup.PUT("/collections/:id", s.handleAdminUpdateCollection)
 			adminGroup.DELETE("/collections/:id", s.handleAdminDeleteCollection)
 
+			adminGroup.GET("/news-blocks", s.handleAdminGetNewsBlocks)
+			adminGroup.GET("/news-blocks/:id", s.handleAdminGetNewsBlock)
+			adminGroup.POST("/news-blocks", s.handleAdminCreateNewsBlock)
+			adminGroup.PUT("/news-blocks/:id", s.handleAdminUpdateNewsBlock)
+			adminGroup.DELETE("/news-blocks/:id", s.handleAdminDeleteNewsBlock)
+			adminGroup.PATCH("/news-blocks/reorder", s.handleAdminReorderNewsBlocks)
+
+			// News Items
+			adminGroup.GET("/news-blocks/:id/items", s.handleAdminGetNewsItems)
+			adminGroup.POST("/news-blocks/:id/items", s.handleAdminCreateNewsItem)
+			adminGroup.PUT("/news-items/:id", s.handleAdminUpdateNewsItem)
+			adminGroup.DELETE("/news-items/:id", s.handleAdminDeleteNewsItem)
+			adminGroup.PATCH("/news-items/reorder", s.handleAdminReorderNewsItems)
+
 			adminGroup.POST("/instagram/upload", s.handleAdminUploadInstagramPhotos)     // загрузка нескольких фото
 			adminGroup.GET("/instagram", s.handleAdminGetInstagramPhotos)                // список всех фото
 			adminGroup.DELETE("/instagram/:id", s.handleAdminDeleteInstagramPhoto)       // удаление
 			adminGroup.PATCH("/instagram/:id/toggle", s.handleAdminToggleInstagramPhoto) // вкл/выкл
+
+			// debugGroup := adminGroup.Group("/debug")
+
+			// {
+			// 	debugGroup.POST("/update/discounts", s.handleUpdateDiscounts)
+			// }
 
 			// Discount rules
 			discountRules := adminGroup.Group("/discount-rules")

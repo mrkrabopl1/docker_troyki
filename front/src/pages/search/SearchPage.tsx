@@ -344,21 +344,23 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
     }
 
     const checkBoxPropsFirmData: CheckBoxType[] = []
-    Object.entries(resData.firmsCount).forEach(([firmName, count]) => {
-      const firm = Object.values(firmMap).find(f => f.name === firmName);
-      if (!firm) {
-        console.warn(`Firm "${firmName}" not found in firmMap`);
-        return;
-      }
-      firms.current.push(firm.id);
-      const active = filtersInfo.current.firms.includes(firm.id);
-      checkBoxPropsFirmData.push({
-        id: firm.slug,
-        enable: true,
-        activeData: active,
-        name: `${firmName}`
+    if (Object.entries(resData.firmsCount).length > 1) {
+      Object.entries(resData.firmsCount).forEach(([firmName, count]) => {
+        const firm = Object.values(firmMap).find(f => f.name === firmName);
+        if (!firm) {
+          console.warn(`Firm "${firmName}" not found in firmMap`);
+          return;
+        }
+        firms.current.push(firm.id);
+        const active = filtersInfo.current.firms.includes(firm.id);
+        checkBoxPropsFirmData.push({
+          id: firm.slug,
+          enable: true,
+          activeData: active,
+          name: `${firmName}`
+        });
       });
-    });
+    }
 
     const soloDataProps: CheckBoxType[] = [
       {
@@ -684,12 +686,12 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
     };
   }, [isSticky, rightBlockRef.current]);
 
-const resetButton = useMemo(() => {
+  const resetButton = useMemo(() => {
     const isDataEmpty = emptyData.current && emptyStart.current;
     const onClick = isDataEmpty ? () => navigate('/search') : resetFilters;
-    
+
     return <Button className={s.emptyBtn} text="Сбросить фильтры" onClick={onClick} />;
-}, [emptyData.current, emptyStart.current, resetFilters, navigate]);
+  }, [emptyData.current, emptyStart.current, resetFilters, navigate]);
 
   return (
     <div ref={pageWrap}>
@@ -786,7 +788,7 @@ const resetButton = useMemo(() => {
 
 
           )}
-          {widthProps||emptyStart.current ? null : <div
+          {widthProps || emptyStart.current ? null : <div
             ref={rightBlockRef}
             style={{
               width: "25%",

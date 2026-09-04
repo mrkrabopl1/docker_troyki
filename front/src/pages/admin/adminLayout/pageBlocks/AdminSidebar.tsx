@@ -70,6 +70,13 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, isMobile, onClose }
                     Блоки страниц
                 </NavLink>
 
+                <NavLink href="/admin/news">
+                    <span className={s.icon}>📰</span>
+                    Редактор новостей
+                </NavLink>
+
+              
+
                 {/* ===== ПРОМОКОДЫ ===== */}
                 <NavLink href="/admin/promocodes">
                     <span className={s.icon}>🎫</span>

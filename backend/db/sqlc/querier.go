@@ -49,6 +49,7 @@ type Querier interface {
 	ClearCollectionProducts(ctx context.Context, collectionID int32) error
 	ClearDiscounts(ctx context.Context) error
 	CountActiveBanners(ctx context.Context) (int64, error)
+	CountActiveNewsBlocks(ctx context.Context) (int64, error)
 	CountBrands(ctx context.Context, name string) (CountBrandsRow, error)
 	CountInstagramPosts(ctx context.Context) (int64, error)
 	CountLines(ctx context.Context, arg CountLinesParams) (CountLinesRow, error)
@@ -79,6 +80,8 @@ type Querier interface {
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (int32, error)
 	CreateDiscountRule(ctx context.Context, arg CreateDiscountRuleParams) (DiscountRule, error)
 	CreateInstagramPost(ctx context.Context, imageUrl string) (InstagramPost, error)
+	CreateNewsBlock(ctx context.Context, arg CreateNewsBlockParams) (NewsBlock, error)
+	CreateNewsItem(ctx context.Context, arg CreateNewsItemParams) (NewsItem, error)
 	// query/newsletter.sql
 	CreateNewsletterSubscriber(ctx context.Context, arg CreateNewsletterSubscriberParams) (NewsletterSubscriber, error)
 	CreateOrderEvent(ctx context.Context, arg CreateOrderEventParams) error
@@ -106,6 +109,9 @@ type Querier interface {
 	DeleteHardProduct(ctx context.Context, id int32) (DeleteHardProductRow, error)
 	DeleteInstagramPost(ctx context.Context, id int32) error
 	DeleteLine(ctx context.Context, id int32) error
+	DeleteNewsBlock(ctx context.Context, id int32) error
+	DeleteNewsItem(ctx context.Context, id int32) error
+	DeleteNewsItemsByBlock(ctx context.Context, newsBlockID int32) error
 	DeleteNewsletterSubscriber(ctx context.Context, email string) error
 	DeleteOldPasswordResetTokenByEmail(ctx context.Context, email string) error
 	DeleteOldPasswordResetTokens(ctx context.Context) error
@@ -120,6 +126,7 @@ type Querier interface {
 	GetActiveBrands(ctx context.Context) ([]GetActiveBrandsRow, error)
 	GetActiveCollections(ctx context.Context) ([]Collection, error)
 	GetActiveDiscountRules(ctx context.Context) ([]DiscountRule, error)
+	GetActiveNewsBlocks(ctx context.Context) ([]NewsBlock, error)
 	GetActivePageWidgets(ctx context.Context) ([]GetActivePageWidgetsRow, error)
 	GetActivePromoCodes(ctx context.Context) ([]GetActivePromoCodesRow, error)
 	GetAdminBanners(ctx context.Context) ([]GetAdminBannersRow, error)
@@ -225,6 +232,23 @@ type Querier interface {
 	GetMerchCountOfCollectionsOrFirms(ctx context.Context, arg GetMerchCountOfCollectionsOrFirmsParams) (int64, error)
 	GetMerchFirms(ctx context.Context) ([]GetMerchFirmsRow, error)
 	GetMerchProductsByFirmName(ctx context.Context, name string) ([]GetMerchProductsByFirmNameRow, error)
+	GetNewsBlockByID(ctx context.Context, id int32) (NewsBlock, error)
+	GetNewsBlockWithItems(ctx context.Context, id int32) (GetNewsBlockWithItemsRow, error)
+	// news_blocks.sql
+	// ============================================
+	// NEWS BLOCKS - BASIC CRUD
+	// ============================================
+	GetNewsBlocks(ctx context.Context) ([]NewsBlock, error)
+	GetNewsItemByID(ctx context.Context, id int32) (NewsItem, error)
+	// ============================================
+	// NEWS ITEMS
+	// ============================================
+	GetNewsItemsByBlock(ctx context.Context, newsBlockID int32) ([]NewsItem, error)
+	// ============================================
+	// NEWS BLOCKS - PUBLIC API (FILTERS, SEARCH, PAGINATION)
+	// ============================================
+	GetNewsList(ctx context.Context, arg GetNewsListParams) ([]GetNewsListRow, error)
+	GetNewsListCount(ctx context.Context, search string) (int64, error)
 	GetNewsletterPendingCount(ctx context.Context) (int64, error)
 	GetNewsletterSubscriberByEmail(ctx context.Context, email string) (NewsletterSubscriber, error)
 	GetNewsletterSubscriberByToken(ctx context.Context, verificationToken string) (NewsletterSubscriber, error)
@@ -292,6 +316,7 @@ type Querier interface {
 	GetPromoCodeUsageStats(ctx context.Context, id int32) (GetPromoCodeUsageStatsRow, error)
 	GetRecentActivity(ctx context.Context) ([]GetRecentActivityRow, error)
 	GetRecentOrders(ctx context.Context) ([]GetRecentOrdersRow, error)
+	GetRelatedNews(ctx context.Context, arg GetRelatedNewsParams) ([]NewsBlock, error)
 	GetRuleItems(ctx context.Context, ruleID int32) ([]GetRuleItemsRow, error)
 	GetRuleItemsByType(ctx context.Context, arg GetRuleItemsByTypeParams) ([]DiscountRuleItem, error)
 	GetSizeStatsByKey(ctx context.Context, sizeKey string) (GetSizeStatsByKeyRow, error)
@@ -307,6 +332,10 @@ type Querier interface {
 	GetUnregisterCustomersList(ctx context.Context, arg GetUnregisterCustomersListParams) ([]GetUnregisterCustomersListRow, error)
 	GetVerification(ctx context.Context, token string) (GetVerificationRow, error)
 	GetVerifiedNewsletterSubscribers(ctx context.Context) ([]string, error)
+	// ============================================
+	// NEWS BLOCKS - STATISTICS
+	// ============================================
+	IncrementNewsBlockViews(ctx context.Context, id int32) error
 	InsertManyOrderItems(ctx context.Context, arg InsertManyOrderItemsParams) error
 	InsertManyPreorderItems(ctx context.Context, arg InsertManyPreorderItemsParams) error
 	InsertOrder(ctx context.Context, arg InsertOrderParams) (int32, error)
@@ -324,9 +353,12 @@ type Querier interface {
 	RemoveRuleItem(ctx context.Context, arg RemoveRuleItemParams) error
 	// Переименовываем размер у всех товаров
 	RenameSize(ctx context.Context, arg RenameSizeParams) error
+	ReorderNewsBlock(ctx context.Context, arg ReorderNewsBlockParams) error
+	ReorderNewsItem(ctx context.Context, arg ReorderNewsItemParams) error
 	ReorderPageWidgets(ctx context.Context, arg ReorderPageWidgetsParams) error
 	RestoreBrand(ctx context.Context, id int32) error
 	RestoreBrandLine(ctx context.Context, id int32) error
+	RestoreDiscounts(ctx context.Context) error
 	RestoreProduct(ctx context.Context, id int32) error
 	SelectHistoryFromUniqueCustomer(ctx context.Context, id int32) ([]int32, error)
 	SelectMainCategories(ctx context.Context) (interface{}, error)
@@ -338,6 +370,7 @@ type Querier interface {
 	SoftDeleteProduct(ctx context.Context, id int32) error
 	ToggleDiscountRule(ctx context.Context, id int32) (DiscountRule, error)
 	ToggleInstagramPost(ctx context.Context, id int32) (InstagramPost, error)
+	ToggleNewsBlockLike(ctx context.Context, id int32) error
 	UnsubscribeNewsletter(ctx context.Context, email string) error
 	UpdateAdmin(ctx context.Context, arg UpdateAdminParams) error
 	UpdateAdminLastLogin(ctx context.Context, arg UpdateAdminLastLoginParams) error
@@ -353,6 +386,8 @@ type Querier interface {
 	UpdateCustomerPass(ctx context.Context, arg UpdateCustomerPassParams) error
 	UpdateDiscountRule(ctx context.Context, arg UpdateDiscountRuleParams) (DiscountRule, error)
 	UpdateLine(ctx context.Context, arg UpdateLineParams) error
+	UpdateNewsBlock(ctx context.Context, arg UpdateNewsBlockParams) (NewsBlock, error)
+	UpdateNewsItem(ctx context.Context, arg UpdateNewsItemParams) (NewsItem, error)
 	UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) error
 	UpdatePageWidget(ctx context.Context, arg UpdatePageWidgetParams) (PageWidget, error)
 	UpdatePreorderItems(ctx context.Context, arg UpdatePreorderItemsParams) error

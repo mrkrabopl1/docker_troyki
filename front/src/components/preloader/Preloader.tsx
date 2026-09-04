@@ -4,44 +4,45 @@ import { useAppSelector } from 'src/store/hooks/redux';
 
 const Preloader: React.FC = () => {
     const { isLoading, totalImages, loadedCount, isHydrated } = useAppSelector(state => state.loading);
-    const [isHidden, setIsHidden] = useState(true); // 👈 По умолчанию скрыт
+    const [isHidden, setIsHidden] = useState(false); // 👈 По умолчанию скрыт
     const [isClient, setIsClient] = useState(false);
 
     // Отмечаем, что мы на клиенте
-    useEffect(() => {
-        setIsClient(true);
-    }, []);
+    // useEffect(() => {
+    //     setIsClient(true);
+    // }, []);
 
-    // Управление видимостью прелоадера
+    // // Управление видимостью прелоадера
     useEffect(() => {
+     
         // На сервере или до гидратации - не показываем
-        if (!isClient || !isHydrated) {
+        if (!isHydrated) {
             setIsHidden(true);
             return;
         }
 
-        // Если загрузка завершена - скрываем
-        if (!isLoading && loadedCount >= totalImages) {
-            setIsHidden(true);
-            return;
-        }
+        // // Если загрузка завершена - скрываем
+        // if (!isLoading && loadedCount >= totalImages) {
+        //     setIsHidden(true);
+        //     return;
+        // }
 
-        // Если идет загрузка - показываем
-        if (isLoading && totalImages > 0) {
-            setIsHidden(false);
-            return;
-        }
+        // // Если идет загрузка - показываем
+        // if (isLoading) {
+        //     setIsHidden(false);
+        //     return;
+        // }
 
-        // Если нет изображений - скрываем
-        if (totalImages === 0) {
-            setIsHidden(true);
-            return;
-        }
+        // // Если нет изображений - скрываем
+        // if (totalImages === 0) {
+        //     setIsHidden(true);
+        //     return;
+        // }
 
     }, [isLoading, totalImages, loadedCount, isHydrated, isClient]);
 
     // Не рендерим на сервере и если скрыт
-    if (!isClient || isHidden) return null;
+    if (isHidden) return null;
 
     const progress = totalImages > 0 ? Math.round((loadedCount / totalImages) * 100) : 0;
 

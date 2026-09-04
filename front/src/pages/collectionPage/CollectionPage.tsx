@@ -158,7 +158,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
 
         // Размеры
         const checkBoxPropsData: CheckBoxType[] = []
-        if (resData.sizes) {
+        if (resData.sizes && Object.entries(resData.sizes).length>1) {
             Object.entries(resData.sizes).forEach(([size, count]) => {
                 const active = filtersInfo.current.sizes.includes(size)
                 checkBoxPropsData.push({
@@ -172,7 +172,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
 
         // Типы товара
         const checkBoxPropsTypeData: CheckBoxType[] = []
-        if (resData.product_types) {
+        if (resData.product_types && resData.product_types.length >1) {
             resData.product_types.forEach((typeId: number) => {
                 const typeDescr = typesValRef.current[typeId]
                 if (!typeDescr) return
@@ -192,7 +192,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
 
         // Фирмы (используем firmMapRef)
         const checkBoxPropsFirmData: CheckBoxType[] = []
-        if (resData.firms) {
+        if (resData.firms && Object.entries(resData.firms).length>1) {
             Object.entries(resData.firms).forEach(([firmName, count]) => {
                 const firm = Object.values(firmMapRef.current).find(f => f.name === firmName)
                 if (!firm) {
@@ -211,7 +211,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
 
         // Bodytypes
         const checkBoxPropsBodyData: CheckBoxType[] = []
-        if (resData.bodytypes) {
+        if (resData.bodytypes && Object.entries(resData.bodytypes).length>1) {
             Object.entries(resData.bodytypes).forEach(([body, count]) => {
                 const active = filtersInfo.current.bodytypes.includes(body)
                 checkBoxPropsBodyData.push({

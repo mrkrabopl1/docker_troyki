@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState } from 'react';
+import React, { useRef, useCallback, useState, useEffect } from 'react';
 import { searchNames } from "src/providers/searchProvider";
 import s from "./style.module.css";
 
@@ -10,27 +10,29 @@ type Props = {
     onBlur?: (...args: any) => void,
     className?: string,
     val?: string,
-    placeholder?: string
+    placeholder?: string,
+    isExpanded?: boolean
 }
 
 const StyledSearch: React.FC<Props> = ({
     val = "",
     className,
     onDataRecieve,
-    searchCallback, 
+    searchCallback,
     onChange,
     onBlur,
     onFocus,
-    placeholder = "Search..."
+    placeholder = "Search...",
+    isExpanded = false
 }) => {
     const throttlingTimerId = useRef<ReturnType<typeof setTimeout> | null>(null);
     const text = useRef<string>(val);
     const [isFocused, setIsFocused] = useState(false);
     const [inputValue, setInputValue] = useState(val);
-    
-    const containerClassName = className ? `${s.container} ${className}` : s.container;
-    const searchBoxClassName = s.searchBox;
-    
+
+    const containerClassName = `${s.container} ${className || ''} ${isExpanded ? s.expanded : ''}`;
+    const searchBoxClassName = `${s.searchBox} ${isExpanded ? s.expanded : ''}`;
+
     const handleEnter = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             searchCallback(text.current);
@@ -42,11 +44,11 @@ const StyledSearch: React.FC<Props> = ({
         setInputValue(newValue);
         onChange?.(newValue);
         text.current = newValue;
-        
+
         if (throttlingTimerId.current) {
             clearTimeout(throttlingTimerId.current);
         }
-        
+
         throttlingTimerId.current = setTimeout(() => {
             searchNames(newValue, 5, onDataRecieve);
         }, 1000);
@@ -59,11 +61,12 @@ const StyledSearch: React.FC<Props> = ({
 
     const handleBlur = useCallback(() => {
         setIsFocused(false);
-        onBlur?.();
+        setTimeout(() => onBlur?.(), 400)
+        
     }, [onBlur]);
 
     return (
-        <div className={containerClassName}>
+        <div style={{ flex: isFocused ? 1 : 0, paddingLeft: isFocused ? "45px" : 0 }} className={containerClassName}>
             <div className={`${searchBoxClassName} ${isFocused ? s.focused : ''}`}>
                 <input
                     type="text"

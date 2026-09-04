@@ -14,6 +14,8 @@ type SliderProps = {
   currentStep?: number;
   onChange?: (steps: number) => void;
   transitionDuration?: number;
+  isDragging?: boolean;
+  dragOffset?: number;
 };
 
 const ContentSlider: React.FC<SliderProps> = ({ 
@@ -21,126 +23,94 @@ const ContentSlider: React.FC<SliderProps> = ({
   className,
   currentStep = 1,
   onChange,
-  transitionDuration = 300
+  transitionDuration = 300,
+  isDragging = false,
+  dragOffset = 0
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({
-    stepSize: 0,
-    totalSteps: 1,
-    containerWidth: 0,
-    trackWidth: 0
-  });
-  
-  const [internalPosition, setInternalPosition] = useState(0);
-  const resizeObserverRef = useRef<ResizeObserver | null>(null);
-  
-  // Храним content в ref для ResizeObserver
-  const contentRef = useRef(content);
-  
-  // Синхронизируем ref при изменении content
-  useEffect(() => {
-    contentRef.current = content;
-    console.log('Content ref updated:', content.length);
-  }, [content]);
+  const [stepSize, setStepSize] = useState(0);
+  const [position, setPosition] = useState(0);
 
-  // Функция для ResizeObserver (использует ref)
-  const handleResize = () => {
-    if (!trackRef.current || !containerRef.current) return;
+  // Вычисляем размеры
+  useEffect(() => {
+    if (!containerRef.current || !trackRef.current || content.length === 0) return;
 
     const containerWidth = containerRef.current.clientWidth;
     const trackWidth = trackRef.current.scrollWidth;
-    const currentContent = contentRef.current; // ← Берем из ref!
-
-    console.log('handleResize called, content length:', currentContent.length);
     
-    if (currentContent.length === 0) {
-      console.log('Skipping: no content');
-      return;
-    }
-
-    const itemWidth = Math.round(trackWidth / currentContent.length);
+    const itemWidth = trackWidth / content.length;
     const visibleItems = Math.floor(containerWidth / itemWidth) || 1;
-    const hiddenItems = Math.max(0, currentContent.length - visibleItems);
+    const hiddenItems = Math.max(0, content.length - visibleItems);
     const newTotalSteps = Math.max(1, hiddenItems + 1);
     const newStepSize = hiddenItems > 0 
       ? (trackWidth - containerWidth) / hiddenItems 
       : 0;
     
-    setDimensions(prev => {
-      if (prev.containerWidth === containerWidth && prev.trackWidth === trackWidth) {
-        return prev;
-      }
-      return {
-        stepSize: newStepSize,
-        totalSteps: newTotalSteps,
-        containerWidth,
-        trackWidth
-      };
-    });
-
+    setStepSize(newStepSize);
     onChange?.(newTotalSteps);
-  };
+  }, [content, onChange]);
 
-  // Обновление позиции
+  // Обновляем позицию
   useEffect(() => {
-    const newPosition = -(currentStep - 1) * dimensions.stepSize;
-    setInternalPosition(newPosition);
-  }, [currentStep, dimensions.stepSize]);
-
-  // ResizeObserver - БЕЗ зависимостей!
-  useEffect(() => {
-    console.log('Setting up ResizeObserver');
-    
-    resizeObserverRef.current = new ResizeObserver(handleResize);
-    
-    const container = containerRef.current;
-    if (container) {
-      resizeObserverRef.current.observe(container);
+    let newPosition = -(currentStep - 1) * stepSize;
+    if (isDragging) {
+      newPosition += dragOffset;
     }
+    setPosition(newPosition);
+  }, [currentStep, stepSize, isDragging, dragOffset]);
 
-    // Первоначальный расчет
-    const timeoutId = setTimeout(handleResize, 100);
+  // Пересчет при изменении размера окна
+  useEffect(() => {
+    const handleResize = () => {
+      if (!containerRef.current || !trackRef.current || content.length === 0) return;
 
-    return () => {
-      if (resizeObserverRef.current && container) {
-        resizeObserverRef.current.unobserve(container);
-      }
-      clearTimeout(timeoutId);
+      const containerWidth = containerRef.current.clientWidth;
+      const trackWidth = trackRef.current.scrollWidth;
+      
+      const itemWidth = trackWidth / content.length;
+      const visibleItems = Math.floor(containerWidth / itemWidth) || 1;
+      const hiddenItems = Math.max(0, content.length - visibleItems);
+      const newTotalSteps = Math.max(1, hiddenItems + 1);
+      const newStepSize = hiddenItems > 0 
+        ? (trackWidth - containerWidth) / hiddenItems 
+        : 0;
+      
+      setStepSize(newStepSize);
+      onChange?.(newTotalSteps);
     };
-  }, []); // Пустой массив - только при монтировании
 
-  // Перерасчет при изменении content (кроме первого раза)
-  // useEffect(() => {
-  //   console.log('Content changed, triggering recalculation');
-  //   const timeoutId = setTimeout(handleResize, 100);
-  //   return () => clearTimeout(timeoutId);
-  // }, [content]);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [content.length, onChange]);
 
   const trackStyle = useMemo((): CSSProperties => ({
     display: 'flex',
-    transform: `translateX(${internalPosition}px)`,
-    transition: `transform ${transitionDuration}ms ease-out`,
+    transform: `translateX(${position}px)`,
+    transition: isDragging ? 'none' : `transform ${transitionDuration}ms ease-out`,
     willChange: 'transform',
-    justifyContent: "space-between",
-    height: '100%'
-  }), [internalPosition, transitionDuration]);
-
-  const containerStyle: CSSProperties = useMemo(() => ({
-    overflow: 'hidden',
+    height: '100%',
     width: '100%',
-    position: 'relative',
-    height: '100%'
-  }), []);
+  }), [position, transitionDuration, isDragging]);
+
+  // Добавляем flex: 0 0 auto каждому ребенку
+  const childrenWithStyle = useMemo(() => {
+    return React.Children.map(content, (child) => {
+      return React.cloneElement(child, {
+        style: {
+          ...child.props.style,
+          flex: '0 0 auto',
+          height: '100%',
+          minWidth: '100%',
+        }
+      });
+    });
+  }, [content]);
 
   return (
-    <div ref={containerRef} style={containerStyle}>
-      <div
-        ref={trackRef}
-        className={className}
-        style={trackStyle}
-      >
-        {content}
+    <div ref={containerRef} style={{ overflow: 'hidden', width: '100%', height: '100%' }}>
+      <div ref={trackRef} className={className} style={trackStyle}>
+        {childrenWithStyle}
       </div>
     </div>
   );

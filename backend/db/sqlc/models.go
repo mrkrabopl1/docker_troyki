@@ -142,6 +142,49 @@ func (ns NullDeliveryEnum) Value() (driver.Value, error) {
 	return string(ns.DeliveryEnum), nil
 }
 
+type NewsItemTypeEnum string
+
+const (
+	NewsItemTypeEnumHeader NewsItemTypeEnum = "header"
+	NewsItemTypeEnumText   NewsItemTypeEnum = "text"
+	NewsItemTypeEnumImage  NewsItemTypeEnum = "image"
+)
+
+func (e *NewsItemTypeEnum) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = NewsItemTypeEnum(s)
+	case string:
+		*e = NewsItemTypeEnum(s)
+	default:
+		return fmt.Errorf("unsupported scan type for NewsItemTypeEnum: %T", src)
+	}
+	return nil
+}
+
+type NullNewsItemTypeEnum struct {
+	NewsItemTypeEnum NewsItemTypeEnum `json:"news_item_type_enum"`
+	Valid            bool             `json:"valid"` // Valid is true if NewsItemTypeEnum is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullNewsItemTypeEnum) Scan(value interface{}) error {
+	if value == nil {
+		ns.NewsItemTypeEnum, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.NewsItemTypeEnum.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullNewsItemTypeEnum) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.NewsItemTypeEnum), nil
+}
+
 type StatusEnum string
 
 const (
@@ -377,6 +420,38 @@ type InstagramPost struct {
 	ImageUrl  string             `json:"image_url"`
 	IsActive  pgtype.Bool        `json:"is_active"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+// Основные блоки новостей
+type NewsBlock struct {
+	ID    int32  `json:"id"`
+	Title string `json:"title"`
+	// Заглавное изображение/обложка блока
+	CoverImageUrl pgtype.Text        `json:"cover_image_url"`
+	CoverAltText  pgtype.Text        `json:"cover_alt_text"`
+	IsActive      pgtype.Bool        `json:"is_active"`
+	PublishedAt   pgtype.Timestamptz `json:"published_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	// Количество просмотров
+	ViewsCount pgtype.Int4 `json:"views_count"`
+	// Количество лайков
+	LikesCount pgtype.Int4 `json:"likes_count"`
+	SortOrder  pgtype.Int4 `json:"sort_order"`
+}
+
+// Элементы контента внутри блока новостей
+type NewsItem struct {
+	ID          int32              `json:"id"`
+	NewsBlockID int32              `json:"news_block_id"`
+	ItemType    NewsItemTypeEnum   `json:"item_type"`
+	Content     pgtype.Text        `json:"content"`
+	ImageUrl    pgtype.Text        `json:"image_url"`
+	LinkUrl     pgtype.Text        `json:"link_url"`
+	Layout      pgtype.Text        `json:"layout"`
+	SortOrder   pgtype.Int4        `json:"sort_order"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
 type NewsletterSubscriber struct {

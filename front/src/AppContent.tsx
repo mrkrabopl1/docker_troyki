@@ -7,7 +7,7 @@ import React, {
 
 import { useAppDispatch } from 'src/store/hooks/redux';
 import { useRouteChange } from 'src/store/hooks/redux';
-
+import { setHydrated } from 'src/store/reducers/loadingSlice';
 import {
   cartCountAction,
   setDiscountRules,
@@ -484,49 +484,52 @@ const AppContent: React.FC<AppContentProps> = ({
   // ============================================================
   // CONTENT HEIGHT
   // ============================================================
-
   useEffect(() => {
-  const element = contRef.current;
-  if (!element) return;
+    dispatch(setHydrated());
+    console.log('✅ [AppContent] Hydration completed');
+  }, [dispatch]);
+  useEffect(() => {
+    const element = contRef.current;
+    if (!element) return;
 
-  let frameId: number | null = null;
-  let counter = 0;
+    let frameId: number | null = null;
+    let counter = 0;
 
-  console.log('🔄 [ResizeObserver] Создан');
+    console.log('🔄 [ResizeObserver] Создан');
 
-  const observer = new ResizeObserver(() => {
-    counter++;
-    console.log(`🔄 [ResizeObserver] Сработал #${counter}`);
+    const observer = new ResizeObserver(() => {
+      counter++;
+      console.log(`🔄 [ResizeObserver] Сработал #${counter}`);
 
-    if (frameId) {
-      console.log(`🔄 [ResizeObserver] Отмена предыдущего frame #${counter - 1}`);
-      cancelAnimationFrame(frameId);
-    }
-
-    frameId = requestAnimationFrame(() => {
-      const offsetHeight = element.offsetHeight;
-      const { innerHeight, scrollY } = window;
-
-      console.log(`🔄 [ResizeObserver] frame #${counter}: offsetHeight=${offsetHeight}, innerHeight=${innerHeight}, scrollY=${scrollY}`);
-
-      if (innerHeight >= offsetHeight || scrollY < 150) {
-        console.log(`🔄 [ResizeObserver] dispatch(show(true)) #${counter}`);
-        dispatch(show(true));
-      } else {
-        console.log(`🔄 [ResizeObserver] dispatch(show(false)) #${counter}`);
-        dispatch(show(false));
+      if (frameId) {
+        console.log(`🔄 [ResizeObserver] Отмена предыдущего frame #${counter - 1}`);
+        cancelAnimationFrame(frameId);
       }
+
+      frameId = requestAnimationFrame(() => {
+        const offsetHeight = element.offsetHeight;
+        const { innerHeight, scrollY } = window;
+
+        console.log(`🔄 [ResizeObserver] frame #${counter}: offsetHeight=${offsetHeight}, innerHeight=${innerHeight}, scrollY=${scrollY}`);
+
+        if (innerHeight >= offsetHeight || scrollY < 150) {
+          console.log(`🔄 [ResizeObserver] dispatch(show(true)) #${counter}`);
+          dispatch(show(true));
+        } else {
+          console.log(`🔄 [ResizeObserver] dispatch(show(false)) #${counter}`);
+          dispatch(show(false));
+        }
+      });
     });
-  });
 
-  observer.observe(element);
+    observer.observe(element);
 
-  return () => {
-    console.log(`🔄 [ResizeObserver] Уничтожен, было ${counter} срабатываний`);
-    observer.disconnect();
-    if (frameId) cancelAnimationFrame(frameId);
-  };
-}, [dispatch]);
+    return () => {
+      console.log(`🔄 [ResizeObserver] Уничтожен, было ${counter} срабатываний`);
+      observer.disconnect();
+      if (frameId) cancelAnimationFrame(frameId);
+    };
+  }, [dispatch]);
 
   // ============================================================
   // WHEEL

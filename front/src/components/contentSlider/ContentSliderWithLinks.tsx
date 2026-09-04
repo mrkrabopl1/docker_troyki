@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, ReactElement, useRef, useEffect } from 'react';
-import LinkController from './slidersSwitchers/LinkController';
 import ContentSlider from './ContentSlider';
+import LinkController from './slidersSwitchers/LinkController';
 
 type ContentSliderProps = {
   content: ReactElement[];
@@ -8,153 +8,174 @@ type ContentSliderProps = {
 };
 
 const ContentSliderWithLinks: React.FC<ContentSliderProps> = ({ content, className }) => {
-  // Состояние с минимальным необходимым количеством переменных
-  const [sliderState, setSliderState] = useState({
-    currentStep: 1,
-    totalSteps: 1
-  });
-
-  // Refs для хранения актуальных значений для drag-обработчиков
-  const currentStepRef = useRef(sliderState.currentStep);
-  const totalStepsRef = useRef(sliderState.totalSteps);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [totalSteps, setTotalSteps] = useState(1);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   
-  // Refs для обработки drag
   const containerRef = useRef<HTMLDivElement>(null);
-  const dragStartX = useRef<number>(0);
-  const dragStartY = useRef<number>(0);
-  const isDragging = useRef<boolean>(false);
-  const dragThreshold = 50; // Минимальное расстояние для смены шага
+  const dragStartX = useRef(0);
+  const currentStepRef = useRef(currentStep);
+  const totalStepsRef = useRef(totalSteps);
+  const stepSizeRef = useRef(0);
+  const isDraggingRef = useRef(false);
+  const dragOffsetRef = useRef(0);
 
-  // Обновляем refs при изменении состояния
+  // Обновляем refs
   useEffect(() => {
-    currentStepRef.current = sliderState.currentStep;
-    totalStepsRef.current = sliderState.totalSteps;
-  }, [sliderState.currentStep, sliderState.totalSteps]);
+    currentStepRef.current = currentStep;
+  }, [currentStep]);
 
-  // Мемоизированный обработчик изменения шага
-  const handleStepChange = useCallback((newStep: number) => {
-    setSliderState(prev => ({ ...prev, currentStep: newStep }));
-  }, []);
+  useEffect(() => {
+    totalStepsRef.current = totalSteps;
+  }, [totalSteps]);
 
-  // Мемоизированный обработчик изменения общего количества шагов
-  const handleTotalStepsChange = useCallback((steps: number) => {
-    setSliderState(prev => ({ 
-      ...prev, 
-      totalSteps: steps,
-      // Автоматически сбросить на первый шаг при изменении количества шагов
-      currentStep: steps < prev.currentStep ? 1 : prev.currentStep
-    }));
-  }, []);
+  useEffect(() => {
+    dragOffsetRef.current = dragOffset;
+  }, [dragOffset]);
 
-  // Обработчик движения (мышь) - используем refs для актуальных значений
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging.current) return;
+  // Получаем размер шага
+  const getStepSize = useCallback(() => {
+    if (!containerRef.current) return 0;
     
-    const deltaX = e.clientX - dragStartX.current;
-    const deltaY = e.clientY - dragStartY.current;
+    const container = containerRef.current;
+    const track = container.querySelector('[style*="display: flex"]') as HTMLElement;
     
-    // Проверяем, что движение больше по горизонтали, чем по вертикали
-    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > dragThreshold) {
-      if (deltaX > 0 && currentStepRef.current > 1) {
-        // Свайп вправо - предыдущий шаг
-        handleStepChange(currentStepRef.current - 1);
-        resetDrag();
-      } else if (deltaX < 0 && currentStepRef.current < totalStepsRef.current) {
-        // Свайп влево - следующий шаг
-        handleStepChange(currentStepRef.current + 1);
-        resetDrag();
+    if (!track || content.length === 0) return 0;
+    
+    const containerWidth = container.clientWidth;
+    const trackWidth = track.scrollWidth;
+    const itemWidth = trackWidth / content.length;
+    const visibleItems = Math.floor(containerWidth / itemWidth) || 1;
+    const hiddenItems = Math.max(0, content.length - visibleItems);
+    
+    return hiddenItems > 0 ? (trackWidth - containerWidth) / hiddenItems : 0;
+  }, [content.length]);
+
+  // Завершение drag
+  const endDrag = useCallback(() => {
+    if (!isDraggingRef.current) return;
+    
+    const stepSize = stepSizeRef.current || getStepSize();
+    const currentOffset = dragOffsetRef.current;
+    const percentage = Math.abs(currentOffset) / stepSize;
+    
+    if (percentage > 0.5 && stepSize > 0) {
+      const direction = currentOffset > 0 ? -1 : 1;
+      const newStep = currentStepRef.current + direction;
+      
+      if (newStep >= 1 && newStep <= totalStepsRef.current) {
+        setCurrentStep(newStep);
       }
     }
-  }, [handleStepChange]);
-
-  // Обработчик движения (touch) - используем refs для актуальных значений
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (!isDragging.current) return;
     
+    isDraggingRef.current = false;
+    setIsDragging(false);
+    setDragOffset(0);
+    dragOffsetRef.current = 0;
+    
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    document.removeEventListener('touchmove', onTouchMove);
+    document.removeEventListener('touchend', onTouchEnd);
+  }, [getStepSize]);
+
+  // Обработчик движения
+  const handleMove = useCallback((clientX: number) => {
+    if (!isDraggingRef.current) return;
+    
+    const deltaX = clientX - dragStartX.current;
+    const stepSize = stepSizeRef.current || getStepSize();
+    
+    const maxOffset = stepSize;
+    const clampedOffset = Math.max(-maxOffset, Math.min(maxOffset, deltaX));
+    
+    dragOffsetRef.current = clampedOffset;
+    setDragOffset(clampedOffset);
+  }, [getStepSize]);
+
+  // Обработчики мыши
+  const onMouseMove = useCallback((e: MouseEvent) => {
+    e.preventDefault();
+    handleMove(e.clientX);
+  }, [handleMove]);
+
+  const onMouseUp = useCallback(() => {
+    endDrag();
+  }, [endDrag]);
+
+  // Обработчики touch
+  const onTouchMove = useCallback((e: TouchEvent) => {
+    e.preventDefault();
     const touch = e.touches[0];
-    const deltaX = touch.clientX - dragStartX.current;
-    const deltaY = touch.clientY - dragStartY.current;
-    
-    // Проверяем, что движение больше по горизонтали, чем по вертикали
-    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > dragThreshold) {
-      if (deltaX > 0 && currentStepRef.current > 1) {
-        // Свайп вправо - предыдущий шаг
-        handleStepChange(currentStepRef.current - 1);
-        resetDrag();
-      } else if (deltaX < 0 && currentStepRef.current < totalStepsRef.current) {
-        // Свайп влево - следующий шаг
-        handleStepChange(currentStepRef.current + 1);
-        resetDrag();
-      }
-    }
-  }, [handleStepChange]);
+    handleMove(touch.clientX);
+  }, [handleMove]);
 
-  // Обработчик начала drag (мышь)
+  const onTouchEnd = useCallback(() => {
+    endDrag();
+  }, [endDrag]);
+
+  // Начало drag
+  const startDrag = useCallback((clientX: number) => {
+    stepSizeRef.current = getStepSize();
+    dragStartX.current = clientX;
+    isDraggingRef.current = true;
+    setIsDragging(true);
+    setDragOffset(0);
+    dragOffsetRef.current = 0;
+  }, [getStepSize]);
+
+  // Mouse down
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    dragStartX.current = e.clientX;
-    dragStartY.current = e.clientY;
-    isDragging.current = true;
+    if (e.button !== 0) return;
+    e.preventDefault();
+    startDrag(e.clientX);
     
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  }, [handleMouseMove]);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [startDrag, onMouseMove, onMouseUp]);
 
-  // Обработчик начала drag (touch)
+  // Touch start
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
-    dragStartX.current = touch.clientX;
-    dragStartY.current = touch.clientY;
-    isDragging.current = true;
+    startDrag(touch.clientX);
     
-    document.addEventListener('touchmove', handleTouchMove);
-    document.addEventListener('touchend', handleTouchEnd);
-  }, [handleTouchMove]);
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd);
+  }, [startDrag, onTouchMove, onTouchEnd]);
 
-  // Сброс drag состояния
-  const resetDrag = useCallback(() => {
-    isDragging.current = false;
-    dragStartX.current = 0;
-    dragStartY.current = 0;
-  }, []);
-
-  // Обработчик окончания drag (мышь)
-  const handleMouseUp = useCallback(() => {
-    resetDrag();
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-  }, [handleMouseMove]);
-
-  // Обработчик окончания drag (touch)
-  const handleTouchEnd = useCallback(() => {
-    resetDrag();
-    document.removeEventListener('touchmove', handleTouchMove);
-    document.removeEventListener('touchend', handleTouchEnd);
-  }, [handleTouchMove]);
-
-  // Очистка событий при размонтировании
+  // Очистка
   useEffect(() => {
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
     };
-  }, [handleMouseMove, handleMouseUp, handleTouchMove, handleTouchEnd]);
+  }, [onMouseMove, onMouseUp, onTouchMove, onTouchEnd]);
 
-  // Мемоизированные пропсы для ContentSlider
+  const handleTotalStepsChange = useCallback((steps: number) => {
+    setTotalSteps(steps);
+    if (currentStep > steps) {
+      setCurrentStep(1);
+    }
+  }, [currentStep]);
+
   const contentSliderProps = useMemo(() => ({
     content,
     className,
-    currentStep: sliderState.currentStep,
-    onChange: handleTotalStepsChange
-  }), [content, className, sliderState.currentStep, handleTotalStepsChange]);
+    currentStep,
+    onChange: handleTotalStepsChange,
+    isDragging,
+    dragOffset,
+    transitionDuration: 300
+  }), [content, className, currentStep, handleTotalStepsChange, isDragging, dragOffset]);
 
-  // Мемоизированные пропсы для LinkController
   const pageControllerProps = useMemo(() => ({
-    currentPosition: sliderState.currentStep,
-    positions: sliderState.totalSteps,
-    callback: handleStepChange
-  }), [sliderState.currentStep, sliderState.totalSteps, handleStepChange]);
+    currentPosition: currentStep,
+    positions: totalSteps,
+    callback: setCurrentStep
+  }), [currentStep, totalSteps]);
 
   return (
     <div 
@@ -162,14 +183,17 @@ const ContentSliderWithLinks: React.FC<ContentSliderProps> = ({ content, classNa
       style={{
         position: "relative", 
         height: "100%",
-        cursor: isDragging.current ? 'grabbing' : 'grab',
+        width: "100%",
+        cursor: isDragging ? 'grabbing' : 'grab',
         userSelect: 'none',
-        touchAction: 'pan-y pinch-zoom',
+        WebkitUserSelect: 'none',
+        touchAction: 'none',
       }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
     >
       <ContentSlider {...contentSliderProps} />
+      
       <div style={{
         position: "absolute",
         bottom: "20px",
@@ -178,7 +202,7 @@ const ContentSliderWithLinks: React.FC<ContentSliderProps> = ({ content, classNa
         zIndex: 10,
         pointerEvents: 'auto'
       }}>
-        {sliderState.totalSteps > 1 && <LinkController {...pageControllerProps} />}
+        {totalSteps > 1 && <LinkController {...pageControllerProps} />}
       </div>
     </div>
   );

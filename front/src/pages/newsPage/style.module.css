@@ -1,0 +1,270 @@
+/* src/pages/news/NewsPage.module.css */
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 20px 60px;
+    min-height: 100vh;
+}
+
+/* ===== ОБЛОЖКА ===== */
+.cover {
+    width: 100%;
+    height: 400px;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 40px;
+}
+
+.cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ===== КОНТЕНТ ===== */
+.content {
+    background: white;
+}
+
+.title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 16px;
+    line-height: 1.2;
+}
+
+/* ===== МЕТА-ДАННЫЕ ===== */
+.meta {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 32px;
+    font-size: 15px;
+    color: #666;
+    flex-wrap: wrap;
+}
+
+.likeBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.likeBtn:hover:not(:disabled) {
+    background: #f0f0f0;
+}
+
+.likeBtn.liked {
+    color: #e91e63;
+}
+
+.likeBtn:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* ===== ТЕЛО НОВОСТИ ===== */
+.body {
+    max-width: 750px;
+}
+
+.contentHeader {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 40px 0 16px;
+}
+
+.contentText {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.contentImage {
+    margin: 32px 0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.contentImage img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+}
+
+.imageCaption {
+    display: block;
+    margin-top: 8px;
+    font-size: 14px;
+    color: #666;
+    text-align: center;
+}
+
+.imageLink {
+    display: inline-block;
+    margin-top: 12px;
+    color: #1976d2;
+    text-decoration: none;
+}
+
+.imageLink:hover {
+    text-decoration: underline;
+}
+
+/* ===== НАВИГАЦИЯ ===== */
+.navigation {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid #eee;
+}
+
+.backLink {
+    color: #1976d2;
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-size: inherit;
+    padding: 0;
+}
+
+.backLink:hover {
+    text-decoration: underline;
+}
+
+/* ===== ПОХОЖИЕ НОВОСТИ ===== */
+.related {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid #eee;
+}
+
+.related h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 24px;
+}
+
+.relatedGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+
+.relatedCard {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.2s;
+    cursor: pointer;
+}
+
+.relatedCard:hover {
+    transform: translateY(-4px);
+}
+
+.relatedCard img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.relatedCard h3 {
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 12px 0 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    color: #1a1a2e;
+}
+
+.relatedDate {
+    font-size: 13px;
+    color: #999;
+}
+
+/* ===== СОСТОЯНИЯ ===== */
+.notFound {
+    text-align: center;
+    padding: 60px;
+    color: #999;
+    font-size: 1.2rem;
+}
+
+.loader {
+    text-align: center;
+    padding: 60px;
+    color: #666;
+}
+
+/* ===== АДАПТИВ ===== */
+@media (max-width: 768px) {
+    .container {
+        padding: 0 16px 40px;
+    }
+
+    .cover {
+        height: 250px;
+        margin-bottom: 24px;
+    }
+
+    .title {
+        font-size: 2rem;
+    }
+
+    .meta {
+        gap: 12px;
+    }
+
+    .contentHeader {
+        font-size: 1.5rem;
+    }
+
+    .contentText {
+        font-size: 1rem;
+    }
+
+    .relatedGrid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .relatedCard img {
+        height: 120px;
+    }
+}
+
+@media (max-width: 480px) {
+    .cover {
+        height: 180px;
+        border-radius: 8px;
+    }
+
+    .title {
+        font-size: 1.5rem;
+    }
+
+    .meta {
+        font-size: 13px;
+        gap: 8px;
+    }
+}

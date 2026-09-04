@@ -322,7 +322,8 @@ const OrdersManager: React.FC = () => {
                                                     cursor: 'pointer',
                                                     border: '1px solid #ddd',
                                                     borderRadius: '4px',
-                                                    backgroundColor: '#f5f5f5'
+                                                    backgroundColor: '#f5f5f5',
+                                                    color:  '#171414'
                                                 }}
                                             >
                                                 Просмотр

@@ -33,7 +33,7 @@ const AdminDashboard: React.FC = () => {
     const dispatch = useAppDispatch();
     const router = useRouter();
     const { user } = useAppSelector(state => state.admin);
-    
+
     const [stats, setStats] = useState<DashboardStats>({
         total_products: 0, total_firms: 0, total_categories: 0,
         pending_orders: 0, approved_orders: 0, rejected_orders: 0,
@@ -96,8 +96,8 @@ const AdminDashboard: React.FC = () => {
             <h2>Дашборд</h2>
 
             <div className={s.statsGrid}>
-                <div 
-                    className={s.statCard} 
+                <div
+                    className={s.statCard}
                     onClick={() => navigateTo('/admin/products')}
                     style={{ cursor: 'pointer' }}
                 >
@@ -106,8 +106,8 @@ const AdminDashboard: React.FC = () => {
                     <div className={s.statDetail}>В наличии: {stats.products_in_stock}</div>
                 </div>
 
-                <div 
-                    className={s.statCard} 
+                <div
+                    className={s.statCard}
                     onClick={() => navigateTo('/admin/orders')}
                     style={{ cursor: 'pointer' }}
                 >
@@ -118,7 +118,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                <div 
+                <div
                     className={s.statCard}
                     onClick={() => navigateTo('/admin/logs')}
                     style={{ cursor: 'pointer' }}
@@ -136,7 +136,7 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             <div className={s.statsGridSecondary}>
-                <div 
+                <div
                     className={s.statCardSmall}
                     onClick={() => navigateTo('/admin/brands')}
                     style={{ cursor: 'pointer' }}
@@ -145,7 +145,7 @@ const AdminDashboard: React.FC = () => {
                     <div className={s.statLabel}>Брендов</div>
                 </div>
 
-                <div 
+                <div
                     className={s.statCardSmall}
                     onClick={() => navigateTo('/admin/discount-manager')}
                     style={{ cursor: 'pointer' }}
@@ -154,7 +154,7 @@ const AdminDashboard: React.FC = () => {
                     <div className={s.statLabel}>Товаров со скидкой</div>
                 </div>
 
-                <div 
+                <div
                     className={s.statCardSmall}
                     onClick={() => navigateTo('/admin/products')}
                     style={{ cursor: 'pointer' }}
@@ -181,28 +181,71 @@ const AdminDashboard: React.FC = () => {
                     <button onClick={() => navigateTo('/admin/banners')}>
                         🖼️ Добавить баннер
                     </button>
+
+                    {/* Промокоды */}
+                    <button onClick={() => navigateTo('/admin/promocodes')}>
+                        🎫 Управление промокодами
+                    </button>
+
+                    {/* Бренды */}
+                    <button onClick={() => navigateTo('/admin/brands')}>
+                        🏷️ Управление брендами
+                    </button>
+
+                    {/* Линейки */}
+                    <button onClick={() => navigateTo('/admin/lines')}>
+                        📏 Управление линейками
+                    </button>
+
+                    {/* Только для superadmin */}
+                    {user?.role === 'superadmin' && (
+                        <button onClick={() => navigateTo('/admin/orders')}>
+                            📋 Просмотр заказов
+                        </button>
+                    )}
+
                     {user?.role === 'superadmin' && (
                         <button onClick={() => navigateTo('/admin/page-blocks')}>
                             🧩 Управление блоками
                         </button>
                     )}
+
                     {user?.role === 'superadmin' && (
                         <button onClick={() => navigateTo('/admin/collections')}>
                             ⭐ Управление коллекциями
                         </button>
                     )}
+
                     {user?.role === 'superadmin' && (
                         <button onClick={() => navigateTo('/admin/sizes')}>
                             💻 Управление размерами
                         </button>
                     )}
+
+                    {user?.role === 'superadmin' && (
+                        <button onClick={() => navigateTo('/admin/logs')}>
+                            👥 Администраторы
+                        </button>
+                    )}
+
+                    {user?.role === 'superadmin' && (
+                        <button onClick={() => navigateTo('/admin/sqlConsole')}>
+                            💻 SQL Консоль
+                        </button>
+                    )}
+
+                    {user?.role === 'superadmin' && (
+                        <button onClick={() => navigateTo('/admin/instagram')}>
+                            📸 Instagram лента
+                        </button>
+                    )}
+
                     <button onClick={loadStats} className={s.refreshBtn}>
                         🔄 Обновить статистику
                     </button>
                 </div>
             </div>
 
-           
         </div>
     );
 };

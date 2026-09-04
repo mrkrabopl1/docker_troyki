@@ -77,7 +77,7 @@ const ContentSliderWithScroll: React.FC<ContentSliderProps> = ({ content, classN
         
         // Только горизонтальное движение
         if (!dragDirectionDetermined.current || isHorizontalDrag) {
-            const deltaXAbs = clientX - dragStartX.current;
+            const deltaXAbs = dragStartX.current - clientX;
             const container = document.querySelector('[data-slider-container]') as HTMLElement;
             if (!container || sliderState.totalSteps <= 1) return;
             
