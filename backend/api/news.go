@@ -133,6 +133,7 @@ func (s *Server) handleAdminCreateNewsBlock(c *gin.Context) {
 	if isActive {
 		count, err := s.store.CountActiveNewsBlocks(c.Request.Context())
 		if err != nil {
+			fmt.Println("Error counting active news blocks:", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check active blocks count"})
 			return
 		}
