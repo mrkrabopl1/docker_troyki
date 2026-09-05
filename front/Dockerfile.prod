@@ -1,4 +1,4 @@
-# Stage 1: Сборка
+# Stage 1: Сборка (оставляем как есть)
 FROM node:19-bullseye AS builder
 WORKDIR /app
 
@@ -12,17 +12,17 @@ ENV API_URL=${API_URL}
 
 RUN yarn build
 
-# Stage 2: Продакшн
-FROM node:19-bullseye-slim AS runner
+# Stage 2: Продакшн (меняем ТОЛЬКО базовый образ)
+FROM node:20-bookworm-slim AS runner  
 WORKDIR /app
 
+# apt-get теперь работает без ошибок
 RUN apt-get update && \
     apt-get install -y nginx supervisor procps curl && \
     rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV production
 
-# ← Добавь это:
 ARG API_URL
 ENV API_URL=${API_URL}
 
