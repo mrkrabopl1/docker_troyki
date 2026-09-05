@@ -836,6 +836,19 @@ func (s *Server) handleGetActiveNewsBlocks(c *gin.Context) {
 	})
 }
 
+type NewsItem struct {
+	ID          int32            `json:"id"`
+	NewsBlockID int32            `json:"news_block_id"`
+	ItemType    string           `json:"item_type"`
+	Content     string           `json:"content"`
+	ImageUrl    pgtype.Text      `json:"image_url"`
+	LinkUrl     pgtype.Text      `json:"link_url"`
+	Layout      string           `json:"layout"`
+	SortOrder   int32            `json:"sort_order"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
 // GET /api/news/:id - получить одну новость с элементами
 func (s *Server) handleGetNewsBlockByID(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
@@ -850,11 +863,34 @@ func (s *Server) handleGetNewsBlockByID(c *gin.Context) {
 		return
 	}
 
+	// Парсим JSON из interface{} в слайс
+	var items []NewsItem
+	if row.Items != nil {
+		itemsBytes, err := json.Marshal(row.Items)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse items"})
+			return
+		}
+		if err := json.Unmarshal(itemsBytes, &items); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse items"})
+			return
+		}
+	}
+
+	// Обновляем URL изображений для каждого элемента
+	for i := range items {
+		items[i].ImageUrl = pgtype.Text{
+			String: s.imageService.ImagePathBuilder.GetImageURLFromPath(items[i].ImageUrl.String),
+			Valid:  true,
+		}
+	}
+
+	// Формируем ответ
 	c.JSON(http.StatusOK, gin.H{
 		"block": gin.H{
 			"id":              row.ID,
 			"title":           row.Title,
-			"cover_image_url": row.CoverImageUrl,
+			"cover_image_url": s.imageService.ImagePathBuilder.GetImageURLFromPath(row.CoverImageUrl.String),
 			"cover_alt_text":  row.CoverAltText,
 			"is_active":       row.IsActive,
 			"published_at":    row.PublishedAt,
@@ -864,7 +900,7 @@ func (s *Server) handleGetNewsBlockByID(c *gin.Context) {
 			"likes_count":     row.LikesCount,
 			"sort_order":      row.SortOrder,
 		},
-		"items": row.Items,
+		"items": items,
 	})
 }
 
