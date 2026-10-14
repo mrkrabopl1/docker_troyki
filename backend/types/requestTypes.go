@@ -28,14 +28,14 @@ type PersonalData struct {
 }
 
 type Address struct {
-	Town        string   `json:"town"`
-	Index       string   `json:"index"`
-	Region      string   `json:"region"`
-	Street      string   `json:"street"`
-	House       string   `json:"house,omitempty"`
-	Flat        string   `json:"flat,omitempty"`
-	Coordinates []string `json:"coordinates"`
-	Settlement  string   `json:"settlement,omitempty"`
+	Town        string    `json:"town"`
+	Index       string    `json:"index"`
+	Region      string    `json:"region"`
+	Street      string    `json:"street"`
+	House       string    `json:"house,omitempty"`
+	Flat        string    `json:"flat,omitempty"`
+	Coordinates []float64 `json:"coordinates"`
+	Settlement  string    `json:"settlement,omitempty"`
 }
 
 type Discounts struct {
@@ -88,6 +88,11 @@ type PostDataAndFiltersByCategoryAndType struct {
 	Size     int                  `json:"size"`
 	Filters  ProductsFilterStruct `json:"filters"`
 	SortType int32                `json:"sortType"`
+}
+type UpdateProfileData struct {
+	Name       string `json:"name"`
+	SecondName string `json:"second_name"`
+	Phone      string `json:"phone"`
 }
 type PostDataAndFiltersForAdminByCategoryAndType struct {
 	// Define your struct to represent the JSON data

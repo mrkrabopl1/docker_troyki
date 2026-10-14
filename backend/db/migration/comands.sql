@@ -946,7 +946,7 @@
 -- -- ============================================================
 -- -- 1. ОЧИСТКА ТАБЛИЦЫ (удаляем все данные)
 -- -- ============================================================
-TRUNCATE TABLE discount RESTART IDENTITY CASCADE;
+-- TRUNCATE TABLE discount RESTART IDENTITY CASCADE;
 
 -- -- ============================================================
 -- -- 2. ДОБАВЛЯЕМ НОВЫЕ КОЛОНКИ
@@ -1127,7 +1127,60 @@ TRUNCATE TABLE discount RESTART IDENTITY CASCADE;
 
 
 
-CREATE INDEX IF NOT EXISTS idx_discount_rule_id ON discount(rule_id);
+-- CREATE INDEX IF NOT EXISTS idx_discount_rule_id ON discount(rule_id);
 
--- Индекс для быстрого поиска по productid (уже есть UNIQUE, но на всякий случай)
-CREATE INDEX IF NOT EXISTS idx_discount_productid ON discount(productid);
+-- -- Индекс для быстрого поиска по productid (уже есть UNIQUE, но на всякий случай)
+-- CREATE INDEX IF NOT EXISTS idx_discount_productid ON discount(productid);
+
+
+
+-- DELETE FROM customers WHERE id = 6;
+
+
+-- ALTER TABLE promo_codes
+-- ADD COLUMN issued_to_customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL;
+
+-- CREATE INDEX idx_promo_codes_issued_to
+-- ON promo_codes(issued_to_customer_id)
+-- WHERE issued_to_customer_id IS NOT NULL;
+
+
+
+
+-- CREATE TABLE customer_addresses (
+--     id SERIAL PRIMARY KEY,
+--     customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+--     label VARCHAR(50),                      -- "Дом", "Работа", NULL
+--     town TEXT NOT NULL,
+--     street TEXT,
+--     house TEXT,
+--     flat TEXT,
+--     postal_code TEXT,                       -- было "index", переименовал чтобы не конфликтовать с ключевым словом
+--     region TEXT,
+--     coordinates INTEGER[],
+--     is_default BOOLEAN NOT NULL DEFAULT FALSE,
+--     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+--     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- );
+
+-- -- Все адреса юзера
+-- CREATE INDEX idx_customer_addresses_customer 
+-- ON customer_addresses(customer_id);
+
+-- -- Только один адрес по умолчанию на юзера
+-- CREATE UNIQUE INDEX idx_customer_addresses_default 
+-- ON customer_addresses(customer_id)
+-- WHERE is_default = TRUE;
+
+
+-- ALTER TABLE customer_addresses DROP COLUMN IF EXISTS label;
+
+-- -- Меняем тип coordinates с INTEGER[] на DOUBLE PRECISION[]
+-- ALTER TABLE customer_addresses
+-- ALTER COLUMN coordinates TYPE DOUBLE PRECISION[]
+-- USING coordinates::DOUBLE PRECISION[];
+
+
+ALTER TABLE orderaddress
+ALTER COLUMN coordinates TYPE DOUBLE PRECISION[]
+USING coordinates::DOUBLE PRECISION[];

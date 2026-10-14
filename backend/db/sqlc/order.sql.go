@@ -168,7 +168,7 @@ type GetOrderAddressByIdRow struct {
 	Index       string      `json:"index"`
 	House       pgtype.Text `json:"house"`
 	Flat        pgtype.Text `json:"flat"`
-	Coordinates []string    `json:"coordinates"`
+	Coordinates []float64   `json:"coordinates"`
 }
 
 func (q *Queries) GetOrderAddressById(ctx context.Context, orderid int32) (GetOrderAddressByIdRow, error) {
@@ -671,9 +671,10 @@ INSERT INTO orders (
         deliveryType,
         deliveryComment,
         unregistercustomerid,
+        customerid,
         hash
     )
-VALUES ($1, $2, $3, $4,$5, $6)
+VALUES ($1, $2, $3, $4,$5,$6, $7)
 RETURNING id
 `
 
@@ -683,6 +684,7 @@ type InsertOrderParams struct {
 	Deliverytype         DeliveryEnum `json:"deliverytype"`
 	Deliverycomment      pgtype.Text  `json:"deliverycomment"`
 	Unregistercustomerid pgtype.Int4  `json:"unregistercustomerid"`
+	Customerid           pgtype.Int4  `json:"customerid"`
 	Hash                 string       `json:"hash"`
 }
 
@@ -693,6 +695,7 @@ func (q *Queries) InsertOrder(ctx context.Context, arg InsertOrderParams) (int32
 		arg.Deliverytype,
 		arg.Deliverycomment,
 		arg.Unregistercustomerid,
+		arg.Customerid,
 		arg.Hash,
 	)
 	var id int32
@@ -842,7 +845,7 @@ type SetOrderAddressParams struct {
 	House       pgtype.Text `json:"house"`
 	Flat        pgtype.Text `json:"flat"`
 	Orderid     int32       `json:"orderid"`
-	Coordinates []string    `json:"coordinates"`
+	Coordinates []float64   `json:"coordinates"`
 }
 
 func (q *Queries) SetOrderAddress(ctx context.Context, arg SetOrderAddressParams) (int32, error) {

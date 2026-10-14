@@ -23,7 +23,7 @@ interface NewsPageProps {
 const NewsPage: React.FC<NewsPageProps> = ({ initialData }) => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
-    
+
     const block = initialData?.news?.block;
     const items = initialData?.news?.items || [];
     const related = initialData?.news?.related || [];
@@ -76,8 +76,10 @@ const NewsPage: React.FC<NewsPageProps> = ({ initialData }) => {
                 case 'image':
                     return (
                         <div key={item.id} className={s.contentImage}>
-                            <img src={item.image_url!} alt={item.content || 'News image'} />
-                            {item.content && <span className={s.imageCaption}>{item.content}</span>}
+                            <div style={{display: 'flex', flexDirection: item.layout === 'vertical' ? 'row' : 'column'}}>
+                                <img src={item.image_url!} alt={item.content || 'News image'} />
+                                {item.content && <span style={{maxWidth: '40%'}} className={s.imageCaption}>{item.content}</span>}
+                            </div>
                             {item.link_url && (
                                 <a href={item.link_url} target="_blank" rel="noopener noreferrer" className={s.imageLink}>
                                     🔗 Подробнее
@@ -109,7 +111,7 @@ const NewsPage: React.FC<NewsPageProps> = ({ initialData }) => {
                 <div className={s.meta}>
                     <span>📅 {formatDate(block.published_at)}</span>
                     <span>👁️ {viewsCount}</span>
-                    <button 
+                    <button
                         className={`${s.likeBtn} ${liked ? s.liked : ''}`}
                         onClick={handleLike}
                         disabled={liked}
@@ -133,8 +135,8 @@ const NewsPage: React.FC<NewsPageProps> = ({ initialData }) => {
                         <h2>Похожие новости</h2>
                         <div className={s.relatedGrid}>
                             {related.map((item) => (
-                                <div 
-                                    key={item.id} 
+                                <div
+                                    key={item.id}
                                     className={s.relatedCard}
                                     onClick={() => navigate(`/news/${item.id}`)}
                                 >

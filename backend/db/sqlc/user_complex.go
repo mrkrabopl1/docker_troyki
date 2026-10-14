@@ -89,53 +89,60 @@ func NewProductsSearchResponse5(ProductsSearch []GetProductsByIdsRow) []types.Pr
 	return list
 }
 
-func (store *SQLStore) RegisterUser(ctx context.Context, pass string, mail string) (int32, error) {
+func (store *SQLStore) RegisterUser(
+	ctx context.Context,
+	pass string,
+	mail string,
+) (int32, int32, error) {
+	// 1. Проверяем что mail не занят
 	exist, err := store.Queries.CheckMail(ctx, mail)
-
 	if err != nil {
-		return 0, err
+		return 2, 0, err
 	}
 	if exist {
-		return 1, nil
-	} else {
-		// hashedPassword, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
-		// if err != nil {
-		// 	return 0, err
-		// }
-		// fmt.Println(string(hashedPassword))
-		// userId, err1 := store.Queries.CreateCustomer(ctx, CreateCustomerParams{
-		// 	Pass: []byte(pass),
-		// 	Mail: mail,
-		// })
-
-		// if err1 != nil {
-		// 	return 0, err1
-		// }
-
-		// message, token := createVerifyingString()
-
-		// err3 := sendMail(message)
-		// if err3 != nil {
-		// 	return 0, err3
-		// } else {
-		// 	setVerification(db, ctx, token, userID)
-		// }
-		return 2, nil
+		return 1, 0, nil
 	}
+
+	// 2. Хешируем пароль
+	hashedPassword, err := bcrypt.GenerateFromPassword(
+		[]byte(pass),
+		bcrypt.DefaultCost,
+	)
+	if err != nil {
+		return 2, 0, err
+	}
+
+	// 3. Создаём юзера
+	userID, err := store.Queries.CreateCustomer(ctx, CreateCustomerParams{
+		Pass: hashedPassword,
+		Mail: mail,
+	})
+	if err != nil {
+		return 2, 0, err
+	}
+
+	// 4. Возвращаем успех + ID
+	return 0, userID, nil
 }
 func (store *SQLStore) VerifyUser(ctx context.Context, token string) (int32, error) {
+	fmt.Println(token)
 	verData, err := store.Queries.GetVerification(ctx, token)
+	fmt.Println(verData, "verData")
 	if err != nil {
 		return 0, err
 	}
+
+	// Токен истёк — удаляем и возвращаем ошибку
 	if time.Now().After(verData.Expire.Time) {
-		return verData.Customerid, errorsType.ErrExpire
+		_ = store.Queries.DeleteVerification(ctx, verData.ID)
+		return 0, errorsType.ErrExpire
 	}
 
-	err1 := store.Queries.DeleteVerification(ctx, verData.ID)
-	if err != nil {
-		return 0, err1
+	// Удаляем использованный токен (одноразовый)
+	if err := store.Queries.DeleteVerification(ctx, verData.ID); err != nil {
+		return 0, err
 	}
+
 	return verData.Customerid, nil
 }
 func (store *SQLStore) ChangePass(ctx context.Context, newPass string, oldPass string, id int32) error {

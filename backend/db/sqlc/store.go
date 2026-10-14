@@ -24,12 +24,20 @@ type Store interface {
 	GetCartCount(ctx context.Context, hash string) (int32, error)
 	SelectHistoryFromUniqueCustomer(ctx context.Context, id int32) ([]int32, error)
 	InsertVerification(ctx context.Context, arg InsertVerificationParams) error
-	RegisterUser(ctx context.Context, pass string, mail string) (int32, error)
+	RegisterUser(
+		ctx context.Context,
+		pass string,
+		mail string,
+	) (int32, int32, error)
 	CreateOrder(ctx context.Context, orderData *CreateOrderType) (int32, int32, string, error)
 	GetCartData(ctx context.Context, hash string) ([]GetPreorderDataByIdRow, error)
 	GetProductsInfoByIdComplex(ctx context.Context, id int32) (ProductsInfoResponse, error)
 	GetMainPageInfoComplex(ctx context.Context, limit int32) (map[int32]CategoryData, error)
 	VerifyUser(ctx context.Context, token string) (int32, error)
+	CreateWelcomePromoCode(
+		ctx context.Context,
+		customerID int32,
+	) (PromoCode, error)
 	GetCartDataFromOrderByHash(ctx context.Context, hash string) (*OrderDataResponse, error)
 	SetUnregisterCustomer(ctx context.Context, arg SetUnregisterCustomerParams) (int32, error)
 	UpdateCustomerPass(ctx context.Context, arg UpdateCustomerPassParams) error

@@ -1,62 +1,72 @@
-/* modules/loginForm/style.module.css */
+/* ============================================
+   LoginForm — минималистичный стиль
+   ============================================ */
+
 .main {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
+  padding: 8px 4px;
 }
 
 .caption {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 26px;
+  font-weight: 600;
   color: #1a1a1a;
-  margin: 0;
-  letter-spacing: -0.5px;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.4px;
+  text-align: center;
 }
 
 .subtitle {
-  font-size: 14px;
-  color: #666;
-  margin: -12px 0 0 0;
+  font-size: 13px;
+  color: #888;
+  margin: -10px 0 4px 0;
+  text-align: center;
+  line-height: 1.5;
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
 }
 
 .globalError {
-  padding: 12px;
-  background: #ffebee;
-  border-radius: 8px;
-  color: #c62828;
-  font-size: 14px;
+  padding: 11px 14px;
+  background: #fff5f5;
+  border: 1px solid #ffe0e0;
+  border-radius: 10px;
+  color: #d33;
+  font-size: 13px;
   text-align: center;
   animation: shake 0.3s ease-in-out;
 }
 
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
 }
 
+/* Чекбокс "Запомнить меня" */
 .rememberLabel {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
   font-size: 14px;
-  color: #666;
+  color: #555;
   user-select: none;
+  padding: 2px 0;
 }
 
 .rememberLabel input {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   cursor: pointer;
-  accent-color: #667eea;
+  accent-color: #1a1a1a;
 }
 
 .loginInput {
@@ -64,41 +74,46 @@
 }
 
 .loginButton {
-  padding: 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  padding: 13px 20px;
+  background: #1a1a1a;
+  color: #fff;
   border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
   cursor: pointer;
-  transition: all 0.3s;
-  margin-top: 8px;
+  transition: background 0.15s, transform 0.1s, opacity 0.15s;
+  margin-top: 6px;
 }
 
 .loginButton:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  background: #333;
+}
+
+.loginButton:active:not(:disabled) {
+  transform: scale(0.99);
 }
 
 .loginButton:disabled {
-  opacity: 0.6;
+  background: #ccc;
   cursor: not-allowed;
 }
 
 .forgetPass {
   display: block;
   text-align: center;
-  font-size: 14px;
-  color: #667eea;
+  font-size: 13px;
+  color: #888;
   cursor: pointer;
   text-decoration: none;
-  transition: color 0.2s;
+  transition: color 0.15s;
   user-select: none;
-  margin-top: 8px;
+  margin-top: 2px;
 }
 
 .forgetPass:hover {
-  color: #764ba2;
+  color: #1a1a1a;
   text-decoration: underline;
+  text-underline-offset: 2px;
 }

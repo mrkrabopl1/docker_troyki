@@ -85,6 +85,7 @@ func (maker *PasetoMaker) CreateCookie(token string, cookieName string, duration
 	return myCookie, nil
 }
 func (maker *PasetoMaker) CreateUserCookie(userID int32, duration time.Duration, httpOnly bool, secure bool) (http.Cookie, error) {
+	fmt.Println("Creating user cookie for userID:", userID)
 	token, _, err := maker.CreateUserToken(userID, duration)
 	if err != nil {
 		return http.Cookie{}, err
@@ -114,6 +115,22 @@ func (maker *PasetoMaker) CreateAdminCookie(adminID int32, duration time.Duratio
 
 	cookie, err := maker.CreateCookie(token, "admin_token", duration, httpOnly, secure)
 	return cookie, err
+}
+func (maker *PasetoMaker) CreateGuestCookie(
+	uniqueCustomerID int32,
+	duration time.Duration,
+	httpOnly bool,
+	secure bool,
+) (http.Cookie, error) {
+	token, _, err := maker.CreateUserToken(uniqueCustomerID, duration)
+	if err != nil {
+		return http.Cookie{}, err
+	}
+	return maker.CreateCookie(token, "guest_token", duration, httpOnly, secure)
+}
+
+func (maker *PasetoMaker) GetGuestTokenFromRequest(r *http.Request) string {
+	return maker.GetTokenFromRequest(r, "guest_token")
 }
 
 // GetTokenFromRequest extracts token from Authorization header or cookie

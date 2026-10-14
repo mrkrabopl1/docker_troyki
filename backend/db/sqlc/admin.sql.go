@@ -2286,7 +2286,7 @@ type GetOrderDetailsRow struct {
 	House                pgtype.Text        `json:"house"`
 	Flat                 pgtype.Text        `json:"flat"`
 	Region               pgtype.Text        `json:"region"`
-	Coordinates          []string           `json:"coordinates"`
+	Coordinates          []float64          `json:"coordinates"`
 	Deliverycomment      pgtype.Text        `json:"deliverycomment"`
 	Items                []byte             `json:"items"`
 }

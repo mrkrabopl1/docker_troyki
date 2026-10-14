@@ -51,6 +51,7 @@ type Querier interface {
 	CountActiveBanners(ctx context.Context) (int64, error)
 	CountActiveNewsBlocks(ctx context.Context) (int64, error)
 	CountBrands(ctx context.Context, name string) (CountBrandsRow, error)
+	CountCustomerAddresses(ctx context.Context, customerID int32) (int64, error)
 	CountInstagramPosts(ctx context.Context) (int64, error)
 	CountLines(ctx context.Context, arg CountLinesParams) (CountLinesRow, error)
 	CountManualProductsByFilters(ctx context.Context, arg CountManualProductsByFiltersParams) (int32, error)
@@ -78,6 +79,7 @@ type Querier interface {
 	CreateBrandLine(ctx context.Context, arg CreateBrandLineParams) (CreateBrandLineRow, error)
 	CreateCollection(ctx context.Context, arg CreateCollectionParams) (Collection, error)
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (int32, error)
+	CreateCustomerAddress(ctx context.Context, arg CreateCustomerAddressParams) (CustomerAddress, error)
 	CreateDiscountRule(ctx context.Context, arg CreateDiscountRuleParams) (DiscountRule, error)
 	CreateInstagramPost(ctx context.Context, imageUrl string) (InstagramPost, error)
 	CreateNewsBlock(ctx context.Context, arg CreateNewsBlockParams) (NewsBlock, error)
@@ -103,6 +105,7 @@ type Querier interface {
 	DeleteBrandLine(ctx context.Context, id int32) (DeleteBrandLineRow, error)
 	DeleteCartData(ctx context.Context, id int32) error
 	DeleteCollection(ctx context.Context, id int32) error
+	DeleteCustomerAddress(ctx context.Context, arg DeleteCustomerAddressParams) error
 	DeleteDiscount(ctx context.Context, productid int32) error
 	DeleteDiscountRule(ctx context.Context, id int32) error
 	DeleteFromVerifivation(ctx context.Context, id int32) error
@@ -190,15 +193,19 @@ type Querier interface {
 	GetCombinedFiltersByString(ctx context.Context, dollar_1 string) (GetCombinedFiltersByStringRow, error)
 	GetCountIdByName(ctx context.Context, dollar_1 string) ([]GetCountIdByNameRow, error)
 	GetCountOfCollectionsOrFirms(ctx context.Context, arg GetCountOfCollectionsOrFirmsParams) (int64, error)
+	GetCustomerAddressByID(ctx context.Context, arg GetCustomerAddressByIDParams) (CustomerAddress, error)
+	GetCustomerAddresses(ctx context.Context, customerID int32) ([]CustomerAddress, error)
 	GetCustomerById(ctx context.Context, id int32) (GetCustomerByIdRow, error)
 	GetCustomerData(ctx context.Context, id int32) (GetCustomerDataRow, error)
 	GetCustomerDetails(ctx context.Context, customerID int32) (GetCustomerDetailsRow, error)
 	GetCustomerId(ctx context.Context, mail string) (int32, error)
+	GetCustomerOrders(ctx context.Context, customerid pgtype.Int4) ([]GetCustomerOrdersRow, error)
 	GetCustomersCount(ctx context.Context) (int64, error)
 	// ========== УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ ==========
 	GetCustomersList(ctx context.Context, arg GetCustomersListParams) ([]GetCustomersListRow, error)
 	// ========== СТАТИСТИКА ДЛЯ ДАШБОРДА ==========
 	GetDashboardStats(ctx context.Context) (GetDashboardStatsRow, error)
+	GetDefaultCustomerAddress(ctx context.Context, customerID int32) (CustomerAddress, error)
 	GetDiscountByProductID(ctx context.Context, productid int32) (GetDiscountByProductIDRow, error)
 	GetDiscountRule(ctx context.Context, id int32) (DiscountRule, error)
 	GetDiscountRuleByID(ctx context.Context, id int32) (int32, error)
@@ -232,6 +239,7 @@ type Querier interface {
 	GetMerchCountOfCollectionsOrFirms(ctx context.Context, arg GetMerchCountOfCollectionsOrFirmsParams) (int64, error)
 	GetMerchFirms(ctx context.Context) ([]GetMerchFirmsRow, error)
 	GetMerchProductsByFirmName(ctx context.Context, name string) ([]GetMerchProductsByFirmNameRow, error)
+	GetMyPersonalPromoCodes(ctx context.Context, custID pgtype.Int4) ([]GetMyPersonalPromoCodesRow, error)
 	GetNewsBlockByID(ctx context.Context, id int32) (NewsBlock, error)
 	GetNewsBlockWithItems(ctx context.Context, id int32) (GetNewsBlockWithItemsRow, error)
 	// news_blocks.sql
@@ -363,6 +371,7 @@ type Querier interface {
 	SelectHistoryFromUniqueCustomer(ctx context.Context, id int32) ([]int32, error)
 	SelectMainCategories(ctx context.Context) (interface{}, error)
 	SelectQuantityFromPreorderItems(ctx context.Context, arg SelectQuantityFromPreorderItemsParams) (int32, error)
+	SetDefaultCustomerAddress(ctx context.Context, arg SetDefaultCustomerAddressParams) error
 	SetOrderAddress(ctx context.Context, arg SetOrderAddressParams) (int32, error)
 	SetPreorderAddress(ctx context.Context, arg SetPreorderAddressParams) (int32, error)
 	SetUnregisterCustomer(ctx context.Context, arg SetUnregisterCustomerParams) (int32, error)
@@ -371,6 +380,7 @@ type Querier interface {
 	ToggleDiscountRule(ctx context.Context, id int32) (DiscountRule, error)
 	ToggleInstagramPost(ctx context.Context, id int32) (InstagramPost, error)
 	ToggleNewsBlockLike(ctx context.Context, id int32) error
+	UnsetDefaultCustomerAddress(ctx context.Context, customerID int32) error
 	UnsubscribeNewsletter(ctx context.Context, email string) error
 	UpdateAdmin(ctx context.Context, arg UpdateAdminParams) error
 	UpdateAdminLastLogin(ctx context.Context, arg UpdateAdminLastLoginParams) error
@@ -383,7 +393,9 @@ type Querier interface {
 	UpdateBrand(ctx context.Context, arg UpdateBrandParams) error
 	UpdateBrandLine(ctx context.Context, arg UpdateBrandLineParams) error
 	UpdateCollection(ctx context.Context, arg UpdateCollectionParams) (Collection, error)
+	UpdateCustomerAddress(ctx context.Context, arg UpdateCustomerAddressParams) (CustomerAddress, error)
 	UpdateCustomerPass(ctx context.Context, arg UpdateCustomerPassParams) error
+	UpdateCustomerProfile(ctx context.Context, arg UpdateCustomerProfileParams) error
 	UpdateDiscountRule(ctx context.Context, arg UpdateDiscountRuleParams) (DiscountRule, error)
 	UpdateLine(ctx context.Context, arg UpdateLineParams) error
 	UpdateNewsBlock(ctx context.Context, arg UpdateNewsBlockParams) (NewsBlock, error)
@@ -398,7 +410,7 @@ type Querier interface {
 	UpdateProductStock(ctx context.Context, arg UpdateProductStockParams) (pgconn.CommandTag, error)
 	UpdatePromoCode(ctx context.Context, arg UpdatePromoCodeParams) (PromoCode, error)
 	UpdateUniqueCustomerHistry(ctx context.Context, arg UpdateUniqueCustomerHistryParams) error
-	ValidatePromoCode(ctx context.Context, code string) (ValidatePromoCodeRow, error)
+	ValidatePromoCode(ctx context.Context, arg ValidatePromoCodeParams) (ValidatePromoCodeRow, error)
 	VerifyNewsletterSubscriber(ctx context.Context, verificationToken string) error
 }
 

@@ -1,0 +1,235 @@
+/* ============================================
+   AddressTab — список адресов + действия
+   ============================================ */
+
+.wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* ============================================
+   ЗАГРУЗКА / ПУСТО
+   ============================================ */
+
+.loading,
+.empty {
+    padding: 48px 24px;
+    text-align: center;
+    color: #888;
+    font-size: 15px;
+    background: #fafafa;
+    border-radius: 12px;
+}
+
+.empty::before {
+    content: '📍';
+    display: block;
+    font-size: 32px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+/* ============================================
+   СПИСОК АДРЕСОВ
+   ============================================ */
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 12px;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.item:hover {
+    border-color: #d0d0d0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.itemDefault {
+    border-color: #1a1a1a;
+    background: #fafafa;
+    position: relative;
+}
+
+.itemDefault::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #1a1a1a;
+    border-radius: 12px 0 0 12px;
+}
+
+/* ============================================
+   ТЕЛО КАРТОЧКИ
+   ============================================ */
+
+.itemBody {
+    flex: 1;
+    min-width: 0;
+}
+
+.itemAddress {
+    font-size: 15px;
+    line-height: 1.5;
+    color: #1a1a1a;
+    font-weight: 500;
+    margin-bottom: 6px;
+    word-break: break-word;
+}
+
+.itemMeta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 13px;
+    color: #888;
+    margin-top: 4px;
+}
+
+.itemMeta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.defaultBadge {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 3px 10px;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ============================================
+   ДЕЙСТВИЯ
+   ============================================ */
+
+.itemActions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-end;
+    flex-shrink: 0;
+}
+
+.itemActions button {
+    padding: 7px 14px;
+    background: transparent;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #333;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+    font-family: inherit;
+}
+
+.itemActions button:hover {
+    background: #f5f5f5;
+    border-color: #bbb;
+}
+
+.itemActions button:active {
+    transform: scale(0.98);
+}
+
+/* Кнопка "Удалить" — красная */
+.deleteBtn {
+    color: #d33 !important;
+    border-color: #ffd5d5 !important;
+}
+
+.deleteBtn:hover {
+    background: #fff5f5 !important;
+    border-color: #d33 !important;
+}
+
+/* ============================================
+   КНОПКА "ДОБАВИТЬ АДРЕС"
+   ============================================ */
+
+.addBtn {
+    align-self: flex-start;
+    padding: 12px 24px;
+    background: #1a1a1a;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    font-family: inherit;
+    letter-spacing: 0.2px;
+}
+
+.addBtn:hover {
+    background: #333;
+}
+
+.addBtn:active {
+    transform: scale(0.99);
+}
+
+/* ============================================
+   АДАПТИВ
+   ============================================ */
+
+@media (max-width: 600px) {
+    .item {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 16px;
+    }
+
+    .itemActions {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+    }
+
+    .itemActions button {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .addBtn {
+        align-self: stretch;
+        text-align: center;
+    }
+}
+
+@media (max-width: 400px) {
+    .itemActions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .itemActions button {
+        text-align: center;
+    }
+}

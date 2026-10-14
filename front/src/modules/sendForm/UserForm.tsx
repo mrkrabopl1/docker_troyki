@@ -1,83 +1,149 @@
-import React, { useEffect, ReactElement, useState, useRef, memo, useCallback } from 'react'
-
-import InputWithLabel from "src/components/input/InputWithLabel"
-import PhoneInputWithValidation from "src/components/input/PhoneInputWithValidation"
-import MailInputWithValidation from 'src/components/input/MailInputWithValidation'
-import s from './style.module.css'
+import React, { useEffect, useState, useCallback } from 'react';
+import InputWithLabel from 'src/components/input/InputWithLabel';
+import PhoneInputWithValidation from 'src/components/input/PhoneInputWithValidation';
+import MailInputWithValidation from 'src/components/input/MailInputWithValidation';
 import Button from 'src/components/Button';
-import Modal from 'src/components/modal/Modal'
-import ChangePasswordForm from './ChangePasswordForm'
+import Modal from 'src/components/modal/Modal';
+import ChangePasswordForm from './ChangePasswordForm';
+import { updateProfile, type CustomerData, type UpdateProfilePayload } from 'src/providers/userProvider';
+import s from './style.module.css';
 
-interface sendFormModuleInterface {
+interface UserFormProps {
     className?: {
-        input?: string,
-        checkbox?: string,
-        combobox?: string
-    }
-    onChange: (data: any) => void
+        input?: string;
+        checkbox?: string;
+        combobox?: string;
+    };
+    user: CustomerData | null;
+    onSaved: (updated: CustomerData) => void;   // 👈 обязательный
 }
 
-const UserForm: React.FC<sendFormModuleInterface> = (props) => {
+const UserForm: React.FC<UserFormProps> = ({ className, user, onSaved }) => {
+    const [passForm, setPassForm] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    let validationObject = useRef<any>({})
+    const [formData, setFormData] = useState({
+        name: '',
+        secondName: '',
+        phone: '',
+        mail: '',
+    });
 
-    let formData = useRef<any>({
-        name: "",
-        secondName: "",
-        mail: "",
-        address: "",
-        phone: "",
-    })
-    let [refresh, setRefresh] = useState<boolean>(false)
-    let [passForm, setPassForm] = useState<boolean>(false)
+    const [errors, setErrors] = useState<Record<string, boolean>>({});
 
-    let { className, onChange } = { ...props }
+    // Синхронизация с user из Redux
+    useEffect(() => {
+        if (!user) return;
+        setFormData({
+            name: user.name || '',
+            secondName: user.secondName || '',
+            phone: user.phone || '',
+            mail: user.mail || '',
+        });
+    }, [user]);
 
+    const handleFieldChange = useCallback((value: string, field: keyof typeof formData) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        setErrors(prev => {
+            if (!prev[field]) return prev;
+            const next = { ...prev };
+            delete next[field];
+            return next;
+        });
+    }, []);
 
-    const setFormData = (data: string, name: string) => {
-        formData.current[name] = data
-    }
+    const validate = useCallback((): boolean => {
+        const newErrors: Record<string, boolean> = {};
+        if (!formData.name.trim()) newErrors.name = true;
+        if (!formData.phone.trim()) newErrors.phone = true;
 
-    const updateValidObj = () => {
-        let entries = Object.entries(formData.current)
-        for (let i = 0; i < entries.length; i++) {
-            if (entries[i][1] == "") {
-                validationObject.current[entries[i][0]] = true
-            } else {
-                if (validationObject.current[entries[i][0]]) {
-                    delete validationObject.current[entries[i][0]]
-                }
-            }
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    }, [formData]);
+
+    const handleSave = useCallback(async () => {
+        if (!validate()) return;
+
+        setSaving(true);
+        setError(null);
+
+        try {
+            const payload: UpdateProfilePayload = {
+                name: formData.name,
+                second_name: formData.secondName,
+                phone: formData.phone,
+            };
+
+            const updated = await updateProfile(payload);
+            onSaved(updated);   // 👈 обновляем Redux
+        } catch (err: any) {
+            setError(err?.response?.data?.error || 'Ошибка сохранения');
+        } finally {
+            setSaving(false);
         }
-    }
+    }, [formData, validate, onSaved]);
 
     return (
-
         <div className={s.wrapper}>
-            <div style={{display:"flex"}}>
-                <InputWithLabel className={className?.input} onChange={(data) => { setFormData(data, "name") }} placeholder={"Имя"} />
-                <InputWithLabel className={className?.input} onChange={(data) => { setFormData(data, "secondname") }} placeholder={"Фамилия"} />
+            <div style={{ display: 'flex', gap: 12 }}>
+                <InputWithLabel
+                    className={className?.input}
+                    val={formData.name}
+                    onChange={(data) => handleFieldChange(data, 'name')}
+                    placeholder="Имя"
+                />
+                <InputWithLabel
+                    className={className?.input}
+                    val={formData.secondName}
+                    onChange={(data) => handleFieldChange(data, 'secondName')}
+                    placeholder="Фамилия"
+                />
             </div>
-            <MailInputWithValidation valid={!validationObject.current.mail} invalidText={"Введите адрес электронной почты."} className={className?.input} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
-            <PhoneInputWithValidation invalidIncorrect={"Неверный формат"} invalidEmpty={"Введите телефон"} valid={!validationObject.current.phone} className={className?.input} onChange={(data) => { setFormData(data, "phone") }} placeholder={"Телефон"} />
-            <Button className={s.buttonConf} text='Изменить пароль' onClick={() => {
-                setPassForm(true)
-            }} />
-            <Button className={s.buttonConf} text='Сохранить изменения' onClick={() => {
 
-            }} />
-            {passForm?<Modal onChange={()=>{
-                setPassForm(false)
-            }} active={true}>
-                <div className={s.modal}>
-                    <ChangePasswordForm/>
-                </div>
-            </Modal>:null}
+            <MailInputWithValidation
+                valid={!errors.mail}
+                invalidText="Введите адрес электронной почты."
+                className={className?.input}
+                
+                onChange={(data) => handleFieldChange(data, 'mail')}
+                placeholder="Электронный адрес"
+            />
+
+            <PhoneInputWithValidation
+                invalidIncorrect="Неверный формат"
+                invalidEmpty="Введите телефон"
+                valid={!errors.phone}
+                className={className?.input}
+                val={formData.phone}
+                onChange={(data) => handleFieldChange(data, 'phone')}
+                placeholder="Телефон"
+            />
+
+            <Button
+                className={s.buttonConf}
+                text="Изменить пароль"
+                onClick={() => setPassForm(true)}
+            />
+
+            <Button
+                className={s.buttonConf}
+                text={saving ? 'Сохраняем...' : 'Сохранить изменения'}
+                onClick={handleSave}
+                disabled={saving}
+            />
+
+            {error && <div className={s.error}>{error}</div>}
+
+            {passForm && (
+                <Modal onChange={() => setPassForm(false)} active={true}>
+                    <div className={s.modal}>
+                        <ChangePasswordForm />
+                    </div>
+                </Modal>
+            )}
         </div>
-    )
-}
+    );
+};
 
-function checkMemo(oldData: any, newData: any) {
-    return (oldData.memo === newData.memo)
-}
-export default memo(UserForm, checkMemo)
+export default UserForm;

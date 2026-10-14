@@ -371,6 +371,21 @@ type Customer struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
+type CustomerAddress struct {
+	ID          int32              `json:"id"`
+	CustomerID  int32              `json:"customer_id"`
+	Town        string             `json:"town"`
+	Street      pgtype.Text        `json:"street"`
+	House       pgtype.Text        `json:"house"`
+	Flat        pgtype.Text        `json:"flat"`
+	PostalCode  pgtype.Text        `json:"postal_code"`
+	Region      pgtype.Text        `json:"region"`
+	Coordinates []float64          `json:"coordinates"`
+	IsDefault   bool               `json:"is_default"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
 type CustomerPasswordReset struct {
 	ID        int32              `json:"id"`
 	Email     string             `json:"email"`
@@ -505,7 +520,7 @@ type Orderaddress struct {
 	Deliverycomment pgtype.Text `json:"deliverycomment"`
 	House           pgtype.Text `json:"house"`
 	Flat            pgtype.Text `json:"flat"`
-	Coordinates     []string    `json:"coordinates"`
+	Coordinates     []float64   `json:"coordinates"`
 }
 
 type Orderitem struct {
@@ -622,24 +637,25 @@ type ProductType struct {
 }
 
 type PromoCode struct {
-	ID            int32              `json:"id"`
-	Code          string             `json:"code"`
-	Name          pgtype.Text        `json:"name"`
-	Description   pgtype.Text        `json:"description"`
-	DiscountType  string             `json:"discount_type"`
-	DiscountValue int32              `json:"discount_value"`
-	AppliesTo     string             `json:"applies_to"`
-	CollectionID  pgtype.Int4        `json:"collection_id"`
-	MinOrder      pgtype.Int4        `json:"min_order"`
-	MaxOrder      pgtype.Int4        `json:"max_order"`
-	MaxDiscount   pgtype.Int4        `json:"max_discount"`
-	StartsAt      pgtype.Timestamptz `json:"starts_at"`
-	EndsAt        pgtype.Timestamptz `json:"ends_at"`
-	UsageLimit    pgtype.Int4        `json:"usage_limit"`
-	PerUserLimit  pgtype.Int4        `json:"per_user_limit"`
-	IsActive      pgtype.Bool        `json:"is_active"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	ID                 int32              `json:"id"`
+	Code               string             `json:"code"`
+	Name               pgtype.Text        `json:"name"`
+	Description        pgtype.Text        `json:"description"`
+	IssuedToCustomerID pgtype.Int4        `json:"issued_to_customer_id"`
+	DiscountType       string             `json:"discount_type"`
+	DiscountValue      int32              `json:"discount_value"`
+	AppliesTo          string             `json:"applies_to"`
+	CollectionID       pgtype.Int4        `json:"collection_id"`
+	MinOrder           pgtype.Int4        `json:"min_order"`
+	MaxOrder           pgtype.Int4        `json:"max_order"`
+	MaxDiscount        pgtype.Int4        `json:"max_discount"`
+	StartsAt           pgtype.Timestamptz `json:"starts_at"`
+	EndsAt             pgtype.Timestamptz `json:"ends_at"`
+	UsageLimit         pgtype.Int4        `json:"usage_limit"`
+	PerUserLimit       pgtype.Int4        `json:"per_user_limit"`
+	IsActive           pgtype.Bool        `json:"is_active"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 }
 
 type PromoCodeUsage struct {

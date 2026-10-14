@@ -79,7 +79,8 @@ INSERT INTO promo_codes (
     ends_at,
     usage_limit,
     per_user_limit,
-    is_active
+    is_active,
+    issued_to_customer_id
 ) VALUES (
     $1,
     $2,
@@ -95,26 +96,28 @@ INSERT INTO promo_codes (
     $12,
     $13,
     $14,
-    $15
-) RETURNING id, code, name, description, discount_type, discount_value, applies_to, collection_id, min_order, max_order, max_discount, starts_at, ends_at, usage_limit, per_user_limit, is_active, created_at, updated_at
+    $15,
+    $16
+) RETURNING id, code, name, description, issued_to_customer_id, discount_type, discount_value, applies_to, collection_id, min_order, max_order, max_discount, starts_at, ends_at, usage_limit, per_user_limit, is_active, created_at, updated_at
 `
 
 type CreatePromoCodeParams struct {
-	Code          string             `json:"code"`
-	Name          pgtype.Text        `json:"name"`
-	Description   pgtype.Text        `json:"description"`
-	DiscountType  string             `json:"discount_type"`
-	DiscountValue int32              `json:"discount_value"`
-	AppliesTo     string             `json:"applies_to"`
-	CollectionID  pgtype.Int4        `json:"collection_id"`
-	MinOrder      pgtype.Int4        `json:"min_order"`
-	MaxOrder      pgtype.Int4        `json:"max_order"`
-	MaxDiscount   pgtype.Int4        `json:"max_discount"`
-	StartsAt      pgtype.Timestamptz `json:"starts_at"`
-	EndsAt        pgtype.Timestamptz `json:"ends_at"`
-	UsageLimit    pgtype.Int4        `json:"usage_limit"`
-	PerUserLimit  pgtype.Int4        `json:"per_user_limit"`
-	IsActive      pgtype.Bool        `json:"is_active"`
+	Code               string             `json:"code"`
+	Name               pgtype.Text        `json:"name"`
+	Description        pgtype.Text        `json:"description"`
+	DiscountType       string             `json:"discount_type"`
+	DiscountValue      int32              `json:"discount_value"`
+	AppliesTo          string             `json:"applies_to"`
+	CollectionID       pgtype.Int4        `json:"collection_id"`
+	MinOrder           pgtype.Int4        `json:"min_order"`
+	MaxOrder           pgtype.Int4        `json:"max_order"`
+	MaxDiscount        pgtype.Int4        `json:"max_discount"`
+	StartsAt           pgtype.Timestamptz `json:"starts_at"`
+	EndsAt             pgtype.Timestamptz `json:"ends_at"`
+	UsageLimit         pgtype.Int4        `json:"usage_limit"`
+	PerUserLimit       pgtype.Int4        `json:"per_user_limit"`
+	IsActive           pgtype.Bool        `json:"is_active"`
+	IssuedToCustomerID pgtype.Int4        `json:"issued_to_customer_id"`
 }
 
 func (q *Queries) CreatePromoCode(ctx context.Context, arg CreatePromoCodeParams) (PromoCode, error) {
@@ -134,6 +137,7 @@ func (q *Queries) CreatePromoCode(ctx context.Context, arg CreatePromoCodeParams
 		arg.UsageLimit,
 		arg.PerUserLimit,
 		arg.IsActive,
+		arg.IssuedToCustomerID,
 	)
 	var i PromoCode
 	err := row.Scan(
@@ -141,6 +145,7 @@ func (q *Queries) CreatePromoCode(ctx context.Context, arg CreatePromoCodeParams
 		&i.Code,
 		&i.Name,
 		&i.Description,
+		&i.IssuedToCustomerID,
 		&i.DiscountType,
 		&i.DiscountValue,
 		&i.AppliesTo,
@@ -229,7 +234,7 @@ func (q *Queries) DeletePromoCode(ctx context.Context, id int32) error {
 
 const getActivePromoCodes = `-- name: GetActivePromoCodes :many
 SELECT 
-    pc.id, pc.code, pc.name, pc.description, pc.discount_type, pc.discount_value, pc.applies_to, pc.collection_id, pc.min_order, pc.max_order, pc.max_discount, pc.starts_at, pc.ends_at, pc.usage_limit, pc.per_user_limit, pc.is_active, pc.created_at, pc.updated_at,
+    pc.id, pc.code, pc.name, pc.description, pc.issued_to_customer_id, pc.discount_type, pc.discount_value, pc.applies_to, pc.collection_id, pc.min_order, pc.max_order, pc.max_discount, pc.starts_at, pc.ends_at, pc.usage_limit, pc.per_user_limit, pc.is_active, pc.created_at, pc.updated_at,
     c.slug as collection_slug,
     c.name as collection_name,
     COALESCE(
@@ -247,27 +252,28 @@ ORDER BY pc.id DESC
 `
 
 type GetActivePromoCodesRow struct {
-	ID             int32              `json:"id"`
-	Code           string             `json:"code"`
-	Name           pgtype.Text        `json:"name"`
-	Description    pgtype.Text        `json:"description"`
-	DiscountType   string             `json:"discount_type"`
-	DiscountValue  int32              `json:"discount_value"`
-	AppliesTo      string             `json:"applies_to"`
-	CollectionID   pgtype.Int4        `json:"collection_id"`
-	MinOrder       pgtype.Int4        `json:"min_order"`
-	MaxOrder       pgtype.Int4        `json:"max_order"`
-	MaxDiscount    pgtype.Int4        `json:"max_discount"`
-	StartsAt       pgtype.Timestamptz `json:"starts_at"`
-	EndsAt         pgtype.Timestamptz `json:"ends_at"`
-	UsageLimit     pgtype.Int4        `json:"usage_limit"`
-	PerUserLimit   pgtype.Int4        `json:"per_user_limit"`
-	IsActive       pgtype.Bool        `json:"is_active"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	CollectionSlug pgtype.Text        `json:"collection_slug"`
-	CollectionName pgtype.Text        `json:"collection_name"`
-	UsageCount     interface{}        `json:"usage_count"`
+	ID                 int32              `json:"id"`
+	Code               string             `json:"code"`
+	Name               pgtype.Text        `json:"name"`
+	Description        pgtype.Text        `json:"description"`
+	IssuedToCustomerID pgtype.Int4        `json:"issued_to_customer_id"`
+	DiscountType       string             `json:"discount_type"`
+	DiscountValue      int32              `json:"discount_value"`
+	AppliesTo          string             `json:"applies_to"`
+	CollectionID       pgtype.Int4        `json:"collection_id"`
+	MinOrder           pgtype.Int4        `json:"min_order"`
+	MaxOrder           pgtype.Int4        `json:"max_order"`
+	MaxDiscount        pgtype.Int4        `json:"max_discount"`
+	StartsAt           pgtype.Timestamptz `json:"starts_at"`
+	EndsAt             pgtype.Timestamptz `json:"ends_at"`
+	UsageLimit         pgtype.Int4        `json:"usage_limit"`
+	PerUserLimit       pgtype.Int4        `json:"per_user_limit"`
+	IsActive           pgtype.Bool        `json:"is_active"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	CollectionSlug     pgtype.Text        `json:"collection_slug"`
+	CollectionName     pgtype.Text        `json:"collection_name"`
+	UsageCount         interface{}        `json:"usage_count"`
 }
 
 func (q *Queries) GetActivePromoCodes(ctx context.Context) ([]GetActivePromoCodesRow, error) {
@@ -284,6 +290,7 @@ func (q *Queries) GetActivePromoCodes(ctx context.Context) ([]GetActivePromoCode
 			&i.Code,
 			&i.Name,
 			&i.Description,
+			&i.IssuedToCustomerID,
 			&i.DiscountType,
 			&i.DiscountValue,
 			&i.AppliesTo,
@@ -312,9 +319,93 @@ func (q *Queries) GetActivePromoCodes(ctx context.Context) ([]GetActivePromoCode
 	return items, nil
 }
 
+const getMyPersonalPromoCodes = `-- name: GetMyPersonalPromoCodes :many
+SELECT 
+    pc.id, pc.code, pc.name, pc.description, pc.issued_to_customer_id, pc.discount_type, pc.discount_value, pc.applies_to, pc.collection_id, pc.min_order, pc.max_order, pc.max_discount, pc.starts_at, pc.ends_at, pc.usage_limit, pc.per_user_limit, pc.is_active, pc.created_at, pc.updated_at,
+    COALESCE(
+        (SELECT COUNT(*) FROM promo_code_usage pcu
+         WHERE pcu.promo_code_id = pc.id 
+           AND pcu.customer_id = $1),
+        0
+    )::bigint AS used_by_me
+FROM promo_codes pc
+WHERE pc.is_active = true
+  AND NOW() BETWEEN pc.starts_at AND COALESCE(pc.ends_at, 'infinity')
+  AND pc.issued_to_customer_id = $1
+  AND (pc.usage_limit = 0 OR (
+      SELECT COUNT(*) FROM promo_code_usage pcu2 
+      WHERE pcu2.promo_code_id = pc.id
+  ) < pc.usage_limit)
+ORDER BY pc.created_at DESC
+`
+
+type GetMyPersonalPromoCodesRow struct {
+	ID                 int32              `json:"id"`
+	Code               string             `json:"code"`
+	Name               pgtype.Text        `json:"name"`
+	Description        pgtype.Text        `json:"description"`
+	IssuedToCustomerID pgtype.Int4        `json:"issued_to_customer_id"`
+	DiscountType       string             `json:"discount_type"`
+	DiscountValue      int32              `json:"discount_value"`
+	AppliesTo          string             `json:"applies_to"`
+	CollectionID       pgtype.Int4        `json:"collection_id"`
+	MinOrder           pgtype.Int4        `json:"min_order"`
+	MaxOrder           pgtype.Int4        `json:"max_order"`
+	MaxDiscount        pgtype.Int4        `json:"max_discount"`
+	StartsAt           pgtype.Timestamptz `json:"starts_at"`
+	EndsAt             pgtype.Timestamptz `json:"ends_at"`
+	UsageLimit         pgtype.Int4        `json:"usage_limit"`
+	PerUserLimit       pgtype.Int4        `json:"per_user_limit"`
+	IsActive           pgtype.Bool        `json:"is_active"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	UsedByMe           int64              `json:"used_by_me"`
+}
+
+func (q *Queries) GetMyPersonalPromoCodes(ctx context.Context, custID pgtype.Int4) ([]GetMyPersonalPromoCodesRow, error) {
+	rows, err := q.db.Query(ctx, getMyPersonalPromoCodes, custID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMyPersonalPromoCodesRow
+	for rows.Next() {
+		var i GetMyPersonalPromoCodesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.Name,
+			&i.Description,
+			&i.IssuedToCustomerID,
+			&i.DiscountType,
+			&i.DiscountValue,
+			&i.AppliesTo,
+			&i.CollectionID,
+			&i.MinOrder,
+			&i.MaxOrder,
+			&i.MaxDiscount,
+			&i.StartsAt,
+			&i.EndsAt,
+			&i.UsageLimit,
+			&i.PerUserLimit,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UsedByMe,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPromoCodeByCode = `-- name: GetPromoCodeByCode :one
 SELECT 
-    pc.id, pc.code, pc.name, pc.description, pc.discount_type, pc.discount_value, pc.applies_to, pc.collection_id, pc.min_order, pc.max_order, pc.max_discount, pc.starts_at, pc.ends_at, pc.usage_limit, pc.per_user_limit, pc.is_active, pc.created_at, pc.updated_at,
+    pc.id, pc.code, pc.name, pc.description, pc.issued_to_customer_id, pc.discount_type, pc.discount_value, pc.applies_to, pc.collection_id, pc.min_order, pc.max_order, pc.max_discount, pc.starts_at, pc.ends_at, pc.usage_limit, pc.per_user_limit, pc.is_active, pc.created_at, pc.updated_at,
     c.slug as collection_slug,
     c.name as collection_name,
     COALESCE(
@@ -327,27 +418,28 @@ WHERE pc.code = $1
 `
 
 type GetPromoCodeByCodeRow struct {
-	ID             int32              `json:"id"`
-	Code           string             `json:"code"`
-	Name           pgtype.Text        `json:"name"`
-	Description    pgtype.Text        `json:"description"`
-	DiscountType   string             `json:"discount_type"`
-	DiscountValue  int32              `json:"discount_value"`
-	AppliesTo      string             `json:"applies_to"`
-	CollectionID   pgtype.Int4        `json:"collection_id"`
-	MinOrder       pgtype.Int4        `json:"min_order"`
-	MaxOrder       pgtype.Int4        `json:"max_order"`
-	MaxDiscount    pgtype.Int4        `json:"max_discount"`
-	StartsAt       pgtype.Timestamptz `json:"starts_at"`
-	EndsAt         pgtype.Timestamptz `json:"ends_at"`
-	UsageLimit     pgtype.Int4        `json:"usage_limit"`
-	PerUserLimit   pgtype.Int4        `json:"per_user_limit"`
-	IsActive       pgtype.Bool        `json:"is_active"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	CollectionSlug pgtype.Text        `json:"collection_slug"`
-	CollectionName pgtype.Text        `json:"collection_name"`
-	UsageCount     interface{}        `json:"usage_count"`
+	ID                 int32              `json:"id"`
+	Code               string             `json:"code"`
+	Name               pgtype.Text        `json:"name"`
+	Description        pgtype.Text        `json:"description"`
+	IssuedToCustomerID pgtype.Int4        `json:"issued_to_customer_id"`
+	DiscountType       string             `json:"discount_type"`
+	DiscountValue      int32              `json:"discount_value"`
+	AppliesTo          string             `json:"applies_to"`
+	CollectionID       pgtype.Int4        `json:"collection_id"`
+	MinOrder           pgtype.Int4        `json:"min_order"`
+	MaxOrder           pgtype.Int4        `json:"max_order"`
+	MaxDiscount        pgtype.Int4        `json:"max_discount"`
+	StartsAt           pgtype.Timestamptz `json:"starts_at"`
+	EndsAt             pgtype.Timestamptz `json:"ends_at"`
+	UsageLimit         pgtype.Int4        `json:"usage_limit"`
+	PerUserLimit       pgtype.Int4        `json:"per_user_limit"`
+	IsActive           pgtype.Bool        `json:"is_active"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	CollectionSlug     pgtype.Text        `json:"collection_slug"`
+	CollectionName     pgtype.Text        `json:"collection_name"`
+	UsageCount         interface{}        `json:"usage_count"`
 }
 
 func (q *Queries) GetPromoCodeByCode(ctx context.Context, code string) (GetPromoCodeByCodeRow, error) {
@@ -358,6 +450,7 @@ func (q *Queries) GetPromoCodeByCode(ctx context.Context, code string) (GetPromo
 		&i.Code,
 		&i.Name,
 		&i.Description,
+		&i.IssuedToCustomerID,
 		&i.DiscountType,
 		&i.DiscountValue,
 		&i.AppliesTo,
@@ -381,7 +474,7 @@ func (q *Queries) GetPromoCodeByCode(ctx context.Context, code string) (GetPromo
 
 const getPromoCodeByID = `-- name: GetPromoCodeByID :one
 SELECT 
-    pc.id, pc.code, pc.name, pc.description, pc.discount_type, pc.discount_value, pc.applies_to, pc.collection_id, pc.min_order, pc.max_order, pc.max_discount, pc.starts_at, pc.ends_at, pc.usage_limit, pc.per_user_limit, pc.is_active, pc.created_at, pc.updated_at,
+    pc.id, pc.code, pc.name, pc.description, pc.issued_to_customer_id, pc.discount_type, pc.discount_value, pc.applies_to, pc.collection_id, pc.min_order, pc.max_order, pc.max_discount, pc.starts_at, pc.ends_at, pc.usage_limit, pc.per_user_limit, pc.is_active, pc.created_at, pc.updated_at,
     c.slug as collection_slug,
     c.name as collection_name,
     COALESCE(
@@ -394,27 +487,28 @@ WHERE pc.id = $1
 `
 
 type GetPromoCodeByIDRow struct {
-	ID             int32              `json:"id"`
-	Code           string             `json:"code"`
-	Name           pgtype.Text        `json:"name"`
-	Description    pgtype.Text        `json:"description"`
-	DiscountType   string             `json:"discount_type"`
-	DiscountValue  int32              `json:"discount_value"`
-	AppliesTo      string             `json:"applies_to"`
-	CollectionID   pgtype.Int4        `json:"collection_id"`
-	MinOrder       pgtype.Int4        `json:"min_order"`
-	MaxOrder       pgtype.Int4        `json:"max_order"`
-	MaxDiscount    pgtype.Int4        `json:"max_discount"`
-	StartsAt       pgtype.Timestamptz `json:"starts_at"`
-	EndsAt         pgtype.Timestamptz `json:"ends_at"`
-	UsageLimit     pgtype.Int4        `json:"usage_limit"`
-	PerUserLimit   pgtype.Int4        `json:"per_user_limit"`
-	IsActive       pgtype.Bool        `json:"is_active"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	CollectionSlug pgtype.Text        `json:"collection_slug"`
-	CollectionName pgtype.Text        `json:"collection_name"`
-	UsageCount     int64              `json:"usage_count"`
+	ID                 int32              `json:"id"`
+	Code               string             `json:"code"`
+	Name               pgtype.Text        `json:"name"`
+	Description        pgtype.Text        `json:"description"`
+	IssuedToCustomerID pgtype.Int4        `json:"issued_to_customer_id"`
+	DiscountType       string             `json:"discount_type"`
+	DiscountValue      int32              `json:"discount_value"`
+	AppliesTo          string             `json:"applies_to"`
+	CollectionID       pgtype.Int4        `json:"collection_id"`
+	MinOrder           pgtype.Int4        `json:"min_order"`
+	MaxOrder           pgtype.Int4        `json:"max_order"`
+	MaxDiscount        pgtype.Int4        `json:"max_discount"`
+	StartsAt           pgtype.Timestamptz `json:"starts_at"`
+	EndsAt             pgtype.Timestamptz `json:"ends_at"`
+	UsageLimit         pgtype.Int4        `json:"usage_limit"`
+	PerUserLimit       pgtype.Int4        `json:"per_user_limit"`
+	IsActive           pgtype.Bool        `json:"is_active"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	CollectionSlug     pgtype.Text        `json:"collection_slug"`
+	CollectionName     pgtype.Text        `json:"collection_name"`
+	UsageCount         int64              `json:"usage_count"`
 }
 
 func (q *Queries) GetPromoCodeByID(ctx context.Context, id int32) (GetPromoCodeByIDRow, error) {
@@ -425,6 +519,7 @@ func (q *Queries) GetPromoCodeByID(ctx context.Context, id int32) (GetPromoCodeB
 		&i.Code,
 		&i.Name,
 		&i.Description,
+		&i.IssuedToCustomerID,
 		&i.DiscountType,
 		&i.DiscountValue,
 		&i.AppliesTo,
@@ -519,7 +614,7 @@ func (q *Queries) GetPromoCodeUsageStats(ctx context.Context, id int32) (GetProm
 
 const listPromoCodes = `-- name: ListPromoCodes :many
 SELECT 
-    pc.id, pc.code, pc.name, pc.description, pc.discount_type, pc.discount_value, pc.applies_to, pc.collection_id, pc.min_order, pc.max_order, pc.max_discount, pc.starts_at, pc.ends_at, pc.usage_limit, pc.per_user_limit, pc.is_active, pc.created_at, pc.updated_at,
+    pc.id, pc.code, pc.name, pc.description, pc.issued_to_customer_id, pc.discount_type, pc.discount_value, pc.applies_to, pc.collection_id, pc.min_order, pc.max_order, pc.max_discount, pc.starts_at, pc.ends_at, pc.usage_limit, pc.per_user_limit, pc.is_active, pc.created_at, pc.updated_at,
     c.slug as collection_slug,
     c.name as collection_name,
     COALESCE(
@@ -532,27 +627,28 @@ ORDER BY pc.id DESC
 `
 
 type ListPromoCodesRow struct {
-	ID             int32              `json:"id"`
-	Code           string             `json:"code"`
-	Name           pgtype.Text        `json:"name"`
-	Description    pgtype.Text        `json:"description"`
-	DiscountType   string             `json:"discount_type"`
-	DiscountValue  int32              `json:"discount_value"`
-	AppliesTo      string             `json:"applies_to"`
-	CollectionID   pgtype.Int4        `json:"collection_id"`
-	MinOrder       pgtype.Int4        `json:"min_order"`
-	MaxOrder       pgtype.Int4        `json:"max_order"`
-	MaxDiscount    pgtype.Int4        `json:"max_discount"`
-	StartsAt       pgtype.Timestamptz `json:"starts_at"`
-	EndsAt         pgtype.Timestamptz `json:"ends_at"`
-	UsageLimit     pgtype.Int4        `json:"usage_limit"`
-	PerUserLimit   pgtype.Int4        `json:"per_user_limit"`
-	IsActive       pgtype.Bool        `json:"is_active"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	CollectionSlug pgtype.Text        `json:"collection_slug"`
-	CollectionName pgtype.Text        `json:"collection_name"`
-	UsageCount     interface{}        `json:"usage_count"`
+	ID                 int32              `json:"id"`
+	Code               string             `json:"code"`
+	Name               pgtype.Text        `json:"name"`
+	Description        pgtype.Text        `json:"description"`
+	IssuedToCustomerID pgtype.Int4        `json:"issued_to_customer_id"`
+	DiscountType       string             `json:"discount_type"`
+	DiscountValue      int32              `json:"discount_value"`
+	AppliesTo          string             `json:"applies_to"`
+	CollectionID       pgtype.Int4        `json:"collection_id"`
+	MinOrder           pgtype.Int4        `json:"min_order"`
+	MaxOrder           pgtype.Int4        `json:"max_order"`
+	MaxDiscount        pgtype.Int4        `json:"max_discount"`
+	StartsAt           pgtype.Timestamptz `json:"starts_at"`
+	EndsAt             pgtype.Timestamptz `json:"ends_at"`
+	UsageLimit         pgtype.Int4        `json:"usage_limit"`
+	PerUserLimit       pgtype.Int4        `json:"per_user_limit"`
+	IsActive           pgtype.Bool        `json:"is_active"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	CollectionSlug     pgtype.Text        `json:"collection_slug"`
+	CollectionName     pgtype.Text        `json:"collection_name"`
+	UsageCount         interface{}        `json:"usage_count"`
 }
 
 func (q *Queries) ListPromoCodes(ctx context.Context) ([]ListPromoCodesRow, error) {
@@ -569,6 +665,7 @@ func (q *Queries) ListPromoCodes(ctx context.Context) ([]ListPromoCodesRow, erro
 			&i.Code,
 			&i.Name,
 			&i.Description,
+			&i.IssuedToCustomerID,
 			&i.DiscountType,
 			&i.DiscountValue,
 			&i.AppliesTo,
@@ -599,7 +696,7 @@ func (q *Queries) ListPromoCodes(ctx context.Context) ([]ListPromoCodesRow, erro
 
 const listPromoCodesWithFilters = `-- name: ListPromoCodesWithFilters :many
 SELECT 
-    pc.id, pc.code, pc.name, pc.description, pc.discount_type, pc.discount_value, pc.applies_to, pc.collection_id, pc.min_order, pc.max_order, pc.max_discount, pc.starts_at, pc.ends_at, pc.usage_limit, pc.per_user_limit, pc.is_active, pc.created_at, pc.updated_at,
+    pc.id, pc.code, pc.name, pc.description, pc.issued_to_customer_id, pc.discount_type, pc.discount_value, pc.applies_to, pc.collection_id, pc.min_order, pc.max_order, pc.max_discount, pc.starts_at, pc.ends_at, pc.usage_limit, pc.per_user_limit, pc.is_active, pc.created_at, pc.updated_at,
     c.slug as collection_slug,
     c.name as collection_name,
     COALESCE(
@@ -635,27 +732,28 @@ type ListPromoCodesWithFiltersParams struct {
 }
 
 type ListPromoCodesWithFiltersRow struct {
-	ID             int32              `json:"id"`
-	Code           string             `json:"code"`
-	Name           pgtype.Text        `json:"name"`
-	Description    pgtype.Text        `json:"description"`
-	DiscountType   string             `json:"discount_type"`
-	DiscountValue  int32              `json:"discount_value"`
-	AppliesTo      string             `json:"applies_to"`
-	CollectionID   pgtype.Int4        `json:"collection_id"`
-	MinOrder       pgtype.Int4        `json:"min_order"`
-	MaxOrder       pgtype.Int4        `json:"max_order"`
-	MaxDiscount    pgtype.Int4        `json:"max_discount"`
-	StartsAt       pgtype.Timestamptz `json:"starts_at"`
-	EndsAt         pgtype.Timestamptz `json:"ends_at"`
-	UsageLimit     pgtype.Int4        `json:"usage_limit"`
-	PerUserLimit   pgtype.Int4        `json:"per_user_limit"`
-	IsActive       pgtype.Bool        `json:"is_active"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	CollectionSlug pgtype.Text        `json:"collection_slug"`
-	CollectionName pgtype.Text        `json:"collection_name"`
-	UsageCount     interface{}        `json:"usage_count"`
+	ID                 int32              `json:"id"`
+	Code               string             `json:"code"`
+	Name               pgtype.Text        `json:"name"`
+	Description        pgtype.Text        `json:"description"`
+	IssuedToCustomerID pgtype.Int4        `json:"issued_to_customer_id"`
+	DiscountType       string             `json:"discount_type"`
+	DiscountValue      int32              `json:"discount_value"`
+	AppliesTo          string             `json:"applies_to"`
+	CollectionID       pgtype.Int4        `json:"collection_id"`
+	MinOrder           pgtype.Int4        `json:"min_order"`
+	MaxOrder           pgtype.Int4        `json:"max_order"`
+	MaxDiscount        pgtype.Int4        `json:"max_discount"`
+	StartsAt           pgtype.Timestamptz `json:"starts_at"`
+	EndsAt             pgtype.Timestamptz `json:"ends_at"`
+	UsageLimit         pgtype.Int4        `json:"usage_limit"`
+	PerUserLimit       pgtype.Int4        `json:"per_user_limit"`
+	IsActive           pgtype.Bool        `json:"is_active"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	CollectionSlug     pgtype.Text        `json:"collection_slug"`
+	CollectionName     pgtype.Text        `json:"collection_name"`
+	UsageCount         interface{}        `json:"usage_count"`
 }
 
 func (q *Queries) ListPromoCodesWithFilters(ctx context.Context, arg ListPromoCodesWithFiltersParams) ([]ListPromoCodesWithFiltersRow, error) {
@@ -681,6 +779,7 @@ func (q *Queries) ListPromoCodesWithFilters(ctx context.Context, arg ListPromoCo
 			&i.Code,
 			&i.Name,
 			&i.Description,
+			&i.IssuedToCustomerID,
 			&i.DiscountType,
 			&i.DiscountValue,
 			&i.AppliesTo,
@@ -728,7 +827,7 @@ SET
     is_active = COALESCE($14, is_active),
     updated_at = NOW()
 WHERE id = $15
-RETURNING id, code, name, description, discount_type, discount_value, applies_to, collection_id, min_order, max_order, max_discount, starts_at, ends_at, usage_limit, per_user_limit, is_active, created_at, updated_at
+RETURNING id, code, name, description, issued_to_customer_id, discount_type, discount_value, applies_to, collection_id, min_order, max_order, max_discount, starts_at, ends_at, usage_limit, per_user_limit, is_active, created_at, updated_at
 `
 
 type UpdatePromoCodeParams struct {
@@ -773,6 +872,7 @@ func (q *Queries) UpdatePromoCode(ctx context.Context, arg UpdatePromoCodeParams
 		&i.Code,
 		&i.Name,
 		&i.Description,
+		&i.IssuedToCustomerID,
 		&i.DiscountType,
 		&i.DiscountValue,
 		&i.AppliesTo,
@@ -793,7 +893,7 @@ func (q *Queries) UpdatePromoCode(ctx context.Context, arg UpdatePromoCodeParams
 
 const validatePromoCode = `-- name: ValidatePromoCode :one
 SELECT 
-    pc.id, pc.code, pc.name, pc.description, pc.discount_type, pc.discount_value, pc.applies_to, pc.collection_id, pc.min_order, pc.max_order, pc.max_discount, pc.starts_at, pc.ends_at, pc.usage_limit, pc.per_user_limit, pc.is_active, pc.created_at, pc.updated_at,
+    pc.id, pc.code, pc.name, pc.description, pc.issued_to_customer_id, pc.discount_type, pc.discount_value, pc.applies_to, pc.collection_id, pc.min_order, pc.max_order, pc.max_discount, pc.starts_at, pc.ends_at, pc.usage_limit, pc.per_user_limit, pc.is_active, pc.created_at, pc.updated_at,
     c.slug as collection_slug,
     c.name as collection_name,
     COALESCE(
@@ -804,6 +904,10 @@ FROM promo_codes pc
 LEFT JOIN collections c ON pc.collection_id = c.id
 WHERE pc.code = $1
   AND pc.is_active = true
+  AND (
+      pc.issued_to_customer_id IS NULL
+      OR pc.issued_to_customer_id = $2
+  )
   AND NOW() BETWEEN pc.starts_at AND COALESCE(pc.ends_at, 'infinity')
   AND (pc.usage_limit = 0 OR (
       SELECT COUNT(*) FROM promo_code_usage WHERE promo_code_id = pc.id
@@ -811,38 +915,45 @@ WHERE pc.code = $1
 LIMIT 1
 `
 
-type ValidatePromoCodeRow struct {
-	ID             int32              `json:"id"`
-	Code           string             `json:"code"`
-	Name           pgtype.Text        `json:"name"`
-	Description    pgtype.Text        `json:"description"`
-	DiscountType   string             `json:"discount_type"`
-	DiscountValue  int32              `json:"discount_value"`
-	AppliesTo      string             `json:"applies_to"`
-	CollectionID   pgtype.Int4        `json:"collection_id"`
-	MinOrder       pgtype.Int4        `json:"min_order"`
-	MaxOrder       pgtype.Int4        `json:"max_order"`
-	MaxDiscount    pgtype.Int4        `json:"max_discount"`
-	StartsAt       pgtype.Timestamptz `json:"starts_at"`
-	EndsAt         pgtype.Timestamptz `json:"ends_at"`
-	UsageLimit     pgtype.Int4        `json:"usage_limit"`
-	PerUserLimit   pgtype.Int4        `json:"per_user_limit"`
-	IsActive       pgtype.Bool        `json:"is_active"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	CollectionSlug pgtype.Text        `json:"collection_slug"`
-	CollectionName pgtype.Text        `json:"collection_name"`
-	UsageCount     interface{}        `json:"usage_count"`
+type ValidatePromoCodeParams struct {
+	Code       string      `json:"code"`
+	CustomerID pgtype.Int4 `json:"customer_id"`
 }
 
-func (q *Queries) ValidatePromoCode(ctx context.Context, code string) (ValidatePromoCodeRow, error) {
-	row := q.db.QueryRow(ctx, validatePromoCode, code)
+type ValidatePromoCodeRow struct {
+	ID                 int32              `json:"id"`
+	Code               string             `json:"code"`
+	Name               pgtype.Text        `json:"name"`
+	Description        pgtype.Text        `json:"description"`
+	IssuedToCustomerID pgtype.Int4        `json:"issued_to_customer_id"`
+	DiscountType       string             `json:"discount_type"`
+	DiscountValue      int32              `json:"discount_value"`
+	AppliesTo          string             `json:"applies_to"`
+	CollectionID       pgtype.Int4        `json:"collection_id"`
+	MinOrder           pgtype.Int4        `json:"min_order"`
+	MaxOrder           pgtype.Int4        `json:"max_order"`
+	MaxDiscount        pgtype.Int4        `json:"max_discount"`
+	StartsAt           pgtype.Timestamptz `json:"starts_at"`
+	EndsAt             pgtype.Timestamptz `json:"ends_at"`
+	UsageLimit         pgtype.Int4        `json:"usage_limit"`
+	PerUserLimit       pgtype.Int4        `json:"per_user_limit"`
+	IsActive           pgtype.Bool        `json:"is_active"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	CollectionSlug     pgtype.Text        `json:"collection_slug"`
+	CollectionName     pgtype.Text        `json:"collection_name"`
+	UsageCount         interface{}        `json:"usage_count"`
+}
+
+func (q *Queries) ValidatePromoCode(ctx context.Context, arg ValidatePromoCodeParams) (ValidatePromoCodeRow, error) {
+	row := q.db.QueryRow(ctx, validatePromoCode, arg.Code, arg.CustomerID)
 	var i ValidatePromoCodeRow
 	err := row.Scan(
 		&i.ID,
 		&i.Code,
 		&i.Name,
 		&i.Description,
+		&i.IssuedToCustomerID,
 		&i.DiscountType,
 		&i.DiscountValue,
 		&i.AppliesTo,

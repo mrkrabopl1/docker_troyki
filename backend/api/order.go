@@ -75,9 +75,18 @@ func (s *Server) handleCreatePreorder(ctx *gin.Context) {
 func (s *Server) handleCreateOrder(ctx *gin.Context) {
 	var orderData db.CreateOrderType
 	if err := ctx.BindJSON(&orderData); err != nil {
-		fmt.Println(err, "f,;dslf;sd")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
+	}
+
+	// 👇 ИЗВЛЕКАЕМ CUSTOMERID ИЗ AUTH_TOKEN (не доверяем фронту)
+	if tokenStr := s.tokenMaker.GetUserTokenFromRequest(ctx.Request); tokenStr != "" {
+		if payload, err := s.tokenMaker.VerifyToken(tokenStr); err == nil {
+			if !payload.IsAdmin {
+				id := payload.UserID
+				orderData.CustomerID = &id
+			}
+		}
 	}
 
 	// === ОБРАБОТКА ПРОМОКОДА ===
@@ -87,43 +96,29 @@ func (s *Server) handleCreateOrder(ctx *gin.Context) {
 	var promoCodeSnapshot map[string]interface{}
 
 	if orderData.PromoCodeID != nil && *orderData.PromoCodeID > 0 {
-		// Получаем промокод по ID для проверки лимита
 		promoCode, err := s.store.GetPromoCodeByID(ctx.Request.Context(), *orderData.PromoCodeID)
 		if err != nil {
-			fmt.Printf("Promo code not found by ID: %d\n", *orderData.PromoCodeID)
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"error": "Promo code not found",
-			})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Promo code not found"})
 			return
 		}
 
-		// Проверяем активность
 		if !promoCode.IsActive.Bool {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"error": "Promo code is not active",
-			})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Promo code is not active"})
 			return
 		}
 
-		// Проверяем даты
 		now := time.Now()
 		if promoCode.StartsAt.Valid && promoCode.StartsAt.Time.After(now) {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"error": "Promo code not yet active",
-			})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Promo code not yet active"})
 			return
 		}
 		if promoCode.EndsAt.Valid && promoCode.EndsAt.Time.Before(now) {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"error": "Promo code expired",
-			})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Promo code expired"})
 			return
 		}
 
-		// Проверяем лимит использований
 		usageCount := promoCode.UsageCount
 		usageLimit := promoCode.UsageLimit.Int32
-
 		if usageLimit > 0 && usageCount >= int64(usageLimit) {
 			ctx.JSON(http.StatusBadRequest, gin.H{
 				"error": fmt.Sprintf("Promo code usage limit exceeded (%d/%d)", usageCount, usageLimit),
@@ -131,12 +126,34 @@ func (s *Server) handleCreateOrder(ctx *gin.Context) {
 			return
 		}
 
-		// Всё хорошо - применяем промокод
+		// Проверка "только для конкретного юзера"
+		if promoCode.IssuedToCustomerID.Valid {
+			if orderData.CustomerID == nil || *orderData.CustomerID != promoCode.IssuedToCustomerID.Int32 {
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"error": "Promo code is not available for you",
+				})
+				return
+			}
+		}
+
+		// Проверка per_user_limit
+		if promoCode.PerUserLimit.Valid && promoCode.PerUserLimit.Int32 > 0 && orderData.CustomerID != nil {
+			usedCount, _ := s.store.CheckPromoCodeUsageByCustomer(ctx.Request.Context(), db.CheckPromoCodeUsageByCustomerParams{
+				PromoCodeID: promoCode.ID,
+				CustomerID:  pgtype.Int4{Int32: *orderData.CustomerID, Valid: true},
+			})
+			if usedCount >= int64(promoCode.PerUserLimit.Int32) {
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"error": "You have already used this promo code",
+				})
+				return
+			}
+		}
+
 		promoCodeID = &promoCode.ID
 		promoDiscountAmount = orderData.PromoDiscount
 		appliedPromoCode = promoCode.Code
 
-		// === СОХРАНЯЕМ СНАПШОТ ПРОМОКОДА ===
 		promoCodeSnapshot = map[string]interface{}{
 			"code":              promoCode.Code,
 			"discount_type":     promoCode.DiscountType,
@@ -148,44 +165,42 @@ func (s *Server) handleCreateOrder(ctx *gin.Context) {
 			"per_user_limit":    promoCode.PerUserLimit,
 			"usage_limit":       promoCode.UsageLimit,
 		}
-
-		fmt.Printf("Promo code validated: %s (ID: %d), usage: %d/%d\n",
-			appliedPromoCode, promoCode.ID, usageCount, usageLimit)
 	}
 
+	// === СОЗДАНИЕ ЗАКАЗА ===
+	// CreateOrderWithStockUpdate сам разберётся: customer или guest
 	orderID, unregUserId, hash, err := s.store.CreateOrderWithStockUpdate(ctx, &orderData)
-
 	if err != nil {
-		fmt.Println(err, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
-	// === СОХРАНЯЕМ ИСПОЛЬЗОВАНИЕ ПРОМОКОДА С СНАПШОТОМ ===
+	// === ИСПОЛЬЗОВАНИЕ ПРОМОКОДА ===
 	if promoCodeID != nil {
 		go func() {
 			ctxBg := context.Background()
 
-			// Преобразуем снапшот в JSON
+			// 👇 customer_id из auth_token, а не всегда NULL
+			var customerIDPg pgtype.Int4
+			if orderData.CustomerID != nil {
+				customerIDPg = pgtype.Int4{Int32: *orderData.CustomerID, Valid: true}
+			}
+
 			snapshotJSON, _ := json.Marshal(promoCodeSnapshot)
-			fmt.Println(snapshotJSON, "f,ldll")
 			_, err := s.store.CreatePromoCodeUsage(ctxBg, db.CreatePromoCodeUsageParams{
 				PromoCodeID:       *promoCodeID,
 				OrderID:           orderID,
-				CustomerID:        pgtype.Int4{Valid: false},
+				CustomerID:        customerIDPg,
 				DiscountAmount:    int32(promoDiscountAmount),
 				PromoCodeSnapshot: snapshotJSON,
 			})
 			if err != nil {
 				fmt.Printf("Failed to create promo code usage for order %d: %v\n", orderID, err)
-			} else {
-				fmt.Printf("Promo code usage recorded: %s (ID: %d) for order %d, discount: %d\n",
-					appliedPromoCode, *promoCodeID, orderID, promoDiscountAmount)
 			}
 		}()
 	}
 
-	// Создаем запись в order_events о создании заказа
+	// === ORDER EVENT ===
 	go func() {
 		ctxBg := context.Background()
 
@@ -203,32 +218,29 @@ func (s *Server) handleCreateOrder(ctx *gin.Context) {
 		}
 	}()
 
-	// Устанавливаем куки
+	// === КУКИ ===
+	// Кука "cart" — очищаем всегда
 	ctx.SetCookie("cart", "", -1, "/", "", false, true)
-	myCookie, _ := s.tokenMaker.CreateCookie(hash, hash, 36000, false, false)
-	ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
 
-	if orderData.Save {
-		myCookie, _, err := s.tokenMaker.CreateCookieWithPasetoToken(unregUserId, "saved", 2*time.Hour, true, true)
+	// Кука для просмотра заказа по хэшу
+	myCookie, _ := s.tokenMaker.CreateCookie(hash, hash, 36000, false, false)
+	ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge,
+		myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
+
+	// 👇 Куку "saved" ставим ТОЛЬКО для гостя (unregUserId > 0)
+	if orderData.Save && unregUserId > 0 {
+		myCookie, _, err := s.tokenMaker.CreateCookieWithPasetoToken(
+			unregUserId, "saved", 2*time.Hour, true, true,
+		)
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, errorResponse(err))
 			return
 		}
-		fmt.Println("set cccccccccccccccccccccccccccccooooooooooooooooockie")
-		ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
+		ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge,
+			myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
 	}
 
-	// Подготавливаем данные для email
-	data := map[string]interface{}{
-		"hash": hash,
-	}
-
-	fmt.Println("maybe good")
-	fmt.Printf("orderData: %v\n", orderData)
-	fmt.Printf("Sending task with email: %s\n", orderData.PersonalData.Mail)
-	fmt.Printf("Delivery price: %v\n", orderData.Address.Flat)
-	fmt.Printf("DeliveryType: %v\n", orderData.Delivery.Type)
-
+	// === EMAIL ===
 	data1 := worker.PayloadSendOrderEmail{
 		Email:         orderData.PersonalData.Mail,
 		Name:          orderData.PersonalData.Name,
@@ -245,16 +257,13 @@ func (s *Server) handleCreateOrder(ctx *gin.Context) {
 		PromoDiscount: promoDiscountAmount,
 	}
 
-	fmt.Printf("Deliveryww price: %v\n", data1)
-
 	err = s.taskDistributor.DistributeTaskSendOrderEmail(ctx, &data1)
 	if err != nil {
-		fmt.Println(err, "error in taskDistributor")
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, data)
+	ctx.JSON(http.StatusOK, map[string]interface{}{"hash": hash})
 }
 
 func (s *Server) handleUpdatePreorder(ctx *gin.Context) {
@@ -353,9 +362,9 @@ func (s *Server) handleGetCart(ctx *gin.Context) {
 
 func (s *Server) handleGetCartFromOrder(ctx *gin.Context) {
 	hashUrl := ctx.Query("hash")
-
+	fmt.Println(hashUrl, "dmkn")
 	cartData, err := s.store.GetCartDataFromOrderByHash(ctx, hashUrl)
-	fmt.Println(cartData)
+	fmt.Println(cartData, "fdkjsbfdks", err)
 
 	if err != nil {
 		// log.WithCaller().Err(err).Msg("")

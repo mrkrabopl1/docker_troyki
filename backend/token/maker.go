@@ -39,4 +39,7 @@ type Maker interface {
 	GetAdminTokenFromRequest(r *http.Request) string
 
 	CreateCookieWithPasetoToken(userID int32, cookieName string, duration time.Duration, httpOnly bool, secure bool) (http.Cookie, string, error)
+
+	CreateGuestCookie(uniqueCustomerID int32, duration time.Duration, httpOnly bool, secure bool) (http.Cookie, error)
+	GetGuestTokenFromRequest(r *http.Request) string
 }

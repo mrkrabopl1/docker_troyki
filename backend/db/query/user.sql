@@ -89,7 +89,12 @@ VALUES ($1, '{}')
 RETURNING id;
 
 
-
+-- name: UpdateCustomerProfile :exec
+UPDATE customers
+SET
+    name = COALESCE(@name, name),
+    phone = COALESCE(@phone, phone)
+WHERE id = @id;
 
 
 -- query/newsletter.sql
@@ -152,3 +157,97 @@ WHERE status = 'unsubscribed';
 
 -- name: GetNewsletterTotalCount :one
 SELECT COUNT(*) FROM newsletter_subscribers;
+
+
+
+
+-- name: GetCustomerAddresses :many
+SELECT * FROM customer_addresses
+WHERE customer_id = $1
+ORDER BY is_default DESC, created_at ASC;
+
+-- name: GetCustomerAddressByID :one
+SELECT * FROM customer_addresses
+WHERE id = $1 AND customer_id = $2;
+
+
+
+-- name: CreateCustomerAddress :one
+INSERT INTO customer_addresses (
+    customer_id,
+    town,
+    street,
+    house,
+    flat,
+    postal_code,
+    region,
+    coordinates,
+    is_default
+) VALUES (
+    @customer_id,
+    @town,
+    @street,
+    @house,
+    @flat,
+    @postal_code,
+    @region,
+    @coordinates,
+    @is_default
+) RETURNING *;
+
+-- name: UpdateCustomerAddress :one
+UPDATE customer_addresses
+SET
+    town = COALESCE(@town, town),
+    street = COALESCE(@street, street),
+    house = COALESCE(@house, house),
+    flat = COALESCE(@flat, flat),
+    postal_code = COALESCE(@postal_code, postal_code),
+    region = COALESCE(@region, region),
+    coordinates = COALESCE(@coordinates, coordinates),
+    is_default = COALESCE(@is_default, is_default),
+    updated_at = NOW()
+WHERE id = @id AND customer_id = @customer_id
+RETURNING *;
+
+-- name: UnsetDefaultCustomerAddress :exec
+UPDATE customer_addresses
+SET is_default = FALSE, updated_at = NOW()
+WHERE customer_id = $1 AND is_default = TRUE;
+
+-- name: SetDefaultCustomerAddress :exec
+UPDATE customer_addresses
+SET is_default = TRUE, updated_at = NOW()
+WHERE id = $1 AND customer_id = $2;
+
+-- name: CountCustomerAddresses :one
+SELECT COUNT(*) FROM customer_addresses WHERE customer_id = $1;
+
+
+-- name: GetDefaultCustomerAddress :one
+SELECT * FROM customer_addresses
+WHERE customer_id = $1 AND is_default = TRUE
+LIMIT 1;
+
+
+-- name: DeleteCustomerAddress :exec
+DELETE FROM customer_addresses
+WHERE id = $1 AND customer_id = $2;
+
+-- name: GetCustomerOrders :many
+SELECT 
+    o.id,
+    o.orderdate                AS order_date,
+    o.status                   AS status,
+    o.hash                    AS hash,
+    o.deliveryprice            AS delivery_price,
+    o.deliverycomment          AS delivery_comment,
+    o.deliverytype             AS delivery_type,
+    o.created_at,
+    COUNT(oi.id)                                  AS items_count,
+    COALESCE(SUM(oi.price * oi. quantity), 0)  AS total_price
+FROM orders o
+LEFT JOIN orderitems oi ON oi.orderid = o.id
+WHERE o.customerid = $1
+GROUP BY o.id
+ORDER BY o.orderdate DESC;

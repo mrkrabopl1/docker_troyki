@@ -1,7 +1,7 @@
 // src/pages/main/Main.tsx
-import React, { memo, useState, useCallback, useMemo, useEffect } from 'react';
+import React, { memo, useState, useCallback, useMemo, useEffect,useRef } from 'react';
 import { useRouter } from 'next/router';
-import { useAppDispatch, useAppSelector,useNavigate } from 'src/store/hooks/redux';
+import { useAppDispatch, useAppSelector, useNavigate } from 'src/store/hooks/redux';
 import MerchBanner from 'src/modules/merchBanner/MerchBanner';
 import MerchSliderField from 'src/modules/merchField/MerchSliderField';
 import ContentSliderWithLinks from 'src/components/contentSlider/ContentSliderWithLinks';
@@ -23,8 +23,9 @@ const Main: React.FC<MainProps> = memo(({ initialData }) => {
   dispatch(finishLoading());
   const navigate = useNavigate();
   const router = useRouter();
+  const dragStart = useRef(false);
   const { firmMap } = useAppSelector(state => state.menu);
-  
+
   // Используем данные с сервера
   const [mainData] = useState({
     pageInfo: initialData?.pageInfo || {},
@@ -32,6 +33,12 @@ const Main: React.FC<MainProps> = memo(({ initialData }) => {
   });
 
   const handleBannerClick = useCallback((slug) => {
+    if(dragStart.current)
+      {
+        dragStart.current = false
+        return
+      } 
+    dragStart.current = false
     navigate("collections/" + slug);
   }, [router]);
 
@@ -49,10 +56,20 @@ const Main: React.FC<MainProps> = memo(({ initialData }) => {
     }
   }, [mainData.banners, dispatch]);
 
- 
+
 
   const onFirmClicked = useCallback((firmSlug) => {
-   navigate(`/search?brand=${firmSlug}`);
+    navigate(`/search?brand=${firmSlug}`);
+  }, [navigate]);
+
+
+  const onDragEnd = useCallback(() => {
+    dragStart.current = false;
+  }, [navigate]);
+
+
+   const onDragStart = useCallback(() => {
+     dragStart.current = true;
   }, [navigate]);
 
   const createBanners = useCallback(() => {
@@ -70,7 +87,7 @@ const Main: React.FC<MainProps> = memo(({ initialData }) => {
 
   return (
     <div style={{ position: "relative" }}>
-      <ContentSliderWithLinks content={createBanners()} />
+      <ContentSliderWithLinks onDragEnd={onDragEnd} onDragStart={onDragStart} content={createBanners()} />
       <FirmsScroller onChange={onFirmClicked} />
     </div>
   );

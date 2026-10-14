@@ -4,6 +4,7 @@ import React, {
   useMemo,
   useCallback,
 } from 'react';
+import { useRouter } from 'next/router';
 
 import { useAppDispatch } from 'src/store/hooks/redux';
 import { useRouteChange } from 'src/store/hooks/redux';
@@ -29,6 +30,13 @@ import {
   setPageInfo,
   SliderData,
 } from 'src/store/reducers/widgetSlice';
+
+// 👇 CUSTOMER AUTH
+import {
+  setUser as setCustomer,
+  clearUser as clearCustomer,
+} from 'src/store/reducers/userSlice';
+import { getMe } from 'src/providers/userProvider';
 
 import { getCookie } from './global';
 import { setUniqueCustomer } from './providers/userProvider';
@@ -69,26 +77,7 @@ const AppContent: React.FC<AppContentProps> = ({
   initialWidgetsInfo,
 }) => {
   const dispatch = useAppDispatch();
-  useEffect(() => {
-    // Проверяем размер переданных данных
-    if (initialMainInfo) {
-      const size = JSON.stringify(initialMainInfo).length;
-      console.log(`📊 [AppContent] initialMainInfo размер: ${(size / 1024 / 1024).toFixed(2)} MB`);
-      console.log(`   - categories: ${initialMainInfo.categories?.length || 0}`);
-      console.log(`   - firms: ${initialMainInfo.firms?.length || 0}`);
-    }
-
-    if (initialWidgetsInfo) {
-      const size = JSON.stringify(initialWidgetsInfo).length;
-      console.log(`📊 [AppContent] initialWidgetsInfo размер: ${(size / 1024 / 1024).toFixed(2)} MB`);
-      console.log(`   - количество: ${initialWidgetsInfo.length || 0}`);
-    }
-
-    if (initialInstagramPhotos) {
-      const size = JSON.stringify(initialInstagramPhotos).length;
-      console.log(`📊 [AppContent] initialInstagramPhotos размер: ${(size / 1024 / 1024).toFixed(2)} MB`);
-    }
-  }, [initialMainInfo, initialWidgetsInfo, initialInstagramPhotos]);
+  const router = useRouter();
   const contRef = useRef<HTMLDivElement>(null);
 
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -97,7 +86,47 @@ const AppContent: React.FC<AppContentProps> = ({
 
   const initializedRef = useRef(false);
 
+  // 👇 защита от двойного bootstrap (StrictMode + смена роутов)
+  const authCheckedRef = useRef(false);
+
   useRouteChange();
+
+  // ============================================================
+  // CUSTOMER AUTH BOOTSTRAP
+  // ============================================================
+  // Один раз при монтировании. Пропускаем админку — у неё свой auth
+  // через ProtectedRoute. Не блокирует рендер.
+  // ============================================================
+  useEffect(() => {
+    // Админка сама разбирается
+    if (router.pathname.startsWith('/admin')) {
+      return;
+    }
+
+    // StrictMode защита
+    if (authCheckedRef.current) {
+      return;
+    }
+    authCheckedRef.current = true;
+
+    let cancelled = false;
+
+    (async () => {
+      const user = await getMe();
+
+      //if (cancelled) return;
+
+      if (user) {
+        dispatch(setCustomer(user));
+      } else {
+        dispatch(clearCustomer());
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch, router.pathname]);
 
   // ============================================================
   // COOKIE
@@ -188,6 +217,7 @@ const AppContent: React.FC<AppContentProps> = ({
     dispatch(collections(fieldData));
     dispatch(setLineMap(lineMap));
   }, [dispatch])
+
   const applyDataToRedux = useCallback(
     (data: any) => {
       if (!data) return;
@@ -231,8 +261,6 @@ const AppContent: React.FC<AppContentProps> = ({
 
       dispatch(types(typesVal));
       dispatch(categories(categoriesVal));
-
-
 
       // --------------------------------------------------------
       // DISCOUNTS
@@ -288,7 +316,6 @@ const AppContent: React.FC<AppContentProps> = ({
             dispatch(setInstagramPhotos(parsed.data));
 
             // Не ждём API
-            // Обновление можно сделать в фоне
             return;
           }
         } catch {
@@ -317,9 +344,9 @@ const AppContent: React.FC<AppContentProps> = ({
     }
   }, [dispatch]);
 
-
-
-
+  // ============================================================
+  // FIRMS
+  // ============================================================
 
   const loadFirms = useCallback(async () => {
     try {
@@ -341,7 +368,6 @@ const AppContent: React.FC<AppContentProps> = ({
             applyFirmsToRedux(parsed.data);
 
             // Не ждём API
-            // Обновление можно сделать в фоне
             return;
           }
         } catch {
@@ -354,7 +380,7 @@ const AppContent: React.FC<AppContentProps> = ({
       applyFirmsToRedux(data);
 
       localStorage.setItem(
-        'instagramPhotosCache',
+        'firmsWithLinesCache', // 👈 исправлено: было instagramPhotosCache
         JSON.stringify({
           data: data,
           timestamp: Date.now(),
@@ -362,21 +388,23 @@ const AppContent: React.FC<AppContentProps> = ({
       );
     } catch (error) {
       console.error(
-        '[APP_CONTENT] Instagram failed:',
+        '[APP_CONTENT] Firms failed:',
         error
       );
     }
-  }, [dispatch]);
+  }, [applyFirmsToRedux]);
 
   // ============================================================
   // INITIALIZATION
   // ============================================================
+
   const hasData = useMemo(() => {
     return (
       initialMainInfo?.categories?.length > 0 ||
       initialMainInfo?.firms?.length > 0
     );
   }, [initialMainInfo]);
+
   useEffect(() => {
     if (initializedRef.current) {
       return;
@@ -428,7 +456,8 @@ const AppContent: React.FC<AppContentProps> = ({
     applyDataToRedux,
     loadInstagramPhotos,
     dispatch,
-    loadFirms
+    loadFirms,
+    hasData,
   ]);
 
   // ============================================================
@@ -488,6 +517,7 @@ const AppContent: React.FC<AppContentProps> = ({
     dispatch(setHydrated());
     console.log('✅ [AppContent] Hydration completed');
   }, [dispatch]);
+
   useEffect(() => {
     const element = contRef.current;
     if (!element) return;

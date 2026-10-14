@@ -393,6 +393,7 @@ func (s *Server) handleAdminGetPromoCode(c *gin.Context) {
 }
 
 // ============ GET PROMO CODE BY CODE (PUBLIC) ============
+// ============ GET PROMO CODE BY CODE (PUBLIC) ============
 func (s *Server) handleGetPromoCodeByCode(c *gin.Context) {
 	code := c.Param("code")
 	if code == "" {
@@ -407,7 +408,24 @@ func (s *Server) handleGetPromoCodeByCode(c *gin.Context) {
 		return
 	}
 
-	promoCode, err := s.store.ValidatePromoCode(c.Request.Context(), code)
+	// 👇 Достаём customerID из auth_token (если залогинен)
+	// Для гостя customerID.Valid = false → в SQL уйдёт NULL
+	// → ValidatePromoCode вернёт только публичные промокоды
+	var customerID pgtype.Int4
+	if token := s.tokenMaker.GetUserTokenFromRequest(c.Request); token != "" {
+		if payload, err := s.tokenMaker.VerifyToken(token); err == nil {
+			customerID = pgtype.Int4{Int32: payload.UserID, Valid: true}
+		}
+	}
+
+	// 👇 Передаём структуру, а не строку
+	promoCode, err := s.store.ValidatePromoCode(
+		c.Request.Context(),
+		db.ValidatePromoCodeParams{
+			Code:       code,
+			CustomerID: customerID,
+		},
+	)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Promo code not found or invalid"})
 		return
@@ -494,6 +512,12 @@ func (s *Server) handleGetPromoCodeByCode(c *gin.Context) {
 				} else {
 					notMatchingProducts = append(notMatchingProducts, result.ProductID)
 				}
+			}
+
+			// Если есть товары, которые не подходят — промокод невалиден для корзины
+			if len(notMatchingProducts) > 0 {
+				isValidForCart = false
+				validationMessage = "Промокод не применим к некоторым товарам в корзине"
 			}
 		}
 	}
@@ -756,6 +780,28 @@ func (s *Server) handleAdminUpdatePromoCode(c *gin.Context) {
 		"message":    "Promo code updated successfully",
 		"promo_code": promoCode,
 	})
+}
+
+// GET /my-promo-codes — защищённый
+func (s *Server) handleGetMyPromoCodes(ctx *gin.Context) {
+	customerID := mustCustomerID(ctx)
+
+	promos, err := s.store.GetMyPersonalPromoCodes(ctx, pgtype.Int4{Int32: customerID, Valid: true})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	// Фильтруем использованные до per_user_limit
+	available := make([]db.GetMyPersonalPromoCodesRow, 0, len(promos))
+	for _, p := range promos {
+		if p.PerUserLimit.Valid && p.PerUserLimit.Int32 > 0 && p.UsedByMe >= int64(p.PerUserLimit.Int32) {
+			continue
+		}
+		available = append(available, p)
+	}
+
+	ctx.JSON(http.StatusOK, available)
 }
 
 // ============ DELETE PROMO CODE ============

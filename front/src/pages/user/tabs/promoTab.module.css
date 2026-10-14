@@ -1,0 +1,140 @@
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.loading,
+.empty {
+    padding: 48px 24px;
+    text-align: center;
+    color: #888;
+    font-size: 15px;
+    line-height: 1.6;
+    background: #fafafa;
+    border-radius: 12px;
+}
+
+.empty::before {
+    content: '🎟️';
+    display: block;
+    font-size: 32px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.item {
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #1a1a1a;
+    border-radius: 12px;
+    transition: box-shadow 0.15s;
+}
+
+.item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.itemHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.discount {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1a1a1a;
+    letter-spacing: -0.5px;
+}
+
+.personalBadge {
+    padding: 3px 10px;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.code {
+    font-family: 'Courier New', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #1a1a1a;
+    padding: 12px 16px;
+    background: #f5f5f5;
+    border: 1px dashed #ccc;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s, border-color 0.15s;
+    margin-bottom: 6px;
+}
+
+.code:hover {
+    background: #eee;
+    border-color: #999;
+}
+
+.code:active {
+    transform: scale(0.99);
+}
+
+.copyHint {
+    text-align: center;
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 14px;
+}
+
+.name {
+    font-size: 15px;
+    font-weight: 500;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+}
+
+.description {
+    font-size: 14px;
+    color: #555;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 13px;
+    color: #888;
+    padding-top: 12px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.metaRow {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+@media (max-width: 600px) {
+    .item {
+        padding: 16px;
+    }
+
+    .discount {
+        font-size: 22px;
+    }
+
+    .code {
+        font-size: 16px;
+        letter-spacing: 1.5px;
+        padding: 10px 12px;
+    }
+}

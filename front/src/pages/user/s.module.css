@@ -1,11 +1,143 @@
-.main{
-    display: flex;
-    width: 100%;
+/* ============================================
+   User / Profile — минималистичный layout
+   ============================================ */
+
+.main {
+  display: flex;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  gap: 32px;
+  align-items: flex-start;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  color: #1a1a1a;
 }
 
-.tabs{
-    width: 400px;
+/* ============================================
+   TABS
+   ============================================ */
+
+.tabs {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: #fafafa;
+  border-radius: 12px;
+  box-sizing: border-box;
 }
-.pages{
+
+.tabs > div {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tabs > div:hover {
+  background: #f0f0f0;
+  color: #1a1a1a;
+}
+
+.tabs > div:active {
+  transform: scale(0.99);
+}
+
+/* Активный таб */
+.activeTab {
+  background: #1a1a1a !important;
+  color: #fff !important;
+}
+
+.activeTab:hover {
+  background: #333 !important;
+  color: #fff !important;
+}
+
+/* Разделитель перед "Выход" */
+.tabs > div:last-child {
+  margin-top: 8px;
+  border-top: 1px solid #e8e8e8;
+  padding-top: 16px;
+  border-radius: 0 0 8px 8px;
+  color: #999;
+}
+
+.tabs > div:last-child:hover {
+  background: #fff5f5;
+  color: #d33;
+}
+
+/* ============================================
+   PAGES (content area)
+   ============================================ */
+
+.pages {
+  flex: 1;
+  min-width: 0;
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px;
+  box-sizing: border-box;
+}
+
+/* ============================================
+   ADAPTIVE
+   ============================================ */
+
+@media (max-width: 900px) {
+  .main {
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 16px;
+  }
+
+  .tabs {
     width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 6px;
+    gap: 2px;
+  }
+
+  .tabs > div {
+    padding: 10px 14px;
+    white-space: nowrap;
+    font-size: 14px;
+  }
+
+  .tabs > div:last-child {
+    margin-top: 0;
+    border-top: none;
+    padding-top: 10px;
+    border-radius: 8px;
+    margin-left: auto;
+  }
+
+  .pages {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding: 12px 12px;
+  }
+
+  .tabs > div {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .pages {
+    padding: 16px;
+  }
 }

@@ -4,10 +4,12 @@ import LinkController from './slidersSwitchers/LinkController';
 
 type ContentSliderProps = {
   content: ReactElement[];
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
   className?: string;
 };
 
-const ContentSliderWithLinks: React.FC<ContentSliderProps> = ({ content, className }) => {
+const ContentSliderWithLinks: React.FC<ContentSliderProps> = ({ content, className, onDragStart, onDragEnd }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [totalSteps, setTotalSteps] = useState(1);
   const [dragOffset, setDragOffset] = useState(0);
@@ -60,7 +62,7 @@ const ContentSliderWithLinks: React.FC<ContentSliderProps> = ({ content, classNa
     const currentOffset = dragOffsetRef.current;
     const percentage = Math.abs(currentOffset) / stepSize;
     
-    if (percentage > 0.5 && stepSize > 0) {
+    if (percentage > 0.3 && stepSize > 0) {
       const direction = currentOffset > 0 ? -1 : 1;
       const newStep = currentStepRef.current + direction;
       
@@ -92,6 +94,7 @@ const ContentSliderWithLinks: React.FC<ContentSliderProps> = ({ content, classNa
     
     dragOffsetRef.current = clampedOffset;
     setDragOffset(clampedOffset);
+    onDragStart?.();
   }, [getStepSize]);
 
   // Обработчики мыши
@@ -109,6 +112,7 @@ const ContentSliderWithLinks: React.FC<ContentSliderProps> = ({ content, classNa
     e.preventDefault();
     const touch = e.touches[0];
     handleMove(touch.clientX);
+    onDragStart?.();
   }, [handleMove]);
 
   const onTouchEnd = useCallback(() => {

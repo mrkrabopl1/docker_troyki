@@ -47,6 +47,17 @@ func (q *Queries) CheckMail(ctx context.Context, mail string) (bool, error) {
 	return exists, err
 }
 
+const countCustomerAddresses = `-- name: CountCustomerAddresses :one
+SELECT COUNT(*) FROM customer_addresses WHERE customer_id = $1
+`
+
+func (q *Queries) CountCustomerAddresses(ctx context.Context, customerID int32) (int64, error) {
+	row := q.db.QueryRow(ctx, countCustomerAddresses, customerID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCustomer = `-- name: CreateCustomer :one
 INSERT INTO customers (pass, mail)
 VALUES ($1, $2)
@@ -63,6 +74,72 @@ func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) 
 	var id int32
 	err := row.Scan(&id)
 	return id, err
+}
+
+const createCustomerAddress = `-- name: CreateCustomerAddress :one
+INSERT INTO customer_addresses (
+    customer_id,
+    town,
+    street,
+    house,
+    flat,
+    postal_code,
+    region,
+    coordinates,
+    is_default
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9
+) RETURNING id, customer_id, town, street, house, flat, postal_code, region, coordinates, is_default, created_at, updated_at
+`
+
+type CreateCustomerAddressParams struct {
+	CustomerID  int32       `json:"customer_id"`
+	Town        string      `json:"town"`
+	Street      pgtype.Text `json:"street"`
+	House       pgtype.Text `json:"house"`
+	Flat        pgtype.Text `json:"flat"`
+	PostalCode  pgtype.Text `json:"postal_code"`
+	Region      pgtype.Text `json:"region"`
+	Coordinates []float64   `json:"coordinates"`
+	IsDefault   bool        `json:"is_default"`
+}
+
+func (q *Queries) CreateCustomerAddress(ctx context.Context, arg CreateCustomerAddressParams) (CustomerAddress, error) {
+	row := q.db.QueryRow(ctx, createCustomerAddress,
+		arg.CustomerID,
+		arg.Town,
+		arg.Street,
+		arg.House,
+		arg.Flat,
+		arg.PostalCode,
+		arg.Region,
+		arg.Coordinates,
+		arg.IsDefault,
+	)
+	var i CustomerAddress
+	err := row.Scan(
+		&i.ID,
+		&i.CustomerID,
+		&i.Town,
+		&i.Street,
+		&i.House,
+		&i.Flat,
+		&i.PostalCode,
+		&i.Region,
+		&i.Coordinates,
+		&i.IsDefault,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const createNewsletterSubscriber = `-- name: CreateNewsletterSubscriber :one
@@ -124,6 +201,21 @@ func (q *Queries) CreateUniqueCustomer(ctx context.Context, creationtime pgtype.
 	return id, err
 }
 
+const deleteCustomerAddress = `-- name: DeleteCustomerAddress :exec
+DELETE FROM customer_addresses
+WHERE id = $1 AND customer_id = $2
+`
+
+type DeleteCustomerAddressParams struct {
+	ID         int32 `json:"id"`
+	CustomerID int32 `json:"customer_id"`
+}
+
+func (q *Queries) DeleteCustomerAddress(ctx context.Context, arg DeleteCustomerAddressParams) error {
+	_, err := q.db.Exec(ctx, deleteCustomerAddress, arg.ID, arg.CustomerID)
+	return err
+}
+
 const deleteFromVerifivation = `-- name: DeleteFromVerifivation :exec
 DELETE FROM verification
 WHERE id = $1
@@ -173,6 +265,75 @@ func (q *Queries) GetBaseCustomerData(ctx context.Context, mail string) (GetBase
 	return i, err
 }
 
+const getCustomerAddressByID = `-- name: GetCustomerAddressByID :one
+SELECT id, customer_id, town, street, house, flat, postal_code, region, coordinates, is_default, created_at, updated_at FROM customer_addresses
+WHERE id = $1 AND customer_id = $2
+`
+
+type GetCustomerAddressByIDParams struct {
+	ID         int32 `json:"id"`
+	CustomerID int32 `json:"customer_id"`
+}
+
+func (q *Queries) GetCustomerAddressByID(ctx context.Context, arg GetCustomerAddressByIDParams) (CustomerAddress, error) {
+	row := q.db.QueryRow(ctx, getCustomerAddressByID, arg.ID, arg.CustomerID)
+	var i CustomerAddress
+	err := row.Scan(
+		&i.ID,
+		&i.CustomerID,
+		&i.Town,
+		&i.Street,
+		&i.House,
+		&i.Flat,
+		&i.PostalCode,
+		&i.Region,
+		&i.Coordinates,
+		&i.IsDefault,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCustomerAddresses = `-- name: GetCustomerAddresses :many
+SELECT id, customer_id, town, street, house, flat, postal_code, region, coordinates, is_default, created_at, updated_at FROM customer_addresses
+WHERE customer_id = $1
+ORDER BY is_default DESC, created_at ASC
+`
+
+func (q *Queries) GetCustomerAddresses(ctx context.Context, customerID int32) ([]CustomerAddress, error) {
+	rows, err := q.db.Query(ctx, getCustomerAddresses, customerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CustomerAddress
+	for rows.Next() {
+		var i CustomerAddress
+		if err := rows.Scan(
+			&i.ID,
+			&i.CustomerID,
+			&i.Town,
+			&i.Street,
+			&i.House,
+			&i.Flat,
+			&i.PostalCode,
+			&i.Region,
+			&i.Coordinates,
+			&i.IsDefault,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getCustomerData = `-- name: GetCustomerData :one
 SELECT name,
     secondname,
@@ -212,6 +373,95 @@ func (q *Queries) GetCustomerId(ctx context.Context, mail string) (int32, error)
 	var id int32
 	err := row.Scan(&id)
 	return id, err
+}
+
+const getCustomerOrders = `-- name: GetCustomerOrders :many
+SELECT 
+    o.id,
+    o.orderdate                AS order_date,
+    o.status                   AS status,
+    o.hash                    AS hash,
+    o.deliveryprice            AS delivery_price,
+    o.deliverycomment          AS delivery_comment,
+    o.deliverytype             AS delivery_type,
+    o.created_at,
+    COUNT(oi.id)                                  AS items_count,
+    COALESCE(SUM(oi.price * oi. quantity), 0)  AS total_price
+FROM orders o
+LEFT JOIN orderitems oi ON oi.orderid = o.id
+WHERE o.customerid = $1
+GROUP BY o.id
+ORDER BY o.orderdate DESC
+`
+
+type GetCustomerOrdersRow struct {
+	ID              int32              `json:"id"`
+	OrderDate       pgtype.Date        `json:"order_date"`
+	Status          StatusEnum         `json:"status"`
+	Hash            string             `json:"hash"`
+	DeliveryPrice   int32              `json:"delivery_price"`
+	DeliveryComment pgtype.Text        `json:"delivery_comment"`
+	DeliveryType    DeliveryEnum       `json:"delivery_type"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	ItemsCount      int64              `json:"items_count"`
+	TotalPrice      interface{}        `json:"total_price"`
+}
+
+func (q *Queries) GetCustomerOrders(ctx context.Context, customerid pgtype.Int4) ([]GetCustomerOrdersRow, error) {
+	rows, err := q.db.Query(ctx, getCustomerOrders, customerid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCustomerOrdersRow
+	for rows.Next() {
+		var i GetCustomerOrdersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderDate,
+			&i.Status,
+			&i.Hash,
+			&i.DeliveryPrice,
+			&i.DeliveryComment,
+			&i.DeliveryType,
+			&i.CreatedAt,
+			&i.ItemsCount,
+			&i.TotalPrice,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getDefaultCustomerAddress = `-- name: GetDefaultCustomerAddress :one
+SELECT id, customer_id, town, street, house, flat, postal_code, region, coordinates, is_default, created_at, updated_at FROM customer_addresses
+WHERE customer_id = $1 AND is_default = TRUE
+LIMIT 1
+`
+
+func (q *Queries) GetDefaultCustomerAddress(ctx context.Context, customerID int32) (CustomerAddress, error) {
+	row := q.db.QueryRow(ctx, getDefaultCustomerAddress, customerID)
+	var i CustomerAddress
+	err := row.Scan(
+		&i.ID,
+		&i.CustomerID,
+		&i.Town,
+		&i.Street,
+		&i.House,
+		&i.Flat,
+		&i.PostalCode,
+		&i.Region,
+		&i.Coordinates,
+		&i.IsDefault,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getNewsletterPendingCount = `-- name: GetNewsletterPendingCount :one
@@ -432,6 +682,22 @@ func (q *Queries) SelectHistoryFromUniqueCustomer(ctx context.Context, id int32)
 	return history, err
 }
 
+const setDefaultCustomerAddress = `-- name: SetDefaultCustomerAddress :exec
+UPDATE customer_addresses
+SET is_default = TRUE, updated_at = NOW()
+WHERE id = $1 AND customer_id = $2
+`
+
+type SetDefaultCustomerAddressParams struct {
+	ID         int32 `json:"id"`
+	CustomerID int32 `json:"customer_id"`
+}
+
+func (q *Queries) SetDefaultCustomerAddress(ctx context.Context, arg SetDefaultCustomerAddressParams) error {
+	_, err := q.db.Exec(ctx, setDefaultCustomerAddress, arg.ID, arg.CustomerID)
+	return err
+}
+
 const setUnregisterCustomer = `-- name: SetUnregisterCustomer :one
 INSERT INTO unregistercustomer (
     name,
@@ -488,6 +754,17 @@ func (q *Queries) SetUnregisterCustomer(ctx context.Context, arg SetUnregisterCu
 	return id, err
 }
 
+const unsetDefaultCustomerAddress = `-- name: UnsetDefaultCustomerAddress :exec
+UPDATE customer_addresses
+SET is_default = FALSE, updated_at = NOW()
+WHERE customer_id = $1 AND is_default = TRUE
+`
+
+func (q *Queries) UnsetDefaultCustomerAddress(ctx context.Context, customerID int32) error {
+	_, err := q.db.Exec(ctx, unsetDefaultCustomerAddress, customerID)
+	return err
+}
+
 const unsubscribeNewsletter = `-- name: UnsubscribeNewsletter :exec
 UPDATE newsletter_subscribers
 SET status = 'unsubscribed'
@@ -497,6 +774,66 @@ WHERE email = $1
 func (q *Queries) UnsubscribeNewsletter(ctx context.Context, email string) error {
 	_, err := q.db.Exec(ctx, unsubscribeNewsletter, email)
 	return err
+}
+
+const updateCustomerAddress = `-- name: UpdateCustomerAddress :one
+UPDATE customer_addresses
+SET
+    town = COALESCE($1, town),
+    street = COALESCE($2, street),
+    house = COALESCE($3, house),
+    flat = COALESCE($4, flat),
+    postal_code = COALESCE($5, postal_code),
+    region = COALESCE($6, region),
+    coordinates = COALESCE($7, coordinates),
+    is_default = COALESCE($8, is_default),
+    updated_at = NOW()
+WHERE id = $9 AND customer_id = $10
+RETURNING id, customer_id, town, street, house, flat, postal_code, region, coordinates, is_default, created_at, updated_at
+`
+
+type UpdateCustomerAddressParams struct {
+	Town        string      `json:"town"`
+	Street      pgtype.Text `json:"street"`
+	House       pgtype.Text `json:"house"`
+	Flat        pgtype.Text `json:"flat"`
+	PostalCode  pgtype.Text `json:"postal_code"`
+	Region      pgtype.Text `json:"region"`
+	Coordinates []float64   `json:"coordinates"`
+	IsDefault   bool        `json:"is_default"`
+	ID          int32       `json:"id"`
+	CustomerID  int32       `json:"customer_id"`
+}
+
+func (q *Queries) UpdateCustomerAddress(ctx context.Context, arg UpdateCustomerAddressParams) (CustomerAddress, error) {
+	row := q.db.QueryRow(ctx, updateCustomerAddress,
+		arg.Town,
+		arg.Street,
+		arg.House,
+		arg.Flat,
+		arg.PostalCode,
+		arg.Region,
+		arg.Coordinates,
+		arg.IsDefault,
+		arg.ID,
+		arg.CustomerID,
+	)
+	var i CustomerAddress
+	err := row.Scan(
+		&i.ID,
+		&i.CustomerID,
+		&i.Town,
+		&i.Street,
+		&i.House,
+		&i.Flat,
+		&i.PostalCode,
+		&i.Region,
+		&i.Coordinates,
+		&i.IsDefault,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateCustomerPass = `-- name: UpdateCustomerPass :exec
@@ -512,6 +849,25 @@ type UpdateCustomerPassParams struct {
 
 func (q *Queries) UpdateCustomerPass(ctx context.Context, arg UpdateCustomerPassParams) error {
 	_, err := q.db.Exec(ctx, updateCustomerPass, arg.Pass, arg.ID)
+	return err
+}
+
+const updateCustomerProfile = `-- name: UpdateCustomerProfile :exec
+UPDATE customers
+SET
+    name = COALESCE($1, name),
+    phone = COALESCE($2, phone)
+WHERE id = $3
+`
+
+type UpdateCustomerProfileParams struct {
+	Name  pgtype.Text `json:"name"`
+	Phone pgtype.Text `json:"phone"`
+	ID    int32       `json:"id"`
+}
+
+func (q *Queries) UpdateCustomerProfile(ctx context.Context, arg UpdateCustomerProfileParams) error {
+	_, err := q.db.Exec(ctx, updateCustomerProfile, arg.Name, arg.Phone, arg.ID)
 	return err
 }
 

@@ -57,7 +57,10 @@ type PayloadSendAdminPasswordChanged struct {
 
 // Существующие структуры
 type PayloadSendVerifyEmail struct {
-	Username string `json:"username"`
+	Email     string `json:"email"`
+	Name      string `json:"name"`
+	Token     string `json:"token"`
+	PromoCode string `json:"promo_code,omitempty"`
 }
 
 type PayloadSendOrderEmail struct {
@@ -366,51 +369,69 @@ func (distributor *RedisTaskDistributor) DistributeTaskSendProductNotification(
 // ============ PROCESSORS ============
 
 // Существующие методы
-func (processor *RedisTaskProcessor) ProcessTaskSendVerifyEmail(ctx context.Context, task *asynq.Task) error {
-	// var payload PayloadSendVerifyEmail
-	// if err := json.Unmarshal(task.Payload(), &payload); err != nil {
-	// 	return fmt.Errorf("failed to unmarshal payload: %w", asynq.SkipRetry)
-	// }
+func (processor *RedisTaskProcessor) ProcessTaskSendVerifyEmail(
+	ctx context.Context,
+	task *asynq.Task,
+) error {
+	var payload PayloadSendVerifyEmail
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", asynq.SkipRetry)
+	}
 
-	// user, err := processor.store.GetUser(ctx, payload.Username)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to get user: %w", err)
-	// }
+	if payload.Email == "" || payload.Token == "" {
+		return fmt.Errorf("invalid payload: email and token required: %w", asynq.SkipRetry)
+	}
 
-	// verifyEmail, err := processor.store.CreateVerifyEmail(ctx, db.CreateVerifyEmailParams{
-	// 	Username:   user.Username,
-	// 	Email:      user.Email,
-	// 	SecretCode: generateRandomString(32), // используйте вашу функцию util.RandomString
-	// })
-	// if err != nil {
-	// 	return fmt.Errorf("failed to create verify email: %w", err)
-	// }
+	subject := "Подтвердите ваш email — Troyki"
 
-	// subject := "Welcome to Troyki Sail - Verify Your Email"
-	// verifyUrl := fmt.Sprintf("http://localhost:3000/verify-email/%d/%s", verifyEmail.ID, verifyEmail.SecretCode)
+	verifyUrl := fmt.Sprintf("http://localhost:3000/verify-email/%s", payload.Token)
 
-	// content := fmt.Sprintf(`
-	// 	<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-	// 		<h2>Welcome to Troyki Sail!</h2>
-	// 		<p>Hello %s,</p>
-	// 		<p>Thank you for registering with us! Please verify your email address by clicking the button below:</p>
-	// 		<div style="text-align: center; margin: 30px 0;">
-	// 			<a href="%s" style="background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
-	// 				Verify Email
-	// 			</a>
-	// 		</div>
-	// 		<p>This link will expire in 24 hours.</p>
-	// 		<p>If you didn't create an account, please ignore this email.</p>
-	// 	</div>
-	// `, user.FullName, verifyUrl)
+	greeting := "Здравствуйте"
+	if payload.Name != "" {
+		greeting = fmt.Sprintf("Здравствуйте, %s", payload.Name)
+	}
 
-	// to := []string{user.Email}
-	// err = processor.mailer.SendEmail(subject, content, to, nil, nil, nil)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to send verify email: %w", err)
-	// }
+	// 👇 Блок с промокодом
+	promoBlock := ""
+	if payload.PromoCode != "" {
+		promoBlock = fmt.Sprintf(`
+            <div style="background:#f8f8f8; border-radius:12px; padding:24px; margin:24px 0; text-align:center;">
+                <p style="margin:0 0 8px 0; font-size:14px; color:#666;">Ваш приветственный промокод</p>
+                <p style="margin:0; font-size:26px; font-weight:700; letter-spacing:3px; font-family:monospace; color:#1a1a1a;">%s</p>
+                <p style="margin:10px 0 0 0; font-size:13px; color:#888;">Скидка 5%% на весь заказ. Действует 30 дней, одноразовый.</p>
+            </div>
+        `, payload.PromoCode)
+	}
 
-	// log.Info().Str("type", task.Type()).Str("email", user.Email).Msg("processed task")
+	content := fmt.Sprintf(`
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Подтверждение email</h2>
+            <p>%s,</p>
+            <p>Спасибо за регистрацию в Troyki! Подтвердите ваш email, перейдя по ссылке:</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="%s" style="background-color: #1a1a1a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+                    Подтвердить email
+                </a>
+            </div>
+            %s
+            <p>Ссылка действует 24 часа.</p>
+            <p>Если вы не регистрировались — просто проигнорируйте это письмо.</p>
+            <hr />
+            <p style="font-size: 12px; color: #666;">Troyki — качественные товары, быстрая доставка</p>
+        </div>
+    `, greeting, verifyUrl, promoBlock)
+
+	to := []string{payload.Email}
+	err := processor.mailer.SendEmail(subject, content, to, nil, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to send verify email: %w", err)
+	}
+
+	log.Info().
+		Str("type", task.Type()).
+		Str("email", payload.Email).
+		Msg("sent customer verify email")
+
 	return nil
 }
 

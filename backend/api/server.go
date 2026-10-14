@@ -124,13 +124,39 @@ func (s *Server) setupRouter() {
 		// public routes (для клиента)
 		api.GET("/instagram", s.handleGetInstagramPhotos)
 
-		api.GET("/history", s.handleGetHistory)
-		api.POST("/registerUser", s.handleRegisterUser)
-		api.POST("/login", s.handleLogin)
-		api.GET("/unlogin", s.handleUnlogin)
-		api.GET("/pasetoAutorise", s.handlePasetoAutorise)
-		api.GET("/getUserData", s.handleGetUserData)
-		api.POST("/verify", s.handleVerifyUser)
+		api.POST("/auth/register", s.handleRegisterUser)
+		api.POST("/auth/login", s.handleLogin)
+
+		api.POST("/auth/verify-email", s.handleVerifyUser)
+		optional := api.Group("/")
+		optional.Use(s.OptionalCustomer())
+		{
+			optional.GET("/auth/me", s.handleGetMe)
+			optional.GET("/history", s.handleGetHistory)
+			optional.GET("/promo-codes/:code", s.handleGetPromoCodeByCode)
+			optional.GET("/customers/check", s.handleCheckCustomerData)
+		}
+		protected := api.Group("/")
+		protected.Use(s.RequireCustomer())
+		{
+
+			protected.POST("/auth/profile", s.handleUpdateProfile)
+
+			// Смена пароля
+			protected.POST("/users/password", s.handleChangePass)
+			protected.GET("/my-promo-codes", s.handleGetMyPromoCodes)
+			// Адреса
+			protected.GET("/auth/addresses", s.handleGetAddresses)
+			protected.POST("/auth/addresses", s.handleCreateAddress)
+			protected.GET("/auth/addresses/default", s.handleGetDefaultAddress)
+			protected.GET("/auth/addresses/:id", s.handleGetAddress)
+			protected.PUT("/auth/addresses/:id", s.handleUpdateAddress)
+			protected.DELETE("/auth/addresses/:id", s.handleDeleteAddress)
+			protected.PATCH("/auth/addresses/:id/default", s.handleSetDefaultAddress)
+
+			// Мои заказы
+			protected.GET("/orders/my", s.handleGetMyOrders)
+		}
 
 		api.GET("/news", s.handleGetActiveNewsBlocks)
 		api.POST("/news/:id/view", s.handleIncrementNewsView)
@@ -138,10 +164,6 @@ func (s *Server) setupRouter() {
 		api.GET("/news/:id", s.handleGetNewsBlockByID) // 🔥 ДОБАВИТЬ ЭТОТ МАРШРУТ
 		api.GET("/news/:id/related", s.handleGetRelatedNews)
 
-		api.GET("/promo-codes/:code", s.handleGetPromoCodeByCode)
-
-		// Изменение пароля авторизованного пользователя
-		api.POST("/users/password", s.handleChangePass)
 		// Запрос на восстановление пароля (отправка email)
 		api.POST("/users/password/forgot", s.handleForgetPass)
 		// Подтверждение смены пароля (верификация кода)
@@ -153,8 +175,6 @@ func (s *Server) setupRouter() {
 		api.GET("/main/info", s.handleGetMainInfo)
 		api.GET("/menu", s.handleGetMenuInfo)
 		api.GET("/brands/lines", s.handleGetBrandsWithLines)
-
-		api.GET("/customers/check", s.handleCheckCustomerData)
 
 		// Admin auth (без middleware)
 		api.POST("/admin/auth/login", s.handleAdminLogin)

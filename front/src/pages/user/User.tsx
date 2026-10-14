@@ -1,114 +1,139 @@
-import React, { Suspense, useEffect, useState, useCallback, lazy, memo } from 'react'
+import React, { Suspense, useEffect, useState, useCallback, lazy, memo } from 'react';
 import { useRouter } from 'next/router';
-import { getUserData, unlogin } from 'src/providers/userProvider'
-import UserForm from 'src/modules/sendForm/UserForm'
-import { useAppDispatch, useNavigate } from 'src/store/hooks/redux'
-import { verified } from 'src/store/reducers/menuSlice'
-import s from "./s.module.css"
+import { unlogin, getMe } from 'src/providers/userProvider';
+import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux';
+import { clearUser, setUser } from 'src/store/reducers/userSlice';
+import s from './s.module.css';
 
-const AddressForm = lazy(() => import('src/modules/sendForm/AddressForm'))
-
-type UrlParamsType = {
-  login: string
-}
-
-type UserValType = {
-  name: string
-  secondName: string
-  mail: string
-  address: string
-  phone: string
-}
+// 👇 lazy — грузится только когда вкладка активна
+const InfoTab = lazy(() => import('./tabs/InfoTab'));
+const AddressTab = lazy(() => import('./tabs/AddressTab'));
+const OrderHistoryTab = lazy(() => import('./tabs/OrderHistoryTab'));
+const PromoTab = lazy(() => import('./tabs/PromoTab'));
 
 const UserTabs = memo(({
-  activeTab,
-  onTabChange,
-  onLogout
+    activeTab,
+    onTabChange,
+    onLogout,
 }: {
-  activeTab: number
-  onTabChange: (tab: number) => void
-  onLogout: () => void
-}) => (
-  <div className={s.tabs}>
-    <div onClick={() => onTabChange(0)}>
-      Инфо
+    activeTab: number;
+    onTabChange: (tab: number) => void;
+    onLogout: () => void;
+}) => {
+    const tabs = [
+        { id: 0, label: 'Инфо' },
+        { id: 1, label: 'Адрес' },
+        { id: 2, label: 'История покупок' },
+        { id: 3, label: 'Промокоды' },
+    ];
+
+    return (
+        <div className={s.tabs} role="tablist">
+            {tabs.map(({ id, label }) => (
+                <div
+                    key={id}
+                    role="tab"
+                    aria-selected={activeTab === id}
+                    tabIndex={0}
+                    className={activeTab === id ? s.activeTab : ''}
+                    onClick={() => onTabChange(id)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onTabChange(id);
+                        }
+                    }}
+                >
+                    {label}
+                </div>
+            ))}
+            <div
+                role="button"
+                tabIndex={0}
+                onClick={onLogout}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onLogout();
+                    }
+                }}
+                className={s.logoutTab}
+            >
+                Выход
+            </div>
+        </div>
+    );
+});
+
+const TabFallback = () => (
+    <div style={{ padding: 24, color: '#888', fontSize: 14 }}>
+        Загрузка...
     </div>
-    <div onClick={() => onTabChange(1)}>
-      Адрес
-    </div>
-    <div onClick={() => onTabChange(1)}>
-      История покупок
-    </div>
-    <div onClick={onLogout}>
-      Выход
-    </div>
-  </div>
-))
+);
 
 const User: React.FC = () => {
-  const navigate = useNavigate();
-  const router = useRouter()
-  const dispatch = useAppDispatch()
+    const router = useRouter();
+    const dispatch = useAppDispatch();
 
-  const [tab, setTab] = useState(0)
-  const [userVal, setUserVal] = useState<UserValType>({
-    name: "",
-    secondName: "",
-    mail: "",
-    address: "",
-    phone: ""
-  })
+    // 👇 всё из Redux, никаких запросов в этом компоненте
+    const { isLog, isAuthChecked, user } = useAppSelector(state => state.user);
+    const [tab, setTab] = useState(0);
 
-  // Загрузка данных пользователя с сохранением callback подхода
-  useEffect(() => {
-    getUserData((data) => {
-      if (data) {
-        setUserVal(prev => ({ ...prev, ...data }))
-      } else {
-        navigate("/main")
-      }
-    })
-  }, [router])
+    // Редирект неавторизованных — только после проверки /auth/me
+    useEffect(() => {
+        if (!isAuthChecked) return;
+        if (!isLog) router.replace('/');
+    }, [isAuthChecked, isLog, router]);
 
-  const handleTabChange = useCallback((tabIndex: number) => {
-    setTab(tabIndex)
-  }, [])
+    const handleTabChange = useCallback((tabIndex: number) => {
+        setTab(tabIndex);
+    }, []);
 
-  const handleLogout = useCallback(() => {
-    unlogin(() => {
-      navigate("/")
-      dispatch(verified(false))
-    })
-  }, [dispatch, router])
+    const handleLogout = useCallback(() => {
+        unlogin(() => {
+            dispatch(clearUser());
+            router.push('/');
+        });
+    }, [dispatch, router]);
 
-  const renderTabContent = useCallback(() => {
-    switch (tab) {
-      case 0:
-        return <UserForm onChange={() => { }} />
-      case 1:
-        return (
-          <Suspense fallback={<div>Загрузка...</div>}>
-            <AddressForm valid={true} onChange={() => { }} />
-          </Suspense>
-        )
-      default:
-        return null
+    // После сохранения формы — перезапрашиваем /auth/me и обновляем Redux
+    const handleUserUpdated = useCallback(async () => {
+        const fresh = await getMe();
+        if (fresh) dispatch(setUser(fresh));
+    }, [dispatch]);
+
+    // Пока /auth/me не ответил
+    if (!isAuthChecked) {
+        return <div style={{ padding: 40, textAlign: 'center' }}>Загрузка...</div>;
     }
-  }, [tab])
 
-  return (
-    <div className={s.main}>
-      <UserTabs
-        activeTab={tab}
-        onTabChange={handleTabChange}
-        onLogout={handleLogout}
-      />
+    // Не залогинен — useEffect уже редиректит
+    if (!isLog) return null;
 
-      <div className={s.pages}>
-        {renderTabContent()}
-      </div>
-    </div>
-  )
-}
+    return (
+        <div className={s.main}>
+            <UserTabs
+                activeTab={tab}
+                onTabChange={handleTabChange}
+                onLogout={handleLogout}
+            />
 
-export default memo(User)
+            <div className={s.pages}>
+                <Suspense fallback={<TabFallback />}>
+                    {tab === 0 && (
+                        <InfoTab user={user} onSaved={handleUserUpdated} />
+                    )}
+                    {tab === 1 && (
+                        <AddressTab />
+                    )}
+                    {tab === 2 && (
+                        <OrderHistoryTab  />
+                    )}
+                    {tab === 3 && <PromoTab />}
+                </Suspense>
+            </div>
+        </div>
+    );
+};
+
+export default memo(User);

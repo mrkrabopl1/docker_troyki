@@ -1,38 +1,49 @@
-import React, { useEffect, useState, memo } from 'react'
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { verifyEmail } from 'src/providers/userProvider'
 import { useAppDispatch } from 'src/store/hooks/redux';
-import { verified } from 'src/store/reducers/menuSlice'
-import { useNavigate } from 'src/store/hooks/redux'
+import { useNavigate } from 'src/store/hooks/redux';
+import { verifyEmail, getMe } from 'src/providers/userProvider';
+import { setUser } from 'src/store/reducers/userSlice';
 
-const Verification: React.FC<any> = () => { 
-    const navigate = useNavigate()
+const Verification: React.FC = () => {
+    const navigate = useNavigate();
     const router = useRouter();
-    const verHash = router.query.verHash as string;
-    let dispatch = useAppDispatch()
-    let [info, setInfo] = useState("")
+    const dispatch = useAppDispatch();
+    const [info, setInfo] = useState('Проверяем...');
+
+    // 👇 имя параметра = имя файла [token].tsx
+    const token = router.query.token as string | undefined;
 
     useEffect(() => {
-        if (!verHash) return;
-        verifyEmail(verHash, (data) => {
-            if (data) {
-                dispatch(verified(true))
-                navigate("/");
+        if (!token) return;
+
+        verifyEmail(token, async (data: any) => {
+            if (data === true) {
+                // Обновляем юзера в Redux (подтянем is_verified если есть)
+                const user = await getMe();
+                if (user) dispatch(setUser(user));
+
+                // Редирект на главную
+                navigate('/');
             } else {
-                setInfo("Ваш код верификации истек повторите попытку еще раз.")
+                setInfo('Ссылка недействительна или истекла. Запросите новое письмо.');
             }
-        })
-    }, [verHash])
+        });
+    }, [token, dispatch, navigate]);
 
     return (
-        <div>
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '60vh',
+            fontFamily: 'system-ui, sans-serif',
+            fontSize: 16,
+            color: '#333',
+        }}>
             {info}
         </div>
-    )
-}
+    );
+};
 
-function arePropsEqual(oldProps: any, newProps: any) {
-    return (oldProps.memo == newProps.memo)
-}
-
-export default memo(Verification, arePropsEqual)
+export default Verification;

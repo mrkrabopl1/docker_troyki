@@ -2,8 +2,8 @@ package api
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -18,82 +18,45 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// ============================================================
+// AUTH: LOGIN / REGISTER / LOGOUT / ME
+// ============================================================
+
 func (s *Server) handleLogin(ctx *gin.Context) {
 	var postData types.PostDataRegisterUser
 	if err := ctx.BindJSON(&postData); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	customerData, err1 := s.store.GetBaseCustomerData(ctx, postData.Mail)
-	if err1 != nil {
-		//log.WithCaller().Err(err1)
-		ctx.JSON(http.StatusBadRequest, errorResponse(err1))
-	} else {
 
-		err2 := bcrypt.CompareHashAndPassword(customerData.Pass, []byte(postData.Password))
-		if err2 != nil {
-			ctx.JSON(http.StatusBadRequest, errorResponse(err1))
-		} else {
-			myCookie, err := s.tokenMaker.CreateUserCookie(customerData.ID, 3600000, true, true)
-			if err != nil {
-				//log.WithCaller().Err(err)
-				ctx.JSON(http.StatusBadRequest, errorResponse(err1))
-				return
-			}
-			ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
-			ctx.JSON(http.StatusOK, true)
-		}
-	}
-}
-func (s *Server) handleSetUniqueCustomer(ctx *gin.Context) {
-	validDate := pgtype.Date{
-		Time:  time.Now().Add(2 * time.Hour),
-		Valid: true, // This is crucial!
-	}
-	uniqueCustomerId, err := s.store.CreateUniqueCustomer(ctx, validDate)
+	customerData, err := s.store.GetBaseCustomerData(ctx, postData.Mail)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		fmt.Println(err)
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
-	} else {
-		myCookie, err := s.tokenMaker.CreateUserCookie(uniqueCustomerId, 2*time.Hour, true, true)
-		fmt.Println(myCookie.Expires)
-		if err != nil {
-			//log.WithCaller().Err(err).Msg("")
-			ctx.JSON(http.StatusBadRequest, errorResponse(err))
-			return
-		}
-		fmt.Println(myCookie)
-		ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
-		ctx.JSON(http.StatusOK, 1)
 	}
 
-}
-func (s *Server) handleGetHistory(ctx *gin.Context) {
-	cookie, err := ctx.Cookie("unique")
+	if err := bcrypt.CompareHashAndPassword(customerData.Pass, []byte(postData.Password)); err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		return
+	}
+
+	myCookie, err := s.tokenMaker.CreateUserCookie(customerData.ID, time.Hour, true, true)
 	if err != nil {
-		fmt.Println(err, "1")
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-	user, err := s.tokenMaker.VerifyToken(cookie)
-	if err != nil {
-		fmt.Println(err, "2")
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return
-	}
-	fmt.Println(user.UserID)
-	snickers, err := s.store.GetSnickersHistoryComplex(ctx, user.UserID)
-	if errors.Is(err, errorsType.NotExist) {
-		ctx.JSON(http.StatusOK, snickers)
-		return
-	}
-	if err != nil {
-		fmt.Println(err, "3")
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return
-	}
-	ctx.JSON(http.StatusOK, snickers)
+
+	ctx.SetCookie(
+		myCookie.Name,
+		myCookie.Value,
+		myCookie.MaxAge,
+		myCookie.Path,
+		myCookie.Domain,
+		myCookie.Secure,
+		myCookie.HttpOnly,
+	)
+
+	ctx.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 func (s *Server) handleRegisterUser(ctx *gin.Context) {
@@ -102,124 +65,155 @@ func (s *Server) handleRegisterUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	index, err5 := s.store.RegisterUser(ctx, postData.Password, postData.Mail)
 
-	if err5 != nil {
-		//log.WithCaller().Err(err5)
+	index, customerID, err := s.store.RegisterUser(ctx, postData.Password, postData.Mail)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"registerIndex": 2,
+			"error":         err.Error(),
+		})
 		return
 	}
 	if index == 1 {
-
+		ctx.JSON(http.StatusOK, gin.H{"registerIndex": 1})
 		return
 	}
 
-	data := map[string]int32{
-		"registerIndex": index,
+	// Приветственный промокод 5%
+	welcomePromo, promoErr := s.store.CreateWelcomePromoCode(ctx, customerID)
+	if promoErr != nil {
+		log.Error().Err(promoErr).Int32("customer_id", customerID).Msg("failed to create welcome promo")
 	}
-	ctx.JSON(http.StatusOK, data)
-}
-func (s *Server) handleUnlogin(ctx *gin.Context) {
-	_, errC := ctx.Request.Cookie("token")
-	if errC != nil {
-		if errC == http.ErrNoCookie {
-			ctx.JSON(http.StatusBadRequest, errorResponse(errC))
-			return
-		} else {
-			panic(errC)
-		}
-	} else {
-		ctx.SetCookie("token", "", -1, "/", "", false, true)
-		ctx.JSON(http.StatusOK, 0)
-	}
-}
-func (s *Server) handlePasetoAutorise(ctx *gin.Context) {
 
-	_, err := ctx.Request.Cookie("token")
-
+	// Verification token
+	token := util.RandomString(64)
+	err = s.store.InsertVerification(ctx, db.InsertVerificationParams{
+		Token:      token,
+		Customerid: customerID,
+		Expire:     pgtype.Timestamp{Time: time.Now().Add(24 * time.Hour), Valid: true},
+		Deletetime: pgtype.Timestamp{Time: time.Now().Add(25 * time.Hour), Valid: true},
+	})
 	if err != nil {
-		//log.WithCaller().Err(err)
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-	} else {
-		ctx.JSON(http.StatusOK, true)
+		log.Error().Err(err).Int32("customer_id", customerID).Msg("failed to create verification")
 	}
 
-	// token1, _ := jwt.ParseWithClaims(cookie.Value, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
-	// 	return []byte(jwtKey), nil
-	// })
+	// Письмо с промокодом
+	promoCodeStr := ""
+	if promoErr == nil {
+		promoCodeStr = welcomePromo.Code
+	}
 
-	// fmt.Println(token1)
-
-	// // if err3 != nil {
-	// // 	fmt.Println(err3)
-	// // }
-
-	// claims1 := token1.Claims.(*jwt.StandardClaims)
-	// // if err1 != nil {
-	// // 	fmt.Println(err1)
-	// // }
-	// fmt.Println(claims1.Issuer, "ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg0-=0g")
-}
-
-func (s *Server) handleGetUserData(ctx *gin.Context) {
-
-	cookie, err := ctx.Cookie("token")
-
-	payload, _ := s.tokenMaker.VerifyToken(cookie)
-
-	response, err := s.store.GetCustomerData(ctx, payload.UserID)
+	err = s.taskDistributor.DistributeTaskSendVerifyEmail(
+		ctx,
+		&worker.PayloadSendVerifyEmail{
+			Email:     postData.Mail,
+			Token:     token,
+			PromoCode: promoCodeStr,
+		},
+		asynq.MaxRetry(3),
+		asynq.Timeout(30*time.Second),
+		asynq.Queue(worker.QueueDefault),
+	)
 	if err != nil {
-		//	log.WithCaller().Err(err)
+		log.Error().Err(err).Str("email", postData.Mail).Msg("failed to enqueue verify email")
 	}
-	ctx.JSON(http.StatusOK, response)
+
+	// Кука — сразу залогинен
+	myCookie, err := s.tokenMaker.CreateUserCookie(customerID, time.Hour, true, true)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to create user cookie")
+		ctx.JSON(http.StatusOK, gin.H{"registerIndex": 2, "error": "user created, please login"})
+		return
+	}
+
+	ctx.SetCookie(
+		myCookie.Name, myCookie.Value, myCookie.MaxAge,
+		myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly,
+	)
+
+	ctx.JSON(http.StatusOK, gin.H{"registerIndex": 0})
 }
+
+// POST /auth/logout
+func (s *Server) handleLogout(ctx *gin.Context) {
+	ctx.SetCookie("auth_token", "", -1, "/", "", false, true)
+	ctx.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// GET /auth/me — опциональный (гость получает 200 + null)
+func (s *Server) handleGetMe(ctx *gin.Context) {
+	customerID := getCustomerID(ctx) // 0, если гость
+
+	if customerID == 0 {
+		ctx.JSON(http.StatusOK, nil)
+		return
+	}
+
+	user, err := s.store.GetCustomerData(ctx, customerID)
+	if err != nil {
+		ctx.JSON(http.StatusOK, nil)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, user)
+}
+
+// POST /auth/verify-email
 func (s *Server) handleVerifyUser(ctx *gin.Context) {
 	var verData types.VerifyData
 	if err := ctx.BindJSON(&verData); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
+	if verData.Token == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "token is required"})
+		return
+	}
+
 	id, err := s.store.VerifyUser(ctx, verData.Token)
 	if err != nil {
-		//log.WithCaller().Err(err)
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-	} else {
-		myCookie, err1 := s.tokenMaker.CreateUserCookie(id, 3600000, true, true)
-		if err1 != nil {
-			//log.WithCaller().Err(err1)
-			ctx.JSON(http.StatusBadRequest, errorResponse(err))
-
-		} else {
-			ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
-
-			// Render the response as JSON
-			ctx.JSON(http.StatusOK, true)
-		}
+		return
 	}
+
+	myCookie, err := s.tokenMaker.CreateUserCookie(id, time.Hour, true, true)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.SetCookie(
+		myCookie.Name, myCookie.Value, myCookie.MaxAge,
+		myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly,
+	)
+
+	ctx.JSON(http.StatusOK, true)
 }
+
+// ============================================================
+// ПАРОЛЬ
+// ============================================================
+
+// POST /users/password — защищённый
 func (s *Server) handleChangePass(ctx *gin.Context) {
+	customerID := mustCustomerID(ctx)
+
 	var passes types.ChangePassType
-	cookie, err := ctx.Cookie("token")
-	payload, _ := s.tokenMaker.VerifyToken(cookie)
 	if err := ctx.BindJSON(&passes); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	fmt.Println(passes)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return
-	}
-	err2 := s.store.ChangePass(ctx, passes.NewPass, passes.OldPass, payload.UserID)
+
+	err := s.store.ChangePass(ctx, passes.NewPass, passes.OldPass, customerID)
 	errorType := 0
-	if err2 == errorsType.PassCoincide {
+	if err == errorsType.PassCoincide {
 		errorType = 1
 	}
-	data := map[string]int{
-		"err": errorType,
-	}
-	ctx.JSON(http.StatusOK, data)
+
+	ctx.JSON(http.StatusOK, gin.H{"err": errorType})
 }
 
+// POST /users/password/forgot
 func (s *Server) handleForgetPass(ctx *gin.Context) {
 	mail := ctx.Query("mail")
 	err := s.store.UpdateForgetPass(ctx, mail)
@@ -231,126 +225,426 @@ func (s *Server) handleForgetPass(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	fmt.Println(err)
 	ctx.JSON(http.StatusOK, 0)
 }
+
+// POST /users/password/verify
 func (s *Server) handleVerifyForgetPass(ctx *gin.Context) {
 	var verData types.VerifyData
 	if err := ctx.BindJSON(&verData); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
+
 	id, err := s.store.VerifyUser(ctx, verData.Token)
-	if err != nil {
-		//log.WithCaller().Err(err).Msg("error")
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-	} else {
-		myCookie, _, err := s.tokenMaker.CreateCookieWithPasetoToken(id, "changePass", 3600, true, true)
-		if err != nil {
-			//log.WithCaller().Err(err).Msg("error")
-			ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		}
-		ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
-
-		// Render the response as JSON
-		ctx.JSON(http.StatusOK, true)
-	}
-}
-func (s *Server) handleUpdateUniqeCustomer(ctx *gin.Context) {
-
-	//merchId := ctx.Query("merchId")
-
-	coockie, err := ctx.Cookie("uniqe")
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	payload, _ := s.tokenMaker.VerifyToken(coockie)
 
-	data := db.UpdateUniqueCustomerHistryParams{
-		History: []int32{1},
-		ID:      payload.UserID,
+	myCookie, _, err := s.tokenMaker.CreateCookieWithPasetoToken(id, "changePass", time.Hour, true, true)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
 	}
 
-	err1 := s.store.UpdateUniqueCustomerHistry(ctx, data)
-	if err1 != nil {
-		//log.WithCaller().Err(err).Msg("error")
-		ctx.JSON(http.StatusBadRequest, errorResponse(err1))
-	}
+	ctx.SetCookie(
+		myCookie.Name, myCookie.Value, myCookie.MaxAge,
+		myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly,
+	)
+
 	ctx.JSON(http.StatusOK, true)
 }
+
+// POST /users/password/reset
 func (s *Server) handleChangeForgetPass(ctx *gin.Context) {
-	//var passes types.ChangePassType
-	cookie, errC := ctx.Cookie("changePass")
-	if errC != nil {
-		if errC == http.ErrNoCookie {
-			//log.WithCaller().Err(errC)
-			ctx.JSON(http.StatusOK, 1)
-			return
-		} else {
-			panic(errC)
-		}
+	cookie, err := ctx.Cookie("changePass")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "no change-pass session"})
+		return
 	}
-	payload, _ := s.tokenMaker.VerifyToken(cookie)
-	//fmt.Println(issuer, "f;lsdf;llkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk")
+
+	payload, err := s.tokenMaker.VerifyToken(cookie)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid session"})
+		return
+	}
+
 	var newPass types.Pass
 	if err := ctx.BindJSON(&newPass); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	hashedPassword, err4 := bcrypt.GenerateFromPassword([]byte(newPass.Pass), bcrypt.DefaultCost)
-	if err4 != nil {
-		panic(err4)
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPass.Pass), bcrypt.DefaultCost)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
 	}
-	err3 := s.store.UpdateCustomerPass(ctx, db.UpdateCustomerPassParams{
+
+	err = s.store.UpdateCustomerPass(ctx, db.UpdateCustomerPassParams{
 		Pass: hashedPassword,
 		ID:   payload.UserID,
 	})
-
-	if err3 != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err3))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
+
+	ctx.SetCookie("changePass", "", -1, "/", "", false, true)
 	ctx.JSON(http.StatusOK, 0)
 }
-func (s *Server) handleCheckCustomerData(ctx *gin.Context) {
-	// fmt.Println()
-	fmt.Println("cheeeeeeeeeck")
-	cookie, errC := ctx.Cookie("saved")
-	fmt.Println("cheeeeeeeeeck", cookie)
-	if errC != nil {
-		if errC == http.ErrNoCookie {
-			fmt.Println("0 codsad")
-			ctx.JSON(http.StatusOK, 0)
-			return
-		} else {
-			fmt.Println("lfmdskmflkdsm")
-			panic(errC)
+
+// ============================================================
+// ПРОФИЛЬ
+// ============================================================
+
+// POST /auth/profile — защищённый
+func (s *Server) handleUpdateProfile(ctx *gin.Context) {
+	customerID := mustCustomerID(ctx)
+
+	var data types.UpdateProfileData
+	if err := ctx.BindJSON(&data); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	err := s.store.UpdateCustomerProfile(ctx, db.UpdateCustomerProfileParams{
+		ID:    customerID,
+		Name:  pgtype.Text{String: data.Name, Valid: data.Name != ""},
+		Phone: pgtype.Text{String: data.Phone, Valid: data.Phone != ""},
+	})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	user, err := s.store.GetCustomerData(ctx, customerID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, user)
+}
+
+// ============================================================
+// АДРЕСА (customer_addresses)
+// ============================================================
+
+// GET /auth/addresses
+func (s *Server) handleGetAddresses(ctx *gin.Context) {
+	customerID := mustCustomerID(ctx)
+
+	addresses, err := s.store.GetCustomerAddresses(ctx, customerID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	if addresses == nil {
+		addresses = []db.CustomerAddress{}
+	}
+
+	ctx.JSON(http.StatusOK, addresses)
+}
+
+// GET /auth/addresses/:id
+func (s *Server) handleGetAddress(ctx *gin.Context) {
+	customerID := mustCustomerID(ctx)
+
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid address id"})
+		return
+	}
+
+	address, err := s.store.GetCustomerAddressByID(ctx, db.GetCustomerAddressByIDParams{
+		ID:         int32(id),
+		CustomerID: customerID,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "address not found"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, address)
+}
+
+// GET /auth/addresses/default
+func (s *Server) handleGetDefaultAddress(ctx *gin.Context) {
+	customerID := mustCustomerID(ctx)
+
+	address, err := s.store.GetDefaultCustomerAddress(ctx, customerID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "default address not found"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, address)
+}
+
+// POST /auth/addresses
+func (s *Server) handleCreateAddress(ctx *gin.Context) {
+	customerID := mustCustomerID(ctx)
+
+	var data types.Address
+	if err := ctx.BindJSON(&data); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+	if data.Town == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "town is required"})
+		return
+	}
+
+	count, err := s.store.CountCustomerAddresses(ctx, customerID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	isFirst := count == 0
+
+	address, err := s.store.CreateCustomerAddress(ctx, db.CreateCustomerAddressParams{
+		CustomerID:  customerID,
+		Town:        data.Town,
+		Street:      pgtype.Text{String: data.Street, Valid: data.Street != ""},
+		House:       pgtype.Text{String: data.House, Valid: data.House != ""},
+		Flat:        pgtype.Text{String: data.Flat, Valid: data.Flat != ""},
+		PostalCode:  pgtype.Text{String: data.Index, Valid: data.Index != ""},
+		Region:      pgtype.Text{String: data.Region, Valid: data.Region != ""},
+		Coordinates: data.Coordinates,
+		IsDefault:   isFirst,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, address)
+}
+
+// PUT /auth/addresses/:id
+func (s *Server) handleUpdateAddress(ctx *gin.Context) {
+	customerID := mustCustomerID(ctx)
+
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid address id"})
+		return
+	}
+
+	var data types.Address
+	if err := ctx.BindJSON(&data); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	_, err = s.store.GetCustomerAddressByID(ctx, db.GetCustomerAddressByIDParams{
+		ID:         int32(id),
+		CustomerID: customerID,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "address not found"})
+		return
+	}
+
+	address, err := s.store.UpdateCustomerAddress(ctx, db.UpdateCustomerAddressParams{
+		ID:          int32(id),
+		CustomerID:  customerID,
+		Town:        data.Town,
+		Street:      pgtype.Text{String: data.Street, Valid: data.Street != ""},
+		House:       pgtype.Text{String: data.House, Valid: data.House != ""},
+		Flat:        pgtype.Text{String: data.Flat, Valid: data.Flat != ""},
+		PostalCode:  pgtype.Text{String: data.Index, Valid: data.Index != ""},
+		Region:      pgtype.Text{String: data.Region, Valid: data.Region != ""},
+		Coordinates: data.Coordinates,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, address)
+}
+
+// DELETE /auth/addresses/:id
+func (s *Server) handleDeleteAddress(ctx *gin.Context) {
+	customerID := mustCustomerID(ctx)
+
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid address id"})
+		return
+	}
+
+	addr, err := s.store.GetCustomerAddressByID(ctx, db.GetCustomerAddressByIDParams{
+		ID:         int32(id),
+		CustomerID: customerID,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "address not found"})
+		return
+	}
+
+	err = s.store.DeleteCustomerAddress(ctx, db.DeleteCustomerAddressParams{
+		ID:         int32(id),
+		CustomerID: customerID,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	if addr.IsDefault {
+		remaining, _ := s.store.GetCustomerAddresses(ctx, customerID)
+		if len(remaining) > 0 {
+			_ = s.store.SetDefaultCustomerAddress(ctx, db.SetDefaultCustomerAddressParams{
+				ID:         remaining[0].ID,
+				CustomerID: customerID,
+			})
 		}
 	}
 
-	payload, errV := s.tokenMaker.VerifyToken(cookie)
-	if errV != nil {
-		fmt.Println(errV, "s")
+	ctx.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// PATCH /auth/addresses/:id/default
+func (s *Server) handleSetDefaultAddress(ctx *gin.Context) {
+	customerID := mustCustomerID(ctx)
+
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid address id"})
+		return
 	}
-	fmt.Println("GetUnregisterCustomer", "fdsdflksdfksdp", payload.UserID)
+
+	_, err = s.store.GetCustomerAddressByID(ctx, db.GetCustomerAddressByIDParams{
+		ID:         int32(id),
+		CustomerID: customerID,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "address not found"})
+		return
+	}
+
+	if err := s.store.UnsetDefaultCustomerAddress(ctx, customerID); err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	if err := s.store.SetDefaultCustomerAddress(ctx, db.SetDefaultCustomerAddressParams{
+		ID:         int32(id),
+		CustomerID: customerID,
+	}); err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// ============================================================
+// ГОСТЕВАЯ СЕССИЯ / ИСТОРИЯ
+// ============================================================
+
+// GET /customers/unique
+func (s *Server) handleSetUniqueCustomer(ctx *gin.Context) {
+	validDate := pgtype.Date{Time: time.Now(), Valid: true}
+
+	uniqueCustomerID, err := s.store.CreateUniqueCustomer(ctx, validDate)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	myCookie, err := s.tokenMaker.CreateGuestCookie(uniqueCustomerID, 2*time.Hour, true, true)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.SetCookie(
+		myCookie.Name, myCookie.Value, myCookie.MaxAge,
+		myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly,
+	)
+
+	ctx.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// GET /history
+func (s *Server) handleGetHistory(ctx *gin.Context) {
+	customerID := getCustomerID(ctx)
+
+	if customerID != 0 {
+		snickers, err := s.store.GetSnickersHistoryComplex(ctx, customerID)
+		if errors.Is(err, errorsType.NotExist) {
+			ctx.JSON(http.StatusOK, []any{})
+			return
+		}
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, errorResponse(err))
+			return
+		}
+		ctx.JSON(http.StatusOK, snickers)
+		return
+	}
+
+	guestToken := s.tokenMaker.GetGuestTokenFromRequest(ctx.Request)
+	if guestToken == "" {
+		ctx.JSON(http.StatusOK, []any{})
+		return
+	}
+
+	payload, err := s.tokenMaker.VerifyToken(guestToken)
+	if err != nil {
+		ctx.JSON(http.StatusOK, []any{})
+		return
+	}
+
+	snickers, err := s.store.GetSnickersHistoryComplex(ctx, payload.UserID)
+	if errors.Is(err, errorsType.NotExist) {
+		ctx.JSON(http.StatusOK, []any{})
+		return
+	}
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, snickers)
+}
+
+// GET /customers/check
+func (s *Server) handleCheckCustomerData(ctx *gin.Context) {
+	cookie, err := ctx.Cookie("saved")
+	if err != nil {
+		ctx.JSON(http.StatusOK, 0)
+		return
+	}
+
+	payload, err := s.tokenMaker.VerifyToken(cookie)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
 	costumerData, err := s.store.GetUnregisterCustomer(ctx, payload.UserID)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-	} else {
-		ctx.JSON(http.StatusOK, UnregisterCustomerDataResponse(costumerData))
+		return
 	}
+
+	ctx.JSON(http.StatusOK, UnregisterCustomerDataResponse(costumerData))
 }
 
-// ============ НОВЫЕ ОБРАБОТЧИКИ ДЛЯ НОВОСТНОЙ РАССЫЛКИ ============
+// ============================================================
+// NEWSLETTER — вот они, на месте
+// ============================================================
 
 type subscribeNewsletterRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Username string `json:"username,omitempty"`
 }
 
-// handleSubscribeNewsletter - подписка на новостную рассылку
-// handleSubscribeNewsletter — подписка на новостную рассылку
 func (s *Server) handleSubscribeNewsletter(ctx *gin.Context) {
 	var req subscribeNewsletterRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -358,7 +652,6 @@ func (s *Server) handleSubscribeNewsletter(ctx *gin.Context) {
 		return
 	}
 
-	// Проверяем, не подписан ли уже пользователь
 	existing, err := s.store.GetNewsletterSubscriberByEmail(ctx, req.Email)
 	if err == nil {
 		if existing.Status == "verified" {
@@ -371,35 +664,23 @@ func (s *Server) handleSubscribeNewsletter(ctx *gin.Context) {
 		}
 	}
 
-	// Генерируем токен
 	verificationToken := util.RandomString(64)
 	expiresAt := time.Now().Add(24 * time.Hour)
 	ipAddress := ctx.ClientIP()
 	userAgent := ctx.GetHeader("User-Agent")
 
-	// Создаём подписчика
 	subscriber, err := s.store.CreateNewsletterSubscriber(ctx, db.CreateNewsletterSubscriberParams{
 		Email:             req.Email,
 		VerificationToken: verificationToken,
-		TokenExpiresAt: pgtype.Timestamp{
-			Time:  expiresAt,
-			Valid: true,
-		},
-		IpAddress: pgtype.Text{
-			String: ipAddress,
-			Valid:  ipAddress != "",
-		},
-		UserAgent: pgtype.Text{
-			String: userAgent,
-			Valid:  userAgent != "",
-		},
+		TokenExpiresAt:    pgtype.Timestamp{Time: expiresAt, Valid: true},
+		IpAddress:         pgtype.Text{String: ipAddress, Valid: ipAddress != ""},
+		UserAgent:         pgtype.Text{String: userAgent, Valid: userAgent != ""},
 	})
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
-	// Ставим задачу на отправку верификационного письма
 	payload := &worker.PayloadSendNewsletterVerification{
 		Email:    subscriber.Email,
 		Token:    verificationToken,
@@ -413,8 +694,6 @@ func (s *Server) handleSubscribeNewsletter(ctx *gin.Context) {
 	)
 	if err != nil {
 		log.Error().Err(err).Str("email", subscriber.Email).Msg("failed to enqueue verification email")
-		// Можно вернуть ошибку пользователю или продолжить (решение за тобой)
-		// здесь продолжаем, т.к. подписка уже создана
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
@@ -423,7 +702,6 @@ func (s *Server) handleSubscribeNewsletter(ctx *gin.Context) {
 	})
 }
 
-// handleVerifyNewsletter — верификация подписки
 func (s *Server) handleVerifyNewsletter(ctx *gin.Context) {
 	token := ctx.Param("token")
 	if token == "" {
@@ -431,25 +709,21 @@ func (s *Server) handleVerifyNewsletter(ctx *gin.Context) {
 		return
 	}
 
-	// Подтверждаем подписку
 	err := s.store.VerifyNewsletterSubscriber(ctx, token)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid or expired token"})
 		return
 	}
 
-	// Получаем подписчика (чтобы знать email)
 	subscriber, err := s.store.GetNewsletterSubscriberByToken(ctx, token)
 	if err != nil {
-		// Если токен валидный, но подписчика не нашли — странно, но возвращаем успех
 		ctx.JSON(http.StatusOK, gin.H{"message": "Email verified successfully"})
 		return
 	}
 
-	// Ставим задачу на отправку приветственного письма
 	payload := &worker.PayloadSendNewsletterWelcome{
 		Email:    subscriber.Email,
-		Username: "", // если есть username в БД — можно добавить поле и вытащить
+		Username: "",
 	}
 
 	err = s.taskDistributor.DistributeTaskSendNewsletterWelcome(ctx, payload,
@@ -459,7 +733,6 @@ func (s *Server) handleVerifyNewsletter(ctx *gin.Context) {
 	)
 	if err != nil {
 		log.Error().Err(err).Str("email", subscriber.Email).Msg("failed to enqueue welcome email")
-		// Продолжаем — верификация прошла
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
@@ -468,7 +741,6 @@ func (s *Server) handleVerifyNewsletter(ctx *gin.Context) {
 	})
 }
 
-// handleUnsubscribeNewsletter — отписка (здесь асинхронная отправка не нужна)
 func (s *Server) handleUnsubscribeNewsletter(ctx *gin.Context) {
 	var req struct {
 		Email string `json:"email" binding:"required,email"`
@@ -489,43 +761,36 @@ func (s *Server) handleUnsubscribeNewsletter(ctx *gin.Context) {
 	})
 }
 
-// handleGetNewsletterStats — статистика (без изменений, асинхронности нет)
 func (s *Server) handleGetNewsletterStats(ctx *gin.Context) {
 	verifiedCount, err := s.store.GetNewsletterVerifiedCount(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-
 	pendingCount, err := s.store.GetNewsletterPendingCount(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-
 	unsubscribedCount, err := s.store.GetNewsletterUnsubscribedCount(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-
 	totalCount, err := s.store.GetNewsletterTotalCount(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
-	stats := map[string]int64{
+	ctx.JSON(http.StatusOK, map[string]int64{
 		"verified_count":     verifiedCount,
 		"pending_count":      pendingCount,
 		"unsubscribed_count": unsubscribedCount,
 		"total_count":        totalCount,
-	}
-
-	ctx.JSON(http.StatusOK, stats)
+	})
 }
 
-// handleSendNewsletterBroadcast — массовая рассылка (у тебя уже было почти правильно)
 func (s *Server) handleSendNewsletterBroadcast(ctx *gin.Context) {
 	var req struct {
 		Subject string `json:"subject" binding:"required"`
@@ -554,7 +819,7 @@ func (s *Server) handleSendNewsletterBroadcast(ctx *gin.Context) {
 	}
 
 	err = s.taskDistributor.DistributeTaskSendNewsletterBroadcast(ctx, payload,
-		asynq.MaxRetry(1), // для broadcast retry обычно не нужен
+		asynq.MaxRetry(1),
 		asynq.Timeout(15*time.Minute),
 		asynq.Queue(worker.QueueDefault),
 	)
@@ -568,8 +833,13 @@ func (s *Server) handleSendNewsletterBroadcast(ctx *gin.Context) {
 		"recipients": len(emails),
 	})
 }
+
+// ============================================================
+// ВСПОМОГАТЕЛЬНЫЕ
+// ============================================================
+
 func UnregisterCustomerDataResponse(customerInfo db.Unregistercustomer) types.UnregisterCustomerResponse {
-	data := types.UnregisterCustomerResponse{
+	return types.UnregisterCustomerResponse{
 		Name:       customerInfo.Name,
 		SecondName: customerInfo.Secondname.String,
 		Mail:       customerInfo.Mail,
@@ -585,6 +855,22 @@ func UnregisterCustomerDataResponse(customerInfo db.Unregistercustomer) types.Un
 		},
 		DeliveryComment: customerInfo.Deliverycomment.String,
 	}
+}
 
-	return data
+func (s *Server) handleGetMyOrders(ctx *gin.Context) {
+	customerID := mustCustomerID(ctx)
+
+	orders, err := s.store.GetCustomerOrders(ctx, pgtype.Int4{
+		Int32: customerID,
+		Valid: true,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	if orders == nil {
+		orders = []db.GetCustomerOrdersRow{}
+	}
+
+	ctx.JSON(http.StatusOK, orders)
 }

@@ -114,7 +114,7 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
             setEmptyPage(false);
             currentDiscount.current = discount;
             currentPriceDiscount.current = price;
-            setCurrentPrice(price - price * discount / 100 || price);
+            setCurrentPrice(Math.round(price - price * discount / 100 )|| price);
             setMerchInfo(val);
         }
     }, []);

@@ -223,7 +223,7 @@ CREATE TABLE IF NOT EXISTS public.orderAddress (
     deliveryComment TEXT,
     house TEXT,
     flat TEXT,
-    coordinates TEXT [] NOT NULL
+    coordinates DOUBLE PRECISION[] NOT NULL
 );
 CREATE TABLE IF NOT EXISTS public.preorder (
     id serial PRIMARY KEY NOT NULL,
@@ -550,7 +550,7 @@ CREATE TABLE public.promo_codes (
     code VARCHAR(50) NOT NULL UNIQUE,
     name VARCHAR(255),
     description TEXT,
-    
+    issued_to_customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
     discount_type VARCHAR(20) NOT NULL CHECK (discount_type IN ('percent', 'fixed')),
     discount_value INTEGER NOT NULL,
     
@@ -669,6 +669,30 @@ CREATE TABLE IF NOT EXISTS public.news_items (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+
+CREATE TABLE customer_addresses (
+    id SERIAL PRIMARY KEY,
+    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,                      -- "Дом", "Работа", NULL
+    town TEXT NOT NULL,
+    street TEXT,
+    house TEXT,
+    flat TEXT,
+    postal_code TEXT,                       -- было "index", переименовал чтобы не конфликтовать с ключевым словом
+    region TEXT,
+    coordinates DOUBLE PRECISION[],
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Все адреса юзера
+CREATE INDEX idx_customer_addresses_customer 
+ON customer_addresses(customer_id);
+
+-- Только один адрес по умолчанию на юзера
+CREATE UNIQUE INDEX idx_customer_addresses_default 
+ON customer_addresses(customer_id)
+WHERE is_default = TRUE;
 -- Индексы
 CREATE INDEX idx_news_blocks_active ON news_blocks(is_active);
 CREATE INDEX idx_news_blocks_sort ON news_blocks(sort_order);
@@ -682,3 +706,7 @@ COMMENT ON TABLE news_items IS 'Элементы контента внутри �
 COMMENT ON COLUMN news_blocks.cover_image_url IS 'Заглавное изображение/обложка блока';
 COMMENT ON COLUMN news_blocks.views_count IS 'Количество просмотров';
 COMMENT ON COLUMN news_blocks.likes_count IS 'Количество лайков';
+
+
+
+

@@ -1,137 +1,159 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react'
-import s from "./style.module.css"
-import InputWithLabelWithValidation from 'src/components/input/InputWithLabelWithValidation'
-import PhoneInputWithValidation from 'src/components/input/PhoneInputWithValidation'
-import Button from 'src/components/Button'
-import PasswordInput from 'src/components/input/PasswordInput'
-import PasswordInputWithValidation from 'src/components/input/PasswordInputWithValidation'
-import MailInputWithValidation from 'src/components/input/MailInputWithValidation'
-import { registerUser, loginUser } from 'src/providers/userProvider'
-import Link from 'next/link'
+import React, { useRef, useState } from 'react';
+import s from "./style.module.css";
+import Button from 'src/components/Button';
+import PasswordInput from 'src/components/input/PasswordInput';
+import PasswordInputWithValidation from 'src/components/input/PasswordInputWithValidation';
+import MailInputWithValidation from 'src/components/input/MailInputWithValidation';
+import Link from 'next/link';
 
-interface loginFormModuleInterface {
-    className?: {
-        input?: string,
-        checkbox?: string,
-        combobox?: string
-    }
-    onChange: (data: any) => void
-    onRegister: (data: any) => void
+export interface RegisterFormData {
+    mail: string;
+    pass: string;
 }
 
-const LoginForm: React.FC<loginFormModuleInterface> = (props) => {
-    let validationObject = useRef<any>({})
-    let passCheck = useRef<any>("")
-    let formData = useRef<{
-        mail: string,
-        pass: string
-    }>({
-        mail: "",
-        pass: ""
-    })
-    let loginData = useRef<{ [key: string]: string }>({
-        mail: "",
-        pass: ""
-    })
+interface RegisterFormProps {
+    className?: {
+        input?: string;
+        checkbox?: string;
+        combobox?: string;
+    };
+    onRegister: (data: RegisterFormData) => void;
+    isLoading?: boolean;
+    error?: string | null;
+}
 
-    let [validRegister, setValidRegister] = useState<string>("")
-    let [forgotPass, setForgotPass] = useState<boolean>(false)
-    let [validLogin, setValiLogin] = useState<string>("")
-    let invalidPassText = useRef<string>("Пароли не совпадают")
-    let invalidMailText = useRef<string>("Пустое поле ввода")
-    let [refresh, setRefresh] = useState<boolean>(false)
-    let { onChange, onRegister } = { ...props }
-    
-    const setFormData = (data: string, name: string) => {
-        formData.current[name] = data
-    }
-    const setLoginData = (data: string, name: string) => {
-        loginData.current[name] = data
-    }
+const RegisterForm: React.FC<RegisterFormProps> = ({
+    className,
+    onRegister,
+    isLoading = false,
+    error = null,
+}) => {
+    const validationObject = useRef<Record<string, boolean>>({});
+    const passCheck = useRef<string>('');
+    const formData = useRef<RegisterFormData>({
+        mail: '',
+        pass: '',
+    });
+
+    const [validRegister, setValidRegister] = useState<string>('');
+    const [refresh, setRefresh] = useState<boolean>(false);
+
+    const invalidPassText = useRef<string>('Пароли не совпадают');
+    const invalidMailText = useRef<string>('Пустое поле ввода');
+
+    const setFormData = (value: string, name: keyof RegisterFormData) => {
+        formData.current[name] = value;
+    };
+
     const validRuleForPass = (data: string) => {
         if (data.length < 6) {
-            return "Длина пароля должна быть больше 6 символов"
+            return 'Длина пароля должна быть больше 6 символов';
         }
-    }
+        return undefined;
+    };
 
-    const validRuleForMail = (data: string) => {
-        var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!re.test(data)) {
-            return "Некоректный email"
-        }
-    }
     const updateValidObj = () => {
-        setValidRegister("")
-        let entries = Object.entries(formData.current)
+        setValidRegister('');
+        const entries = Object.entries(formData.current);
+
         for (let i = 0; i < entries.length; i++) {
-            if (entries[i][0] === "pass") {
-                if (entries[i][1] !== passCheck.current) {
-                    validationObject.current[entries[i][0]] = true
-                    invalidPassText.current = "Пароли не совпадают"
-                } else if (entries[i][1].length < 6) {
-                    validationObject.current[entries[i][0]] = true
-                    invalidPassText.current = "Пароль должен быть болше 6 символов"
-                }
-                else {
-                    delete validationObject.current[entries[i][0]]
-                }
-                continue
-            }
-            if (entries[i][0] === "mail") {
-                var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                re.test(entries[i][1]);
-                if (re.test(entries[i][1])) {
-                    delete validationObject.current[entries[i][0]];
+            const [key, value] = entries[i];
+
+            if (key === 'pass') {
+                if (value !== passCheck.current) {
+                    validationObject.current[key] = true;
+                    invalidPassText.current = 'Пароли не совпадают';
+                } else if (value.length < 6) {
+                    validationObject.current[key] = true;
+                    invalidPassText.current = 'Пароль должен быть больше 6 символов';
                 } else {
-                    validationObject.current[entries[i][0]] = true
-                    invalidMailText.current = "Некоректный email"
+                    delete validationObject.current[key];
                 }
-                continue
+                continue;
             }
-            if (entries[i][1] == "") {
-                validationObject.current[entries[i][0]] = true
-            } else {
-                if (validationObject.current[entries[i][0]]) {
-                    delete validationObject.current[entries[i][0]]
+
+            if (key === 'mail') {
+                const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (re.test(value)) {
+                    delete validationObject.current[key];
+                } else {
+                    validationObject.current[key] = true;
+                    invalidMailText.current = 'Некорректный email';
                 }
+                continue;
+            }
+
+            if (value === '') {
+                validationObject.current[key] = true;
+            } else if (validationObject.current[key]) {
+                delete validationObject.current[key];
             }
         }
-    }
+    };
 
-    let checkBox = useRef<HTMLInputElement>(null)
-    let checked = useRef<boolean>(false)
+    const handleSubmit = () => {
+        updateValidObj();
+
+        if (Object.values(validationObject.current).length > 0) {
+            setRefresh(!refresh);
+            return;
+        }
+
+        onRegister({
+            mail: formData.current.mail,
+            pass: formData.current.pass,
+        });
+    };
 
     return (
-        <div className={s.main} onClick={(e) => { e.stopPropagation() }}>
-            <div className={s.caption}>
-                Регистрация
-            </div>
+        <div className={s.main} onClick={(e) => e.stopPropagation()}>
+            <div className={s.caption}>Регистрация</div>
+
             <div>
-                Продолжая, вы даете <Link href="/">согласие на обработку</Link>
+                Продолжая, вы даете <Link href="/">согласие на обработку</Link>{' '}
                 персональных данных.
             </div>
-            <MailInputWithValidation valid={!validationObject.current.mail} invalidText={invalidMailText.current} onChange={(data) => { setFormData(data, "mail") }} placeholder={"Электронный адрес"} />
-            <PasswordInputWithValidation showToggle={true} validRule={validRuleForPass} valid={!validationObject.current.pass} invalidText={invalidPassText.current} onChange={(data) => { setFormData(data, "pass") }} className={s.loginInput} placeholder="Password" />
-            <PasswordInput check={true} onChange={(data) => { passCheck.current = data }} className={s.loginInput} placeholder="Repeat password" />
-            <Button className={s.loginButton} onClick={() => {
-                updateValidObj()
-                if (Object.values(validationObject.current).length > 0) {
-                    setRefresh(!refresh)
-                } else {
-                    registerUser(formData.current, (info) => {
-                        switch (info.registerIndex) {
-                            case 0:
-                                onRegister("")
-                                break
-                            case 1:
-                                setValidRegister("Mail уже существует.")
-                                break
-                        }
-                    })
-                }
-            }} text='Sign up' />
-        </div>
-    )
-}
 
-export default LoginForm
+            <MailInputWithValidation
+                valid={!validationObject.current.mail}
+                invalidText={invalidMailText.current}
+                onChange={(data) => setFormData(data, 'mail')}
+                placeholder="Электронный адрес"
+            />
+
+            <PasswordInputWithValidation
+                showToggle={true}
+                validRule={validRuleForPass}
+                valid={!validationObject.current.pass}
+                invalidText={invalidPassText.current}
+                onChange={(data) => setFormData(data, 'pass')}
+                // className={s.loginInput}
+                placeholder="Password"
+            />
+
+            <PasswordInput
+                check={true}
+                onChange={(data) => {
+                    passCheck.current = data;
+                }}
+                // className={s.loginInput}
+                placeholder="Repeat password"
+            />
+
+            <Button
+                className={s.loginButton}
+                onClick={handleSubmit}
+                text={isLoading ? 'Загрузка...' : 'Sign up'}
+                disabled={isLoading}
+            />
+
+            {(validRegister || error) && (
+                <div className={s.registerError}>
+                    {validRegister || error}
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default RegisterForm;

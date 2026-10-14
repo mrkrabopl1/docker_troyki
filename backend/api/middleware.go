@@ -289,4 +289,75 @@ func CachedBannersMiddleware(s *Server) gin.HandlerFunc {
 	}
 }
 
+// ========== CUSTOMER MIDDLEWARE (ДЛЯ ЗАЛОГИНЕННЫХ ПОЛЬЗОВАТЕЛЕЙ) ==========
+
+// RequireCustomer — пропускает только залогиненных customer'ов.
+// Кладёт в контекст "customerID" (int32) и "customer_payload" (*token.Payload).
+// Гостя и админа — отсекает.
+func (s *Server) RequireCustomer() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		tokenStr := s.tokenMaker.GetUserTokenFromRequest(ctx.Request)
+		if tokenStr == "" {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(errors.New("authorization required")))
+			return
+		}
+
+		payload, err := s.tokenMaker.VerifyToken(tokenStr)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(err))
+			return
+		}
+
+		// Админ не должен ходить по customer-роутам
+		if payload.IsAdmin {
+			ctx.AbortWithStatusJSON(http.StatusForbidden, errorResponse(errors.New("admin cannot use customer endpoints")))
+			return
+		}
+
+		ctx.Set("customerID", payload.UserID)
+		ctx.Set("customer_payload", payload)
+		ctx.Next()
+	}
+}
+
+// OptionalCustomer — пропускает всех. Если есть валидный auth_token,
+// кладёт customerID в контекст. Для роутов, где гость тоже допускается.
+func (s *Server) OptionalCustomer() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		tokenStr := s.tokenMaker.GetUserTokenFromRequest(ctx.Request)
+		if tokenStr != "" {
+			if payload, err := s.tokenMaker.VerifyToken(tokenStr); err == nil {
+				// Админа игнорируем — он не customer
+				if !payload.IsAdmin {
+					ctx.Set("customerID", payload.UserID)
+					ctx.Set("customer_payload", payload)
+				}
+			}
+		}
+		ctx.Next() // 👈 ВСЕГДА пропускаем дальше
+	}
+}
+func mustCustomerID(ctx *gin.Context) int32 {
+	v, exists := ctx.Get("customerID")
+	if !exists {
+		return 0
+	}
+	id, ok := v.(int32)
+	if !ok {
+		return 0
+	}
+	return id
+}
+func getCustomerID(ctx *gin.Context) int32 {
+	v, exists := ctx.Get("customerID")
+	if !exists {
+		return 0
+	}
+	id, ok := v.(int32)
+	if !ok {
+		return 0
+	}
+	return id
+}
+
 // api/middleware/rate_limit.go

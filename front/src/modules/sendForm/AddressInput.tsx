@@ -6,12 +6,12 @@ import InputWithLabelWithValidation from 'src/components/input/InputWithLabelWit
 
 type AddressObject = {
     town?: string;
-    index?: string
+    index?: string;
     street?: string;
     coordinates?: [number, number];
     house?: string;
-    value?: string
-    settlement?:string
+    value?: string;
+    settlement?: string;
 };
 
 type PropsRowType = {
@@ -24,7 +24,7 @@ type PropsRowType = {
     };
     placeholder?: string;
     val?: string;
-    valid: boolean
+    valid: boolean;
 };
 
 const AddressInput: React.FC<PropsRowType> = memo(({
@@ -32,9 +32,9 @@ const AddressInput: React.FC<PropsRowType> = memo(({
     onFocus,
     onBlur,
     className,
-    placeholder = "Адрес",
-    val = "",
-    valid
+    placeholder = 'Адрес',
+    val = '',
+    valid,
 }) => {
     const [valState, setVal] = useState(val);
     const [activeList, setActive] = useState(false);
@@ -52,58 +52,44 @@ const AddressInput: React.FC<PropsRowType> = memo(({
         setValid(isValid);
     }, []);
 
+    // 👇 Обновляем valState только при первом монтировании
+    const isFirstRender = useRef(true);
     useEffect(() => {
-        getAddressDeliveryData(val, (data) => {
-            suggestionsRef.current = data.suggestions;
-            if (!data.suggestions.length) return
-            setDropDownList(createSuggestionElements(data.suggestions));
-            handleAddressSelect(data.suggestions[0])
-        });
+        if (isFirstRender.current) {
+            setVal(val);
+            isFirstRender.current = false;
+        }
     }, [val]);
 
     useEffect(() => {
         return () => {
-            timeoutId.current && clearTimeout(timeoutId.current);
+            if (timeoutId.current) clearTimeout(timeoutId.current);
         };
     }, []);
 
     useEffect(() => {
-        setValid(valid)
+        setValid(valid);
     }, [valid]);
 
+    // 👇 Выбор из списка — автоподстановка ТОЛЬКО здесь
+    const handleAddressSelect = useCallback((suggestion: any) => {
+        const { city, street, geo_lon, geo_lat, house, value, settlement, postal_code } = suggestion.data;
 
-    const handleAddressSelect = useCallback((val: any) => {
-        const { city, street, geo_lon, geo_lat, house, value,settlement,postal_code } = val.data;
         addressObjRef.current = {
             town: city,
             street,
-            coordinates: [geo_lon, geo_lat],
+            coordinates: [Number(geo_lon), Number(geo_lat)],
             house,
-            value:val.value,
+            value: suggestion.value,
             settlement,
-            index:postal_code
+            index: postal_code,
         };
+
         setActive(false);
-        onChange(addressObjRef.current);
-        setVal(val.value);
-        updateValidObj();
-    }, [onChange, updateValidObj]);
-
-   const handleAddress = useCallback((val: any) => {
-        const { city, street, geo_lon, geo_lat, house, value,settlement,postal_code } = val.data;
-        addressObjRef.current = {
-            town: city,
-            street,
-            coordinates: [geo_lon, geo_lat],
-            house,
-            value,
-            settlement,
-            index:postal_code
-        };
+        setVal(suggestion.value);
         onChange(addressObjRef.current);
         updateValidObj();
     }, [onChange, updateValidObj]);
-
 
     const createSuggestionElements = useCallback((suggestions: any[]) => {
         return suggestions.map((suggestion, index) => (
@@ -117,11 +103,12 @@ const AddressInput: React.FC<PropsRowType> = memo(({
         ));
     }, [handleAddressSelect]);
 
+    // 👇 Изменение input юзером — БЕЗ автоподстановки
     const handleInputChange = useCallback((inputVal: string) => {
         setVal(inputVal);
-        timeoutId.current && clearTimeout(timeoutId.current);
+        if (timeoutId.current) clearTimeout(timeoutId.current);
 
-        if (inputVal && !inputVal.trim()) {
+        if (!inputVal || !inputVal.trim()) {
             setActive(false);
             onChange({});
             return;
@@ -130,10 +117,15 @@ const AddressInput: React.FC<PropsRowType> = memo(({
         timeoutId.current = setTimeout(() => {
             getAddressDeliveryData(inputVal, (data) => {
                 suggestionsRef.current = data.suggestions;
-                if (!data.suggestions.length) return
+
+                if (!data.suggestions.length) {
+                    setActive(false);
+                    return;
+                }
+
                 setDropDownList(createSuggestionElements(data.suggestions));
                 setActive(true);
-                handleAddress(data.suggestions[0])
+                // ❌ автоподстановки НЕТ
             });
         }, 500);
     }, [onChange, createSuggestionElements]);
@@ -141,7 +133,7 @@ const AddressInput: React.FC<PropsRowType> = memo(({
     return (
         <div className={s.inputHolder}>
             <InputWithLabelWithValidation
-                invalidText='Введите более точный адрес.'
+                invalidText="Введите более точный адрес."
                 valid={validFlag}
                 val={valState}
                 className={s.inputHolder}

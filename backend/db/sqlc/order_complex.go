@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mrkrabopl1/go_db/types"
 )
@@ -123,6 +124,7 @@ type CreateOrderType struct {
 	PersonalData     types.PersonalData `json:"personalData"`
 	Address          types.Address      `json:"address"`
 	Delivery         Delivery           `json:"delivery"`
+	CustomerID       *int32             `json:"-"`
 	Save             bool               `json:"save"`
 	PromoCode        string             `json:"promoCode"`
 	PromoCodeID      *int32             `json:"promoCodeId"`
@@ -275,89 +277,116 @@ func (store *SQLStore) CreateOrder(ctx context.Context, orderData *CreateOrderTy
 	return orderId, userId, hashedStr, nil
 }
 
-func (store *SQLStore) CreateOrderWithStockUpdate(ctx context.Context, orderData *CreateOrderType) (int32, int32, string, error) {
-	// Начинаем транзакцию
+func (store *SQLStore) CreateOrderWithStockUpdate(
+	ctx context.Context,
+	orderData *CreateOrderType,
+) (int32, int32, string, error) {
 	tx, err := store.BeginTx(ctx)
 	if err != nil {
 		return 0, 0, "", fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
-	// 1. Создаем пользователя (если не зарегистрирован)
-	userId, err := tx.Queries.SetUnregisterCustomer(ctx, SetUnregisterCustomerParams{
-		Name: orderData.PersonalData.Name,
-		Secondname: pgtype.Text{
-			String: orderData.PersonalData.SecondName,
-		},
-		Mail:  orderData.PersonalData.Mail,
-		Phone: orderData.PersonalData.Phone,
-		Town:  orderData.Address.Town,
-		Street: pgtype.Text{
-			String: orderData.Address.Street,
-			Valid:  true,
-		},
-		Region: pgtype.Text{
-			String: orderData.Address.Region,
-			Valid:  true,
-		},
-		Index: orderData.Address.Index,
-		House: pgtype.Text{
-			String: orderData.Address.House,
-		},
-		Flat: pgtype.Text{
-			String: orderData.Address.Flat,
-		},
-		Settlement: pgtype.Text{
-			String: orderData.Address.Settlement,
-		},
-		Deliverycomment: pgtype.Text{
-			String: orderData.Delivery.DeliveryComment,
-			Valid:  true,
-		},
-	})
-	if err != nil {
-		return 0, 0, "", fmt.Errorf("set unregister customer: %w", err)
+	var unregisterCustomerID int32
+	var customerID int32
+	fmt.Println(orderData.CustomerID, "orderData.CustomerID")
+	// 👇 РАЗВЕТВЛЕНИЕ: залогинен или гость
+	if orderData.CustomerID != nil && *orderData.CustomerID > 0 {
+		// ЗАЛОГИНЕН — используем существующего customer
+		customerID = *orderData.CustomerID
+		fmt.Println(customerID, "customerID")
+	} else {
+		// ГОСТЬ — создаём unregistercustomer
+		unregID, err := tx.Queries.SetUnregisterCustomer(ctx, SetUnregisterCustomerParams{
+			Name: orderData.PersonalData.Name,
+			Secondname: pgtype.Text{
+				String: orderData.PersonalData.SecondName,
+				Valid:  orderData.PersonalData.SecondName != "",
+			},
+			Mail:  orderData.PersonalData.Mail,
+			Phone: orderData.PersonalData.Phone,
+			Town:  orderData.Address.Town,
+			Street: pgtype.Text{
+				String: orderData.Address.Street,
+				Valid:  orderData.Address.Street != "",
+			},
+			Region: pgtype.Text{
+				String: orderData.Address.Region,
+				Valid:  orderData.Address.Region != "",
+			},
+			Index: orderData.Address.Index,
+			House: pgtype.Text{
+				String: orderData.Address.House,
+				Valid:  orderData.Address.House != "",
+			},
+			Flat: pgtype.Text{
+				String: orderData.Address.Flat,
+				Valid:  orderData.Address.Flat != "",
+			},
+			Settlement: pgtype.Text{
+				String: orderData.Address.Settlement,
+				Valid:  orderData.Address.Settlement != "",
+			},
+			Deliverycomment: pgtype.Text{
+				String: orderData.Delivery.DeliveryComment,
+				Valid:  orderData.Delivery.DeliveryComment != "",
+			},
+		})
+		if err != nil {
+			return 0, 0, "", fmt.Errorf("set unregister customer: %w", err)
+		}
+		unregisterCustomerID = unregID
 	}
 
-	// 2. Создаем заказ
+	// 2. Создаём заказ
 	currentTime := time.Now()
 	hashedStr := fmt.Sprint(xxhash.Sum64([]byte((currentTime.String() + fmt.Sprint(orderData.PreorderHash)))))
-	orderId, err := tx.Queries.InsertOrder(ctx, InsertOrderParams{
+
+	orderParams := InsertOrderParams{
 		Status:        StatusEnumPending,
 		Deliveryprice: int32(orderData.Delivery.DeliveryPrice),
 		Deliverytype:  orderData.Delivery.Type,
 		Deliverycomment: pgtype.Text{
 			String: orderData.Delivery.DeliveryComment,
-			Valid:  true,
-		},
-		Unregistercustomerid: pgtype.Int4{
-			Int32: userId,
-			Valid: true,
+			Valid:  orderData.Delivery.DeliveryComment != "",
 		},
 		Hash: hashedStr,
-	})
+	}
+
+	// 👇 Кладём либо CustomerID, либо UnregisterCustomerID
+	if customerID > 0 {
+		orderParams.Customerid = pgtype.Int4{Valid: true, Int32: customerID}
+		orderParams.Unregistercustomerid = pgtype.Int4{Valid: false}
+	} else {
+		orderParams.Customerid = pgtype.Int4{Valid: false}
+		orderParams.Unregistercustomerid = pgtype.Int4{Int32: unregisterCustomerID, Valid: true}
+	}
+	fmt.Println(orderParams.Customerid, "fmpdslmfksdm")
+	orderId, err := tx.Queries.InsertOrder(ctx, orderParams)
 	if err != nil {
 		return 0, 0, "", fmt.Errorf("insert order: %w", err)
 	}
 
-	// 3. Добавляем адрес доставки (если не самовывоз)
+	// 3. Адрес доставки (если не самовывоз)
 	if orderData.Delivery.Type != DeliveryEnumOwn {
 		_, err := tx.Queries.SetOrderAddress(ctx, SetOrderAddressParams{
 			Town: orderData.Address.Town,
 			Street: pgtype.Text{
 				String: orderData.Address.Street,
-				Valid:  true,
+				Valid:  orderData.Address.Street != "",
 			},
 			Region: pgtype.Text{
 				String: orderData.Address.Region,
-				Valid:  true,
+				Valid:  orderData.Address.Region != "",
 			},
 			Index: orderData.Address.Index,
 			House: pgtype.Text{
 				String: orderData.Address.House,
+				Valid:  orderData.Address.House != "",
 			},
 			Flat: pgtype.Text{
 				String: orderData.Address.Flat,
+				Valid:  orderData.Address.Flat != "",
 			},
 			Coordinates: orderData.Address.Coordinates,
 			Orderid:     orderId,
@@ -367,7 +396,7 @@ func (store *SQLStore) CreateOrderWithStockUpdate(ctx context.Context, orderData
 		}
 	}
 
-	// 4. Получаем данные из корзины (preorder)
+	// 4. Данные из корзины (preorder)
 	preorderId, err := tx.Queries.GetPreorderIdByHashUrl(ctx, orderData.PreorderHash)
 	if err != nil {
 		return 0, 0, "", fmt.Errorf("get preorder id: %w", err)
@@ -378,7 +407,7 @@ func (store *SQLStore) CreateOrderWithStockUpdate(ctx context.Context, orderData
 		return 0, 0, "", fmt.Errorf("get preorder data: %w", err)
 	}
 
-	// 5. Подготавливаем данные для вставки в orderitems
+	// 5. Подготовка данных
 	productIDs := make([]int32, len(prData))
 	quantities := make([]int32, len(prData))
 	sizes := make([]string, len(prData))
@@ -395,7 +424,7 @@ func (store *SQLStore) CreateOrderWithStockUpdate(ctx context.Context, orderData
 		prices[i] = item.Price
 	}
 
-	// 6. Вставляем товары в orderitems
+	// 6. Вставка orderitems
 	err = tx.Queries.InsertManyOrderItems(ctx, InsertManyOrderItemsParams{
 		ProductIds: productIDs,
 		Quantities: quantities,
@@ -409,18 +438,13 @@ func (store *SQLStore) CreateOrderWithStockUpdate(ctx context.Context, orderData
 		return 0, 0, "", fmt.Errorf("insert order items: %w", err)
 	}
 
-	// 7. ОБНОВЛЯЕМ ОСТАТКИ НА СКЛАДЕ
+	// 7. Обновление остатков
 	for _, item := range prData {
-		// item.Size.String - размер (например "42")
-		// item.Quantity - количество в заказе
-		// item.ID - ID товара
-		fmt.Println(item.Size.String, item.Quantity, item.ID, "updating stock for product")
 		_, err := tx.Queries.UpdateProductStock(ctx, UpdateProductStockParams{
 			SizeKey:   item.Size.String,
 			Quantity:  item.Quantity,
 			ProductID: item.ID,
 		})
-
 		if err != nil {
 			return 0, 0, "", fmt.Errorf("update stock for product %d: %w", item.ID, err)
 		}
@@ -432,12 +456,16 @@ func (store *SQLStore) CreateOrderWithStockUpdate(ctx context.Context, orderData
 		return 0, 0, "", fmt.Errorf("delete cart: %w", err)
 	}
 
-	// Коммитим транзакцию
+	// Коммит
 	if err = tx.Commit(ctx); err != nil {
 		return 0, 0, "", fmt.Errorf("commit transaction: %w", err)
 	}
 
-	return orderId, userId, hashedStr, nil
+	// 👇 Возвращаем:
+	// - orderId
+	// - unregisterCustomerID (0 для залогиненного, >0 для гостя)
+	// - hash
+	return orderId, unregisterCustomerID, hashedStr, nil
 }
 
 type GetOrderData struct {
@@ -543,19 +571,19 @@ func (store *SQLStore) GetCartDataFromOrderByHash(ctx context.Context, hash stri
 	if err != nil {
 		return nil, fmt.Errorf("get order id by hash: %w", err)
 	}
-
+	fmt.Println(orderId, err)
 	// 2. Получаем товары из заказа
 	items, err := store.Queries.GetOrderDataById(ctx, orderId)
+	fmt.Println(items, "items", err)
 	if err != nil {
 		return nil, fmt.Errorf("get order items: %w", err)
 	}
 
 	// 3. Получаем информацию о промокоде (если есть)
 	promo, err := store.Queries.GetOrderPromoInfo(ctx, orderId)
+	fmt.Println(promo, "promo", err)
 	if err != nil {
-		// Если промокода нет, это не ошибка - просто возвращаем пустые значения
-		// Проверяем, что это ошибка "no rows" (sql.ErrNoRows)
-		if err == sql.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return &OrderDataResponse{
 				Items:         items,
 				PromoCodeName: "",

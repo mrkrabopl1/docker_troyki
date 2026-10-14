@@ -137,9 +137,10 @@ INSERT INTO orders (
         deliveryType,
         deliveryComment,
         unregistercustomerid,
+        customerid,
         hash
     )
-VALUES ($1, $2, $3, $4,$5, $6)
+VALUES ($1, $2, $3, $4,$5,$6, $7)
 RETURNING id;
 -- name: GetOrder :one
 SELECT id,

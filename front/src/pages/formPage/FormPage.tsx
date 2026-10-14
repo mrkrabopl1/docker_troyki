@@ -6,7 +6,7 @@ import { cartCountAction } from 'src/store/reducers/menuSlice'
 import { useAppDispatch, useNavigate } from 'src/store/hooks/redux'
 import BuyMerchField from 'src/modules/buyMerchField/BuyMerchField'
 import { createOrder } from 'src/providers/orderProvider';
-import { checkCustomerData } from 'src/providers/userProvider';
+import { checkCustomerData, getMe, type Address } from 'src/providers/userProvider';
 import { useRouter } from 'next/router';
 import DeliveryRadioGroup from './pageElements/DeliveryRadio';
 import Button from 'src/components/Button';
@@ -17,6 +17,7 @@ import ContactForm from 'src/modules/sendForm/ContactForm';
 import MapComponent from 'src/modules/map/Map';
 import { finishLoading } from 'src/store/reducers/loadingSlice';
 import { validatePromoCode } from 'src/providers/adminPromoCodesProvider';
+import AddressSelector from './pageElements/AddressSelector';   // 👈
 
 interface PromoState {
     code: string;
@@ -36,8 +37,9 @@ const BACK_ROUTE = [
     ["Вернуться к экрану с информацией"]
 ];
 
-function formatAddress(address) {
-    const parts = [];
+function formatAddress(address: any): string {
+    if (!address) return '';
+    const parts: string[] = [];
     if (address.town) parts.push(`г.${address.town}`);
     if (address.settlement) parts.push(`${address.settlement}`);
     if (address.street && address.house) parts.push(`ул. ${address.street}`);
@@ -88,6 +90,10 @@ const FormPage: React.FC = () => {
         deliveryComment: ""
     });
     const matchingProductsRef = useRef<number[]>([]);
+
+    // 👇 AUTH + ВЫБОР АДРЕСА
+    const [isLogged, setIsLogged] = useState(false);
+    const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
 
     const [promoState, setPromoState] = useState<PromoState>({
         code: '',
@@ -164,16 +170,17 @@ const FormPage: React.FC = () => {
         });
     };
 
-    // Загрузка корзины
+    // Загрузка корзины + auth
     useEffect(() => {
         getCartData(hash, (data) => {
             dispatch(finishLoading());
             fullPrice.current = data.fullPrice;
-            const total = data.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            const total = data.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
             setTotalPrice(total);
             setProducts(data);
             setOriginalProducts(data);
 
+            // 👇 Для гостя (незарегистрированного) — подтягиваем данные
             checkCustomerData((customerData) => {
                 if (customerData) {
                     memoSendForm.current = !memoSendForm.current;
@@ -184,6 +191,23 @@ const FormPage: React.FC = () => {
                 }
             });
         });
+
+        // 👇 Проверяем, залогинен ли юзер
+        (async () => {
+            const user = await getMe();
+            setIsLogged(!!user);
+            if (user) {
+                // Для залогиненного сразу заполняем контакты из профиля
+                contactInfo.current["Имя"] = user.name || '';
+                contactInfo.current["Фамилия"] = user.secondName || '';
+                contactInfo.current["mail"] = user.mail || '';
+                contactInfo.current["Телефон"] = user.phone || '';
+                formData.current.name = user.name || '';
+                formData.current.secondName = user.secondName || '';
+                formData.current.mail = user.mail || '';
+                formData.current.phone = user.phone || '';
+            }
+        })();
     }, [hash]);
 
     // Пересчёт totalPrice при изменении продуктов
@@ -194,6 +218,55 @@ const FormPage: React.FC = () => {
             fullPrice.current = total;
         }
     }, [products]);
+
+    // 👇 Выбор адреса из списка
+    const handleAddressSelect = useCallback((addr: Address) => {
+        setSelectedAddressId(addr.id);
+
+        formData.current.address = addr;
+
+        // Обновляем addressInfo для отображения в PayBlock/DeliveryPage
+        addressInfo.current["Город"] = addr.town || '';
+        addressInfo.current["Улица"] = addr.street || '';
+        addressInfo.current["Дом"] = addr.house || '';
+        addressInfo.current["Квартриа"] = addr.flat || '';
+        addressInfo.current["Почтовый индекс"] = addr.index || '';
+        addressInfo.current["Регион"] = addr.region || '';
+        addressInfo.current["Село"] = '';
+        addressInfo.current["Поселок"] = addr.settlement || '';
+
+        // Обновляем respData
+        respData.current = {
+            ...respData.current,
+            personalData: {
+                name: formData.current.name,
+                phone: formData.current.phone,
+                mail: formData.current.mail,
+                secondName: formData.current.secondName || '',
+            },
+            address: {
+                town: addr.town,
+                street: addr.street,
+                house: addr.house,
+                flat: addr.flat,
+                index: addr.index,
+                region: addr.region,
+                settlement: addr.settlement,
+                coordinates: addr.coordinates,
+            },
+            address_id: addr.id,   // 👈 id для бэка
+            save: formData.current.save,
+            delivery: {
+                deliveryPrice: 0,
+                deliveryComment: formData.current.deliveryComment,
+                type: delivery.current === 0 ? 'curier' : 'own',
+            },
+            preorderHash: hash,
+        };
+
+        validSendForm.current = true;   // раз адрес выбран — можно идти дальше
+        setRefresh(prev => !prev);
+    }, [hash]);
 
     const handlePromoCodeChange = useCallback((code: string) => {
         if (promoState.isValid) {
@@ -247,10 +320,9 @@ const FormPage: React.FC = () => {
             if (response.applies_to === "global") {
                 if (response.discount_type === "fixed") {
                     totalDiscount = response.discount_value
-                }else{
+                } else {
                     totalDiscount = Math.round((response.discount_value * totalPrice / 100))
                 }
-
             } else {
                 matchingProductsRef.current = response.matching_products || [];
 
@@ -264,7 +336,6 @@ const FormPage: React.FC = () => {
                 totalDiscount = Math.round(updatedProducts
                     .filter(item => item.has_discount)
                     .reduce((sum, item) => sum + (item.discount_applied || 0), 0));
-
             }
 
             setPromoState({
@@ -299,33 +370,29 @@ const FormPage: React.FC = () => {
 
     const contactInfoChange = useCallback((data: any) => {
         contactInfo.current.Имя = data.name;
+        contactInfo.current.Фамилия = data.secondName;
+        contactInfo.current.mail = data.mail;
+        contactInfo.current.Телефон = data.phone;
+
         formData.current.name = data.name;
-        if (data.mail) {
-            contactInfo.current.mail = data.mail;
-            formData.current.mail = data.mail;
-        } else {
-            contactInfo.current.Телефон = data.phone;
-            formData.current.phone = data.phone;
-        }
+        formData.current.secondName = data.secondName;
+        formData.current.mail = data.mail;
+        formData.current.phone = data.phone;
 
         respData.current = {
+            ...respData.current,
             personalData: {
                 name: data.name,
                 phone: data.phone,
                 mail: data.mail,
+                secondName: data.secondName || '',
             },
-            address: {
-                town: "",
-                street: "",
-                index: ""
-            },
-            save: data.save,
-            delivery: {
+            delivery: respData.current.delivery || {
                 deliveryPrice: 0,
-                deliveryComment: "",
-                type: "own"
+                deliveryComment: formData.current.deliveryComment,
+                type: delivery.current === 0 ? 'curier' : 'own',
             },
-            preorderHash: hash
+            preorderHash: hash,
         };
     }, [hash]);
 
@@ -333,6 +400,32 @@ const FormPage: React.FC = () => {
         switch (formId.current) {
             case 0:
                 if (!delivery.current) {
+                    // 👇 ЗАЛОГИНЕН — селектор адресов + контакты
+                    if (isLogged) {
+                        return (
+                            <div>
+                                <ContactForm
+                                    checkValid={checkValid.current}
+                                    memo={memoSendForm.current}
+                                    valid={true}
+                                    formValue={formData.current}
+                                    onValid={(valid) => validSendForm.current = valid}
+                                    onChange={contactInfoChange}
+                                />
+
+                                <h3 style={{ marginTop: 24, marginBottom: 12 }}>
+                                    Адрес доставки
+                                </h3>
+
+                                <AddressSelector
+                                    selectedId={selectedAddressId}
+                                    onSelect={handleAddressSelect}
+                                />
+                            </div>
+                        );
+                    }
+
+                    // 👇 ГОСТЬ — старая форма
                     return <SendForm
                         checkValid={checkValid.current}
                         memo={memoSendForm.current}
@@ -377,6 +470,7 @@ const FormPage: React.FC = () => {
                         className={{ combobox: s.combobox }}
                     />;
                 } else {
+                    // 👇 САМОВЫВОЗ — только контакты
                     return <div>
                         <ContactForm
                             checkValid={checkValid.current}
@@ -430,13 +524,13 @@ const FormPage: React.FC = () => {
                         onChange={(val) => {
                             formData.current.save = val;
                             respData.current = {
+                                ...respData.current,
                                 personalData: {
                                     name: formData.current.name,
                                     phone: formData.current.phone,
                                     mail: formData.current.mail,
                                     secondName: formData.current.secondName || ""
                                 },
-                                address: {},
                                 save: formData.current.save,
                                 delivery: {
                                     deliveryPrice: 0,
@@ -460,13 +554,13 @@ const FormPage: React.FC = () => {
                     }}
                     onChange={() => {
                         respData.current = {
+                            ...respData.current,
                             personalData: {
                                 name: formData.current.name,
                                 phone: formData.current.phone,
                                 mail: formData.current.mail,
                                 secondName: formData.current.secondName || ""
                             },
-                            address: {},
                             save: formData.current.save,
                             delivery: {
                                 deliveryPrice: 0,

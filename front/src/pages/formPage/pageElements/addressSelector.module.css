@@ -1,0 +1,143 @@
+.wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.loading {
+    padding: 24px;
+    text-align: center;
+    color: #888;
+    font-size: 14px;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.item {
+    display: flex;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid #e8e8e8;
+    border-radius: 10px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    align-items: flex-start;
+}
+
+.item:hover {
+    border-color: #ccc;
+}
+
+.itemActive {
+    border-color: #1a1a1a;
+    background: #fafafa;
+}
+
+.radio {
+    margin-top: 3px;
+    width: 18px;
+    height: 18px;
+    accent-color: #1a1a1a;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.itemBody {
+    flex: 1;
+    min-width: 0;
+}
+
+.itemAddress {
+    font-size: 15px;
+    color: #1a1a1a;
+    font-weight: 500;
+    line-height: 1.4;
+    margin-bottom: 4px;
+}
+
+.itemMeta {
+    display: flex;
+    gap: 12px;
+    font-size: 13px;
+    color: #888;
+}
+
+.defaultBadge {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 2px 8px;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 11px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.actionBtn {
+    padding: 5px 10px;
+    background: transparent;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #333;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.actionBtn:hover {
+    background: #f5f5f5;
+    border-color: #bbb;
+}
+
+.deleteBtn {
+    color: #d33;
+    border-color: #ffd5d5;
+}
+
+.deleteBtn:hover {
+    background: #fff5f5;
+    border-color: #d33;
+}
+
+.addBtn {
+    align-self: flex-start;
+    padding: 10px 18px;
+    background: #1a1a1a;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.addBtn:hover {
+    background: #333;
+}
+
+@media (max-width: 600px) {
+    .item {
+        flex-wrap: wrap;
+    }
+
+    .actions {
+        flex-direction: row;
+        width: 100%;
+        margin-top: 8px;
+        justify-content: flex-start;
+    }
+}

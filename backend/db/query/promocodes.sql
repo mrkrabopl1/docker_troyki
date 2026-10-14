@@ -14,7 +14,8 @@ INSERT INTO promo_codes (
     ends_at,
     usage_limit,
     per_user_limit,
-    is_active
+    is_active,
+    issued_to_customer_id
 ) VALUES (
     @code,
     @name,
@@ -30,7 +31,8 @@ INSERT INTO promo_codes (
     @ends_at,
     @usage_limit,
     @per_user_limit,
-    @is_active
+    @is_active,
+    @issued_to_customer_id
 ) RETURNING *;
 
 -- name: GetPromoCodeByID :one
@@ -117,12 +119,33 @@ FROM promo_codes pc
 LEFT JOIN collections c ON pc.collection_id = c.id
 WHERE pc.code = @code
   AND pc.is_active = true
+  AND (
+      pc.issued_to_customer_id IS NULL
+      OR pc.issued_to_customer_id = @customer_id
+  )
   AND NOW() BETWEEN pc.starts_at AND COALESCE(pc.ends_at, 'infinity')
   AND (pc.usage_limit = 0 OR (
       SELECT COUNT(*) FROM promo_code_usage WHERE promo_code_id = pc.id
   ) < pc.usage_limit)
 LIMIT 1;
-
+-- name: GetMyPersonalPromoCodes :many
+SELECT 
+    pc.*,
+    COALESCE(
+        (SELECT COUNT(*) FROM promo_code_usage pcu
+         WHERE pcu.promo_code_id = pc.id 
+           AND pcu.customer_id = @cust_id),
+        0
+    )::bigint AS used_by_me
+FROM promo_codes pc
+WHERE pc.is_active = true
+  AND NOW() BETWEEN pc.starts_at AND COALESCE(pc.ends_at, 'infinity')
+  AND pc.issued_to_customer_id = @cust_id
+  AND (pc.usage_limit = 0 OR (
+      SELECT COUNT(*) FROM promo_code_usage pcu2 
+      WHERE pcu2.promo_code_id = pc.id
+  ) < pc.usage_limit)
+ORDER BY pc.created_at DESC;
 -- name: CheckPromoCodeUsageByCustomer :one
 SELECT COUNT(*) as used_count
 FROM promo_code_usage

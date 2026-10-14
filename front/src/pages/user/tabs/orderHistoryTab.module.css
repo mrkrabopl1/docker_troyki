@@ -1,0 +1,150 @@
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.loading,
+.empty {
+    padding: 48px 24px;
+    text-align: center;
+    color: #888;
+    font-size: 15px;
+    background: #fafafa;
+    border-radius: 12px;
+}
+
+.empty::before {
+    content: '📦';
+    display: block;
+    font-size: 32px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.item {
+    padding: 18px 20px;
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.item:hover {
+    border-color: #ccc;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.itemHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.itemTitle {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a1a;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.itemDate {
+    font-size: 13px;
+    font-weight: 400;
+    color: #888;
+}
+
+.status {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.statusPending {
+    background: #fff8e1;
+    color: #b8860b;
+}
+
+.statusApproved {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.statusRejected {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.itemBody {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.itemMeta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.metaRow {
+    display: flex;
+    gap: 8px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.metaLabel {
+    color: #888;
+    flex-shrink: 0;
+}
+
+.metaValue {
+    color: #333;
+    word-break: break-word;
+}
+
+.itemPrice {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a1a;
+    white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+    .item {
+        padding: 14px 16px;
+    }
+
+    .itemHeader {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .itemTitle {
+        font-size: 15px;
+    }
+
+    .itemBody {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .itemPrice {
+        font-size: 16px;
+        text-align: right;
+    }
+}
