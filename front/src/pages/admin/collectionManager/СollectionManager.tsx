@@ -15,6 +15,7 @@ import {
     createCollection,
     updateCollection,
     deleteCollection,
+    uploadCollectionCover, // NEW
 } from 'src/providers/adminCollectionProvider'
 import { getAdminProductsAndFilters, getAdminProducts } from 'src/providers/adminProductsProvider'
 import { getProductsByIds } from 'src/providers/merchProvider'
@@ -22,8 +23,15 @@ import { finishLoading } from 'src/store/reducers/loadingSlice'
 import { BODY_TYPES } from 'src/constants/bodytypes'
 import Scroller from 'src/components/scroller/Scroller'
 import s from './style.module.css'
-import { COLLECTION_TYPES, CollectionType } from 'src/types/adminProduct';
+// NEW: типы отображения
+import {
+    COLLECTION_TYPES,
+    CollectionType,
+    DISPLAY_TYPES,
+    DisplayType,
+} from 'src/types/adminProduct';
 import Combobox from 'src/components/combobox/Combobox'
+import deleteIconUrl from '/public/delete.svg'; // NEW
 
 interface FiltersState {
     priceProps: {
@@ -53,7 +61,6 @@ interface VariationOption {
     props: CheckBoxType[];
 }
 
-// Тип для выбранного товара в таблице
 interface SelectedProduct {
     id: number;
     name: string;
@@ -64,6 +71,12 @@ interface SelectedProduct {
     image_path?: string;
     status: string;
 }
+
+// NEW: подписи для display_type
+const DISPLAY_TYPE_OPTIONS: Record<number, string> = {
+    [DISPLAY_TYPES.SHORT]: 'Краткий (без описания)',
+    [DISPLAY_TYPES.DETAILED]: 'Подробный (с описанием и годом)',
+};
 
 const CollectionsManager: React.FC = () => {
     const { typesVal, firmMap, lineMap } = useAppSelector(state => state.menu)
@@ -84,6 +97,14 @@ const CollectionsManager: React.FC = () => {
     const [description, setDescription] = useState('')
     const [type, setType] = useState<CollectionType>(COLLECTION_TYPES.DYNAMIC);
     const [isActive, setIsActive] = useState(true)
+
+    // NEW: display_type и cover_image_url
+    const [displayType, setDisplayType] = useState<DisplayType>(DISPLAY_TYPES.DETAILED) // default full
+    const [coverImageUrl, setCoverImageUrl] = useState('')
+    const [coverImageFile, setCoverImageFile] = useState<File | null>(null)
+    const [coverImagePreview, setCoverImagePreview] = useState('')
+    const [coverUploading, setCoverUploading] = useState(false)
+    const coverFileInputRef = useRef<HTMLInputElement>(null)
 
     // Для разных режимов
     const [selectedProductIds, setSelectedProductIds] = useState<number[]>([])
@@ -170,7 +191,7 @@ const CollectionsManager: React.FC = () => {
         }
 
         switch (type) {
-            case 'dynamic':
+            case 'dynamic': {
                 const hasDynamicFilters =
                     (filtersInfo.current.types && filtersInfo.current.types.length > 0) ||
                     (filtersInfo.current.firms && filtersInfo.current.firms.length > 0) ||
@@ -185,6 +206,7 @@ const CollectionsManager: React.FC = () => {
                     return false
                 }
                 break
+            }
 
             case 'manual':
                 if (selectedProductIds.length === 0) {
@@ -197,7 +219,7 @@ const CollectionsManager: React.FC = () => {
                 }
                 break
 
-            case 'hybrid':
+            case 'hybrid': {
                 const hasHybridFilters =
                     (filtersInfo.current.types && filtersInfo.current.types.length > 0) ||
                     (filtersInfo.current.firms && filtersInfo.current.firms.length > 0) ||
@@ -219,6 +241,7 @@ const CollectionsManager: React.FC = () => {
                     return false
                 }
                 break
+            }
 
             default:
                 alert('Неизвестный тип коллекции')
@@ -449,7 +472,7 @@ const CollectionsManager: React.FC = () => {
                     filtersInfo.current.in_store = inStoreItem ? inStoreItem.activeData : false
                 }
                 break
-            case "variation_catalog_filter":
+            case "variation_catalog_filter": {
                 const { selectedOptionId } = filter.data;
                 if (selectedOptionId === 'lines_option') {
                     filtersInfo.current.firms = [];
@@ -457,7 +480,8 @@ const CollectionsManager: React.FC = () => {
                     filtersInfo.current.lines = [];
                 }
                 break
-            case "variation_checkbox_catalog_filter":
+            }
+            case "variation_checkbox_catalog_filter": {
                 const { optionId, selectedCheckboxes } = filter.data;
                 if (optionId === 'lines_option') {
                     filtersInfo.current.lines = selectedCheckboxes || [];
@@ -467,6 +491,7 @@ const CollectionsManager: React.FC = () => {
                         .filter(Boolean) as number[];
                 }
                 break
+            }
             default:
                 break
         }
@@ -481,7 +506,6 @@ const CollectionsManager: React.FC = () => {
 
         setSelectorLoading(true)
         try {
-
             const query = searchQuery !== undefined ? searchQuery : selectorSearch
             if (selectorViewMode === "all") {
                 await getAdminProducts(
@@ -496,8 +520,7 @@ const CollectionsManager: React.FC = () => {
                     0,
                     query
                 )
-            }
-            else {
+            } else {
                 await getProductsByIds(
                     selectedProductIds,
                     (data: any) => {
@@ -505,20 +528,20 @@ const CollectionsManager: React.FC = () => {
                         setSelectorTotal(data.totalCount || 0)
                         setSelectorLoading(false)
                     },
-
                 )
             }
-
         } catch (error) {
             console.error('Error loading products:', error)
             setSelectorLoading(false)
         }
     }, [selectorSearch, showModal, type])
+
     const handlePageChange = useCallback((page: number) => {
         setSelectorCurrentPage(page)
         selectorPage.current = page
         loadSelectorProducts()
     }, [loadSelectorProducts])
+
     // Загрузка выбранных товаров для режима просмотра
     const loadSelectedViewProducts = useCallback(async () => {
         if (selectedProductIds.length === 0) {
@@ -531,7 +554,6 @@ const CollectionsManager: React.FC = () => {
             if (selectorViewMode === "all") {
                 await getAdminProducts(
                     (data: any) => {
-                        // Фильтруем только те, что есть в selectedProductIds
                         const filtered = (data.products || []).filter((p: any) =>
                             selectedProductIds.includes(p.id)
                         )
@@ -544,8 +566,7 @@ const CollectionsManager: React.FC = () => {
                     0,
                     ''
                 )
-            }
-            else {
+            } else {
                 await getProductsByIds(
                     selectedProductIds,
                     (data: any) => {
@@ -554,14 +575,13 @@ const CollectionsManager: React.FC = () => {
                         setSelectedViewLoading(false)
                         setLoading(false)
                     },
-
                 )
             }
         } catch (error) {
             console.error('Error loading selected products:', error)
             setSelectedViewLoading(false)
         }
-    }, [selectedProductIds,selectorViewMode])
+    }, [selectedProductIds, selectorViewMode])
 
     // Загружаем при открытии модалки
     useEffect(() => {
@@ -591,15 +611,11 @@ const CollectionsManager: React.FC = () => {
         }, 300)
     }
 
-
-
     // Добавление товара в коллекцию
     const handleAddProducts = (ids: number[]) => {
-        // Находим новые ID
         const newIds = ids.filter(id => !selectedProductIds.includes(id))
         if (newIds.length === 0) return
 
-        // Добавляем товары из селектора
         const productsToAdd = selectorProducts
             .filter(p => newIds.includes(p.id))
             .map((p: any) => ({
@@ -616,12 +632,10 @@ const CollectionsManager: React.FC = () => {
         setSelectedProducts(prev => [...prev, ...productsToAdd])
         setSelectedProductIds(prev => [...prev, ...newIds])
 
-        // Обновляем выбранные товары в режиме просмотра
         if (selectorViewMode === 'selected') {
             loadSelectedViewProducts()
         }
     }
-
 
     const loadCollections = useCallback(async () => {
         setLoading(true)
@@ -646,6 +660,12 @@ const CollectionsManager: React.FC = () => {
         setDescription('')
         setType(COLLECTION_TYPES.DYNAMIC)
         setIsActive(true)
+        // NEW: default display_type = DETAILED (full)
+        setDisplayType(DISPLAY_TYPES.DETAILED)
+        setCoverImageUrl('')
+        setCoverImageFile(null)
+        setCoverImagePreview('')
+
         setSelectedProductIds([])
         setSelectedProducts([])
         setSelectedPage(1)
@@ -694,6 +714,12 @@ const CollectionsManager: React.FC = () => {
                 setType(col.type as any)
                 setIsActive(col.is_active)
 
+                // NEW: display_type и cover
+                setDisplayType(((col as any).display_type as DisplayType) ?? DISPLAY_TYPES.DETAILED)
+                setCoverImageUrl((col as any).cover_image_url ?? '')
+                setCoverImageFile(null)
+                setCoverImagePreview((col as any).cover_image_url ?? '')
+
                 if (fullCollection.filters) {
                     const f = fullCollection.filters
                     filtersInfo.current = {
@@ -717,14 +743,12 @@ const CollectionsManager: React.FC = () => {
                     await updatePreview()
                 }
 
-
                 if (col.type === 'manual' || col.type === 'hybrid') {
                     selectorPage.current = 1
                     await loadSelectorProducts()
                 }
 
                 setLoadingCollection(false)
-
             } catch (error) {
                 console.error('Error loading collection:', error)
                 alert('Ошибка при загрузке коллекции')
@@ -739,33 +763,64 @@ const CollectionsManager: React.FC = () => {
         }
     }
 
+    // NEW: обработчики обложки
+    const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            setCoverImageFile(file)
+            setCoverImagePreview(URL.createObjectURL(file))
+        }
+        e.target.value = ''
+    }
+
+    const handleCoverClear = () => {
+        setCoverImageFile(null)
+        setCoverImagePreview('')
+        setCoverImageUrl('') // при сохранении уйдёт null
+        if (coverFileInputRef.current) coverFileInputRef.current.value = ''
+    }
+
     const handleSave = async () => {
         if (!validateForm()) return
 
-        const data = {
-            slug,
-            name,
-            description,
-            type,
-            is_active: isActive,
-            settings: {
-                filters: type !== 'manual' ? {
-                    types: filtersInfo.current.types || [],
-                    firms: filtersInfo.current.firms || [],
-                    lines: filtersInfo.current.lines || [],
-                    bodytypes: filtersInfo.current.bodytypes || [],
-                    sizes: filtersInfo.current.sizes || [],
-                    price: filtersInfo.current.price || [0, 100000],
-                    rule_ids: filtersInfo.current.rule_ids || [],
-                    in_store: filtersInfo.current.in_store || false
-                } : undefined,
-            },
-            product_ids: type !== 'dynamic' ? selectedProductIds : undefined
-        }
+        setCoverUploading(true)
+        let finalCoverUrl: string | null = coverImageUrl || null
 
         try {
+            // NEW: если выбран новый файл — грузим, получаем URL
+            if (coverImageFile) {
+                finalCoverUrl = await uploadCollectionCover(coverImageFile)
+            } else if (!coverImagePreview) {
+                // превью пустое и файла нет — пользователь удалил обложку
+                finalCoverUrl = null
+            }
+
+            const data = {
+                slug,
+                name,
+                description,
+                type,
+                is_active: isActive,
+                // NEW
+                display_type: displayType,
+                cover_image_url: finalCoverUrl,
+                settings: {
+                    filters: type !== 'manual' ? {
+                        types: filtersInfo.current.types || [],
+                        firms: filtersInfo.current.firms || [],
+                        lines: filtersInfo.current.lines || [],
+                        bodytypes: filtersInfo.current.bodytypes || [],
+                        sizes: filtersInfo.current.sizes || [],
+                        price: filtersInfo.current.price || [0, 100000],
+                        rule_ids: filtersInfo.current.rule_ids || [],
+                        in_store: filtersInfo.current.in_store || false
+                    } : undefined,
+                },
+                product_ids: type !== 'dynamic' ? selectedProductIds : undefined
+            }
+
             if (editingCollection?.collection.id) {
-                await updateCollection(editingCollection?.collection.id, data)
+                await updateCollection(editingCollection.collection.id, data)
             } else {
                 await createCollection(data)
             }
@@ -775,6 +830,8 @@ const CollectionsManager: React.FC = () => {
         } catch (error) {
             console.error('Save error:', error)
             alert('Ошибка при сохранении')
+        } finally {
+            setCoverUploading(false)
         }
     }
 
@@ -834,11 +891,6 @@ const CollectionsManager: React.FC = () => {
         return parts.length > 0 ? parts.join('; ') : 'Условия не выбраны'
     }, [filtersVersion, typesVal, firmMap, filtersInfo.current, editingCollection])
 
-
-
-
-
-
     // Определяем какие товары показывать в ProductSelector
     const displayProducts = useMemo(() => {
         if (selectorViewMode === 'selected') {
@@ -876,6 +928,16 @@ const CollectionsManager: React.FC = () => {
                 <div className={s.collectionsGrid}>
                     {collections.map((col) => (
                         <div key={col.id} className={`${s.collectionCard} ${!col.is_active ? s.inactive : ''}`}>
+                            {/* NEW: превью обложки */}
+                            {(col as any).cover_image_url && (
+                                <div className={s.coverPreview}>
+                                    <img
+                                        src={(col as any).cover_image_url}
+                                        alt={col.name}
+                                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                                    />
+                                </div>
+                            )}
                             <div className={s.collectionInfo}>
                                 <h3>{col.name}</h3>
                                 <div className={s.collectionMeta}>
@@ -883,6 +945,10 @@ const CollectionsManager: React.FC = () => {
                                     <span className={`${s.typeBadge} ${s[col.type]}`}>
                                         {col.type === 'dynamic' ? 'Динамическая' :
                                             col.type === 'manual' ? 'Ручная' : 'Гибридная'}
+                                    </span>
+                                    {/* NEW: бейдж display_type */}
+                                    <span className={`${s.typeBadge} ${(col as any).display_type === DISPLAY_TYPES.SHORT ? s.short : s.detailed}`}>
+                                        {(col as any).display_type === DISPLAY_TYPES.SHORT ? 'Краткий вид' : 'Подробный вид'}
                                     </span>
                                     <span className={col.is_active ? s.active : s.inactive}>
                                         {col.is_active ? 'Активна' : 'Неактивна'}
@@ -960,6 +1026,78 @@ const CollectionsManager: React.FC = () => {
                             />
                         </div>
 
+                        {/* NEW: тип отображения */}
+                        <div className={s.formGroup}>
+                            <label>Тип отображения</label>
+                            <Combobox
+                                currentIndex={displayType}
+                                enumProp={true}
+                                data={DISPLAY_TYPE_OPTIONS}
+                                onChangeIndex={(val) => setDisplayType(Number(val) as DisplayType)}
+                                className={s.combobox}
+                            />
+                            <div className={s.fieldHint}>
+                                «Подробный» тянет описание и год/дату релиза товаров — используйте, если карточка должна их показывать.
+                            </div>
+                        </div>
+
+                        {/* NEW: обложка коллекции */}
+                        <div className={s.formGroup}>
+                            <label>Обложка коллекции</label>
+                            <div className={s.imageUpload}>
+                                {coverImagePreview ? (
+                                    <div className={s.imagePreview}>
+                                        <img src={coverImagePreview} alt="cover" />
+                                        <button
+                                            type="button"
+                                            className={s.deleteImageBtn}
+                                            onClick={handleCoverClear}
+                                        >
+                                            <img src={deleteIconUrl} alt="delete" style={{ width: '18px', height: '18px' }} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div style={{ position: 'relative', width: '100%' }}>
+                                        <input
+                                            ref={coverFileInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleCoverSelect}
+                                            id="coverUpload"
+                                            style={{
+                                                position: 'absolute',
+                                                opacity: 0,
+                                                width: '100%',
+                                                height: '100%',
+                                                cursor: 'pointer',
+                                                zIndex: 10,
+                                                top: 0,
+                                                left: 0,
+                                            }}
+                                        />
+                                        <label
+                                            htmlFor="coverUpload"
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                padding: '30px',
+                                                background: '#f5f5f5',
+                                                border: '2px dashed #ccc',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                minHeight: '120px',
+                                                color: '#666',
+                                            }}
+                                        >
+                                            Выбрать обложку
+                                        </label>
+                                    </div>
+                                )}
+                                {coverUploading && <div className={s.uploading}>Загрузка...</div>}
+                            </div>
+                        </div>
+
                         {type !== 'manual' && (
                             <div className={s.formGroup}>
                                 <label>Фильтры</label>
@@ -1024,11 +1162,6 @@ const CollectionsManager: React.FC = () => {
                                     showViewSelected={true}
                                     pageSize={pageSize}
                                 />
-
-
-
-                                {/* Таблица выбранных товаров */}
-
                             </div>
                         )}
 
@@ -1045,13 +1178,17 @@ const CollectionsManager: React.FC = () => {
 
                         <div className={s.modalActions}>
                             <Button text="Отмена" onClick={() => setShowModal(false)} />
-                            <Button text="Сохранить" onClick={handleSave} />
+                            <Button
+                                text={coverUploading ? 'Сохранение...' : 'Сохранить'}
+                                onClick={handleSave}
+                                disabled={coverUploading}
+                            />
                         </div>
                     </div>
                 )}
 
                 {showFiltersPanel && (
-                    <div className={s.modalOverlay} onClick={(e) =>{ e.stopPropagation(); setShowFiltersPanel(false)} }>
+                    <div className={s.modalOverlay} onClick={(e) => { e.stopPropagation(); setShowFiltersPanel(false) }}>
                         <div className={s.modalPanel} onClick={e => e.stopPropagation()}>
                             <div className={s.modalHeader}>
                                 <h3>Выберите условия показа</h3>

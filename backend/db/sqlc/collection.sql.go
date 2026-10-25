@@ -598,19 +598,24 @@ func (q *Queries) CountProductsForCollectionFull(ctx context.Context, arg CountP
 
 const createCollection = `-- name: CreateCollection :one
 INSERT INTO collections (
-    slug, name, description, type, settings, is_active
+    slug, name, description, type, settings, is_active,
+    display_type, cover_image_url
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
-) RETURNING id, slug, name, description, type, settings, is_active, created_at, updated_at
+    $1, $2, $3, $4, $5, $6,
+    COALESCE($7::int, 2),
+    $8
+) RETURNING id, slug, name, description, cover_image_url, type, display_type, settings, is_active, created_at, updated_at
 `
 
 type CreateCollectionParams struct {
-	Slug        string      `json:"slug"`
-	Name        string      `json:"name"`
-	Description pgtype.Text `json:"description"`
-	Type        string      `json:"type"`
-	Settings    []byte      `json:"settings"`
-	IsActive    pgtype.Bool `json:"is_active"`
+	Slug          string      `json:"slug"`
+	Name          string      `json:"name"`
+	Description   pgtype.Text `json:"description"`
+	Type          string      `json:"type"`
+	Settings      []byte      `json:"settings"`
+	IsActive      pgtype.Bool `json:"is_active"`
+	DisplayType   pgtype.Int4 `json:"display_type"`
+	CoverImageUrl pgtype.Text `json:"cover_image_url"`
 }
 
 func (q *Queries) CreateCollection(ctx context.Context, arg CreateCollectionParams) (Collection, error) {
@@ -621,6 +626,8 @@ func (q *Queries) CreateCollection(ctx context.Context, arg CreateCollectionPara
 		arg.Type,
 		arg.Settings,
 		arg.IsActive,
+		arg.DisplayType,
+		arg.CoverImageUrl,
 	)
 	var i Collection
 	err := row.Scan(
@@ -628,7 +635,9 @@ func (q *Queries) CreateCollection(ctx context.Context, arg CreateCollectionPara
 		&i.Slug,
 		&i.Name,
 		&i.Description,
+		&i.CoverImageUrl,
 		&i.Type,
+		&i.DisplayType,
 		&i.Settings,
 		&i.IsActive,
 		&i.CreatedAt,
@@ -647,7 +656,7 @@ func (q *Queries) DeleteCollection(ctx context.Context, id int32) error {
 }
 
 const getActiveCollections = `-- name: GetActiveCollections :many
-SELECT id, slug, name, description, type, settings, is_active, created_at, updated_at FROM collections WHERE is_active = true
+SELECT id, slug, name, description, cover_image_url, type, display_type, settings, is_active, created_at, updated_at FROM collections WHERE is_active = true
 `
 
 func (q *Queries) GetActiveCollections(ctx context.Context) ([]Collection, error) {
@@ -664,7 +673,9 @@ func (q *Queries) GetActiveCollections(ctx context.Context) ([]Collection, error
 			&i.Slug,
 			&i.Name,
 			&i.Description,
+			&i.CoverImageUrl,
 			&i.Type,
+			&i.DisplayType,
 			&i.Settings,
 			&i.IsActive,
 			&i.CreatedAt,
@@ -681,7 +692,7 @@ func (q *Queries) GetActiveCollections(ctx context.Context) ([]Collection, error
 }
 
 const getAllCollections = `-- name: GetAllCollections :many
-SELECT id, slug, name, description, type, settings, is_active, created_at, updated_at FROM collections
+SELECT id, slug, name, description, cover_image_url, type, display_type, settings, is_active, created_at, updated_at FROM collections
 `
 
 func (q *Queries) GetAllCollections(ctx context.Context) ([]Collection, error) {
@@ -698,7 +709,9 @@ func (q *Queries) GetAllCollections(ctx context.Context) ([]Collection, error) {
 			&i.Slug,
 			&i.Name,
 			&i.Description,
+			&i.CoverImageUrl,
 			&i.Type,
+			&i.DisplayType,
 			&i.Settings,
 			&i.IsActive,
 			&i.CreatedAt,
@@ -715,7 +728,7 @@ func (q *Queries) GetAllCollections(ctx context.Context) ([]Collection, error) {
 }
 
 const getCollectionByID = `-- name: GetCollectionByID :one
-SELECT id, slug, name, description, type, settings, is_active, created_at, updated_at FROM collections WHERE id = $1
+SELECT id, slug, name, description, cover_image_url, type, display_type, settings, is_active, created_at, updated_at FROM collections WHERE id = $1
 `
 
 func (q *Queries) GetCollectionByID(ctx context.Context, id int32) (Collection, error) {
@@ -726,7 +739,9 @@ func (q *Queries) GetCollectionByID(ctx context.Context, id int32) (Collection, 
 		&i.Slug,
 		&i.Name,
 		&i.Description,
+		&i.CoverImageUrl,
 		&i.Type,
+		&i.DisplayType,
 		&i.Settings,
 		&i.IsActive,
 		&i.CreatedAt,
@@ -736,7 +751,7 @@ func (q *Queries) GetCollectionByID(ctx context.Context, id int32) (Collection, 
 }
 
 const getCollectionBySlug = `-- name: GetCollectionBySlug :one
-SELECT id, slug, name, description, type, settings, is_active, created_at, updated_at FROM collections WHERE slug = $1 AND is_active = true
+SELECT id, slug, name, description, cover_image_url, type, display_type, settings, is_active, created_at, updated_at FROM collections WHERE slug = $1 AND is_active = true
 `
 
 func (q *Queries) GetCollectionBySlug(ctx context.Context, slug string) (Collection, error) {
@@ -747,7 +762,9 @@ func (q *Queries) GetCollectionBySlug(ctx context.Context, slug string) (Collect
 		&i.Slug,
 		&i.Name,
 		&i.Description,
+		&i.CoverImageUrl,
 		&i.Type,
+		&i.DisplayType,
 		&i.Settings,
 		&i.IsActive,
 		&i.CreatedAt,
@@ -794,7 +811,7 @@ func (q *Queries) GetCollectionProductIDs(ctx context.Context, collectionID int3
 
 const getCollectionWithProducts = `-- name: GetCollectionWithProducts :many
 SELECT 
-    c.id, c.slug, c.name, c.description, c.type, c.settings, c.is_active, c.created_at, c.updated_at,
+    c.id, c.slug, c.name, c.description, c.cover_image_url, c.type, c.display_type, c.settings, c.is_active, c.created_at, c.updated_at,
     p.id as product_id,
     p.name as product_name,
     p.minprice,
@@ -806,19 +823,21 @@ WHERE c.id = $1 AND c.is_active = true
 `
 
 type GetCollectionWithProductsRow struct {
-	ID          int32            `json:"id"`
-	Slug        string           `json:"slug"`
-	Name        string           `json:"name"`
-	Description pgtype.Text      `json:"description"`
-	Type        string           `json:"type"`
-	Settings    []byte           `json:"settings"`
-	IsActive    pgtype.Bool      `json:"is_active"`
-	CreatedAt   pgtype.Timestamp `json:"created_at"`
-	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
-	ProductID   pgtype.Int4      `json:"product_id"`
-	ProductName pgtype.Text      `json:"product_name"`
-	Minprice    pgtype.Int4      `json:"minprice"`
-	ImagePath   pgtype.Text      `json:"image_path"`
+	ID            int32            `json:"id"`
+	Slug          string           `json:"slug"`
+	Name          string           `json:"name"`
+	Description   pgtype.Text      `json:"description"`
+	CoverImageUrl pgtype.Text      `json:"cover_image_url"`
+	Type          string           `json:"type"`
+	DisplayType   int16            `json:"display_type"`
+	Settings      []byte           `json:"settings"`
+	IsActive      pgtype.Bool      `json:"is_active"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
+	ProductID     pgtype.Int4      `json:"product_id"`
+	ProductName   pgtype.Text      `json:"product_name"`
+	Minprice      pgtype.Int4      `json:"minprice"`
+	ImagePath     pgtype.Text      `json:"image_path"`
 }
 
 func (q *Queries) GetCollectionWithProducts(ctx context.Context, id int32) ([]GetCollectionWithProductsRow, error) {
@@ -835,7 +854,9 @@ func (q *Queries) GetCollectionWithProducts(ctx context.Context, id int32) ([]Ge
 			&i.Slug,
 			&i.Name,
 			&i.Description,
+			&i.CoverImageUrl,
 			&i.Type,
+			&i.DisplayType,
 			&i.Settings,
 			&i.IsActive,
 			&i.CreatedAt,
@@ -1505,6 +1526,284 @@ func (q *Queries) GetManualProductsPaginate(ctx context.Context, arg GetManualPr
 			&i.ID,
 			&i.Name,
 			&i.ImagePath,
+			&i.Firm,
+			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
+			&i.MinPrice,
+			&i.MaxPrice,
+			&i.HasDiscount,
+			&i.InStore,
+			&i.DiscountValue,
+			&i.DiscountRuleName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getManualProductsWithDescriptionPaginate = `-- name: GetManualProductsWithDescriptionPaginate :many
+SELECT 
+    p.id, 
+    p.name, 
+    p.image_path,
+    p.description,
+    p.release_year,
+    b.name as firm,
+    COALESCE(
+        (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        0
+    )::int AS discount_percent,
+    COALESCE(
+        (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        0
+    )::int AS original_price,
+    COALESCE(
+        (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        p.minprice
+    )::int AS discounted_price,
+    COALESCE(
+        (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        p.minprice
+    )::int AS min_price,
+    COALESCE(
+        (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+        p.maxprice
+    )::int AS max_price,
+    EXISTS (
+        SELECT 1 FROM discount d WHERE d.productid = p.id
+    ) AS has_discount,
+    EXISTS (
+        SELECT 1 FROM store_house sh 
+        WHERE sh.productid = p.id AND sh.quantity > 0
+    ) AS in_store,
+    COALESCE(
+        (
+            SELECT dr2.discount_value::int
+            FROM discount_rule_items dri
+            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE (
+                (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+                OR (dri.item_type = 'line' AND dri.item_id = p.line_id)
+                OR (dri.item_type = 'product' AND dri.item_id = p.id)
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM discount d WHERE d.productid = p.id
+            )
+            ORDER BY dr2.priority DESC
+            LIMIT 1
+        ),
+        0
+    )::int AS discount_value,
+    COALESCE(
+        (
+            SELECT dr2.name::text
+            FROM discount_rule_items dri
+            JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE (
+                (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+                OR (dri.item_type = 'line' AND dri.item_id = p.line_id)
+                OR (dri.item_type = 'product' AND dri.item_id = p.id)
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM discount d WHERE d.productid = p.id
+            )
+            ORDER BY dr2.priority DESC
+            LIMIT 1
+        ),
+        ''
+    )::text AS discount_rule_name
+FROM products p
+INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+WHERE 
+    p.status = 'active'
+    AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+    -- ТОЛЬКО МАНУАЛЬНЫЕ ПРОДУКТЫ (из коллекции)
+    AND EXISTS (
+        SELECT 1 
+        FROM collection_products cp 
+        WHERE cp.collection_id = $1::int 
+        AND cp.product_id = p.id
+    )
+    -- ВСЕ ФИЛЬТРЫ
+    -- Размеры
+    AND (
+        COALESCE(array_length($2::text[], 1), 0) = 0
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_object_keys(p.sizes) AS size_key
+            WHERE size_key = ANY($2::text[])
+            AND (p.sizes->size_key->>'price')::numeric > 0
+        )
+    )
+    -- Поиск по имени/артикулу
+    AND (
+        $3::text IS NULL 
+        OR $3::text = ''
+        OR p.name ILIKE '%' || $3::text || '%'
+        OR p.article ILIKE '%' || $3::text || '%'
+    )
+    -- Категории
+    AND (
+        COALESCE(array_length($4::int[], 1), 0) = 0
+        OR p.category = ANY($4::int[])
+    )
+    -- Типы продуктов
+    AND (
+        COALESCE(array_length($5::int[], 1), 0) = 0
+        OR p.type = ANY($5::int[])
+    )
+    -- Бренды
+    AND (
+        COALESCE(array_length($6::int[], 1), 0) = 0
+        OR p.brand_id = ANY($6::int[])
+    )
+    -- Линии
+    AND (
+        COALESCE(array_length($7::int[], 1), 0) = 0
+        OR p.line_id = ANY($7::int[])
+    )
+    -- Bodytype
+    AND (
+        COALESCE(array_length($8::text[], 1), 0) = 0
+        OR p.bodytype = ANY($8::body_enum[])
+    )
+    -- Цена
+    AND (
+        $9::int IS NULL 
+        OR p.maxprice >= $9::int
+    )
+    AND (
+        $10::int IS NULL 
+        OR p.minprice <= $10::int
+    )
+    -- С ценой
+    AND (
+        $11::boolean IS NULL 
+        OR $11::boolean = false 
+        OR p.minprice > 0
+    )
+    -- Скидки
+    AND (
+        (array_length($12::int[], 1) > 0 AND EXISTS (
+            SELECT 1
+            FROM discount_rule_items dri2
+            JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
+                AND dr2.is_active = true
+                AND dr2.starts_at <= NOW()
+                AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+            WHERE dri2.rule_id = ANY($12::int[])
+              AND (
+                  (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+                  (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+                  (dri2.item_type = 'product' AND dri2.item_id = p.id)
+              )
+        ))
+        OR
+        (array_length($12::int[], 1) IS NULL OR array_length($12::int[], 1) = 0)
+    )
+    -- Наличие на складе
+    AND (
+        $13::boolean IS NULL 
+        OR $13::boolean = false 
+        OR EXISTS (
+            SELECT 1 FROM store_house sh 
+            WHERE sh.productid = p.id AND sh.quantity > 0
+        )
+    )
+ORDER BY
+    CASE WHEN $14::int = 1 THEN p.name END ASC,
+    CASE WHEN $14::int = 2 THEN p.name END DESC,
+    -- Используем p.minprice вместо min_price (алиаса)
+    CASE WHEN $14::int = 3 THEN p.minprice END ASC,
+    CASE WHEN $14::int = 4 THEN p.minprice END DESC,
+    CASE WHEN $14::int NOT IN (1,2,3,4) THEN p.name END ASC,
+    p.id ASC
+LIMIT CASE WHEN $16::integer > 0 THEN $16::integer ELSE 50 END
+OFFSET CASE WHEN $15::integer > 0 THEN $15::integer ELSE 0 END
+`
+
+type GetManualProductsWithDescriptionPaginateParams struct {
+	CollectionID int32       `json:"collection_id"`
+	Sizes        []string    `json:"sizes"`
+	Name         string      `json:"name"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	WithPrice    bool        `json:"with_price"`
+	RuleIds      []int32     `json:"rule_ids"`
+	InStore      bool        `json:"in_store"`
+	SortType     int32       `json:"sort_type"`
+	Offsetval    int32       `json:"offsetval"`
+	Limitval     int32       `json:"limitval"`
+}
+
+type GetManualProductsWithDescriptionPaginateRow struct {
+	ID               int32       `json:"id"`
+	Name             string      `json:"name"`
+	ImagePath        string      `json:"image_path"`
+	Description      pgtype.Text `json:"description"`
+	ReleaseYear      pgtype.Int2 `json:"release_year"`
+	Firm             string      `json:"firm"`
+	DiscountPercent  int32       `json:"discount_percent"`
+	OriginalPrice    int32       `json:"original_price"`
+	DiscountedPrice  int32       `json:"discounted_price"`
+	MinPrice         int32       `json:"min_price"`
+	MaxPrice         int32       `json:"max_price"`
+	HasDiscount      bool        `json:"has_discount"`
+	InStore          bool        `json:"in_store"`
+	DiscountValue    int32       `json:"discount_value"`
+	DiscountRuleName string      `json:"discount_rule_name"`
+}
+
+func (q *Queries) GetManualProductsWithDescriptionPaginate(ctx context.Context, arg GetManualProductsWithDescriptionPaginateParams) ([]GetManualProductsWithDescriptionPaginateRow, error) {
+	rows, err := q.db.Query(ctx, getManualProductsWithDescriptionPaginate,
+		arg.CollectionID,
+		arg.Sizes,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.WithPrice,
+		arg.RuleIds,
+		arg.InStore,
+		arg.SortType,
+		arg.Offsetval,
+		arg.Limitval,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetManualProductsWithDescriptionPaginateRow
+	for rows.Next() {
+		var i GetManualProductsWithDescriptionPaginateRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ImagePath,
+			&i.Description,
+			&i.ReleaseYear,
 			&i.Firm,
 			&i.DiscountPercent,
 			&i.OriginalPrice,
@@ -2561,6 +2860,456 @@ func (q *Queries) GetProductsForCollectionPaginateFull(ctx context.Context, arg 
 	return items, nil
 }
 
+const getProductsForCollectionWithDescriptionPaginateFull = `-- name: GetProductsForCollectionWithDescriptionPaginateFull :many
+SELECT id, name, image_path, description, release_year, firm, discount_percent, original_price, discounted_price, min_price, max_price, has_discount, in_store, discount_value, discount_rule_name, priority FROM (
+    -- Часть 1: ВСЕ товары из коллекции (С ФИЛЬТРАМИ!)
+    SELECT 
+        p.id, 
+        p.name, 
+        p.image_path,
+        p.description,
+        p.release_year,
+        b.name as firm,
+        COALESCE(
+            NULLIF(
+                (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
+            0
+        )::int AS discount_percent,
+        COALESCE(
+            NULLIF(
+                (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
+            0
+        )::int AS original_price,
+        COALESCE(
+            NULLIF(
+                (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
+            p.minprice
+        )::int AS discounted_price,
+        COALESCE(
+            NULLIF(
+                (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
+            p.minprice
+        )::int AS min_price,
+        COALESCE(
+            NULLIF(
+                (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
+            p.maxprice
+        )::int AS max_price,
+        EXISTS (
+            SELECT 1 FROM discount d WHERE d.productid = p.id
+        ) AS has_discount,
+        EXISTS (
+            SELECT 1 FROM store_house sh 
+            WHERE sh.productid = p.id AND sh.quantity > 0
+        ) AS in_store,
+        COALESCE(dr.discount_value, 0)::int AS discount_value,
+        COALESCE(dr.name, '')::text AS discount_rule_name,
+        0 as priority
+    FROM products p
+    INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+    LEFT JOIN LATERAL (
+        SELECT dr2.discount_value, dr2.name
+        FROM discount_rule_items dri
+        JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+            AND dr2.is_active = true
+            AND dr2.starts_at <= NOW()
+            AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+        WHERE (
+                (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+             OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+             OR (dri.item_type = 'product' AND dri.item_id = p.id)
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM discount d WHERE d.productid = p.id
+            )
+        ORDER BY dr2.priority DESC
+        LIMIT 1
+    ) dr ON true
+    WHERE 
+        p.status = 'active'
+        AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+        -- ТОВАРЫ ИЗ КОЛЛЕКЦИИ
+        AND EXISTS (
+            SELECT 1 
+            FROM collection_products cp 
+            WHERE cp.collection_id = $1::int 
+            AND cp.product_id = p.id
+        )
+        -- ОБЩИЕ ФИЛЬТРЫ
+        -- Размеры
+        AND (
+            COALESCE(array_length($2::text[], 1), 0) = 0
+            OR EXISTS (
+                SELECT 1
+                FROM jsonb_object_keys(p.sizes) AS size_key
+                WHERE size_key = ANY($2::text[])
+                AND (p.sizes->size_key->>'price')::numeric > 0
+            )
+        )
+        -- Поиск по имени/артикулу
+        AND (
+            $3::text IS NULL 
+            OR $3::text = ''
+            OR p.name ILIKE '%' || $3::text || '%'
+            OR p.article ILIKE '%' || $3::text || '%'
+        )
+        -- Категории
+        AND (
+            COALESCE(array_length($4::int[], 1), 0) = 0
+            OR p.category = ANY($4::int[])
+        )
+        -- Типы продуктов
+        AND (
+            COALESCE(array_length($5::int[], 1), 0) = 0
+            OR p.type = ANY($5::int[])
+        )
+        -- Бренды
+        AND (
+            COALESCE(array_length($6::int[], 1), 0) = 0
+            OR p.brand_id = ANY($6::int[])
+        )
+        -- Линии
+        AND (
+            COALESCE(array_length($7::int[], 1), 0) = 0
+            OR p.line_id = ANY($7::int[])
+        )
+        -- Bodytype
+        AND (
+            COALESCE(array_length($8::text[], 1), 0) = 0
+            OR p.bodytype = ANY($8::body_enum[])
+        )
+        -- Цена
+        AND (
+            $9::int IS NULL 
+            OR p.maxprice >= $9::int
+        )
+        AND (
+            $10::int IS NULL 
+            OR p.minprice <= $10::int
+        )
+        -- С ценой
+        AND (
+            $11::boolean IS NULL 
+            OR $11::boolean = false 
+            OR p.minprice > 0
+        )
+        -- Скидки
+        AND (
+            (array_length($12::int[], 1) > 0 AND EXISTS (
+                SELECT 1
+                FROM discount_rule_items dri2
+                JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
+                    AND dr2.is_active = true
+                    AND dr2.starts_at <= NOW()
+                    AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+                WHERE dri2.rule_id = ANY($12::int[])
+                  AND (
+                      (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+                      (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+                      (dri2.item_type = 'product' AND dri2.item_id = p.id)
+                  )
+            ))
+            OR
+            (array_length($12::int[], 1) IS NULL OR array_length($12::int[], 1) = 0)
+        )
+        -- Наличие на складе
+        AND (
+            $13::boolean IS NULL 
+            OR $13::boolean = false 
+            OR EXISTS (
+                SELECT 1 FROM store_house sh 
+                WHERE sh.productid = p.id AND sh.quantity > 0
+            )
+        )
+    
+    UNION ALL
+    
+    -- Часть 2: Товары по фильтрам (ИСКЛЮЧАЯ коллекцию)
+    SELECT 
+        p.id, 
+        p.name, 
+        p.image_path,
+        p.description,
+        p.release_year,
+        b.name as firm,
+        COALESCE(
+            NULLIF(
+                (SELECT discount_percent::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
+            0
+        )::int AS discount_percent,
+        COALESCE(
+            NULLIF(
+                (SELECT original_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
+            0
+        )::int AS original_price,
+        COALESCE(
+            NULLIF(
+                (SELECT discounted_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
+            p.minprice
+        )::int AS discounted_price,
+        COALESCE(
+            NULLIF(
+                (SELECT min_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
+            p.minprice
+        )::int AS min_price,
+        COALESCE(
+            NULLIF(
+                (SELECT max_price::int FROM discount d WHERE d.productid = p.id LIMIT 1),
+                0
+            ),
+            p.maxprice
+        )::int AS max_price,
+        EXISTS (
+            SELECT 1 FROM discount d WHERE d.productid = p.id
+        ) AS has_discount,
+        EXISTS (
+            SELECT 1 FROM store_house sh 
+            WHERE sh.productid = p.id AND sh.quantity > 0
+        ) AS in_store,
+        COALESCE(dr.discount_value, 0)::int AS discount_value,
+        COALESCE(dr.name, '')::text AS discount_rule_name,
+        1 as priority
+    FROM products p
+    INNER JOIN brands b ON p.brand_id = b.id AND b.is_active = true
+    LEFT JOIN brand_lines bl ON p.line_id = bl.id AND bl.is_active = true
+    LEFT JOIN LATERAL (
+        SELECT dr2.discount_value, dr2.name
+        FROM discount_rule_items dri
+        JOIN discount_rules dr2 ON dr2.id = dri.rule_id
+            AND dr2.is_active = true
+            AND dr2.starts_at <= NOW()
+            AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+        WHERE (
+                (dri.item_type = 'brand' AND dri.item_id = p.brand_id)
+             OR (dri.item_type = 'line'  AND dri.item_id = p.line_id)
+             OR (dri.item_type = 'product' AND dri.item_id = p.id)
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM discount d WHERE d.productid = p.id
+            )
+        ORDER BY dr2.priority DESC
+        LIMIT 1
+    ) dr ON true
+    WHERE 
+        p.status = 'active'
+        AND (p.line_id IS NULL OR bl.id IS NOT NULL)
+        -- ИСКЛЮЧАЕМ товары из коллекции
+        AND NOT EXISTS (
+            SELECT 1 
+            FROM collection_products cp 
+            WHERE cp.collection_id = $1::int 
+            AND cp.product_id = p.id
+        )
+        -- ТЕ ЖЕ САМЫЕ ОБЩИЕ ФИЛЬТРЫ
+        -- Размеры
+        AND (
+            COALESCE(array_length($2::text[], 1), 0) = 0
+            OR EXISTS (
+                SELECT 1
+                FROM jsonb_object_keys(p.sizes) AS size_key
+                WHERE size_key = ANY($2::text[])
+                AND (p.sizes->size_key->>'price')::numeric > 0
+            )
+        )
+        -- Поиск по имени/артикулу
+        AND (
+            $3::text IS NULL 
+            OR $3::text = ''
+            OR p.name ILIKE '%' || $3::text || '%'
+            OR p.article ILIKE '%' || $3::text || '%'
+        )
+        -- Категории
+        AND (
+            COALESCE(array_length($4::int[], 1), 0) = 0
+            OR p.category = ANY($4::int[])
+        )
+        -- Типы продуктов
+        AND (
+            COALESCE(array_length($5::int[], 1), 0) = 0
+            OR p.type = ANY($5::int[])
+        )
+        -- Бренды
+        AND (
+            COALESCE(array_length($6::int[], 1), 0) = 0
+            OR p.brand_id = ANY($6::int[])
+        )
+        -- Линии
+        AND (
+            COALESCE(array_length($7::int[], 1), 0) = 0
+            OR p.line_id = ANY($7::int[])
+        )
+        -- Bodytype
+        AND (
+            COALESCE(array_length($8::text[], 1), 0) = 0
+            OR p.bodytype = ANY($8::body_enum[])
+        )
+        -- Цена
+        AND (
+            $9::int IS NULL 
+            OR p.maxprice >= $9::int
+        )
+        AND (
+            $10::int IS NULL 
+            OR p.minprice <= $10::int
+        )
+        -- С ценой
+        AND (
+            $11::boolean IS NULL 
+            OR $11::boolean = false 
+            OR p.minprice > 0
+        )
+        -- Скидки
+        AND (
+            (array_length($12::int[], 1) > 0 AND EXISTS (
+                SELECT 1
+                FROM discount_rule_items dri2
+                JOIN discount_rules dr2 ON dr2.id = dri2.rule_id
+                    AND dr2.is_active = true
+                    AND dr2.starts_at <= NOW()
+                    AND (dr2.ends_at IS NULL OR dr2.ends_at >= NOW())
+                WHERE dri2.rule_id = ANY($12::int[])
+                  AND (
+                      (dri2.item_type = 'brand' AND dri2.item_id = p.brand_id) OR
+                      (dri2.item_type = 'line'  AND dri2.item_id = p.line_id) OR
+                      (dri2.item_type = 'product' AND dri2.item_id = p.id)
+                  )
+            ))
+            OR
+            (array_length($12::int[], 1) IS NULL OR array_length($12::int[], 1) = 0)
+        )
+        -- Наличие на складе
+        AND (
+            $13::boolean IS NULL 
+            OR $13::boolean = false 
+            OR EXISTS (
+                SELECT 1 FROM store_house sh 
+                WHERE sh.productid = p.id AND sh.quantity > 0
+            )
+        )
+) AS combined
+ORDER BY
+    priority ASC,
+    CASE WHEN $14::int = 1 THEN name END ASC,
+    CASE WHEN $14::int = 2 THEN name END DESC,
+    CASE WHEN $14::int = 3 THEN min_price END ASC,
+    CASE WHEN $14::int = 4 THEN min_price END DESC,
+    CASE WHEN $14::int NOT IN (1,2,3,4) THEN name END ASC,
+    id ASC
+LIMIT CASE WHEN $16::integer > 0 THEN $16::integer ELSE 50 END
+OFFSET CASE WHEN $15::integer > 0 THEN $15::integer ELSE 0 END
+`
+
+type GetProductsForCollectionWithDescriptionPaginateFullParams struct {
+	CollectionID int32       `json:"collection_id"`
+	Sizes        []string    `json:"sizes"`
+	Name         string      `json:"name"`
+	Categories   []int32     `json:"categories"`
+	ProductTypes []int32     `json:"product_types"`
+	Firms        []int32     `json:"firms"`
+	Lines        []int32     `json:"lines"`
+	Bodytypes    []string    `json:"bodytypes"`
+	Minprice     pgtype.Int4 `json:"minprice"`
+	Maxprice     pgtype.Int4 `json:"maxprice"`
+	WithPrice    bool        `json:"with_price"`
+	RuleIds      []int32     `json:"rule_ids"`
+	InStore      bool        `json:"in_store"`
+	SortType     int32       `json:"sort_type"`
+	Offsetval    int32       `json:"offsetval"`
+	Limitval     int32       `json:"limitval"`
+}
+
+type GetProductsForCollectionWithDescriptionPaginateFullRow struct {
+	ID               int32       `json:"id"`
+	Name             string      `json:"name"`
+	ImagePath        string      `json:"image_path"`
+	Description      pgtype.Text `json:"description"`
+	ReleaseYear      pgtype.Int2 `json:"release_year"`
+	Firm             string      `json:"firm"`
+	DiscountPercent  int32       `json:"discount_percent"`
+	OriginalPrice    int32       `json:"original_price"`
+	DiscountedPrice  int32       `json:"discounted_price"`
+	MinPrice         int32       `json:"min_price"`
+	MaxPrice         int32       `json:"max_price"`
+	HasDiscount      bool        `json:"has_discount"`
+	InStore          bool        `json:"in_store"`
+	DiscountValue    int32       `json:"discount_value"`
+	DiscountRuleName string      `json:"discount_rule_name"`
+	Priority         int32       `json:"priority"`
+}
+
+func (q *Queries) GetProductsForCollectionWithDescriptionPaginateFull(ctx context.Context, arg GetProductsForCollectionWithDescriptionPaginateFullParams) ([]GetProductsForCollectionWithDescriptionPaginateFullRow, error) {
+	rows, err := q.db.Query(ctx, getProductsForCollectionWithDescriptionPaginateFull,
+		arg.CollectionID,
+		arg.Sizes,
+		arg.Name,
+		arg.Categories,
+		arg.ProductTypes,
+		arg.Firms,
+		arg.Lines,
+		arg.Bodytypes,
+		arg.Minprice,
+		arg.Maxprice,
+		arg.WithPrice,
+		arg.RuleIds,
+		arg.InStore,
+		arg.SortType,
+		arg.Offsetval,
+		arg.Limitval,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductsForCollectionWithDescriptionPaginateFullRow
+	for rows.Next() {
+		var i GetProductsForCollectionWithDescriptionPaginateFullRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ImagePath,
+			&i.Description,
+			&i.ReleaseYear,
+			&i.Firm,
+			&i.DiscountPercent,
+			&i.OriginalPrice,
+			&i.DiscountedPrice,
+			&i.MinPrice,
+			&i.MaxPrice,
+			&i.HasDiscount,
+			&i.InStore,
+			&i.DiscountValue,
+			&i.DiscountRuleName,
+			&i.Priority,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeProductsFromCollection = `-- name: RemoveProductsFromCollection :exec
 DELETE FROM collection_products 
 WHERE collection_id = $1 AND product_id = ANY($2::int[])
@@ -2578,25 +3327,29 @@ func (q *Queries) RemoveProductsFromCollection(ctx context.Context, arg RemovePr
 
 const updateCollection = `-- name: UpdateCollection :one
 UPDATE collections SET
-    slug = COALESCE($2, slug),
-    name = COALESCE($3, name),
-    description = COALESCE($4, description),
-    type = COALESCE($5, type),
-    settings = COALESCE($6, settings),
-    is_active = COALESCE($7, is_active),
-    updated_at = CURRENT_TIMESTAMP
+    slug            = COALESCE($2, slug),
+    name            = COALESCE($3, name),
+    description     = COALESCE($4, description),
+    type            = COALESCE($5, type),
+    settings        = COALESCE($6, settings),
+    is_active       = COALESCE($7, is_active),
+    display_type    = COALESCE($8, display_type),
+    cover_image_url = COALESCE($9, cover_image_url),
+    updated_at      = CURRENT_TIMESTAMP
 WHERE id = $1
-RETURNING id, slug, name, description, type, settings, is_active, created_at, updated_at
+RETURNING id, slug, name, description, cover_image_url, type, display_type, settings, is_active, created_at, updated_at
 `
 
 type UpdateCollectionParams struct {
-	ID          int32       `json:"id"`
-	Slug        string      `json:"slug"`
-	Name        string      `json:"name"`
-	Description pgtype.Text `json:"description"`
-	Type        string      `json:"type"`
-	Settings    []byte      `json:"settings"`
-	IsActive    pgtype.Bool `json:"is_active"`
+	ID            int32       `json:"id"`
+	Slug          string      `json:"slug"`
+	Name          string      `json:"name"`
+	Description   pgtype.Text `json:"description"`
+	Type          string      `json:"type"`
+	Settings      []byte      `json:"settings"`
+	IsActive      pgtype.Bool `json:"is_active"`
+	DisplayType   int16       `json:"display_type"`
+	CoverImageUrl pgtype.Text `json:"cover_image_url"`
 }
 
 func (q *Queries) UpdateCollection(ctx context.Context, arg UpdateCollectionParams) (Collection, error) {
@@ -2608,6 +3361,8 @@ func (q *Queries) UpdateCollection(ctx context.Context, arg UpdateCollectionPara
 		arg.Type,
 		arg.Settings,
 		arg.IsActive,
+		arg.DisplayType,
+		arg.CoverImageUrl,
 	)
 	var i Collection
 	err := row.Scan(
@@ -2615,7 +3370,9 @@ func (q *Queries) UpdateCollection(ctx context.Context, arg UpdateCollectionPara
 		&i.Slug,
 		&i.Name,
 		&i.Description,
+		&i.CoverImageUrl,
 		&i.Type,
+		&i.DisplayType,
 		&i.Settings,
 		&i.IsActive,
 		&i.CreatedAt,

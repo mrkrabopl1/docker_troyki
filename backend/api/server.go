@@ -261,6 +261,7 @@ func (s *Server) setupRouter() {
 			adminGroup.GET("/promo-codes/:id/usage", s.handleAdminCheckPromoCodeUsage)
 
 			adminGroup.GET("/collections", s.handleAdminGetCollections)
+			adminGroup.POST("/collections/upload-cover", s.handleAdminUploadCollectionCover)
 			adminGroup.GET("/collections/:id", s.handleAdminGetCollection)
 			adminGroup.POST("/collections", s.handleAdminCreateCollection)
 			adminGroup.PUT("/collections/:id", s.handleAdminUpdateCollection)

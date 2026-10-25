@@ -1484,7 +1484,9 @@ INSERT INTO products (
         type,
         category,
         sizes,
-        bodytype
+        bodytype,
+        release_year,
+        release_date
     )
 VALUES (
         CONCAT(
@@ -1522,7 +1524,9 @@ VALUES (
             WHERE enum_key = $12
         ),
         $13::jsonb,
-        $14
+        $14,
+        $15,
+        $16
     )
 RETURNING id,
     qId,
@@ -1539,7 +1543,9 @@ RETURNING id,
     type,
     category,
     sizes,
-    bodytype
+    bodytype,
+    release_year,
+    release_date
 `
 
 type CreateProductParams struct {
@@ -1557,6 +1563,8 @@ type CreateProductParams struct {
 	CategoryKey string      `json:"category_key"`
 	Sizes       []byte      `json:"sizes"`
 	Bodytype    BodyEnum    `json:"bodytype"`
+	ReleaseYear pgtype.Int2 `json:"release_year"`
+	ReleaseDate pgtype.Date `json:"release_date"`
 }
 
 type CreateProductRow struct {
@@ -1576,6 +1584,8 @@ type CreateProductRow struct {
 	Category    int32       `json:"category"`
 	Sizes       []byte      `json:"sizes"`
 	Bodytype    BodyEnum    `json:"bodytype"`
+	ReleaseYear pgtype.Int2 `json:"release_year"`
+	ReleaseDate pgtype.Date `json:"release_date"`
 }
 
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (CreateProductRow, error) {
@@ -1594,6 +1604,8 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (C
 		arg.CategoryKey,
 		arg.Sizes,
 		arg.Bodytype,
+		arg.ReleaseYear,
+		arg.ReleaseDate,
 	)
 	var i CreateProductRow
 	err := row.Scan(
@@ -1613,6 +1625,8 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (C
 		&i.Category,
 		&i.Sizes,
 		&i.Bodytype,
+		&i.ReleaseYear,
+		&i.ReleaseDate,
 	)
 	return i, err
 }
@@ -1633,7 +1647,9 @@ INSERT INTO products (
         type,
         category,
         sizes,
-        bodytype
+        bodytype,
+        release_year,
+        release_date
     )
 VALUES (
         $1,
@@ -1652,7 +1668,9 @@ VALUES (
         $13,
         -- Прямой ID категории
         $14::jsonb,
-        $15
+        $15,
+        $16,
+        $17
     )
 RETURNING id,
     qId,
@@ -1669,7 +1687,9 @@ RETURNING id,
     type,
     category,
     sizes,
-    bodytype
+    bodytype,
+    release_year,
+    release_date
 `
 
 type CreateProductWithIdsParams struct {
@@ -1688,6 +1708,8 @@ type CreateProductWithIdsParams struct {
 	CategoryID  int32       `json:"category_id"`
 	Sizes       []byte      `json:"sizes"`
 	Bodytype    BodyEnum    `json:"bodytype"`
+	ReleaseYear pgtype.Int2 `json:"release_year"`
+	ReleaseDate pgtype.Date `json:"release_date"`
 }
 
 type CreateProductWithIdsRow struct {
@@ -1707,6 +1729,8 @@ type CreateProductWithIdsRow struct {
 	Category    int32       `json:"category"`
 	Sizes       []byte      `json:"sizes"`
 	Bodytype    BodyEnum    `json:"bodytype"`
+	ReleaseYear pgtype.Int2 `json:"release_year"`
+	ReleaseDate pgtype.Date `json:"release_date"`
 }
 
 func (q *Queries) CreateProductWithIds(ctx context.Context, arg CreateProductWithIdsParams) (CreateProductWithIdsRow, error) {
@@ -1726,6 +1750,8 @@ func (q *Queries) CreateProductWithIds(ctx context.Context, arg CreateProductWit
 		arg.CategoryID,
 		arg.Sizes,
 		arg.Bodytype,
+		arg.ReleaseYear,
+		arg.ReleaseDate,
 	)
 	var i CreateProductWithIdsRow
 	err := row.Scan(
@@ -1745,6 +1771,8 @@ func (q *Queries) CreateProductWithIds(ctx context.Context, arg CreateProductWit
 		&i.Category,
 		&i.Sizes,
 		&i.Bodytype,
+		&i.ReleaseYear,
+		&i.ReleaseDate,
 	)
 	return i, err
 }
@@ -7674,6 +7702,7 @@ SELECT p.sizes,
     p.category,
     p.date,
     b.name as firm,
+    b.slug as brand_slug,
     p.image_count
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
@@ -7702,6 +7731,7 @@ type GetProductsInfoByIdRow struct {
 	Category    int32       `json:"category"`
 	Date        pgtype.Text `json:"date"`
 	Firm        string      `json:"firm"`
+	BrandSlug   string      `json:"brand_slug"`
 	ImageCount  int32       `json:"image_count"`
 }
 
@@ -7723,6 +7753,7 @@ func (q *Queries) GetProductsInfoById(ctx context.Context, id int32) (GetProduct
 		&i.Category,
 		&i.Date,
 		&i.Firm,
+		&i.BrandSlug,
 		&i.ImageCount,
 	)
 	return i, err
@@ -8409,8 +8440,10 @@ SET
     maxprice = COALESCE(NULLIF($9, 0), maxprice),
     image_count = COALESCE(NULLIF($10, 0), image_count),
     sizes = COALESCE($11::jsonb, sizes),
-    description = COALESCE($12, description)
-WHERE id = $13
+    description = COALESCE($12, description),
+    release_year = COALESCE($13::int, release_year),
+    release_date = COALESCE($14::date, release_date)
+WHERE id = $15
 `
 
 type UpdateProductParams struct {
@@ -8426,6 +8459,8 @@ type UpdateProductParams struct {
 	ImageCount  interface{} `json:"image_count"`
 	Sizes       []byte      `json:"sizes"`
 	Description pgtype.Text `json:"description"`
+	ReleaseYear int32       `json:"release_year"`
+	ReleaseDate pgtype.Date `json:"release_date"`
 	ID          int32       `json:"id"`
 }
 
@@ -8443,6 +8478,8 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) er
 		arg.ImageCount,
 		arg.Sizes,
 		arg.Description,
+		arg.ReleaseYear,
+		arg.ReleaseDate,
 		arg.ID,
 	)
 	return err

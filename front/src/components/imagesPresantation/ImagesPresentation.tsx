@@ -41,22 +41,27 @@ const ImagePresentation: React.FC<ImagePresentationProps> = ({
     }, []);
 
     const content = useMemo(() => {
-        let count = 1;
         const data = [];
-        while (count <= image_count) {
+        for (let i = 1; i <= image_count; i++) {
             data.push(
-                <div key={`${count}`} className={(mainImage === cratePath(count)) ? `${s.thumbnailWrapper} ${s.hover}` : s.thumbnailWrapper}>
+                <div
+                    key={i}
+                    className={
+                        mainImage === cratePath(i)
+                            ? `${s.thumbnailWrapper} ${s.hover}`
+                            : s.thumbnailWrapper
+                    }
+                >
                     <ImagePresentationBlock
-                        onClick={() => handleExpand(count)}
+                        onClick={() => handleExpand(i)}
                         onHover={handleThumbnailHover}
-                        image={cratePath(count)}
+                        image={cratePath(i)}
                     />
                 </div>
             );
-            count++;
         }
         return data;
-    }, [image_count, cratePath, handleExpand, handleThumbnailHover,mainImage]);
+    }, [image_count, cratePath, handleExpand, handleThumbnailHover, mainImage]);
 
     return (
         <div ref={presentationRef} className={s.imgComponentWrap}>

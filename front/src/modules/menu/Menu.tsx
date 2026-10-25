@@ -13,10 +13,13 @@ import { ReactComponent as Loupe } from "/public/loupe.svg";
 import s from "./style.module.css";
 import ss from "src/pages/search/style.module.css";
 import logo from "/public/troyki_logo.svg";
+
+import ssa from "/public/firm_images.svg";
 import ComplexDropVertical from 'src/components/complexDrop/ComplexDropVertical';
 import AlphabetNavigation from 'src/components/alphabetNavigation/AlphabetNavigation';
 import BuyPage from 'src/pages/buyPage/BuyPage';
 import Scroller from 'src/components/scroller/Scroller';
+
 
 // 👇 AUTH
 import LoginForm from 'src/modules/loginForm/LoginForm';

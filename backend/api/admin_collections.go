@@ -24,7 +24,10 @@ func (s *Server) handleAdminCreateCollection(c *gin.Context) {
 		Settings    json.RawMessage `json:"settings"`
 		IsActive    bool            `json:"is_active"`
 		SortOrder   int32           `json:"sort_order"`
-		ProductIDs  []int32         `json:"product_ids,omitempty"` // Для ручного режима
+		ProductIDs  []int32         `json:"product_ids,omitempty"`
+		// NEW
+		DisplayType   *int32  `json:"display_type"`    // 1 или 2, nil → default 2
+		CoverImageURL *string `json:"cover_image_url"` // путь/URL или nil
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -48,32 +51,41 @@ func (s *Server) handleAdminCreateCollection(c *gin.Context) {
 		}
 	}
 
-	// Валидация в зависимости от типа
+	// Валидация по типу
 	switch input.Type {
 	case "dynamic":
 		if settings.Filters == nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "filters are required for dynamic collection",
-			})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "filters are required for dynamic collection"})
 			return
 		}
 	case "manual":
 		if len(input.ProductIDs) == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "product_ids are required for manual collection",
-			})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "product_ids are required for manual collection"})
 			return
 		}
 	case "hybrid":
 		if settings.Filters == nil && len(input.ProductIDs) == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "either filters or product_ids are required for hybrid collection",
-			})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "either filters or product_ids are required for hybrid collection"})
 			return
 		}
 	}
 
-	// Создаем коллекцию
+	// NEW: display_type по умолчанию = 2 (подробный)
+	displayType := int32(2)
+	if input.DisplayType != nil {
+		if *input.DisplayType != 1 && *input.DisplayType != 2 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "display_type must be 1 or 2"})
+			return
+		}
+		displayType = *input.DisplayType
+	}
+
+	// NEW: cover_image_url (nullable)
+	coverImageURL := pgtype.Text{}
+	if input.CoverImageURL != nil && *input.CoverImageURL != "" {
+		coverImageURL = pgtype.Text{String: *input.CoverImageURL, Valid: true}
+	}
+
 	collection, err := s.store.CreateCollection(c.Request.Context(), db.CreateCollectionParams{
 		Slug:        input.Slug,
 		Name:        input.Name,
@@ -81,36 +93,34 @@ func (s *Server) handleAdminCreateCollection(c *gin.Context) {
 		Type:        input.Type,
 		Settings:    input.Settings,
 		IsActive:    pgtype.Bool{Bool: input.IsActive, Valid: true},
+		// NEW
+		DisplayType:   pgtype.Int4{Int32: displayType, Valid: true},
+		CoverImageUrl: coverImageURL,
 	})
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create collection"})
 		return
 	}
 
-	// Если ручной режим - добавляем товары
+	// Товары для manual/hybrid
 	if input.Type == "manual" || input.Type == "hybrid" {
 		if len(input.ProductIDs) > 0 {
-			// Создаем массив для sort_order (по порядку)
 			sortOrders := make([]int32, len(input.ProductIDs))
 			for i := range sortOrders {
 				sortOrders[i] = int32(i)
 			}
+			_ = sortOrders // если AddProductsToCollection принимает sortOrders — передайте; иначе не нужен
 
 			if err := s.store.AddProductsToCollection(c.Request.Context(), db.AddProductsToCollectionParams{
 				CollectionID: collection.ID,
 				ProductIds:   input.ProductIDs,
 			}); err != nil {
-				// Логируем ошибку, но не откатываем создание коллекции
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "Failed to add products to collection",
-				})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add products to collection"})
 				return
 			}
 		}
 	}
 
-	// Логируем
 	admin, _ := c.Get("admin")
 	adminDB := admin.(db.GetAdminByIDRow)
 	go s.logAdminAction(adminDB.ID, "create", "collection", collection.ID,
@@ -227,16 +237,25 @@ func (s *Server) handleAdminGetCollection(c *gin.Context) {
 		}
 	}
 
+	// cover_image_url: отдаём null, если пусто
+	var coverImageURL *string
+	if collection.CoverImageUrl.Valid && collection.CoverImageUrl.String != "" {
+		v := collection.CoverImageUrl.String
+		coverImageURL = &v
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"collection": gin.H{
-			"id":          collection.ID,
-			"slug":        collection.Slug,
-			"name":        collection.Name,
-			"description": collection.Description.String,
-			"type":        collection.Type,
-			"is_active":   collection.IsActive.Bool,
-			"created_at":  collection.CreatedAt,
-			"updated_at":  collection.UpdatedAt,
+			"id":              collection.ID,
+			"slug":            collection.Slug,
+			"name":            collection.Name,
+			"description":     collection.Description.String,
+			"type":            collection.Type,
+			"is_active":       collection.IsActive.Bool,
+			"created_at":      collection.CreatedAt,
+			"updated_at":      collection.UpdatedAt,
+			"display_type":    collection.DisplayType, // NEW
+			"cover_image_url": coverImageURL,          // NEW (null или строка)
 		},
 		"filters":     toJSONRawMessage(settingsMap, "{}"),
 		"product_ids": productIDs,
@@ -252,14 +271,16 @@ func (s *Server) handleAdminUpdateCollection(c *gin.Context) {
 	}
 
 	var input struct {
-		Slug        *string         `json:"slug"`
-		Name        *string         `json:"name"`
-		Description *string         `json:"description"`
-		Type        *string         `json:"type"`
-		Settings    json.RawMessage `json:"settings"`
-		IsActive    *bool           `json:"is_active"`
-		SortOrder   *int32          `json:"sort_order"`
-		ProductIDs  []int32         `json:"product_ids"`
+		Slug          *string         `json:"slug"`
+		Name          *string         `json:"name"`
+		Description   *string         `json:"description"`
+		Type          *string         `json:"type"`
+		Settings      json.RawMessage `json:"settings"`
+		IsActive      *bool           `json:"is_active"`
+		SortOrder     *int32          `json:"sort_order"`
+		ProductIDs    []int32         `json:"product_ids"`
+		DisplayType   *int32          `json:"display_type"`    // ← добавить
+		CoverImageURL *string         `json:"cover_image_url"` // ← добавить
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -310,12 +331,26 @@ func (s *Server) handleAdminUpdateCollection(c *gin.Context) {
 	if input.IsActive != nil {
 		updateParams.IsActive = pgtype.Bool{Bool: *input.IsActive, Valid: true}
 	}
+	if input.DisplayType != nil {
+		if *input.DisplayType != 1 && *input.DisplayType != 2 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "display_type must be 1 or 2"})
+			return
+		}
+		updateParams.DisplayType = int16(*input.DisplayType) // ← int16, не pgtype.Int4
+	}
 
+	// NEW: cover_image_url — nil/"" → не трогать
+	if input.CoverImageURL != nil && *input.CoverImageURL != "" {
+		updateParams.CoverImageUrl = pgtype.Text{String: *input.CoverImageURL, Valid: true}
+	}
 	collection, err := s.store.UpdateCollection(c.Request.Context(), updateParams)
+
+	fmt.Println(err)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update collection"})
 		return
 	}
+	// NEW: display_type — nil → COALESCE оставит прежнее
 
 	// Обновляем товары, если переданы
 	if len(input.ProductIDs) > 0 && (collection.Type == "manual" || collection.Type == "hybrid") {
@@ -388,4 +423,25 @@ func (s *Server) handleAdminDeleteCollection(c *gin.Context) {
 		c.ClientIP())
 
 	c.JSON(http.StatusOK, gin.H{"message": "Collection deleted successfully"})
+}
+
+// POST /admin/collections/upload-cover
+func (s *Server) handleAdminUploadCollectionCover(c *gin.Context) {
+	file, err := c.FormFile("image")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Image file is required"})
+		return
+	}
+
+	imagePath, err := s.imageService.SaveCollectionCoverImage(file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"cover_image_path": imagePath,
+		// если фронту удобнее готовый URL — добавьте:
+		"cover_image_url": s.imageService.GetImageURLFromPath(imagePath),
+	})
 }

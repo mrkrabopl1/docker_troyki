@@ -204,6 +204,8 @@ type CachedProduct struct {
 	Price           int32       `json:"price"`
 	Discount        interface{} `json:"discount,omitempty"`
 	DiscountPercent int32       `json:"discount_percent,omitempty"`
+	Description     string      `json:"description,omitempty"` // NEW
+	Year            int16       `json:"year,omitempty"`
 }
 
 type CachedWidget struct {

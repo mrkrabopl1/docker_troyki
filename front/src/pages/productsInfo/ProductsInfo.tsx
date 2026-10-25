@@ -41,6 +41,7 @@ interface ProductInfo {
     line_products?: any[];
     image_extansion: string;
     bodytype: string;
+    brand_slug:string
 }
 
 interface SizeTable {
@@ -61,6 +62,7 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
     const { widthProps } = useAppSelector(state => state.resize);
     const { cartCount } = useAppSelector(state => state.menu);
     const dispatch = useAppDispatch();
+    const [currentStep,setCurrentStep] = useState(0);
 
     const [merchInfo, setMerchInfo] = useState<ProductInfo>({ 
         bodytype: "man", 
@@ -70,7 +72,8 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
         name: "", 
         info: {}, 
         type_id: 0, 
-        image_extansion: "webp" 
+        image_extansion: "webp" ,
+        brand_slug:""
     });
     
     const [activeModal, setActiveModal] = useState(false);
@@ -190,7 +193,7 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
         let content = [];
         while (count <= merchInfo.image_count) {
             content.push(
-                <div key={count} style={{ width: "100%", flexShrink: 0, height: "100%" }}>
+                <div onClick={(e)=>{e.stopPropagation()}} key={count} style={{ width: "100%", flexShrink: 0, height: "100%" }}>
                     <ImagePresantationBlock 
                         image={merchInfo.image_path + "/img" + count + "." + merchInfo.image_extansion} 
                     />
@@ -238,7 +241,9 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
             return widthProps
                 ? <ContentSlider content={imageContent} />
                 : <ImagePresantation 
-                    onClick={() => setActiveProductsModal(true)} 
+                    onClick={(ind) => {
+                        setCurrentStep(ind)
+                        setActiveProductsModal(true)}} 
                     image_count={merchInfo.image_count} 
                     image_path={merchInfo.image_path} 
                     extansion={merchInfo.image_extansion} 
@@ -288,7 +293,7 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
                             }} 
                             className={s.firmInfoHolder}
                         >
-                            <img className={s.firmImage} src={"/images/brandLogos/" + merchInfo.firm + "/image.png"} alt="" />
+                            <img className={s.firmImage} src={"/images/brandLogos/" + merchInfo.brand_slug + "/image.png"} alt="" />
                             <span className={s.firmName}>{merchInfo.firm}</span>
                         </div>
                     )}
@@ -378,7 +383,7 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
                     </div>
                 </Modal>
                 <Modal onChange={setActiveProductsModal} active={activeProductsModal}>
-                    <ContentSlider content={imageContent} />
+                    <ContentSlider currentStep={currentStep} content={imageContent} />
                 </Modal>
             </div>
         </div>

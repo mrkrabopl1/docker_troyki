@@ -1041,6 +1041,7 @@ SELECT p.sizes,
     p.category,
     p.date,
     b.name as firm,
+    b.slug as brand_slug,
     p.image_count
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
@@ -2950,7 +2951,9 @@ INSERT INTO products (
         type,
         category,
         sizes,
-        bodytype
+        bodytype,
+        release_year,
+        release_date
     )
 VALUES (
         @q_id,
@@ -2969,7 +2972,9 @@ VALUES (
         @category_id,
         -- Прямой ID категории
         @sizes::jsonb,
-        @bodytype
+        @bodytype,
+        @release_year,
+        @release_date
     )
 RETURNING id,
     qId,
@@ -2986,7 +2991,9 @@ RETURNING id,
     type,
     category,
     sizes,
-    bodytype;
+    bodytype,
+    release_year,
+    release_date;
 -- name: CreateProduct :one
 INSERT INTO products (
         qId,
@@ -3003,7 +3010,9 @@ INSERT INTO products (
         type,
         category,
         sizes,
-        bodytype
+        bodytype,
+        release_year,
+        release_date
     )
 VALUES (
         CONCAT(
@@ -3041,7 +3050,9 @@ VALUES (
             WHERE enum_key = @category_key
         ),
         @sizes::jsonb,
-        @bodytype
+        @bodytype,
+        @release_year,
+        @release_date
     )
 RETURNING id,
     qId,
@@ -3058,7 +3069,9 @@ RETURNING id,
     type,
     category,
     sizes,
-    bodytype;
+    bodytype,
+    release_year,
+    release_date;
 -- name: DeleteHardProduct :one
 DELETE FROM products
 WHERE id = $1
@@ -3113,7 +3126,9 @@ SET
     maxprice = COALESCE(NULLIF(@maxprice, 0), maxprice),
     image_count = COALESCE(NULLIF(@image_count, 0), image_count),
     sizes = COALESCE(@sizes::jsonb, sizes),
-    description = COALESCE(@description, description)
+    description = COALESCE(@description, description),
+    release_year = COALESCE(@release_year::int, release_year),
+    release_date = COALESCE(@release_date::date, release_date)
 WHERE id = @id;
 -- name: CheckProductExistsById :one
 SELECT EXISTS(

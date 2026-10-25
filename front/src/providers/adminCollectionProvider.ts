@@ -47,7 +47,21 @@ export const deleteCollection = async (id: number): Promise<void> => {
 export const reorderCollections = async (collectionIds: number[]): Promise<void> => {
     await adminApi.post('/collections/reorder', { collection_ids: collectionIds });
 };
+// POST /admin/collections/upload-cover
+// Загружает обложку коллекции и возвращает её путь/URL.
+// Content-Type НЕ выставляем — axios/browser сам проставит multipart boundary.
+export const uploadCollectionCover = async (file: File): Promise<string> => {
+    const fd = new FormData();
+    fd.append('image', file);
 
+    const response = await adminApi.post('/collections/upload-cover', fd, {
+        headers: {
+            'Content-Type': undefined as any,
+        },
+    });
+    const data = response.data;
+    return data.cover_image_path ?? data.cover_image_url;
+};
 // POST /admin/collections/:id/products
 export const addProductsToCollection = async (
     id: number,

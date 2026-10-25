@@ -562,12 +562,14 @@ func (s *Server) handleGetCollectionBySlug(c *gin.Context) {
 	// 3. Формируем ответ
 	response := gin.H{
 		"collection": gin.H{
-			"id":          collection.ID,
-			"slug":        collection.Slug,
-			"name":        collection.Name,
-			"description": collection.Description.String,
-			"type":        collection.Type,
-			"is_active":   collection.IsActive.Bool,
+			"id":            collection.ID,
+			"slug":          collection.Slug,
+			"name":          collection.Name,
+			"description":   collection.Description.String,
+			"type":          collection.Type,
+			"is_active":     collection.IsActive.Bool,
+			"display_type":  collection.DisplayType,
+			"cover_img_url": collection.CoverImageUrl,
 		},
 		"filters": gin.H{
 			"sizes":          toJSONRawMessage(filtersResponse.Sizes, "{}"),
@@ -824,18 +826,15 @@ func (s *Server) handleGetCollectionById(c *gin.Context) {
 func convertDBProductsToCached(dbProducts []db.ProductRow) []types.CachedProduct {
 	products := make([]types.CachedProduct, 0, len(dbProducts))
 	for _, p := range dbProducts {
-		imagePath := ""
-		if p.ImagePath != "" {
-			imagePath = p.ImagePath
-		}
-
 		products = append(products, types.CachedProduct{
 			ID:              p.ID,
 			Name:            p.Name,
-			ImagePath:       imagePath,
+			ImagePath:       p.ImagePath,
 			Price:           p.MinPrice,
-			Discount:        0, // Если есть поле Discount в ProductRow
-			DiscountPercent: 0, // Если есть поле DiscountPercent в ProductRow
+			Discount:        0,
+			DiscountPercent: p.DiscountPercent,
+			Description:     p.Description, // NEW
+			Year:            p.Year,        // NEW
 		})
 	}
 	return products
@@ -977,6 +976,7 @@ func (s *Server) handleGetCollectionProducts(c *gin.Context) {
 	// ---- 7. Основной запрос ----
 	startQuery := time.Now()
 	result, err := s.store.GetCollectionProductsByFilters(ctx, collection, params)
+
 	queryDuration := time.Since(startQuery)
 	log.Printf("⏱️ [5] GetCollectionProductsByFilters: %v, Products: %d, Total: %d",
 		queryDuration, len(result.Products), result.TotalCount)

@@ -69,6 +69,7 @@ const StyledSearch: React.FC<Props> = ({
         <div style={{ flex: isFocused ? 1 : 0, paddingLeft: isFocused ? "45px" : 0 }} className={containerClassName}>
             <div className={`${searchBoxClassName} ${isFocused ? s.focused : ''}`}>
                 <input
+                    style={isExpanded?{}:{display:"none"}}
                     type="text"
                     value={inputValue}
                     onChange={createSearchRequest}

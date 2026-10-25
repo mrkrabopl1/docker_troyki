@@ -329,15 +329,17 @@ type BrandsStat struct {
 }
 
 type Collection struct {
-	ID          int32            `json:"id"`
-	Slug        string           `json:"slug"`
-	Name        string           `json:"name"`
-	Description pgtype.Text      `json:"description"`
-	Type        string           `json:"type"`
-	Settings    []byte           `json:"settings"`
-	IsActive    pgtype.Bool      `json:"is_active"`
-	CreatedAt   pgtype.Timestamp `json:"created_at"`
-	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	ID            int32            `json:"id"`
+	Slug          string           `json:"slug"`
+	Name          string           `json:"name"`
+	Description   pgtype.Text      `json:"description"`
+	CoverImageUrl pgtype.Text      `json:"cover_image_url"`
+	Type          string           `json:"type"`
+	DisplayType   int16            `json:"display_type"`
+	Settings      []byte           `json:"settings"`
+	IsActive      pgtype.Bool      `json:"is_active"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
 }
 
 type CollectionProduct struct {
@@ -602,6 +604,8 @@ type Product struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 	Sizes       []byte             `json:"sizes"`
+	ReleaseYear pgtype.Int2        `json:"release_year"`
+	ReleaseDate pgtype.Date        `json:"release_date"`
 	BrandID     int32              `json:"brand_id"`
 	LineID      pgtype.Int4        `json:"line_id"`
 	Status      string             `json:"status"`

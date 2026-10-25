@@ -518,3 +518,48 @@ func sanitizeFilename(filename string) string {
 	cleanName := re.ReplaceAllString(name, "_")
 	return cleanName
 }
+
+// SaveCollectionCoverImage сохраняет обложку коллекции как WebP
+func (s *ImageService) SaveCollectionCoverImage(file *multipart.FileHeader) (string, error) {
+	if err := s.validateFile(file); err != nil {
+		return "", err
+	}
+
+	filename := fmt.Sprintf("collection_%d.webp", time.Now().UnixNano())
+	relativePath := "collections"
+	fullPath := filepath.Join(s.BaseDir, relativePath, filename)
+
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+		return "", err
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return "", err
+	}
+	defer src.Close()
+
+	img, _, err := image.Decode(src)
+	if err != nil {
+		return "", err
+	}
+
+	if err := s.SaveWebP(img, fullPath); err != nil {
+		return "", err
+	}
+
+	// возвращаем относительный путь, как у баннеров/новостей
+	return filepath.Join(relativePath, filename), nil
+}
+
+// DeleteCollectionCoverImage удаляет файл обложки
+func (s *ImageService) DeleteCollectionCoverImage(imagePath string) error {
+	if imagePath == "" {
+		return nil
+	}
+	fullPath := filepath.Join(s.BaseDir, imagePath)
+	if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}

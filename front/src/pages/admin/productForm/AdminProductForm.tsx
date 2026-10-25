@@ -13,6 +13,8 @@ import { ProductFormData } from 'src/types/adminProduct';
 import { useAppDispatch } from 'src/store/hooks/redux';
 import { finishLoading } from 'src/store/reducers/loadingSlice'
 import FirmForm from 'src/modules/admin/firmForm/FirmForm';
+// NEW: импорт компонента даты релиза
+import ReleaseDateField, { ReleasePrecision } from 'src/modules/dateField/DateField';
 import {
     getAdminProductById,
     createAdminProduct,
@@ -41,6 +43,9 @@ interface SizePrice {
     quantity?: number;
 }
 
+const MIN_RELEASE_YEAR = 1900;
+const MAX_RELEASE_YEAR = 2100;
+
 const AdminProductForm: React.FC = () => {
     const navigate = useNavigate();
     const router = useRouter();
@@ -49,7 +54,7 @@ const AdminProductForm: React.FC = () => {
     const { typesVal, categories, firms, firmMap, collections } = useAppSelector(state => state.menu);
     const { user } = useAppSelector(state => state.admin);
     const dispatch = useAppDispatch();
-    // Фильтруем доступные статусы в зависимости от роли
+
     const availableStatuses = useMemo(() => {
         const allStatuses = {
             draft: 'Черновик',
@@ -57,14 +62,13 @@ const AdminProductForm: React.FC = () => {
             inactive: 'Архивирован'
         };
 
-        // Admin не может перевести в active (на витрину)
         if (user?.role !== 'superadmin') {
             const { active, ...rest } = allStatuses;
-            return rest; // только draft и inactive
+            return rest;
         }
+        return allStatuses;
+    }, [user?.role]);
 
-        return allStatuses; // superadmin может всё
-    }, [user?.role])
     const sessionId = useMemo(() => {
         if (!isEdit) {
             return `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -73,6 +77,7 @@ const AdminProductForm: React.FC = () => {
     }, [isEdit]);
 
     // --- Состояние формы ---
+    // NEW: поля release_precision / release_year / release_date
     const [formData, setFormData] = useState<ProductFormData>({
         name: '',
         article: '',
@@ -86,11 +91,14 @@ const AdminProductForm: React.FC = () => {
         images: [],
         image_count: 0,
         status: 'draft',
-        info: ""
-    });
+        info: "",
+        release_precision: 'unknown',
+        release_year: null,
+        release_date: null,
+    } as ProductFormData);
 
     // --- Валидация ---
-    const [checkValid, setCheckValid] = useState(false);      // триггер показа ошибок после попытки отправки
+    const [checkValid, setCheckValid] = useState(false);
     const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
     const [serverError, setServerError] = useState<string | null>(null);
     const [fieldServerErrors, setFieldServerErrors] = useState<Record<string, string>>({});
@@ -99,17 +107,16 @@ const AdminProductForm: React.FC = () => {
     const [selectedBrandId, setSelectedBrandId] = useState<number>(-1);
     const [selectedLineName, setSelectedLineName] = useState<string>('');
 
-    // Данные для комбобоксов
     const brandsData = useMemo(() => {
-        let acc = {}
-        Object.values(firmMap).forEach(val => {
-            acc[val.id] = val.name
-        })
+        let acc: Record<number, string> = {};
+        Object.values(firmMap).forEach((val: any) => {
+            acc[val.id] = val.name;
+        });
         return acc;
     }, [firms, firmMap]);
 
     const linesData = useMemo(() => {
-        return collections[brandsData[selectedBrandId]]
+        return collections[brandsData[selectedBrandId]];
     }, [collections, selectedBrandId]);
 
     const categoriesComboboxData = useMemo(() => {
@@ -161,7 +168,6 @@ const AdminProductForm: React.FC = () => {
             const timer = setTimeout(() => {
                 dispatch(finishLoading());
             }, 0);
-
             return () => clearTimeout(timer);
         }
     }, [id, isEdit]);
@@ -169,8 +175,8 @@ const AdminProductForm: React.FC = () => {
     const loadSizeTable = async () => {
         await getSizeTable('clothes', setTableInfo);
     };
+
     const handleDeleteProduct = async () => {
-        // Показываем предупреждение (можно заменить на кастомное модальное окно, но в задании – alert)
         const confirmed = window.confirm(
             'Это действие полностью удалит товар из базы данных. Продолжить?'
         );
@@ -183,19 +189,41 @@ const AdminProductForm: React.FC = () => {
             });
         } catch (error) {
             console.error('Ошибка удаления товара:', error);
-            // Можно установить serverError для отображения ошибки
             setServerError('Не удалось удалить товар. Попробуйте позже.');
         } finally {
             setLoading(false);
         }
     };
+
+    // NEW: нормализация release-полей из ответа бэка
+    const extractRelease = (data: any): {
+        precision: ReleasePrecision;
+        year: number | null;
+        date: string | null;
+    } => {
+        const rawDate: string | null = data.release_date ?? null;
+        const rawYear: number | null = data.release_year ?? null;
+
+        const date = rawDate ? String(rawDate).slice(0, 10) : null;
+        const year = rawYear ?? (date ? Number(date.slice(0, 4)) : null);
+
+        let precision: ReleasePrecision = 'unknown';
+        if (date) precision = 'full';
+        else if (year) precision = 'year';
+
+        return { precision, year, date };
+    };
+
     const loadProductData = async (productId: number) => {
         setLoading(true);
         try {
             await getAdminProductById(productId, (data) => {
-                const brandId = firmMap[data.firm].id || -1;
+                const brandId = firmMap[data.firm]?.id || -1;
                 setSelectedBrandId(brandId);
                 setSelectedLineName(data.line || '');
+
+                // NEW: извлекаем дату релиза
+                const release = extractRelease(data);
 
                 setFormData({
                     id: data.id,
@@ -210,8 +238,12 @@ const AdminProductForm: React.FC = () => {
                     description: data.description || '',
                     sizes: parseSizesFromData(data),
                     images: parseImagesFromData(data),
-                    status: data.status || 'draft'
-                });
+                    status: data.status || 'draft',
+                    // NEW
+                    release_precision: release.precision,
+                    release_year: release.year,
+                    release_date: release.date,
+                } as ProductFormData);
                 dispatch(finishLoading());
             });
         } catch (error) {
@@ -224,17 +256,14 @@ const AdminProductForm: React.FC = () => {
     const handleCreateFirm = async (formData: FormData) => {
         try {
             await createFirm(formData, (newFirm) => {
-                // TODO: добавить новый бренд в Redux через dispatch
                 setShowFirmModal(false);
                 setFirmErrorText('');
                 console.log('Firm created successfully:', newFirm);
             });
-        } catch (error) {
+        } catch (error: any) {
             if (error.response?.status === 409) {
-                // The firm already exists
                 setFirmErrorText('Фирма с таким названием уже существует');
             } else {
-                // Handle other errors
                 setFirmErrorText('Ошибка при создании фирмы. Попробуйте позже.');
             }
             console.error('Error creating firm:', error);
@@ -254,39 +283,49 @@ const AdminProductForm: React.FC = () => {
     const parseImagesFromData = (data: any): string[] => {
         if (!data.image_count) return [];
         return Array.from({ length: data.image_count }, (_, i) => {
-            let index = i + 1
-            return `${data.image_path + "/img" + index + "." + data.image_extansion}`
-        }
-
-        );
+            let index = i + 1;
+            return `${data.image_path + "/img" + index + "." + data.image_extansion}`;
+        });
     };
 
-    // --- Функция валидации (по аналогии с SendForm) ---
+    // --- Валидация ---
     const validateForm = useCallback((): boolean => {
         const errors: Record<string, boolean> = {};
 
-        // Обязательные поля
         if (!formData.name.trim()) errors.name = true;
         if (!formData.article.trim()) errors.article = true;
         if (selectedBrandId === -1 || !formData.firm) errors.firm = true;
         if (!formData.category_id) errors.category = true;
 
-        // Изображения (хотя бы одно)
         if (formData.images.length === 0) errors.images = true;
 
-        // Валидация размеров
         if (hasSizes) {
             if (formData.sizes.length === 0) {
                 errors.sizes = true;
             } else {
-                // Проверяем, что у каждого размера заполнено поле "размер"
                 const hasEmptySize = formData.sizes.some(s => !s.size.trim());
                 if (hasEmptySize) errors.sizes = true;
             }
         } else {
-            // Безразмерный товар: должна быть хотя бы одна запись с ценой > 0
             if (formData.sizes.length === 0 || formData.sizes[0].price <= 0) {
                 errors.noSizePrice = true;
+            }
+        }
+
+        // NEW: валидация даты релиза
+        if (formData.release_precision === 'year') {
+            const y = formData.release_year;
+            if (!y || y < MIN_RELEASE_YEAR || y > MAX_RELEASE_YEAR) {
+                errors.release = true;
+            }
+        } else if (formData.release_precision === 'full') {
+            if (!formData.release_date) {
+                errors.release = true;
+            } else {
+                const y = Number(formData.release_date.slice(0, 4));
+                if (!y || y < MIN_RELEASE_YEAR || y > MAX_RELEASE_YEAR) {
+                    errors.release = true;
+                }
             }
         }
 
@@ -294,22 +333,19 @@ const AdminProductForm: React.FC = () => {
         return Object.keys(errors).length === 0;
     }, [formData, selectedBrandId, hasSizes]);
 
-    // --- Сброс серверных ошибок при изменении полей ---
     const handleFieldChange = useCallback((field: keyof ProductFormData, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
-        // Сбрасываем ошибки сервера при изменении поля
         setServerError(null);
         setFieldServerErrors(prev => ({ ...prev, [field]: '' }));
     }, []);
 
-    // --- Обработка отправки формы ---
+    // --- Отправка ---
     const handleSubmit = async () => {
         setServerError(null);
         setFieldServerErrors({});
-        setCheckValid(true);  // включаем отображение ошибок валидации
+        setCheckValid(true);
 
         if (!validateForm()) {
-            // Прокручиваем к первому полю с ошибкой
             const firstErrorField = document.querySelector('.errorField');
             firstErrorField?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
@@ -324,12 +360,18 @@ const AdminProductForm: React.FC = () => {
                     quantity: size.quantity,
                     discount: size.discount
                 }
-            }), {});
+            }), {} as Record<string, any>);
+
+            // NEW: преобразование release-полей для отправки
+            const releaseYear =
+                formData.release_precision === 'unknown' ? null : formData.release_year;
+            const releaseDate =
+                formData.release_precision === 'full' ? formData.release_date : null;
 
             const payload = {
                 name: formData.name,
                 article: formData.article,
-                brand_id: firmMap[formData.firm].id || selectedBrandId,
+                brand_id: firmMap[formData.firm]?.id || selectedBrandId,
                 line_id: null,
                 line_name: formData.line,
                 category_id: formData.category_id,
@@ -338,7 +380,10 @@ const AdminProductForm: React.FC = () => {
                 description: formData.description,
                 sizes: sizesForSubmit,
                 status: formData.status,
-                session_id: sessionId
+                session_id: sessionId,
+                // NEW
+                release_year: releaseYear,
+                release_date: releaseDate,
             };
 
             if (isEdit && formData.id) {
@@ -354,14 +399,10 @@ const AdminProductForm: React.FC = () => {
             }
         } catch (error: any) {
             console.error('Error saving product:', error);
-            // Обработка ошибок от сервера
             if (error.response?.data) {
                 const serverData = error.response.data;
-                if (serverData.error) {
-                    setServerError(serverData.error);
-                }
+                if (serverData.error) setServerError(serverData.error);
                 if (serverData.errors && typeof serverData.errors === 'object') {
-                    // Предполагаем, что сервер возвращает объект { field: "error message" }
                     setFieldServerErrors(serverData.errors);
                 } else if (typeof serverData === 'string') {
                     setServerError(serverData);
@@ -376,7 +417,7 @@ const AdminProductForm: React.FC = () => {
         }
     };
 
-    // --- Остальные обработчики (без изменений) ---
+    // --- Обработчики ---
     const handleToggleSizeMode = (value: boolean) => {
         if (value) {
             setFormData(prev => ({ ...prev, sizes: prevSizesRef.current.length ? prevSizesRef.current : [] }));
@@ -388,7 +429,7 @@ const AdminProductForm: React.FC = () => {
             }));
         }
         setHasSizes(value);
-        setCheckValid(false); // сбросить ошибки после переключения режима
+        setCheckValid(false);
     };
 
     const handleDrag = useCallback((e: React.DragEvent) => {
@@ -417,11 +458,7 @@ const AdminProductForm: React.FC = () => {
                     : (f: File, cb: any) => uploadTempImage(sessionId, f, cb);
 
                 await uploadFn(file, (response: any) => {
-                    setFormData(prev => ({
-                        ...prev,
-                        images: [...response.images]
-                    }));
-                    // Сбрасываем ошибку изображений, если она была
+                    setFormData(prev => ({ ...prev, images: [...response.images] }));
                     setValidationErrors(prev => ({ ...prev, images: false }));
                 });
             }
@@ -442,13 +479,10 @@ const AdminProductForm: React.FC = () => {
             });
         } else {
             let imageArr = formData.images[index].split("/");
-            let imageName = imageArr[imageArr.length - 1]
+            let imageName = imageArr[imageArr.length - 1];
             await deleteTempImage(sessionId, imageName, (resp) => {
-                setFormData(prev => ({
-                    ...prev,
-                    images: [...resp.images]
-                }));
-            })
+                setFormData(prev => ({ ...prev, images: [...resp.images] }));
+            });
         }
     };
 
@@ -543,17 +577,8 @@ const AdminProductForm: React.FC = () => {
         <div className={s.container}>
             <div className={s.header}>
                 <h2>{isEdit ? 'Редактирование товара' : 'Создание товара'}</h2>
-                {/* <div className={s.headerActions}>
-                    <Button text="Назад" onClick={() => navigate('/admin/products')} />
-                    <Button
-                        text={isEdit ? 'Сохранить' : 'Создать'}
-                        onClick={handleSubmit}
-                        disabled={loading}
-                    />
-                </div> */}
             </div>
 
-            {/* Глобальная ошибка сервера */}
             {serverError && (
                 <div className={s.serverError}>
                     {serverError}
@@ -602,7 +627,6 @@ const AdminProductForm: React.FC = () => {
                                         >
                                             <img src={deleteIconUrl} alt="delete" style={{ width: '18px', height: '18px' }} />
                                         </button>}
-
                                     </div>
                                 ))}
                                 <div className={s.addImageBtn} onClick={() => fileInputRef.current?.click()}>
@@ -620,7 +644,6 @@ const AdminProductForm: React.FC = () => {
                     <section className={s.card}>
                         <h3>Основная информация</h3>
 
-                        {/* Название товара */}
                         <InputWithLabelWithValidation
                             val={formData.name}
                             valid={!checkValid || !validationErrors.name}
@@ -631,7 +654,6 @@ const AdminProductForm: React.FC = () => {
                         {fieldServerErrors.name && <div className={s.fieldError}>{fieldServerErrors.name}</div>}
 
                         <div className={s.formRow}>
-                            {/* Артикул */}
                             <InputWithLabelWithValidation
                                 val={formData.article}
                                 valid={!checkValid || !validationErrors.article}
@@ -641,7 +663,6 @@ const AdminProductForm: React.FC = () => {
                             />
                             {fieldServerErrors.article && <div className={s.fieldError}>{fieldServerErrors.article}</div>}
 
-                            {/* Тип тела */}
                             <div className={s.formGroup}>
                                 <label>Тип тела</label>
                                 <Combobox
@@ -656,7 +677,6 @@ const AdminProductForm: React.FC = () => {
                         </div>
 
                         <div className={s.formRow}>
-                            {/* Фирма */}
                             <div className={s.formGroup}>
                                 <label>Фирма *</label>
                                 <ComboboxWithSearch
@@ -678,7 +698,6 @@ const AdminProductForm: React.FC = () => {
                                 />
                             </div>
 
-                            {/* Линейка (необязательная) */}
                             {linesData && Object.keys(linesData).length > 0 && (
                                 <div className={s.formGroup}>
                                     <label>Линейка / Коллекция</label>
@@ -694,7 +713,6 @@ const AdminProductForm: React.FC = () => {
                         </div>
 
                         <div className={s.formRow}>
-                            {/* Категория */}
                             <div className={s.formGroup}>
                                 <label>Категория *</label>
                                 <Combobox
@@ -712,7 +730,6 @@ const AdminProductForm: React.FC = () => {
                                 {fieldServerErrors.category_id && <div className={s.fieldError}>{fieldServerErrors.category_id}</div>}
                             </div>
 
-                            {/* Тип товара */}
                             {formData.category_id > 0 && (
                                 <div className={s.formGroup}>
                                     <label>Тип товара</label>
@@ -737,6 +754,27 @@ const AdminProductForm: React.FC = () => {
                                 placeholder="Введите описание товара"
                             />
                         </div>
+
+                        {/* NEW: дата релиза */}
+                        <div className={s.formRow}>
+                            <ReleaseDateField
+                                precision={formData.release_precision}
+                                year={formData.release_year}
+                                date={formData.release_date}
+                                onChange={({ precision, year, date }) => {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        release_precision: precision,
+                                        release_year: year,
+                                        release_date: date,
+                                    }));
+                                    setValidationErrors(prev => ({ ...prev, release: false }));
+                                }}
+                                error={checkValid && validationErrors.release}
+                                errorText="Укажите год или дату релиза"
+                            />
+                        </div>
+
                         <div className={s.formGroup}>
                             <label>Статус</label>
                             <Combobox
@@ -750,7 +788,7 @@ const AdminProductForm: React.FC = () => {
                         </div>
                     </section>
 
-                    {/* Размеры и цены */}
+                    {/* Размеры и цены — без изменений */}
                     <section className={s.card}>
                         <div className={s.sizeTableHeader}>
                             <h3>Размеры и цены</h3>
@@ -774,7 +812,6 @@ const AdminProductForm: React.FC = () => {
 
                         {hasSizes && (
                             <div className={s.bulkActions}>
-                                {/* ... все bulk actions без изменений ... */}
                                 <div className={s.bulkGroup}>
                                     <Checkbox enable={true} activeData={enableDiscountToAll} onChange={setEnableDiscountToAll} />
                                     <span className={s.bulkLabel}>Скидка (%)</span>
@@ -913,8 +950,8 @@ const AdminProductForm: React.FC = () => {
                                 <div className={s.errorText}>Укажите цену для безразмерного товара</div>
                             )}
                         </div>
-
                     </section>
+
                     <Button
                         text={isEdit ? 'Сохранить' : 'Создать'}
                         onClick={handleSubmit}
@@ -927,11 +964,9 @@ const AdminProductForm: React.FC = () => {
                             onClick={handleDeleteProduct}
                             disabled={loading}
                             text={'Удалить товар'}
-                        // style={{ background: 'red', color: 'white', marginLeft: 'auto' }}
                         />
-
-
                     )}
+
                     <section className={s.card}>
                         <div className={s.sizeTableHeader}>
                             <h3>Таблица размеров</h3>

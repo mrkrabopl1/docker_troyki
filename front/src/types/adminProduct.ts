@@ -1,4 +1,6 @@
 // types/adminProduct.ts
+
+import { ReleasePrecision } from "src/modules/dateField/DateField";
 export interface ProductInfoResponse {
   id?: number;
   article: string;
@@ -68,6 +70,9 @@ export interface ProductFormData {
   tags?: string[];
   seo_title?: string;
   seo_description?: string;
+  release_date?:string;
+  release_year?:number;
+  release_precision?:ReleasePrecision;
 }
 export interface ProductInfo {
   image_path: string;
@@ -135,4 +140,12 @@ export const COLLECTION_TYPES = {
     HYBRID: "hybrid"
 } as const;
 
+
+export const DISPLAY_TYPES = {
+    SHORT: 1,
+    DETAILED: 2,
+} as const;
+
+
+export type DisplayType = typeof DISPLAY_TYPES[keyof typeof DISPLAY_TYPES];
 export type CollectionType = typeof COLLECTION_TYPES[keyof typeof COLLECTION_TYPES];

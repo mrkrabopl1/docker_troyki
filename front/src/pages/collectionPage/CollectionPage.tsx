@@ -1,13 +1,13 @@
-// pages/collections/[collection].tsx
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/router';
 import { GetServerSideProps } from 'next';
-import { useAppDispatch, useAppSelector,useNavigate } from 'src/store/hooks/redux'
+import { useAppDispatch, useAppSelector, useNavigate } from 'src/store/hooks/redux'
 import { finishLoading } from 'src/store/reducers/loadingSlice'
 import { CheckBoxType } from 'src/types/modules'
 import { BODY_TYPES } from 'src/constants/bodytypes'
 import { getCollectionBySlug, getCollectionProducts } from 'src/providers/collectionsProvider'
 import MerchSliderField from 'src/modules/merchField/MerchFieldWithPageSwitcher'
+import MerchBlockWithDescription from 'src/modules/merchField/MerchBlockWithDescription' // NEW
 import ProductsFilters from "src/modules/settingsPanels/ProductsFilters"
 import SearchWithList from 'src/modules/searchWithList/SearchWithList'
 import Combobox from 'src/components/combobox/Combobox'
@@ -66,7 +66,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
     const { typesVal, categories, discountRules, firmMap, lineMap } = useAppSelector(state => state.menu)
     const { widthProps } = useAppSelector(state => state.resize)
 
-    // 🔥 Флаг готовности firmMap
+    // Флаг готовности firmMap
     const [isFirmMapReady, setIsFirmMapReady] = useState(false);
     useEffect(() => {
         if (Object.keys(firmMap).length > 0) {
@@ -118,6 +118,11 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
     const [totalCount, setTotalCount] = useState(initialData?.total || 0)
     const [refresh, setRefresh] = useState(false)
 
+    // NEW: display_type и обложка
+    const [displayType, setDisplayType] = useState<number>(initialData?.collection?.display_type ?? 1)
+    const [coverImageUrl, setCoverImageUrl] = useState<string | null>(initialData?.collection?.cover_image_url ?? null)
+    const [collectionDescription, setCollectionDescription] = useState<string>(initialData?.collection?.description || '')
+
     const pageWrap = useRef<HTMLDivElement>(null)
     const rightBlockRef = useRef<HTMLDivElement>(null);
 
@@ -140,7 +145,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
     }, [typesVal])
 
     // ============================================================
-    // 🔥 КОНВЕРТАЦИЯ ФИЛЬТРОВ (аналогично SearchPage)
+    // 🔥 КОНВЕРТАЦИЯ ФИЛЬТРОВ
     // ============================================================
     const convertFiltersData = useCallback((resData: any) => {
         if (!resData) return {
@@ -156,9 +161,8 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
             dataRight: filtersInfo.current.price[1] || resData.max_price || 100000
         }
 
-        // Размеры
         const checkBoxPropsData: CheckBoxType[] = []
-        if (resData.sizes && Object.entries(resData.sizes).length>1) {
+        if (resData.sizes && Object.entries(resData.sizes).length > 1) {
             Object.entries(resData.sizes).forEach(([size, count]) => {
                 const active = filtersInfo.current.sizes.includes(size)
                 checkBoxPropsData.push({
@@ -170,9 +174,8 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
             })
         }
 
-        // Типы товара
         const checkBoxPropsTypeData: CheckBoxType[] = []
-        if (resData.product_types && resData.product_types.length >1) {
+        if (resData.product_types && resData.product_types.length > 1) {
             resData.product_types.forEach((typeId: number) => {
                 const typeDescr = typesValRef.current[typeId]
                 if (!typeDescr) return
@@ -190,9 +193,8 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
             })
         }
 
-        // Фирмы (используем firmMapRef)
         const checkBoxPropsFirmData: CheckBoxType[] = []
-        if (resData.firms && Object.entries(resData.firms).length>1) {
+        if (resData.firms && Object.entries(resData.firms).length > 1) {
             Object.entries(resData.firms).forEach(([firmName, count]) => {
                 const firm = Object.values(firmMapRef.current).find(f => f.name === firmName)
                 if (!firm) {
@@ -209,9 +211,8 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
             })
         }
 
-        // Bodytypes
         const checkBoxPropsBodyData: CheckBoxType[] = []
-        if (resData.bodytypes && Object.entries(resData.bodytypes).length>1) {
+        if (resData.bodytypes && Object.entries(resData.bodytypes).length > 1) {
             Object.entries(resData.bodytypes).forEach(([body, count]) => {
                 const active = filtersInfo.current.bodytypes.includes(body)
                 checkBoxPropsBodyData.push({
@@ -223,7 +224,6 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
             })
         }
 
-        // Скидки
         const checkBoxPropsDiscountData: CheckBoxType[] = []
         if (resData.discount_rules) {
             resData.discount_rules.forEach((rule: any) => {
@@ -237,7 +237,6 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
             })
         }
 
-        // Линии (используем lineMapRef)
         const checkBoxPropsLineData: CheckBoxType[] = []
         if (resData.lines) {
             Object.entries(resData.lines).forEach(([lineName, count]) => {
@@ -256,7 +255,6 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
             })
         }
 
-        // Solo чекбоксы
         const soloDataProps: CheckBoxType[] = [
             {
                 id: 'withPrice',
@@ -292,15 +290,19 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
     }, [])
 
     // ============================================================
-    // 🔥 ИСПОЛЬЗОВАНИЕ SSR ДАННЫХ (с проверкой firmMap)
+    // 🔥 SSR
     // ============================================================
     useEffect(() => {
-        if (initialData  && isMounted.current && isFirmMapReady) {
+        if (initialData && isMounted.current && isFirmMapReady) {
             console.log('🔥 Using SSR data for collection')
 
             if (initialData.collection) {
                 collectionId.current = initialData.collection.id
                 setCollectionName(initialData.collection.name)
+                // NEW
+                setDisplayType(initialData.collection.display_type ?? 1)
+                setCoverImageUrl(initialData.collection.cover_image_url ?? null)
+                setCollectionDescription(initialData.collection.description || '')
             }
 
             if (initialData.products) {
@@ -330,11 +332,11 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
     }, [initialData, isFirmMapReady, convertFiltersData, dispatch])
 
     // ============================================================
-    // ❌ КЛИЕНТСКАЯ ЗАГРУЗКА (если нет SSR)
+    // ❌ CLIENT FETCH
     // ============================================================
     const loadCollection = useCallback(async () => {
         if (!collection || !router.isReady || isHydrated.current || (isMounted.current && initialData)) return
-        if (!isFirmMapReady) return // Ждем загрузку firmMap
+        if (!isFirmMapReady) return
 
         setLoading(true)
         try {
@@ -343,6 +345,10 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
             if (data.collection) {
                 collectionId.current = data.collection.id
                 setCollectionName(data.collection.name)
+                // NEW
+                setDisplayType(data.collection.display_type ?? 1)
+                setCoverImageUrl(data.collection.cover_image_url ?? null)
+                setCollectionDescription(data.collection.description || '')
             }
 
             if (data.filters) {
@@ -380,7 +386,6 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
         }
     }, [collection, router.isReady, convertFiltersData, dispatch, initialData, isFirmMapReady])
 
-    // Инициализация - только если нет SSR данных и firmMap готов
     useEffect(() => {
         if (isHydrated.current || initialData) return
 
@@ -390,7 +395,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
     }, [router.isReady, collection, typesVal, initialData, loadCollection, isFirmMapReady])
 
     // ============================================================
-    // 🔄 ОБНОВЛЕНИЕ СТРАНИЦЫ (аналогично SearchPage)
+    // 🔄 UPDATES
     // ============================================================
     const updatePage = useCallback((respData: any) => {
         dispatch(finishLoading())
@@ -423,11 +428,11 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
     }, [])
 
     // ============================================================
-    // 🔍 ПОИСК ДАННЫХ (аналогично SearchPage)
+    // 🔍 SEARCH
     // ============================================================
     const searchData = useCallback(() => {
         if (!collection || !router.isReady) return
-        if (!isFirmMapReady) return // Ждем загрузку firmMap
+        if (!isFirmMapReady) return
 
         const params: any = {
             page: currentPage.current,
@@ -442,7 +447,6 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
                 price_min: Math.round(filtersInfo.current.price[0]) || 0,
                 price_max: Math.round(filtersInfo.current.price[1]) || 100000,
                 in_store: filtersInfo.current.store,
-                // with_price: filtersInfo.current.withPrice,
                 rule_ids: filtersInfo.current.rule_ids
             }
         }
@@ -470,7 +474,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
     }, [collection, router.isReady, isFirmMapReady, updatePage, updatMerch, dispatch])
 
     // ============================================================
-    // 🎯 ОБРАБОТЧИКИ (аналогично SearchPage)
+    // 🎯 HANDLERS
     // ============================================================
     const searchNameCallback = useCallback((name: string) => {
         searchWord.current = name
@@ -517,18 +521,15 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
                 break
         }
 
-        // Обновляем состояние фильтров для отображения
         setFiltersState(prevState => {
             const newState = { ...prevState }
 
-            // Обновляем priceProps
             newState.priceProps = {
                 ...newState.priceProps,
                 dataLeft: filtersInfo.current.price[0] || newState.priceProps.min,
                 dataRight: filtersInfo.current.price[1] || newState.priceProps.max
             }
 
-            // Обновляем чекбоксы
             newState.checboxsProps = newState.checboxsProps.map(section => {
                 const newSection = { ...section }
                 switch (section.id) {
@@ -580,7 +581,6 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
                 return newSection
             })
 
-            // Обновляем solo чекбоксы
             newState.soloDataProps = newState.soloDataProps.map(item => ({
                 ...item,
                 activeData: item.id === 'withPrice'
@@ -591,7 +591,6 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
             return newState
         })
 
-        // При изменении фильтров - перезагружаем
         currentPage.current = 1
         searchData()
     }, [searchData])
@@ -627,14 +626,13 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
         }
         searchData()
     }, [searchData, convertFiltersData])
+
     const scrollToTop = useCallback(() => {
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth' // или 'auto' для мгновенного скролла
-        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }, []);
+
     // ============================================================
-    // 🪟 STICKY ЭФФЕКТ
+    // 🪟 STICKY
     // ============================================================
     useEffect(() => {
         if (!rightBlockRef.current) return;
@@ -713,7 +711,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
     }, [isSticky]);
 
     // ============================================================
-    // 🎨 АДАПТИВ
+    // 🎨 RESIZE
     // ============================================================
     useEffect(() => {
         if (!pageWrap.current) return
@@ -727,7 +725,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
     }, [])
 
     // ============================================================
-    // 🔒 БЛОКИРОВКА СКРОЛЛА
+    // 🔒 BODY LOCK
     // ============================================================
     useEffect(() => {
         if (showSortPanel || showFiltersPanel) {
@@ -748,23 +746,26 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
         }
     }, [])
 
-    // Если роутер еще не готов - показываем загрузку
     if (!router.isReady) {
         return <div className={s.loader}>Загрузка...</div>
     }
 
-    // Если нет collection - 404
     if (!collection) {
         return <div className={s.emptyRow}>Коллекция не найдена</div>
     }
 
+    const isDetailed = displayType === 2
+
     return (
         <div ref={pageWrap}>
             <div style={{ position: "relative" }}>
-                <div className={s.head}>
-                    {collectionName ? `Коллекция: ${collectionName}` : 'Коллекция'}
-                    {totalCount > 0 && <span className={s.count}> ({totalCount} товаров)</span>}
-                </div>
+                {/* Заголовок/сортировка/поиск — общие для обоих режимов */}
+                {!isDetailed && (
+                    <div className={s.head}>
+                        {collectionName ? `Коллекция: ${collectionName}` : 'Коллекция'}
+                        {totalCount > 0 && <span className={s.count}> ({totalCount} товаров)</span>}
+                    </div>
+                )}
 
                 <div style={{
                     display: 'flex',
@@ -816,47 +817,106 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
                         <div style={{ margin: "auto", width: "30%" }} />
                     )}
                 </div>
-                <div style={{ position: "relative", display: "flex", alignItems: "flex-start" }}>
-                    {emptyData.current ? (
 
-                        <div className={s.emptyRow}>
-                            {emtyText.current}
-                            {emtyText.current.includes('Сбросить фильтры') && (
-                                <span onClick={resetFilters}> Сбросить фильтры</span>
-                            )}
-
+                {isDetailed ? (
+                    // === display_type == 2: подробный вид ===
+                    <div className={s.detailedWrap}>
+                        {/* Hero: обложка + название + описание + счётчик */}
+                       <div className={s.collectionHero}>
+                            <div className={s.heroRow}>
+                                {coverImageUrl && (
+                                    <div className={s.heroCover}>
+                                        <img src={coverImageUrl} alt={collectionName} />
+                                    </div>
+                                )}
+                                <div className={s.heroInfo}>
+                                    <h1 className={s.heroTitle}>{collectionName || 'Коллекция'}</h1>
+                                    {collectionDescription && (
+                                        <p className={s.heroDescription}>{collectionDescription}</p>
+                                    )}
+                                    {totalCount > 0 && (
+                                        <span className={s.heroCount}>{totalCount} товаров</span>
+                                    )}
+                                </div>
+                            </div>
                         </div>
 
-                    ) : (
-                        <MerchSliderField
-                            onChange={pageChange}
-                            currentPage={currentPage.current}
-                            pages={pages.current}
-                            heightRow={300}
-                            size={grid ? 2 : 3}
-                            data={merchFieldData}
-                        />
-                    )}
-                    {!widthProps && (
-                        <div
-                            ref={rightBlockRef}
-                            style={{
-                                width: "25%",
-                                position: isSticky ? "sticky" : "relative",
-                                top: isSticky ? `${stickyTop}px` : "0px",
-                                height: "fit-content",
-                                alignSelf: "flex-start",
-                                transition: "none"
-                            }}
-                        >
-                            <ProductsFilters
-                                classNames={{ secondPage: s.secondPage }}
-                                onChange={onFiltersChange}
-                                {...filtersState}
+                        {emptyData.current ? (
+                            <div className={s.emptyRow}>
+                                {emtyText.current}
+                                {emtyText.current.includes('Сбросить фильтры') && (
+                                    <span onClick={resetFilters}> Сбросить фильтры</span>
+                                )}
+                            </div>
+                        ) : (
+                            <div className={s.detailedList}>
+                                {merchFieldData.map((p: any) => (
+                                    <MerchBlockWithDescription key={p.id} data={p} />
+                                ))}
+                            </div>
+                        )}
+
+                        {pages.current > 1 && (
+                            <div className={s.pagination}>
+                                <button
+                                    type="button"
+                                    disabled={currentPage.current <= 1}
+                                    onClick={() => pageChange(currentPage.current - 1)}
+                                >
+                                    ←
+                                </button>
+                                <span>{currentPage.current} / {pages.current}</span>
+                                <button
+                                    type="button"
+                                    disabled={currentPage.current >= pages.current}
+                                    onClick={() => pageChange(currentPage.current + 1)}
+                                >
+                                    →
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    // === display_type == 1: старый вид ===
+                    <div style={{ position: "relative", display: "flex", alignItems: "flex-start" }}>
+                        {emptyData.current ? (
+                            <div className={s.emptyRow}>
+                                {emtyText.current}
+                                {emtyText.current.includes('Сбросить фильтры') && (
+                                    <span onClick={resetFilters}> Сбросить фильтры</span>
+                                )}
+                            </div>
+                        ) : (
+                            <MerchSliderField
+                                onChange={pageChange}
+                                currentPage={currentPage.current}
+                                pages={pages.current}
+                                heightRow={300}
+                                size={grid ? 2 : 3}
+                                data={merchFieldData}
                             />
-                        </div>
-                    )}
-                </div>
+                        )}
+                        {!widthProps && (
+                            <div
+                                ref={rightBlockRef}
+                                style={{
+                                    width: "25%",
+                                    position: isSticky ? "sticky" : "relative",
+                                    top: isSticky ? `${stickyTop}px` : "0px",
+                                    height: "fit-content",
+                                    alignSelf: "flex-start",
+                                    transition: "none"
+                                }}
+                            >
+                                <ProductsFilters
+                                    classNames={{ secondPage: s.secondPage }}
+                                    onChange={onFiltersChange}
+                                    {...filtersState}
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Модалка сортировки */}

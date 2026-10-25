@@ -59,7 +59,9 @@ CREATE TABLE IF NOT EXISTS public.products (
     image_count INTEGER NOT NULL DEFAULT 1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    sizes JSONB
+    sizes JSONB,
+    release_year  SMALLINT,
+    release_date  DATE
 );
 CREATE TABLE IF NOT EXISTS public.product_colors (
     product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -539,11 +541,14 @@ CREATE TABLE collections (
     slug VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
+    cover_image_url VARCHAR(500),                -- заглавное изображение (необязательное)
     type VARCHAR(50) NOT NULL DEFAULT 'dynamic', -- 'dynamic' | 'manual' | 'hybrid'
+    display_type SMALLINT NOT NULL DEFAULT 1,    -- 1 = обычная, 2 = особенная
     settings JSONB NOT NULL DEFAULT '{}',
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT collections_display_type_check CHECK (display_type IN (1, 2))
 );
 CREATE TABLE public.promo_codes (
     id SERIAL PRIMARY KEY,
