@@ -26,26 +26,26 @@ const PricesBlock: React.FC<merchType> = (props) => {
             <div className={s.sizeHolder}>{size}</div>
             
             <div className={s.priceInfo}>
-                {hasDiscount && (
+                {hasDiscount?  (
                     <div className={s.originalPrice}>
                         {toPrice(price)}
                     </div>
-                )}
-                {quantity > 0 && (
+                ):null}
+                {quantity > 0 ? (
                     <div className={s.quantity}>
                        {quantity}
                     </div>
-                )}
+                ):null}
                 <div className={s.finalPrice}>
                     {toPrice(finalPrice)}
                 </div>
             </div>
 
-            {hasDiscount && (
+            {hasDiscount? (
                 <div className={s.discountLabel}>
                     -{toPrice(price *discount/100)}
                 </div>
-            )}
+            ):null}
 
             {!price && (
                 <div className={s.stockLabel}>
