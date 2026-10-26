@@ -500,7 +500,7 @@ func (s *Server) handleGetCollectionBySlug(c *gin.Context) {
 		filtersResponse = convertManualFiltersToResponse(&manualFilters)
 		fmt.Println(manualFilters, "ddddddddd")
 		// Получаем товары manual коллекции
-		dbProducts, dbTotal, err := s.store.GetManualCollectionProductsPaginated(ctx, collection.ID, 24, 0)
+		dbProducts, dbTotal, err := s.store.GetManualCollectionProductsPaginated(ctx, collection, 24, 0)
 		fmt.Println(dbProducts, "qqqqqqqqq")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get products"})
@@ -586,6 +586,8 @@ func (s *Server) handleGetCollectionBySlug(c *gin.Context) {
 		"page":     1,
 		"limit":    24,
 	}
+
+	fmt.Println(products, "f;dsmf;kmmkwwwwwwwwwwwwwwwwwwwwwewwww")
 
 	// 4. Сохраняем в кэш
 	go func() {
@@ -728,7 +730,7 @@ func (s *Server) handleGetCollectionById(c *gin.Context) {
 		filtersResponse = convertManualFiltersToResponse(&manualFilters)
 
 		// Получаем товары manual коллекции
-		dbProducts, dbTotal, err := s.store.GetManualCollectionProductsPaginated(ctx, collection.ID, 1, 24)
+		dbProducts, dbTotal, err := s.store.GetManualCollectionProductsPaginated(ctx, collection, 1, 24)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get products"})
 			return

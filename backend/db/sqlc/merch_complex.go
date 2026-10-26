@@ -50,9 +50,12 @@ type ProductsInfoResponse struct {
 	ImageCount     int32                  `json:"image_count"`
 	ImagePath      string                 `json:"image_path"`
 	Id             int32                  `json:"id"`
+	Description    string                 `json:"description"`
 	ImageExtansion string                 `json:"image_extansion"`
 	BodyType       BodyEnum               `json:"bodytype"`
 	BrandSlug      string                 `json:"brand_slug"`
+	ReleaseYear    int16                  `json:"release_year"`
+	ReleaseDate    time.Time              `json:"release_date"`
 }
 
 type ProductsResponseD struct {
@@ -221,6 +224,9 @@ func (store *SQLStore) buildProductsInfoResponse(snInfo GetProductsInfoByIdRow) 
 		Line:           snInfo.Line.String,
 		Info:           jsonData,
 		Discount:       discount,
+		Description:    snInfo.Description.String,
+		ReleaseYear:    snInfo.ReleaseYear.Int16,
+		ReleaseDate:    snInfo.ReleaseDate.Time,
 		ProductType:    snInfo.Type,
 		Category:       snInfo.Category,
 		Article:        snInfo.Article,
@@ -1759,7 +1765,7 @@ func (store *SQLStore) GetCollectionProducts(
 
 	switch collection.Type {
 	case "manual":
-		return store.GetManualCollectionProductsPaginated(ctx, collection.ID, limit, offset)
+		return store.GetManualCollectionProductsPaginated(ctx, collection, limit, offset)
 	case "dynamic":
 		return store.getHybridCollectionProducts(ctx, collection, filtersParams, limit, offset)
 	case "hybrid":
@@ -1771,11 +1777,13 @@ func (store *SQLStore) GetCollectionProducts(
 
 func (store *SQLStore) GetManualCollectionProductsPaginated(
 	ctx context.Context,
-	collectionID int32,
+	collection Collection, // ← было collectionID int32
 	limit, offset int,
 ) ([]ProductRow, int32, error) {
 
-	total, err := store.GetCollectionProductCount(ctx, collectionID)
+	withDescription := collection.DisplayType == 2
+
+	total, err := store.GetCollectionProductCount(ctx, collection.ID)
 	if err != nil {
 		log.Printf("❌ [Manual] GetCollectionProductCount error: %v", err)
 		return nil, 0, err
@@ -1785,8 +1793,55 @@ func (store *SQLStore) GetManualCollectionProductsPaginated(
 		return []ProductRow{}, 0, nil
 	}
 
+	if withDescription {
+		log.Printf("🔍 [Manual] DisplayType=2 → GetManualProductsWithDescriptionPaginate")
+
+		rows, err := store.GetManualProductsWithDescriptionPaginate(ctx,
+			GetManualProductsWithDescriptionPaginateParams{
+				CollectionID: collection.ID,
+				Limitval:     int32(limit),
+				Offsetval:    int32(offset),
+				// фильтры пустые — как в short-запросе (без фильтров)
+				Sizes:        []string{},
+				Firms:        []int32{},
+				Bodytypes:    []string{},
+				ProductTypes: []int32{},
+				Lines:        []int32{},
+				Categories:   []int32{},
+				RuleIds:      []int32{},
+				WithPrice:    false,
+				InStore:      false,
+				SortType:     0,
+				Name:         "",
+			})
+		if err != nil {
+			log.Printf("❌ [Manual+Desc] GetManualProductsWithDescriptionPaginate error: %v", err)
+			return nil, 0, err
+		}
+
+		products := make([]ProductRow, 0, len(rows))
+		for i, row := range rows {
+			products = append(products, ProductRow{
+				ID:              row.ID, // сверьте: ID или GlobalID
+				Name:            row.Name,
+				ImagePath:       store.ImagePathBuilder.GetProductMainImage(row.ImagePath),
+				Firm:            row.Firm,
+				MinPrice:        row.MinPrice,
+				MaxPrice:        row.MaxPrice,
+				DiscountPercent: row.DiscountPercent,
+				MaxDiscPrice:    row.DiscountedPrice,
+				InStore:         row.InStore,
+				Description:     row.Description.String, // ← NEW
+				Year:            row.ReleaseYear.Int16,  // ← NEW (если pgtype.Int2)
+			})
+			log.Printf("📦 [Manual+Desc] Product %d: ID=%d, Name=%s", i+1, row.ID, row.Name)
+		}
+		return products, total, nil
+	}
+
+	// ---- short (как было) ----
 	rows, err := store.GetManualCollectionProducts(ctx, GetManualCollectionProductsParams{
-		CollectionID: collectionID,
+		CollectionID: collection.ID,
 		Limit:        int32(limit),
 		Offset:       int32(offset),
 	})
@@ -1795,7 +1850,6 @@ func (store *SQLStore) GetManualCollectionProductsPaginated(
 		return nil, 0, err
 	}
 
-	// Конвертируем в ProductRow
 	products := make([]ProductRow, 0, len(rows))
 	for i, row := range rows {
 		products = append(products, ProductRow{

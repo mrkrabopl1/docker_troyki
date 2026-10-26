@@ -345,6 +345,7 @@ func (store *SQLStore) buildAdminProductsInfoResponse(snInfo GetAdminProductsInf
 			Line:           snInfo.Line.String,
 			Info:           jsonData,
 			Discount:       discount,
+			Description:    snInfo.Description.String,
 			ProductType:    snInfo.Type,
 			Category:       snInfo.Category,
 			Article:        snInfo.Article,

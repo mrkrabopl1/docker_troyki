@@ -489,6 +489,8 @@ type UpdateProductRequest struct {
 	LineID      *int32               `json:"line_id"`
 	Article     *string              `json:"article"`
 	BodyType    *string              `json:"bodytype"`
+	ReleaseYear *int16               `json:"release_year"` // NULL = не трогать
+	ReleaseDate *string              `json:"release_date"`
 	Sizes       *map[string]SizeData `json:"sizes"` // ← добавить sizes
 }
 
@@ -520,6 +522,8 @@ func (s *Server) handleAdminUpdateProduct(c *gin.Context) {
 	log.Printf("BodyType: %v", req.BodyType)
 	log.Printf("Description: %v", req.Description)
 	log.Printf("Sizes: %+v", req.Sizes)
+	log.Printf("ReleaseYear: %v", req.ReleaseYear)
+	log.Printf("ReleaseDate: %v", req.ReleaseDate)
 	log.Printf("================================")
 
 	// Проверяем, существует ли товар
@@ -589,7 +593,6 @@ func (s *Server) handleAdminUpdateProduct(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid type ID"})
 			return
 		}
-		// Проверяем, существует ли тип товара
 		params.Type = *req.TypeID
 	}
 
@@ -629,6 +632,45 @@ func (s *Server) handleAdminUpdateProduct(c *gin.Context) {
 		params.Sizes = sizesJSON
 	}
 
+	// ============================================================
+	// NEW: release_year / release_date
+	// ============================================================
+	var releaseYear pgtype.Int2 // SMALLINT; если INTEGER — pgtype.Int4
+	var releaseDate pgtype.Date
+
+	if req.ReleaseYear != nil {
+		if *req.ReleaseYear < 1900 || *req.ReleaseYear > 2100 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "release_year must be between 1900 and 2100"})
+			return
+		}
+		releaseYear = pgtype.Int2{Int16: int16(*req.ReleaseYear), Valid: true}
+		// для INTEGER: releaseYear = pgtype.Int4{Int32: int32(*req.ReleaseYear), Valid: true}
+	}
+
+	if req.ReleaseDate != nil && *req.ReleaseDate != "" {
+		t, perr := time.Parse("2006-01-02", *req.ReleaseDate)
+		if perr != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid release_date, expected YYYY-MM-DD"})
+			return
+		}
+		releaseDate = pgtype.Date{Time: t, Valid: true}
+	}
+
+	// Если задана дата — год обязателен и должен совпадать
+	if releaseDate.Valid {
+		if !releaseYear.Valid {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "release_year required when release_date is set"})
+			return
+		}
+		if releaseDate.Time.Year() != int(releaseYear.Int16) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "release_year and release_date mismatch"})
+			return
+		}
+	}
+
+	params.ReleaseYear = int32(releaseYear.Int16)
+	params.ReleaseDate = releaseDate
+
 	// Логируем итоговые параметры для БД
 	log.Printf("=== FINAL DB PARAMS ===")
 	log.Printf("ID: %d", params.ID)
@@ -644,6 +686,8 @@ func (s *Server) handleAdminUpdateProduct(c *gin.Context) {
 	log.Printf("Maxprice: %d", params.Maxprice)
 	log.Printf("ImageCount: %d", params.ImageCount)
 	log.Printf("Sizes: %s", string(params.Sizes))
+	log.Printf("ReleaseYear: %+v", params.ReleaseYear)
+	log.Printf("ReleaseDate: %+v", params.ReleaseDate)
 	log.Printf("========================")
 
 	err = s.store.UpdateProduct(c.Request.Context(), params)
@@ -659,6 +703,7 @@ func (s *Server) handleAdminUpdateProduct(c *gin.Context) {
 		productIDs := map[int32]bool{int32(productID): true}
 		_ = s.store.RecalculateProductsDiscounts(ctx, productIDs)
 	}()
+
 	// Логируем
 	go func() {
 		ctx := context.Background()
@@ -3278,6 +3323,7 @@ func (s *Server) handleAdminGetProductById(ctx *gin.Context) {
 	}
 
 	ProductsInfo, err2 := s.store.GetAdminProductsInfoByIdComplex(ctx, int32(numId))
+	fmt.Println(ProductsInfo)
 	if err2 != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return

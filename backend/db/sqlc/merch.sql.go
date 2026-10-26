@@ -7703,7 +7703,9 @@ SELECT p.sizes,
     p.date,
     b.name as firm,
     b.slug as brand_slug,
-    p.image_count
+    p.image_count,
+    p.release_year,
+    p.release_date
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
     LEFT JOIN store_house st ON p.id = st.productid
@@ -7734,6 +7736,8 @@ type GetProductsInfoByIdRow struct {
 	Firm        string      `json:"firm"`
 	BrandSlug   string      `json:"brand_slug"`
 	ImageCount  int32       `json:"image_count"`
+	ReleaseYear pgtype.Int2 `json:"release_year"`
+	ReleaseDate pgtype.Date `json:"release_date"`
 }
 
 func (q *Queries) GetProductsInfoById(ctx context.Context, id int32) (GetProductsInfoByIdRow, error) {
@@ -7756,6 +7760,8 @@ func (q *Queries) GetProductsInfoById(ctx context.Context, id int32) (GetProduct
 		&i.Firm,
 		&i.BrandSlug,
 		&i.ImageCount,
+		&i.ReleaseYear,
+		&i.ReleaseDate,
 	)
 	return i, err
 }

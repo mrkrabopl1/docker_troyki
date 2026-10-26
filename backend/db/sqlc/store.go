@@ -76,7 +76,7 @@ type Store interface {
 	) ([]ProductRow, int32, error)
 	GetManualCollectionProductsPaginated(
 		ctx context.Context,
-		collectionID int32,
+		collection Collection,
 		limit, offset int,
 	) ([]ProductRow, int32, error)
 	GetCollectionProductsByFilters(
