@@ -569,7 +569,7 @@ func (s *Server) handleGetCollectionBySlug(c *gin.Context) {
 			"type":          collection.Type,
 			"is_active":     collection.IsActive.Bool,
 			"display_type":  collection.DisplayType,
-			"cover_img_url": collection.CoverImageUrl,
+			"cover_img_url": s.imageService.ImagePathBuilder.GetImageURLFromPath(collection.CoverImageUrl.String),
 		},
 		"filters": gin.H{
 			"sizes":          toJSONRawMessage(filtersResponse.Sizes, "{}"),
