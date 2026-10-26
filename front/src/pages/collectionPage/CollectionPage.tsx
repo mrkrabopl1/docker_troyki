@@ -120,7 +120,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
 
     // NEW: display_type и обложка
     const [displayType, setDisplayType] = useState<number>(initialData?.collection?.display_type ?? 1)
-    const [coverImageUrl, setCoverImageUrl] = useState<string | null>(initialData?.collection?.cover_image_url ?? null)
+    const [coverImageUrl, setCoverImageUrl] = useState<string | null>(initialData?.collection?.cover_img_url ?? null)
     const [collectionDescription, setCollectionDescription] = useState<string>(initialData?.collection?.description || '')
 
     const pageWrap = useRef<HTMLDivElement>(null)
@@ -301,7 +301,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
                 setCollectionName(initialData.collection.name)
                 // NEW
                 setDisplayType(initialData.collection.display_type ?? 1)
-                setCoverImageUrl(initialData.collection.cover_image_url ?? null)
+                setCoverImageUrl(initialData.collection.cover_img_url ?? null)
                 setCollectionDescription(initialData.collection.description || '')
             }
 
@@ -347,7 +347,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
                 setCollectionName(data.collection.name)
                 // NEW
                 setDisplayType(data.collection.display_type ?? 1)
-                setCoverImageUrl(data.collection.cover_image_url ?? null)
+                setCoverImageUrl(data.collection.cover_img_url ?? null)
                 setCollectionDescription(data.collection.description || '')
             }
 

@@ -7713,7 +7713,8 @@ WHERE p.id = $1
 GROUP BY p.id,
     d.value,
     b.name,
-    bl.name
+    bl.name,
+    b.slug
 `
 
 type GetProductsInfoByIdRow struct {

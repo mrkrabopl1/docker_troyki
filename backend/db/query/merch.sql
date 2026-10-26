@@ -1052,7 +1052,8 @@ WHERE p.id = $1
 GROUP BY p.id,
     d.value,
     b.name,
-    bl.name;
+    bl.name,
+    b.slug;
 -- name: GetSoloCollection :many
 SELECT 
     COALESCE(d.min_price, p.minprice) AS minprice,
