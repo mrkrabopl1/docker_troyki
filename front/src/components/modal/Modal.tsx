@@ -6,10 +6,15 @@ interface ModalProps {
     active: boolean;
     onChange: (isActive: boolean) => void;
     children: React.ReactNode;
+    showCloseButton?: boolean;
 }
 
-const Modal: React.FC<ModalProps> = ({ active, onChange, children }) => {
-    // Управление скроллом
+const Modal: React.FC<ModalProps> = ({ 
+    active, 
+    onChange, 
+    children, 
+    showCloseButton = true 
+}) => {
     useEffect(() => {
         setGlobalScroller(active);
         return () => {
@@ -18,20 +23,19 @@ const Modal: React.FC<ModalProps> = ({ active, onChange, children }) => {
         };
     }, [active]);
 
-    // Обработчик клика по фону
     const handleBackdropClick = useCallback((e: React.MouseEvent) => {
-        // if (e.target === e.currentTarget ) {
-        //     e.stopPropagation();
-        //     onChange(false);
-        // }
-         e.stopPropagation();
-            onChange(false);
+        e.stopPropagation();
+        onChange(false);
     }, [onChange]);
 
-    // Обработчик колеса мыши
     const handleWheel = useCallback((e: React.WheelEvent) => {
         e.stopPropagation();
     }, []);
+
+    const handleCloseClick = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        onChange(false);
+    }, [onChange]);
 
     if (!active) return null;
 
@@ -40,17 +44,26 @@ const Modal: React.FC<ModalProps> = ({ active, onChange, children }) => {
             className={s.modalBack}
             onClick={handleBackdropClick}
             onWheel={handleWheel}
-            onScroll={e=>e.stopPropagation()}
+            onScroll={e => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
         >
             <div 
                 className={s.modalContent}
                 onClick={(e) => {
-                    //  e.stopPropagation()
-                   //handleBackdropClick(e)
+                    // e.stopPropagation()
                 }}
             >
+                {showCloseButton && (
+                    <button
+                        type="button"
+                        className={s.close}
+                        onClick={handleCloseClick}
+                        aria-label="Закрыть"
+                    >
+                        ×
+                    </button>
+                )}
                 {children}
             </div>
         </div>
@@ -59,5 +72,6 @@ const Modal: React.FC<ModalProps> = ({ active, onChange, children }) => {
 
 export default React.memo(Modal, (prevProps, nextProps) => {
     return prevProps.active === nextProps.active && 
-           prevProps.children === nextProps.children;
+           prevProps.children === nextProps.children &&
+           prevProps.showCloseButton === nextProps.showCloseButton;
 });

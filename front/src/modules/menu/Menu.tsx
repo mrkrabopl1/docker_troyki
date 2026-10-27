@@ -13,7 +13,7 @@ import { ReactComponent as Loupe } from "/public/loupe.svg";
 import s from "./style.module.css";
 import ss from "src/pages/search/style.module.css";
 import logo from "/public/troyki_logo.svg";
-
+import { setShowBrandsModal,setActiveCart } from 'src/store/reducers/menuSlice';
 import ssa from "/public/firm_images.svg";
 import ComplexDropVertical from 'src/components/complexDrop/ComplexDropVertical';
 import AlphabetNavigation from 'src/components/alphabetNavigation/AlphabetNavigation';
@@ -41,13 +41,12 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
     const router = useRouter();
 
     const { isLog, isAuthChecked } = useAppSelector(state => state.user);
-    const { show, sticky, typesVal, categories } = useAppSelector(state => state.menu);
+    const { show, sticky, typesVal, categories,showBrandsModal,activeCart } = useAppSelector(state => state.menu);
     const { isVerified } = useAppSelector(state => state.menu);
 
     const menuWrap = useRef<HTMLDivElement>(null);
     const [active, setActive] = useState(false);
-    const [activeAlphabet, setActiveAlphabet] = useState(false);
-    const [activeCart, setActiveCart] = useState(false);
+    
     const { setSearchData } = searchSlice.actions;
     const [showBurgerMenu, setShowBurgerMenu] = useState(false);
     const activeBurger = useRef(false);
@@ -158,7 +157,13 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                     closeAuthModal();
                 } else {
                     setIsAuthLoading(false);
-                    setAuthError('Неверный email или пароль');
+                    if(res.status === 401){
+                        setAuthError('Неверный email или пароль');
+                    }else if(res.status === 429){
+                        setAuthError('Слишком много попыток, попробуйте позже');
+                    }else{
+                        setAuthError('Ошибка входа, попробуйте позже');
+                    }
                 }
             }
         );
@@ -205,7 +210,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
 
             <div className={s.navContainer}>
                 <div className={`${s.linkHolder} ${isSearchExpanded ? s.linkHolderHidden : ''}`}>
-                    <div className={s.link} onClick={() => setActiveAlphabet(true)}>Фирмы</div>
+                    <div className={s.link} onClick={() => dispatch(setShowBrandsModal(true))}>Фирмы</div>
                     <div onClick={() => navigate('/search?discount=true')} className={s.link}>Скидки</div>
                     <div onClick={() => navigate('/news')} className={s.link}>Новости</div>
                     <div onClick={() => navigate('/about')} className={s.link}>О нас</div>
@@ -232,7 +237,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                     <div className={s.link} onClick={() => {
                         activeBurger.current = false;
                         setShowBurgerMenu(false);
-                        setActiveAlphabet(true);
+                        dispatch(setShowBrandsModal(true));
                     }}>Фирмы</div>
                     <div onClick={() => {
                         activeBurger.current = false;
@@ -250,7 +255,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
             )}
 
             <div className={s.rightMenuStyle}>
-                <BuyButton onClick={() => setActiveCart(true)} />
+                <BuyButton onClick={() => dispatch(setActiveCart(true))} />
                 <UserButton
                     onClick={handleUserClick}
                     isLog={isLog}
@@ -261,12 +266,12 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
             {/* ============================================================ */}
             {/* МОДАЛКА: ФИРМЫ */}
             {/* ============================================================ */}
-            <Modal onChange={setActiveAlphabet} active={activeAlphabet}>
+            <Modal onChange={()=>{dispatch(setShowBrandsModal(false))}} active={showBrandsModal}>
                 <div style={{ height: "100%" }} onClick={(e) => e.stopPropagation()} className={s.modalWrap1}>
                     <AlphabetNavigation
                         onChange={(name) => {
                             navigate(`/search?brand=${name}`);
-                            setActiveAlphabet(false);
+                            dispatch(setShowBrandsModal(false));
                         }}
                     />
                 </div>
@@ -275,10 +280,10 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
             {/* ============================================================ */}
             {/* МОДАЛКА: КОРЗИНА */}
             {/* ============================================================ */}
-            <Modal onChange={setActiveCart} active={activeCart}>
+            <Modal onChange={()=>{dispatch(setActiveCart(false))}} active={activeCart}>
                 <div onClick={(e) => e.stopPropagation()} className={s.cartModalWrap}>
                     <Scroller onlyVertical={true}>
-                        <BuyPage onActivate={() => setActiveCart(false)} />
+                        <BuyPage onActivate={() => dispatch(setActiveCart(false))} />
                     </Scroller>
                 </div>
             </Modal>

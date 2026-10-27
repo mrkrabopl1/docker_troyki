@@ -288,6 +288,27 @@ func CachedBannersMiddleware(s *Server) gin.HandlerFunc {
 		ctx.Next()
 	}
 }
+func MaxBodySizeMiddleware(maxBytes int64, skipPrefixes ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		switch c.Request.Method {
+		case http.MethodGet, http.MethodHead, http.MethodOptions:
+			c.Next()
+			return
+		}
+
+		for _, p := range skipPrefixes {
+			if strings.HasPrefix(c.Request.URL.Path, p) {
+				c.Next()
+				return
+			}
+		}
+
+		if c.Request.Body != nil {
+			c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBytes)
+		}
+		c.Next()
+	}
+}
 
 // ========== CUSTOMER MIDDLEWARE (ДЛЯ ЗАЛОГИНЕННЫХ ПОЛЬЗОВАТЕЛЕЙ) ==========
 

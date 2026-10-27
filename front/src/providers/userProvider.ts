@@ -77,7 +77,7 @@ export const loginUser = (data: loginDataType, callback: (val: any) => void) => 
         (res) => callback(res.data),
         (error) => {
             console.warn('[loginUser]', error);
-            callback(error.response?.data ?? { error: 'Network error' });
+            callback(error.response);
         }
     );
 };

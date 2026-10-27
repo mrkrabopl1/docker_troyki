@@ -22,6 +22,8 @@ interface IField {
     typesVal: { [key: string]: { name: string, category_name: string, category_key: string, type_key: string, category_id: number } },
     discountRules: Record<string, string>;
     sizeTables: Record<string, any>;
+    showBrandsModal: boolean,
+    activeCart:boolean,
 }
 
 const initialState: IField = {
@@ -38,14 +40,22 @@ const initialState: IField = {
     firmMap: {}, // ← теперь будет { "nike": { id: 1, name: "Nike", slug: "nike" } }
     discountRules: {},
     sizeTables: {},
+    showBrandsModal: false,
+    activeCart:false,
 }
 
 const menuSlice = createSlice({
     name: "menu",
     initialState,
     reducers: {
+        setActiveCart(state, action) {
+            state.activeCart = action.payload
+        },
         show(state, action) {
             state.show = action.payload
+        },
+        setShowBrandsModal(state, action) {
+            state.showBrandsModal = action.payload
         },
         sticky(state, action) {
             state.sticky = action.payload
@@ -87,6 +97,6 @@ const menuSlice = createSlice({
 
 });
 
-export const { show, sticky, shopAction, cartCountAction, verified, collections, categories, types, setFirms, setFirmMap, setDiscountRules, setSizeTables,setLineMap } = menuSlice.actions
+export const { show, sticky, shopAction, cartCountAction, verified, collections, categories, types, setFirms, setFirmMap, setDiscountRules, setSizeTables,setLineMap,setShowBrandsModal,setActiveCart } = menuSlice.actions
 
 export default menuSlice.reducer

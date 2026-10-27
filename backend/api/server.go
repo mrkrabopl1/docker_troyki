@@ -1,11 +1,14 @@
 package api
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time" // <-- добавить для MaxAge
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -14,9 +17,9 @@ import (
 	"github.com/mrkrabopl1/go_db/token"
 	"github.com/mrkrabopl1/go_db/util"
 	"github.com/mrkrabopl1/go_db/worker"
+	"golang.org/x/time/rate"
 )
 
-// Server serves HTTP requests for our banking service.
 type Server struct {
 	config          util.Config
 	store           db.Store
@@ -27,31 +30,50 @@ type Server struct {
 	imageService    *services.ImageService
 }
 
-// NewServer creates a new HTTP server and set up routing.
 func NewServer(config util.Config, store db.Store, taskDistributor worker.TaskDistributor, taskProcessor worker.TaskProcessor, imageService *services.ImageService) (*Server, error) {
-	fmt.Println("NewServer")
 	tokenMaker, err := token.NewPasetoMaker(config.TokenSymmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create token maker: %w", err)
 	}
 
 	server := &Server{
-		config: config,
-		store:  store,
-
+		config:          config,
+		store:           store,
 		taskDistributor: taskDistributor,
 		taskProcessor:   taskProcessor,
 		tokenMaker:      tokenMaker,
 		imageService:    imageService,
 	}
 
-	fmt.Println("NewServer")
 	server.setupRouter()
 	return server, nil
 }
 
 func (s *Server) setupRouter() {
 	router := gin.Default()
+
+	// ===== КРИТИЧНО: доверяем только локальному Nginx =====
+	// Без этого c.ClientIP() вернёт IP Nginx, и все лимиты заблокируют всех.
+	// Если Nginx на другом IP — укажи его. Если прокси нет — передай nil.
+	if err := router.SetTrustedProxies([]string{"127.0.0.1", "::1"}); err != nil {
+		panic(fmt.Sprintf("invalid trusted proxies config: %v", err))
+	}
+
+	// ===== 1. Ограничение размера тела =====
+	// Глобально 1 MiB, кроме upload-роутов (у них свой лимит на месте).
+	router.Use(MaxBodySizeMiddleware(1<<20,
+		"/api/admin/products/",
+		"/api/admin/tempImage/",
+		"/api/admin/collections/upload-cover",
+		"/api/admin/instagram/upload",
+	))
+
+	// ===== 2. Глобальный rate limit по IP =====
+	// 20 rps, burst 40. Мягко для легитимных, отсекает массовый флуд.
+	globalLimiter := newIPLimiter(rate.Limit(20), 40, 10*time.Minute)
+	router.Use(RateLimitByIP(globalLimiter))
+
+	// ===== 3. CORS =====
 	corsConfig := cors.Config{
 		AllowOrigins:     s.config.AllowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -61,6 +83,7 @@ func (s *Server) setupRouter() {
 	}
 	router.Use(cors.New(corsConfig))
 
+	// ===== 4. Логгер =====
 	router.Use(func(c *gin.Context) {
 		fmt.Printf("Request: %s %s\n", c.Request.Method, c.Request.URL.Path)
 		start := time.Now()
@@ -84,17 +107,20 @@ func (s *Server) setupRouter() {
 			newsletterGroup.POST("/unsubscribe", s.handleUnsubscribeNewsletter)
 		}
 
-		// Banners
 		bannerRoute := api.Group("/")
 		bannerRoute.Use(CachedBannersMiddleware(s))
 		bannerRoute.GET("/banners", s.handleGetMainBanners)
 
-		// Основные API маршруты
-
-		api.POST("/search", s.handleSearchProducts)
-		api.POST("/search/with-filters", s.handleSearchWithFilters)
-		api.POST("/search-by-slug", s.handleSearchSnickersAndFiltersBySlugs)
-		api.POST("/search/filters", s.handleSearchProductByCategoriesAndFilters)
+		// ===== Жёсткий лимит на поиск (дорогая операция с БД) =====
+		searchLimiter := newIPLimiter(rate.Limit(3), 6, 10*time.Minute)
+		searchGroup := api.Group("/")
+		searchGroup.Use(RateLimitByIP(searchLimiter))
+		{
+			searchGroup.POST("/search", s.handleSearchProducts)
+			searchGroup.POST("/search/with-filters", s.handleSearchWithFilters)
+			searchGroup.POST("/search-by-slug", s.handleSearchSnickersAndFiltersBySlugs)
+			searchGroup.POST("/search/filters", s.handleSearchProductByCategoriesAndFilters)
+		}
 
 		api.GET("/products/light", s.handleGetProductsLight)
 		api.GET("/products/light/since", s.handleGetProductsLightSince)
@@ -121,13 +147,18 @@ func (s *Server) setupRouter() {
 		api.POST("/preorders", s.handleCreatePreorder)
 		api.PUT("/preorders/:id", CartMiddleware(), s.handleUpdatePreorder)
 
-		// public routes (для клиента)
 		api.GET("/instagram", s.handleGetInstagramPhotos)
 
-		api.POST("/auth/register", s.handleRegisterUser)
-		api.POST("/auth/login", s.handleLogin)
+		// ===== Жёсткий лимит на auth (защита от брутфорса) =====
+		authLimiter := newIPLimiter(rate.Limit(0.2), 5, 10*time.Minute)
+		authGroup := api.Group("/auth")
+		authGroup.Use(RateLimitByIP(authLimiter))
+		{
+			authGroup.POST("/register", s.handleRegisterUser)
+			authGroup.POST("/login", s.handleLogin)
+			authGroup.POST("/verify-email", s.handleVerifyUser)
+		}
 
-		api.POST("/auth/verify-email", s.handleVerifyUser)
 		optional := api.Group("/")
 		optional.Use(s.OptionalCustomer())
 		{
@@ -136,16 +167,14 @@ func (s *Server) setupRouter() {
 			optional.GET("/promo-codes/:code", s.handleGetPromoCodeByCode)
 			optional.GET("/customers/check", s.handleCheckCustomerData)
 		}
+
 		protected := api.Group("/")
 		protected.Use(s.RequireCustomer())
 		{
-
 			protected.POST("/auth/profile", s.handleUpdateProfile)
-
-			// Смена пароля
 			protected.POST("/users/password", s.handleChangePass)
 			protected.GET("/my-promo-codes", s.handleGetMyPromoCodes)
-			// Адреса
+
 			protected.GET("/auth/addresses", s.handleGetAddresses)
 			protected.POST("/auth/addresses", s.handleCreateAddress)
 			protected.GET("/auth/addresses/default", s.handleGetDefaultAddress)
@@ -154,29 +183,27 @@ func (s *Server) setupRouter() {
 			protected.DELETE("/auth/addresses/:id", s.handleDeleteAddress)
 			protected.PATCH("/auth/addresses/:id/default", s.handleSetDefaultAddress)
 
-			// Мои заказы
 			protected.GET("/orders/my", s.handleGetMyOrders)
 		}
 
 		api.GET("/news", s.handleGetActiveNewsBlocks)
 		api.POST("/news/:id/view", s.handleIncrementNewsView)
 		api.POST("/news/:id/like", s.handleToggleNewsLike)
-		api.GET("/news/:id", s.handleGetNewsBlockByID) // 🔥 ДОБАВИТЬ ЭТОТ МАРШРУТ
+		api.GET("/news/:id", s.handleGetNewsBlockByID)
 		api.GET("/news/:id/related", s.handleGetRelatedNews)
 
-		// Запрос на восстановление пароля (отправка email)
-		api.POST("/users/password/forgot", s.handleForgetPass)
-		// Подтверждение смены пароля (верификация кода)
-		api.POST("/users/password/verify", s.handleVerifyForgetPass)
-		// Смена забытого пароля (с новым паролем)
-		api.POST("/users/password/reset", s.handleChangeForgetPass)
+		api.POST("/users/password/forgot",
+			RateLimitByIP(authLimiter), s.handleForgetPass)
+		api.POST("/users/password/verify",
+			RateLimitByIP(authLimiter), s.handleVerifyForgetPass)
+		api.POST("/users/password/reset",
+			RateLimitByIP(authLimiter), s.handleChangeForgetPass)
 
 		api.GET("/widgets", s.handleGetPageWidgets)
 		api.GET("/main/info", s.handleGetMainInfo)
 		api.GET("/menu", s.handleGetMenuInfo)
 		api.GET("/brands/lines", s.handleGetBrandsWithLines)
 
-		// Admin auth (без middleware)
 		api.POST("/admin/auth/login", s.handleAdminLogin)
 		api.POST("/admin/auth/forgot-password", s.handleAdminForgotPass)
 		api.POST("/admin/auth/refresh", s.handleAdminRefreshToken)
@@ -185,26 +212,37 @@ func (s *Server) setupRouter() {
 		api.POST("/admin/accept-invite", s.handleAdminAcceptInvite)
 
 		api.GET("/health", s.HealthCheckHandler)
-		// Admin group с middleware
+
 		adminGroup := api.Group("/admin")
 		adminGroup.Use(s.AdminAuthMiddleware())
 		{
 			adminGroup.GET("/dashboard/stats", s.handleAdminGetDashboardStats)
 
-			// Управление товарами
 			adminGroup.POST("/products", s.handleAdminCreateProduct)
 			adminGroup.GET("/products/with-filters", s.handleAdminGetProductsAndFilters)
 			adminGroup.POST("/products/search", s.handleAdminGetProducts)
 			adminGroup.PUT("/products/:id", s.handleAdminUpdateProduct)
 			adminGroup.GET("/products/:id", s.handleAdminGetProductById)
 			adminGroup.DELETE("/products/:id", s.handleAdminHardDeleteProduct)
-			adminGroup.POST("/products/:id/image", s.handleAdminUploadProductImage)
 			adminGroup.PATCH("/products/bulk-status", s.handleAdminBulkUpdateProductStatus)
 			adminGroup.PATCH("/products/bulk-price", s.handleBulkUpdateProductPrice)
 			adminGroup.PATCH("/products/:id/status", s.handleAdminUpdateProductStatus)
 			adminGroup.DELETE("/products/:id/image", s.handleAdminDeleteProductImage)
 
-			adminGroup.POST("/tempImage/:id", s.handleAdminUploadTempImage)
+			// ===== upload-роуты с отдельным лимитом тела (10 MiB) =====
+			adminGroup.POST("/products/:id/image",
+				MaxBodySizeMiddleware(10<<20),
+				s.handleAdminUploadProductImage)
+			adminGroup.POST("/tempImage/:id",
+				MaxBodySizeMiddleware(10<<20),
+				s.handleAdminUploadTempImage)
+			adminGroup.POST("/collections/upload-cover",
+				MaxBodySizeMiddleware(10<<20),
+				s.handleAdminUploadCollectionCover)
+			adminGroup.POST("/instagram/upload",
+				MaxBodySizeMiddleware(10<<20),
+				s.handleAdminUploadInstagramPhotos)
+
 			adminGroup.DELETE("/tempImage/:id", s.handleAdminDeleteTempImage)
 			adminGroup.GET("/tempImage/:id", s.handleAdminGetTempImages)
 
@@ -225,18 +263,15 @@ func (s *Server) setupRouter() {
 
 			adminGroup.POST("/sql/execute", s.handleAdminExecuteSQL)
 
-			// Управление скидками
 			adminGroup.POST("/sales", s.handleAdminCreateSale)
 			adminGroup.PUT("/sales/:id", s.handleAdminUpdateSale)
 			adminGroup.DELETE("/sales/:id", s.handleAdminDeleteSale)
 			adminGroup.GET("/sales", s.handleAdminGetSales)
 
-			// Управление заказами
 			adminGroup.GET("/orders", s.handleAdminGetOrders)
 			adminGroup.GET("/orders/:id", s.handleAdminGetOrderDetails)
 			adminGroup.PUT("/orders/:id/status", s.handleAdminUpdateOrderStatus)
 
-			// Управление баннерами
 			adminGroup.GET("/banners/filters", s.handleAdminGetBannersAndFilters)
 			adminGroup.GET("/banners", s.handleAdminGetBanners)
 			adminGroup.POST("/banners", s.handleAdminCreateBanner)
@@ -261,7 +296,6 @@ func (s *Server) setupRouter() {
 			adminGroup.GET("/promo-codes/:id/usage", s.handleAdminCheckPromoCodeUsage)
 
 			adminGroup.GET("/collections", s.handleAdminGetCollections)
-			adminGroup.POST("/collections/upload-cover", s.handleAdminUploadCollectionCover)
 			adminGroup.GET("/collections/:id", s.handleAdminGetCollection)
 			adminGroup.POST("/collections", s.handleAdminCreateCollection)
 			adminGroup.PUT("/collections/:id", s.handleAdminUpdateCollection)
@@ -274,25 +308,16 @@ func (s *Server) setupRouter() {
 			adminGroup.DELETE("/news-blocks/:id", s.handleAdminDeleteNewsBlock)
 			adminGroup.PATCH("/news-blocks/reorder", s.handleAdminReorderNewsBlocks)
 
-			// News Items
 			adminGroup.GET("/news-blocks/:id/items", s.handleAdminGetNewsItems)
 			adminGroup.POST("/news-blocks/:id/items", s.handleAdminCreateNewsItem)
 			adminGroup.PUT("/news-items/:id", s.handleAdminUpdateNewsItem)
 			adminGroup.DELETE("/news-items/:id", s.handleAdminDeleteNewsItem)
 			adminGroup.PATCH("/news-items/reorder", s.handleAdminReorderNewsItems)
 
-			adminGroup.POST("/instagram/upload", s.handleAdminUploadInstagramPhotos)     // загрузка нескольких фото
-			adminGroup.GET("/instagram", s.handleAdminGetInstagramPhotos)                // список всех фото
-			adminGroup.DELETE("/instagram/:id", s.handleAdminDeleteInstagramPhoto)       // удаление
-			adminGroup.PATCH("/instagram/:id/toggle", s.handleAdminToggleInstagramPhoto) // вкл/выкл
+			adminGroup.GET("/instagram", s.handleAdminGetInstagramPhotos)
+			adminGroup.DELETE("/instagram/:id", s.handleAdminDeleteInstagramPhoto)
+			adminGroup.PATCH("/instagram/:id/toggle", s.handleAdminToggleInstagramPhoto)
 
-			// debugGroup := adminGroup.Group("/debug")
-
-			// {
-			// 	debugGroup.POST("/update/discounts", s.handleUpdateDiscounts)
-			// }
-
-			// Discount rules
 			discountRules := adminGroup.Group("/discount-rules")
 			{
 				discountRules.POST("", s.handleAdminCreateDiscountRule)
@@ -310,7 +335,6 @@ func (s *Server) setupRouter() {
 
 			adminGroup.GET("/auth/me", s.handleAdminGetMe)
 
-			// ========== ТОЛЬКО SUPERADMIN ==========
 			superAdminGroup := adminGroup.Group("/")
 			superAdminGroup.Use(s.SuperAdminMiddleware())
 			{
@@ -328,8 +352,31 @@ func (s *Server) setupRouter() {
 }
 
 func (server *Server) Start(address string) error {
-	fmt.Println(server.router, "dnlsakdmas;")
-	return server.router.Run(address)
+	srv := &http.Server{
+		Addr:              address,
+		Handler:           server.router,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20,
+	}
+
+	shutdown := handleShutdown(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(ctx); err != nil {
+			fmt.Printf("server shutdown error: %v\n", err)
+		}
+	})
+
+	err := srv.ListenAndServe()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+
+	<-shutdown
+	return nil
 }
 
 func handleShutdown(onShutdownSignal func()) <-chan struct{} {
@@ -347,6 +394,7 @@ func handleShutdown(onShutdownSignal func()) <-chan struct{} {
 
 	return shutdown
 }
+
 func errorResponse(err error) gin.H {
 	return gin.H{"error": err.Error()}
 }
