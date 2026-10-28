@@ -1135,7 +1135,9 @@ SELECT p.sizes,
     p.date,
     b.slug as firm,
     p.status,
-    p.image_count
+    p.image_count,
+    p.release_year,
+    p.release_date
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
     LEFT JOIN store_house st ON p.id = st.productid
@@ -1164,6 +1166,8 @@ type GetAdminProductsInfoByIdRow struct {
 	Firm        string      `json:"firm"`
 	Status      string      `json:"status"`
 	ImageCount  int32       `json:"image_count"`
+	ReleaseYear pgtype.Int2 `json:"release_year"`
+	ReleaseDate pgtype.Date `json:"release_date"`
 }
 
 func (q *Queries) GetAdminProductsInfoById(ctx context.Context, id int32) (GetAdminProductsInfoByIdRow, error) {
@@ -1185,6 +1189,8 @@ func (q *Queries) GetAdminProductsInfoById(ctx context.Context, id int32) (GetAd
 		&i.Firm,
 		&i.Status,
 		&i.ImageCount,
+		&i.ReleaseYear,
+		&i.ReleaseDate,
 	)
 	return i, err
 }

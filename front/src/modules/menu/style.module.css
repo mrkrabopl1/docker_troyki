@@ -211,6 +211,9 @@
   .linkHolder {
     display: none !important;
   }
+  .displayStyle{
+    display: none !important;
+  }
 }
 
 @media (max-width: 900px) {

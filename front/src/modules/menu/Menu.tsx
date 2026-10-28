@@ -201,7 +201,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                 />
             </div>
 
-            <div onClick={handleLogoClick} className={s.logoWrapStyle}>
+            <div onClick={handleLogoClick} className={`${s.logoWrapStyle} ${isSearchExpanded ? s.displayStyle : ''}`}>
                 <div className={s.imageWrapStyle}>
                     <img className={s.imgStyle} src={logo} alt="troyki" />
                 </div>
@@ -225,6 +225,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                     className={s.searchInMenu}
                     onFocus={() => setIsSearchExpanded(true)}
                     onBlur={() => setIsSearchExpanded(false)}
+                    isExpanded={isSearchExpanded}
                 />
             </div>
 
@@ -241,14 +242,17 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                     }}>Фирмы</div>
                     <div onClick={() => {
                         activeBurger.current = false;
+                        setShowBurgerMenu(false);
                         navigate('/search?discount=true');
                     }} className={s.link}>Скидки</div>
                     <div onClick={() => {
                         activeBurger.current = false;
+                        setShowBurgerMenu(false);
                         navigate('/about');
                     }} className={s.link}>О нас</div>
                     <div onClick={() => {
                         activeBurger.current = false;
+                        setShowBurgerMenu(false);
                         navigate('/reviews');
                     }} className={s.link}>Отзывы</div>
                 </div>

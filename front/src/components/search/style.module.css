@@ -184,12 +184,13 @@
     top: 50%;
     transform: translateY(-50%);
     width: 30px;
+    cursor: pointer;
     height: 30px;
     transition: all .25s ease-in .25s;
     border-radius: 30px;
     right: 0;
     left: auto;
-    pointer-events: none;
+    /* pointer-events: none; */
 }
 
 .searchBox span::before {

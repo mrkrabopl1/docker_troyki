@@ -29,7 +29,7 @@ const StyledSearch: React.FC<Props> = ({
     const text = useRef<string>(val);
     const [isFocused, setIsFocused] = useState(false);
     const [inputValue, setInputValue] = useState(val);
-
+    const inputRef = useRef<HTMLInputElement>(null);
     const containerClassName = `${s.container} ${className || ''} ${isExpanded ? s.expanded : ''}`;
     const searchBoxClassName = `${s.searchBox} ${isExpanded ? s.expanded : ''}`;
 
@@ -58,27 +58,39 @@ const StyledSearch: React.FC<Props> = ({
         setIsFocused(true);
         onFocus?.();
     }, [onFocus]);
+    const focusInput = useCallback(() => {
+        setIsFocused(true);
+        onFocus?.();
+        inputRef.current?.focus();
+    }, []);
 
     const handleBlur = useCallback(() => {
         setIsFocused(false);
         setTimeout(() => onBlur?.(), 400)
-        
+
     }, [onBlur]);
 
     return (
-        <div style={{ flex: isFocused ? 1 : 0, paddingLeft: isFocused ? "45px" : 0 }} className={containerClassName}>
+        <div
+            onClick={focusInput}
+            onTouchStart={(e) => { e.preventDefault(); focusInput(); }}
+            style={{ flex: isFocused ? 1 : 0, paddingLeft: isFocused ? "45px" : 0 }}
+            className={containerClassName}
+        >
             <div className={`${searchBoxClassName} ${isFocused ? s.focused : ''}`}>
                 <input
-                    style={isExpanded?{}:{display:"none"}}
+                    ref={inputRef}
                     type="text"
                     value={inputValue}
                     onChange={createSearchRequest}
                     onKeyUp={handleEnter}
-                    onFocus={handleFocus}
+                    // onFocus={handleFocus}
                     onBlur={handleBlur}
                     placeholder={placeholder}
+                    // display: none УБРАТЬ — иначе фокус не сработает
+                    style={isExpanded ? {} : { position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none' }}
                 />
-                <span></span>
+                <span />
             </div>
         </div>
     );

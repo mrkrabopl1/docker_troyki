@@ -162,7 +162,7 @@ const AdminProductForm: React.FC = () => {
     // --- Загрузка данных ---
     useEffect(() => {
         loadSizeTable();
-        if (isEdit && id) {
+        if (isEdit && id && Object.values(firmMap).length >0) {
             loadProductData(Number(id));
         } else {
             const timer = setTimeout(() => {
@@ -170,7 +170,7 @@ const AdminProductForm: React.FC = () => {
             }, 0);
             return () => clearTimeout(timer);
         }
-    }, [id, isEdit]);
+    }, [id, isEdit,firmMap]);
 
     const loadSizeTable = async () => {
         await getSizeTable('clothes', setTableInfo);
@@ -213,7 +213,7 @@ const AdminProductForm: React.FC = () => {
 
         return { precision, year, date };
     };
-
+   
     const loadProductData = async (productId: number) => {
         setLoading(true);
         try {

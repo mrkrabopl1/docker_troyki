@@ -91,3 +91,166 @@
 .emptyDay {
     aspect-ratio: 1;
 }
+
+.datePickerContainer {
+    position: relative;
+    width: 100%;
+}
+
+.datePickerInput {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    background: white;
+    box-sizing: border-box;
+}
+
+.datePickerInput:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.calendar {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    margin-top: 4px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 12px;
+    min-width: 280px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.calendarHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    gap: 8px;
+}
+
+.calendarHeader button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 16px;
+    border-radius: 4px;
+}
+
+.calendarHeader button:hover {
+    background: #f0f0f0;
+}
+
+/* быстрый выбор месяца/года */
+.selectors {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+    justify-content: center;
+}
+
+.select {
+    padding: 4px 6px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+    font-size: 13px;
+    cursor: pointer;
+    max-width: 120px;
+}
+
+.select:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.weekDays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.weekDay {
+    text-align: center;
+    font-size: 12px;
+    color: #666;
+    padding: 4px;
+}
+
+.days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    border: none;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.day:hover {
+    background: #f0f0f0;
+}
+
+.day.selected {
+    background: #007bff;
+    color: white;
+}
+
+.day.today {
+    border: 1px solid #007bff;
+}
+
+.emptyDay {
+    aspect-ratio: 1;
+}
+
+.calendarFooter {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    gap: 8px;
+}
+
+.footerBtn {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.footerBtn:hover {
+    background: #f0f0f0;
+}
+
+/* мобильный: календарь на всю ширину контейнера */
+@media (max-width: 480px) {
+    .calendar {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .select {
+        font-size: 12px;
+        max-width: 100px;
+    }
+}

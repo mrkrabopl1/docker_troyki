@@ -628,7 +628,6 @@ func (s *Server) handleAdminUpdateProduct(c *gin.Context) {
 	if req.Sizes != nil {
 		params.Minprice = minPrice
 		params.Maxprice = maxPrice
-		params.ImageCount = int32(len(*req.Sizes))
 		params.Sizes = sizesJSON
 	}
 

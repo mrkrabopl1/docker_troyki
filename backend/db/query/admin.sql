@@ -950,7 +950,9 @@ SELECT p.sizes,
     p.date,
     b.slug as firm,
     p.status,
-    p.image_count
+    p.image_count,
+    p.release_year,
+    p.release_date
 FROM products p
     LEFT JOIN discount d ON p.id = d.productid
     LEFT JOIN store_house st ON p.id = st.productid
