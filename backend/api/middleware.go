@@ -1,15 +1,18 @@
 package api
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
 	"github.com/mrkrabopl1/go_db/token"
 )
@@ -70,28 +73,21 @@ func authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 // ========== SESSION MIDDLEWARE (ДЛЯ УНИКАЛЬНЫХ ПОСЕТИТЕЛЕЙ) ==========
 
 func createSession(ctx *gin.Context, s *Server) {
-	validDate := pgtype.Date{
-		Time:  time.Now(),
-		Valid: true,
-	}
-	id, err := s.store.CreateUniqueCustomer(ctx, validDate)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return
-	}
-	// Создаем cookie для уникального посетителя (не админ)
-	myCookie, err := s.tokenMaker.CreateUserCookie(id, 36000, true, true)
+	// cookie unique — просто маркер гостя, БД не трогаем
+	myCookie, err := s.tokenMaker.CreateUserCookie(0, 36000, true, true)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-	ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge, myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
+	ctx.SetCookie(myCookie.Name, myCookie.Value, myCookie.MaxAge,
+		myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly)
 }
-
 func AuthMiddleware(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		fmt.Println("fmdskfmlksdngknlkfnbg[fkkds[fksd]]")
 		token, err := ctx.Cookie("unique")
 		if err != nil {
+			fmt.Println(err, "nfdsjhfjds")
 			createSession(ctx, s)
 			ctx.Next()
 			return
@@ -99,6 +95,7 @@ func AuthMiddleware(s *Server) gin.HandlerFunc {
 
 		cookie, err := s.tokenMaker.VerifyToken(token)
 		if err != nil || cookie.ExpiredAt.Before(time.Now()) {
+			fmt.Println(err, "flksdjjfksd")
 			createSession(ctx, s)
 			ctx.Next()
 			return
@@ -230,31 +227,19 @@ func (s *Server) SuperAdminMiddleware() gin.HandlerFunc {
 
 func CachedMiddleware(s *Server) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		cookie, errC := ctx.Cookie("unique")
 		idStr := ctx.Param("id")
 		if idStr == "" {
 			ctx.JSON(http.StatusBadRequest, errorResponse(errors.New("id is not provided")))
 			return
 		}
-		fmt.Println("idStr", idStr)
-		ProductsInfo, err := s.taskProcessor.GetProductsInfo(ctx, idStr)
 
+		productsInfo, err := s.taskProcessor.GetProductsInfo(ctx.Request.Context(), idStr)
 		if err == nil {
-			ctx.JSON(http.StatusOK, ProductsInfo)
-			if errC != nil {
-				ctx.Abort()
-				return
+			// ✅ кэш-хит: пишем просмотр через единый helper
+			if numID64, e := strconv.ParseInt(idStr, 10, 32); e == nil {
+				s.trackProductView(ctx, int32(numID64))
 			}
-			fmt.Println(cookie, "rerb")
-			user, err1 := s.tokenMaker.VerifyToken(cookie)
-			if err1 != nil {
-				fmt.Println(err1)
-			} else {
-				numId, err := strconv.ParseInt(idStr, 10, 32)
-				if err == nil {
-					s.store.SetProductsHistory(ctx, int32(numId), user.UserID)
-				}
-			}
+			ctx.JSON(http.StatusOK, productsInfo)
 			ctx.Abort()
 			return
 		}
@@ -357,6 +342,50 @@ func (s *Server) OptionalCustomer() gin.HandlerFunc {
 		}
 		ctx.Next() // 👈 ВСЕГДА пропускаем дальше
 	}
+}
+
+const (
+	sessionCookieName = "sid"
+	visitorCookieName = "vid"
+	sessionTTLSec     = 30 * 60         // 30 минут
+	visitorTTLSec     = 365 * 24 * 3600 // 1 год
+)
+
+// api/session.go
+func SessionMiddleware(s *Server) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		secure := s.config.Environment != "development"
+		vid, vidErr := ctx.Cookie(visitorCookieName)
+		sid, sidErr := ctx.Cookie(sessionCookieName)
+
+		// cookie есть → кладём в контекст, продлеваем TTL, TouchSession
+		if vidErr == nil && vid != "" && sidErr == nil && sid != "" {
+			ctx.SetSameSite(http.SameSiteLaxMode)
+			ctx.SetCookie(visitorCookieName, vid, visitorTTLSec, "/", "", secure, true)
+			ctx.SetCookie(sessionCookieName, sid, sessionTTLSec, "/", "", secure, true)
+
+			ctx.Set("session_id", sid)
+			ctx.Set("visitor_id", vid)
+
+			go func(sid string) {
+				bg, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				defer cancel()
+				if err := s.store.TouchSession(bg, sid); err != nil {
+					log.Printf("TouchSession: %v", err)
+				}
+			}(sid)
+		}
+		// cookie нет → НЕ создаём, просто пропускаем
+		ctx.Next()
+	}
+}
+
+func hashIP(ip, salt string) string {
+	if ip == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(ip + salt))
+	return hex.EncodeToString(sum[:])
 }
 func mustCustomerID(ctx *gin.Context) int32 {
 	v, exists := ctx.Get("customerID")

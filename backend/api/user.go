@@ -1,12 +1,15 @@
 package api
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/mrkrabopl1/go_db/db/sqlc"
@@ -547,70 +550,24 @@ func (s *Server) handleSetDefaultAddress(ctx *gin.Context) {
 // ============================================================
 
 // GET /customers/unique
-func (s *Server) handleSetUniqueCustomer(ctx *gin.Context) {
-	validDate := pgtype.Date{Time: time.Now(), Valid: true}
-
-	uniqueCustomerID, err := s.store.CreateUniqueCustomer(ctx, validDate)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
-	}
-
-	myCookie, err := s.tokenMaker.CreateGuestCookie(uniqueCustomerID, 2*time.Hour, true, true)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
-	}
-
-	ctx.SetCookie(
-		myCookie.Name, myCookie.Value, myCookie.MaxAge,
-		myCookie.Path, myCookie.Domain, myCookie.Secure, myCookie.HttpOnly,
-	)
-
-	ctx.JSON(http.StatusOK, gin.H{"ok": true})
-}
 
 // GET /history
 func (s *Server) handleGetHistory(ctx *gin.Context) {
 	customerID := getCustomerID(ctx)
-
-	if customerID != 0 {
-		snickers, err := s.store.GetSnickersHistoryComplex(ctx, customerID)
-		if errors.Is(err, errorsType.NotExist) {
-			ctx.JSON(http.StatusOK, []any{})
-			return
-		}
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, errorResponse(err))
-			return
-		}
-		ctx.JSON(http.StatusOK, snickers)
+	if customerID == 0 {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("auth required")))
 		return
 	}
 
-	guestToken := s.tokenMaker.GetGuestTokenFromRequest(ctx.Request)
-	if guestToken == "" {
-		ctx.JSON(http.StatusOK, []any{})
-		return
-	}
-
-	payload, err := s.tokenMaker.VerifyToken(guestToken)
+	rows, err := s.store.GetUserHistory(ctx.Request.Context(), db.GetUserHistoryParams{
+		CustomerID: pgtype.Int4{Int32: customerID, Valid: true},
+		Limit:      20,
+	})
 	if err != nil {
-		ctx.JSON(http.StatusOK, []any{})
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-
-	snickers, err := s.store.GetSnickersHistoryComplex(ctx, payload.UserID)
-	if errors.Is(err, errorsType.NotExist) {
-		ctx.JSON(http.StatusOK, []any{})
-		return
-	}
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return
-	}
-
-	ctx.JSON(http.StatusOK, snickers)
+	ctx.JSON(http.StatusOK, rows)
 }
 
 // GET /customers/check
@@ -855,6 +812,156 @@ func UnregisterCustomerDataResponse(customerInfo db.Unregistercustomer) types.Un
 		},
 		DeliveryComment: customerInfo.Deliverycomment.String,
 	}
+}
+func (s *Server) handleCreateSession(ctx *gin.Context) {
+	log.Printf("[create-session] ========== START ==========")
+	log.Printf("[create-session] path=%s method=%s clientIP=%s env=%q",
+		ctx.Request.URL.Path,
+		ctx.Request.Method,
+		ctx.ClientIP(),
+		s.config.Environment,
+	)
+
+	secure := s.config.Environment != "development"
+	log.Printf("[create-session] secure=%v (env=%q, development? %v)",
+		secure,
+		s.config.Environment,
+		s.config.Environment == "development",
+	)
+
+	// ---- 1. читаем существующие cookie ----
+	vidIn, vidErr := ctx.Cookie(visitorCookieName)
+	sidIn, sidErr := ctx.Cookie(sessionCookieName)
+	log.Printf("[create-session] IN  vid=%q (err=%v) sid=%q (err=%v)",
+		vidIn, vidErr, sidIn, sidErr)
+	log.Printf("[create-session] Raw Cookie header: %q",
+		ctx.Request.Header.Get("Cookie"))
+
+	// ---- 2. visitor_id ----
+	vid := vidIn
+	if vidErr != nil || vid == "" {
+		vid = uuid.NewString()
+		log.Printf("[create-session] vid NEW -> %s", vid)
+	} else if _, parseErr := uuid.Parse(vid); parseErr != nil {
+		log.Printf("[create-session] vid BAD %q: %v -> regenerate", vid, parseErr)
+		vid = uuid.NewString()
+	} else {
+		log.Printf("[create-session] vid KEEP -> %s", vid)
+	}
+
+	// ---- 3. session_id ----
+	sid := sidIn
+	isNew := false
+	if sidErr != nil || sid == "" {
+		sid = uuid.NewString()
+		isNew = true
+		log.Printf("[create-session] sid NEW -> %s", sid)
+	} else {
+		log.Printf("[create-session] sid KEEP -> %s", sid)
+	}
+
+	// ---- 4. ставим cookie ----
+	log.Printf("[create-session] SetCookie vid=%s (maxAge=%d, secure=%v)", vid, visitorTTLSec, secure)
+	log.Printf("[create-session] SetCookie sid=%s (maxAge=%d, secure=%v)", sid, sessionTTLSec, secure)
+
+	ctx.SetSameSite(http.SameSiteLaxMode)
+	ctx.SetCookie(visitorCookieName, vid, visitorTTLSec, "/", "", false, true)
+	ctx.SetCookie(sessionCookieName, sid, sessionTTLSec, "/", "", false, true)
+
+	// логируем, что реально попало в Set-Cookie header
+	log.Printf("[create-session] Set-Cookie headers: %v",
+		ctx.Writer.Header().Values("Set-Cookie"))
+
+	// ---- 5. uniquecustomers ----
+	ipHash := hashIP(ctx.ClientIP(), s.config.SessionSalt)
+	ua := ctx.Request.UserAgent()
+	log.Printf("[create-session] ipHash=%s (len=%d) ua=%q",
+		ipHash, len(ipHash), ua)
+
+	if isNew {
+		visitorUUID, err := uuid.Parse(vid)
+		if err != nil {
+			log.Printf("[create-session] InsertSession: bad visitor_id %q: %v", vid, err)
+		} else {
+			log.Printf("[create-session] InsertSession: calling store... sid=%s vid=%s", sid, vid)
+			err := s.store.InsertSession(ctx.Request.Context(), db.InsertSessionParams{
+				SessionID: sid,
+				VisitorID: pgtype.UUID{Bytes: visitorUUID, Valid: true},
+				IpHash:    pgtype.Text{String: ipHash, Valid: ipHash != ""},
+				UserAgent: pgtype.Text{String: ua, Valid: ua != ""},
+			})
+			if err != nil {
+				log.Printf("[create-session] InsertSession: ERROR %v", err)
+			} else {
+				log.Printf("[create-session] InsertSession: OK sid=%s vid=%s", sid, vid)
+			}
+		}
+	} else {
+		log.Printf("[create-session] TouchSession: calling store... sid=%s", sid)
+		go func(sid string) {
+			bg, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			if err := s.store.TouchSession(bg, sid); err != nil {
+				log.Printf("[create-session] TouchSession: ERROR %v", err)
+			} else {
+				log.Printf("[create-session] TouchSession: OK sid=%s", sid)
+			}
+		}(sid)
+	}
+
+	// ---- 6. ответ ----
+	log.Printf("[create-session] ========== RESPONSE ==========")
+	log.Printf("[create-session] JSON: {sid: %s, vid: %s}", sid, vid)
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"sid": sid,
+		"vid": vid,
+	})
+}
+
+func (s *Server) handleRecordProductView(ctx *gin.Context) {
+	fmt.Println("dmkalskandlakn")
+	idStr := ctx.Param("id")
+	numID64, err := strconv.ParseInt(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+	productID := int32(numID64)
+
+	// session_id из SessionMiddleware
+	sid, ok := ctx.Get("session_id")
+	if !ok {
+		ctx.Status(http.StatusNoContent) // нет сессии — не пишем, но не ошибка
+		return
+	}
+	sessionID, _ := sid.(string)
+	if sessionID == "" {
+		ctx.Status(http.StatusNoContent)
+		return
+	}
+
+	// customer_id — если залогинен
+	var customerID pgtype.Int4
+	if tokenStr := s.tokenMaker.GetUserTokenFromRequest(ctx.Request); tokenStr != "" {
+		if payload, err := s.tokenMaker.VerifyToken(tokenStr); err == nil && !payload.IsAdmin {
+			customerID = pgtype.Int4{Int32: payload.UserID, Valid: true}
+		}
+	}
+
+	err = s.store.RecordProductView(ctx.Request.Context(), db.RecordProductViewParams{
+		ProductID:  productID,
+		SessionID:  sessionID,
+		CustomerID: customerID,
+	})
+	if err != nil {
+		log.Printf("[view] RecordProductView product=%d session=%s: %v", productID, sessionID, err)
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	log.Printf("[view] OK product=%d session=%s customer_valid=%v", productID, sessionID, customerID.Valid)
+	ctx.Status(http.StatusNoContent) // 204 — пусто, быстро
 }
 
 func (s *Server) handleGetMyOrders(ctx *gin.Context) {

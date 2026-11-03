@@ -168,10 +168,16 @@ CREATE TABLE IF NOT EXISTS public.unregistercustomer (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE public.uniquecustomers (
-    id serial PRIMARY KEY NOT NULL,
-    creationTime DATE NOT NULL DEFAULT CURRENT_DATE,
-    history INTEGER [] NOT NULL
+    id             BIGSERIAL PRIMARY KEY,
+    session_id     TEXT        NOT NULL,
+    visitor_id     UUID        NOT NULL,
+    first_seen_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_seen_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ip_hash        TEXT,
+    user_agent     TEXT
 );
+
+
 CREATE TABLE IF NOT EXISTS public.orders (
     id SERIAL PRIMARY KEY,
     CustomerID INTEGER REFERENCES customers(id),
@@ -715,3 +721,22 @@ COMMENT ON COLUMN news_blocks.likes_count IS 'Количество лайков'
 
 
 
+CREATE TABLE IF NOT EXISTS public.product_view_events (
+    id           BIGSERIAL PRIMARY KEY,
+    product_id   INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    session_id   TEXT    NOT NULL REFERENCES uniquecustomers(session_id) ON DELETE CASCADE,
+    customer_id  INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+    event_type   VARCHAR(20) NOT NULL DEFAULT 'view'
+        CHECK (event_type IN ('view','click','add_to_cart','purchase')),
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pve_session
+    ON public.product_view_events(session_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_pve_product
+    ON public.product_view_events(product_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pve_customer
+    ON public.product_view_events(customer_id, created_at DESC)
+    WHERE customer_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_pve_type_time
+    ON public.product_view_events(event_type, created_at DESC);

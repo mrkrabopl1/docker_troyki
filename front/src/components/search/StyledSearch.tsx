@@ -59,7 +59,7 @@ const StyledSearch: React.FC<Props> = ({
         onFocus?.();
     }, [onFocus]);
     const focusInput = useCallback(() => {
-        setIsFocused(true);
+         setIsFocused(true);
         onFocus?.();
         inputRef.current?.focus();
     }, []);
@@ -74,7 +74,7 @@ const StyledSearch: React.FC<Props> = ({
         <div
             onClick={focusInput}
             onTouchStart={(e) => { e.preventDefault(); focusInput(); }}
-            style={{ flex: isFocused ? 1 : 0, paddingLeft: isFocused ? "45px" : 0 }}
+            style={{ flex: isFocused ? 1 : 0, paddingLeft: isFocused ? "5%" : 0 }}
             className={containerClassName}
         >
             <div className={`${searchBoxClassName} ${isFocused ? s.focused : ''}`}>

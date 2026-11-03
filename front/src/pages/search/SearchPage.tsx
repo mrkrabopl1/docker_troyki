@@ -705,7 +705,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
           marginBottom: "20px",
           gap: "10px"
         }}>
-          <div style={{ margin: "auto", width: "30%", padding: "5px" }}>
+          <div  className={s.filterHolder}>
             {widthProps ? <Sort style={{
               color: hoverSettings ? 'white' : 'black',
               fill: hoverSettings ? 'white' : 'white',
@@ -735,7 +735,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
             searchCallback={searchNameCallback}
             selectList={(data) => { navigate('/product/' + data); }}
           />
-          {widthProps ? <div style={{ margin: "auto", width: "30%", padding: "5px" }}>
+          {widthProps ? <div  className={s.filterHolder}>
             <Filter
               className={s.filterBtn}
               onClick={() => setShowFiltersPanel(true)}

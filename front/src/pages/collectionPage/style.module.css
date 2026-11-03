@@ -389,7 +389,11 @@
     font-size: 14px;
     color: #555;
 }
-
+.filterHolder{
+    margin: auto;
+    width: 30%;
+    padding: 5px; 
+}
 /* ===== Адаптив ===== */
 @media (min-width: 600px) {
     .complexVertical {
@@ -399,7 +403,11 @@
     .searchInput {
         width: 55%;
     }
-
+    .filterHolder{
+      
+        width: 20%;
+        
+    }
     .drop_list {
         width: 30%;
         top: 100%;
@@ -463,7 +471,11 @@
     .count {
         font-size: 14px;
     }
-
+    .filterHolder{
+      
+        width: 10%;
+        
+    }
     .searchInput {
         width: 100%;
     }
@@ -532,3 +544,4 @@
 .modalPanelRight :global(.productsFilters)::-webkit-scrollbar-thumb:hover {
     background: #bfbfbf;
 }
+

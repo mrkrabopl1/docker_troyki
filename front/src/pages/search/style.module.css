@@ -1,44 +1,48 @@
-.main{
+.main {
     display: flex;
     width: 100%;
     justify-content: center;
     margin-bottom: 15px;
 }
-.search{
-     border-radius: 15px;
-       height:35px;
-       width:30%;
-       border: 2px black solid;
+
+.search {
+    border-radius: 15px;
+    height: 35px;
+    width: 30%;
+    border: 2px black solid;
 }
-.settings_holder{
+
+.settings_holder {
     right: -300px;
     position: absolute;
     top: 0;
     background-color: #fff;
     z-index: 3;
-    transition:right 0.3s ease-out;
+    transition: right 0.3s ease-out;
     width: 300px;
 }
-.filters_holder{
+
+.filters_holder {
     left: -300px;
     position: absolute;
     top: 0;
     background-color: #fff;
     z-index: 3;
-    transition:left 0.3s ease-out;
+    transition: left 0.3s ease-out;
     width: 300px;
 }
 
 
-.secondPage{
+.secondPage {
     background-color: #fff;
     padding-right: 10px;
 }
 
 
-.mainInfo{
-        height: calc(100%-200px);
+.mainInfo {
+    height: calc(100%-200px);
 }
+
 .settingsBtn {
     position: absolute;
     background-color: #fff;
@@ -50,22 +54,22 @@
     left: -36px;
     background-size: 18px 18px;
     z-index: 1000;
-     background:no-repeat center url("/public/filter.svg");
+    background: no-repeat center url("/public/filter.svg");
     cursor: pointer;
     border: 1px solid #e0e0e0;
-    transition: 
+    transition:
         background-color 0.6s ease-in-out,
         border-color 0.6s ease-in-out,
         transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94),
         box-shadow 0.6s ease-in-out;
-    box-shadow: 
+    box-shadow:
         0 3px 10px rgba(0, 0, 0, 0.12),
         inset 0 0 0 1px rgba(255, 255, 255, 0.8);
     transform: translateZ(0);
 }
 
-.settings_filters_holder{
-    position:absolute;
+.settings_filters_holder {
+    position: absolute;
     top: 30px;
     width: 100%;
 }
@@ -79,14 +83,15 @@
     left: 50%;
     transform: translate(-50%, -50%);
 }
+
 .settingsBtn:hover {
     background-color: #000;
     border-color: #000;
     transform: translateY(-2px) scale(1.05);
-    box-shadow: 
+    box-shadow:
         0 8px 25px rgba(0, 0, 0, 0.2),
         inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-    transition: 
+    transition:
         background-color 0.6s ease-in-out,
         border-color 0.6s ease-in-out,
         transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275),
@@ -94,10 +99,11 @@
 }
 
 .settingsBtn:active {
-    background-color: #333; /* Темнее при нажатии */
+    background-color: #333;
+    /* Темнее при нажатии */
     border-color: #333;
     transform: translateY(0) scale(0.98);
-    box-shadow: 
+    box-shadow:
         0 2px 8px rgba(0, 0, 0, 0.15),
         inset 0 0 0 1px rgba(255, 255, 255, 0.6);
     transition: all 0.1s ease;
@@ -105,7 +111,7 @@
 
 /* Для плавного изменения цвета SVG иконки */
 .settingsBtn svg {
-    transition: 
+    transition:
         fill 0.4s ease-in-out,
         stroke 0.4s ease-in-out;
 }
@@ -113,65 +119,100 @@
 
 .filterBtn {
     position: absolute;
-    background-color:#fff;
+    background-color: #fff;
     border-radius: 3px;
-    top:0;
+    top: 0;
     width: 32px;
     height: 32px;
-    right:-32px;
-    background:no-repeat center url("/public/filter.svg");
+    right: -32px;
+    background: no-repeat center url("/public/filter.svg");
     background-size: contain;
-    box-shadow:    0px 0px 10px rgba(5, 0, 0, 0.5);
+    box-shadow: 0px 0px 10px rgba(5, 0, 0, 0.5);
     z-index: 1000;
-    float:right
+    float: right
 }
 
-.filterBtn:active, 
-.filterBtn:focus{
+.filterBtn:active,
+.filterBtn:focus {
     border: 0;
-  padding: 0;
+    padding: 0;
 }
-.head{
+
+.head {
     padding: 15px;
     text-align: center;
     font-size: 20px;
 }
-.emptyRow{
+
+.emptyRow {
     padding: 15px;
     text-align: center;
     margin: auto;
     height: 600px;
 }
 
-.searchInput{
-   
+.searchInput {
+
     width: 35%;
-  }
-  
-  @media (min-width: 600px) {
-    .complexVertical{
-      display: none;
-    }
-    .searchInput{
-    
-      width: 55%;
-    }
-    .drop_list{
-    
-      width: 30%;
-      top:100%;
-      border: solid 1px black;
-      z-index: 100;
-     
-    }
-    
-  }
+}
 
 
-  .gridSwitcher{
-    position: "absolute";
-    top: "100%"; 
-    width: "50px";
+.filterHolder {
+    margin: auto;
+    width: 30%;
+    padding: 5px;
+}
+
+@media (min-width: 600px) {
+    .complexVertical {
+        display: none;
+    }
+
+    .searchInput {
+
+        width: 55%;
+    }
+
+    .filterHolder {
+
+        width: 20%;
+
+    }
+
+    .drop_list {
+
+        width: 30%;
+        top: 100%;
+        border: solid 1px black;
+        z-index: 100;
+
+    }
+
+}
+
+@media (min-width: 480px) {
+
+    .drop_list {
+
+        width: 10%;
+        top: 100%;
+        border: solid 1px black;
+        z-index: 100;
+
+    }
+
+    .filterHolder {
+
+        width: 10%;
+
+    }
+
+}
+
+.gridSwitcher {
+    position: absolute;
+    top: 100%;
+    width: 50px;
     background-color: transparent;
-    height: "50px" 
-  }
+    height: 50px
+}

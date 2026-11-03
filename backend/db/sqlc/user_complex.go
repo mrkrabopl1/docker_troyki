@@ -5,61 +5,53 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mrkrabopl1/go_db/errorsType"
 	"github.com/mrkrabopl1/go_db/types"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (store *SQLStore) SetProductsHistory(ctx context.Context, productID int32, idCustomer int32) error {
-	history, err := store.Queries.SelectHistoryFromUniqueCustomer(ctx, idCustomer)
-	if err != nil {
-		fmt.Println("fdkmlsfknsdkfms")
-		return err
-	}
-	history = append(history, productID)
-	params := UpdateUniqueCustomerHistryParams{
-		History: history,
-		ID:      idCustomer,
-	}
-	err1 := store.Queries.UpdateUniqueCustomerHistry(ctx, params)
-	if err1 != nil {
-		return err1
-	}
-	return nil
-}
-func int32SliceToInterface(ids []int32) []interface{} {
-	args := make([]interface{}, len(ids))
-	for i, v := range ids {
-		args[i] = v
-	}
-	return args
-}
-func (store *SQLStore) GetSnickersHistoryComplex(ctx context.Context, idCustomer int32) ([]types.ProductsSearchResponse1, error) {
-	history, err := store.Queries.SelectHistoryFromUniqueCustomer(ctx, idCustomer)
+// GetSnickersHistoryComplex — история просмотров залогиненного пользователя.
+// Возвращает полные данные товаров (как на карточке).
+func (store *SQLStore) GetSnickersHistoryComplex(
+	ctx context.Context,
+	customerID int32,
+) ([]types.ProductsSearchResponse1, error) {
+	// 1. id товаров из истории
+	productIDs, err := store.Queries.GetUserHistoryIDs(ctx, GetUserHistoryIDsParams{
+		CustomerID: pgtype.Int4{Int32: customerID, Valid: true},
+		Limit:      50,
+	})
 	if err != nil {
 		return nil, err
 	}
-	list := []int32{}
-	keys := make(map[int32]bool)
-	for _, entry := range history {
-		if _, value := keys[entry]; !value {
-			keys[entry] = true
-			list = append(list, entry)
+	if len(productIDs) == 0 {
+		return []types.ProductsSearchResponse1{}, nil
+	}
+
+	// 2. полные данные
+	snickers, err := store.Queries.GetProductsByIds(ctx, productIDs)
+	if err != nil {
+		return []types.ProductsSearchResponse1{}, err
+	}
+
+	// 3. восстанавливаем порядок: productIDs отсортированы по last_viewed DESC,
+	//    а GetProductsByIds может вернуть в любом порядке.
+	byID := make(map[int32]GetProductsByIdsRow, len(snickers))
+	for _, s := range snickers {
+		byID[s.GlobalID] = s // ← проверь: если у тебя ключ GlobalID, замени на s.GlobalID
+	}
+	ordered := make([]GetProductsByIdsRow, 0, len(productIDs))
+	for _, id := range productIDs {
+		if s, ok := byID[id]; ok {
+			ordered = append(ordered, s)
 		}
 	}
-	fmt.Println("list", list)
 
-	snickers, err1 := store.Queries.GetProductsByIds(ctx, list)
-	fmt.Println("test1")
-	if err1 != nil {
-		return []types.ProductsSearchResponse1{}, err1
-	}
-
-	return NewProductsSearchResponse5(snickers), nil
+	return NewProductsSearchResponse5(ordered), nil
 }
 
 func NewProductsSearchResponse5(ProductsSearch []GetProductsByIdsRow) []types.ProductsSearchResponse1 {
-
 	list := []types.ProductsSearchResponse1{}
 	for _, info := range ProductsSearch {
 		var imgArr []string
@@ -83,9 +75,7 @@ func NewProductsSearchResponse5(ProductsSearch []GetProductsByIdsRow) []types.Pr
 			DiscountPercent: info.DiscountPercent,
 			Article:         info.Article,
 		})
-
 	}
-
 	return list
 }
 
@@ -94,7 +84,6 @@ func (store *SQLStore) RegisterUser(
 	pass string,
 	mail string,
 ) (int32, int32, error) {
-	// 1. Проверяем что mail не занят
 	exist, err := store.Queries.CheckMail(ctx, mail)
 	if err != nil {
 		return 2, 0, err
@@ -103,16 +92,11 @@ func (store *SQLStore) RegisterUser(
 		return 1, 0, nil
 	}
 
-	// 2. Хешируем пароль
-	hashedPassword, err := bcrypt.GenerateFromPassword(
-		[]byte(pass),
-		bcrypt.DefaultCost,
-	)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
 	if err != nil {
 		return 2, 0, err
 	}
 
-	// 3. Создаём юзера
 	userID, err := store.Queries.CreateCustomer(ctx, CreateCustomerParams{
 		Pass: hashedPassword,
 		Mail: mail,
@@ -121,9 +105,9 @@ func (store *SQLStore) RegisterUser(
 		return 2, 0, err
 	}
 
-	// 4. Возвращаем успех + ID
 	return 0, userID, nil
 }
+
 func (store *SQLStore) VerifyUser(ctx context.Context, token string) (int32, error) {
 	fmt.Println(token)
 	verData, err := store.Queries.GetVerification(ctx, token)
@@ -132,19 +116,18 @@ func (store *SQLStore) VerifyUser(ctx context.Context, token string) (int32, err
 		return 0, err
 	}
 
-	// Токен истёк — удаляем и возвращаем ошибку
 	if time.Now().After(verData.Expire.Time) {
 		_ = store.Queries.DeleteVerification(ctx, verData.ID)
 		return 0, errorsType.ErrExpire
 	}
 
-	// Удаляем использованный токен (одноразовый)
 	if err := store.Queries.DeleteVerification(ctx, verData.ID); err != nil {
 		return 0, err
 	}
 
 	return verData.Customerid, nil
 }
+
 func (store *SQLStore) ChangePass(ctx context.Context, newPass string, oldPass string, id int32) error {
 	realPass, err := store.Queries.GetPassword(ctx, id)
 	if err != nil {
@@ -170,27 +153,16 @@ func (store *SQLStore) ChangePass(ctx context.Context, newPass string, oldPass s
 	}
 	return nil
 }
+
 func (store *SQLStore) UpdateForgetPass(ctx context.Context, mail string) error {
 	exist, err := store.Queries.CheckMail(ctx, mail)
 	if err != nil {
 		return err
 	}
 	if exist {
-		// id, err := store.Queries.GetCustomerId(ctx, mail)
-		// if err != nil {
-		// 	return err
-		// } else {
-		// 	message, token := createChangeForgetPass()
-		// 	err := sendMail(message)
-		// 	if err != nil {
-		// 		return err
-		// 	} else {
-		// 		setVerification(db, ctx, token, int(id))
-		// 	}
-		// }
+		// TODO
 	} else {
 		return errorsType.NotExist
 	}
-
 	return nil
 }

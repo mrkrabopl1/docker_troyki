@@ -37,57 +37,100 @@ func (s *Server) handleGetFirms(ctx *gin.Context) {
 // }
 
 func (s *Server) handleGetProductsInfoById(ctx *gin.Context) {
-	startTime := time.Now()
-	fmt.Printf("⏱️ [handleGetProductsInfoById] START\n")
-
 	id := ctx.Param("id")
-	fmt.Printf("⏱️ [handleGetProductsInfoById] ID: %s\n", id)
-
-	numId, err := strconv.ParseInt(id, 10, 32)
+	numID64, err := strconv.ParseInt(id, 10, 32)
 	if err != nil {
-		fmt.Printf("⏱️ [handleGetProductsInfoById] ❌ Parse error: %v\n", err)
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	fmt.Printf("⏱️ [handleGetProductsInfoById] ✅ Parse OK\n")
+	numID := int32(numID64)
 
-	ProductsInfo, err2 := s.store.GetProductsInfoByIdComplex(ctx, int32(numId))
-	if err2 != nil {
-		fmt.Printf("⏱️ [handleGetProductsInfoById] ❌ DB error after %dms: %v\n", time.Since(startTime).Milliseconds(), err2)
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
-		return
-	}
-	fmt.Printf("⏱️ [handleGetProductsInfoById] ✅ DB query: %dms\n", time.Since(startTime).Milliseconds())
-
-	err = s.taskProcessor.SetProductsInfo(ctx, id, ProductsInfo)
+	productsInfo, err := s.store.GetProductsInfoByIdComplex(ctx.Request.Context(), numID)
 	if err != nil {
-		fmt.Printf("⏱️ [handleGetProductsInfoById] ❌ Cache save error: %v\n", err)
-	} else {
-		fmt.Printf("⏱️ [handleGetProductsInfoById] ✅ Cache saved\n")
-	}
-
-	fmt.Printf("⏱️ [handleGetProductsInfoById] 🏁 TOTAL: %dms\n", time.Since(startTime).Milliseconds())
-	ctx.JSON(http.StatusOK, ProductsInfo)
-
-	// История
-	cookie, errC := ctx.Cookie("unique")
-	if errC != nil {
-		fmt.Printf("⏱️ [handleGetProductsInfoById] ❌ No cookie\n")
+		ctx.JSON(http.StatusBadRequest, errorResponse(err)) // см. замечание ниже
 		return
 	}
 
-	user, err1 := s.tokenMaker.VerifyToken(cookie)
-	if err1 != nil {
-		fmt.Printf("⏱️ [handleGetProductsInfoById] ❌ Token error: %v\n", err1)
-	} else {
-		fmt.Printf("⏱️ [handleGetProductsInfoById] ✅ User: %s\n", user.UserID)
-		err := s.store.SetProductsHistory(ctx, int32(numId), user.UserID)
+	// сохраняем в кэш
+	if err := s.taskProcessor.SetProductsInfo(ctx.Request.Context(), id, productsInfo); err != nil {
+		log.Printf("cache set product=%d: %v", numID, err) // не роняем ответ
+	}
+
+	// история — единым helper'ом
+	s.trackProductView(ctx, numID)
+
+	ctx.JSON(http.StatusOK, productsInfo)
+}
+
+// trackProductView пишет просмотр в историю, если есть валидный unique-cookie.
+// Никогда не возвращает ошибку наружу — история не должна ломать основной ответ.
+func (s *Server) trackProductView(ctx *gin.Context, productID int32) {
+	log.Printf("[track] ========== START ==========")
+	log.Printf("[track] path=%s productID=%d", ctx.Request.URL.Path, productID)
+
+	// ---- 1. session_id из контекста ----
+	sidRaw, ok := ctx.Get("session_id")
+	log.Printf("[track] ctx.Get(\"session_id\") -> %v, ok=%v", sidRaw, ok)
+
+	if !ok {
+		log.Printf("[track] ❌ NO session_id in context — SKIP")
+		return
+	}
+
+	sessionID, ok := sidRaw.(string)
+	if !ok {
+		log.Printf("[track] ❌ session_id is not string: %T", sidRaw)
+		return
+	}
+	if sessionID == "" {
+		log.Printf("[track] ❌ session_id is EMPTY — SKIP")
+		return
+	}
+
+	log.Printf("[track] ✅ sessionID=%s", sessionID)
+
+	// ---- 2. customer_id из auth_token ----
+	var customerID pgtype.Int4
+	tokenStr := s.tokenMaker.GetUserTokenFromRequest(ctx.Request)
+	log.Printf("[track] tokenStr present=%v (len=%d)", tokenStr != "", len(tokenStr))
+
+	if tokenStr != "" {
+		payload, err := s.tokenMaker.VerifyToken(tokenStr)
 		if err != nil {
-			fmt.Printf("⏱️ [handleGetProductsInfoById] ❌ History save error: %v\n", err)
+			log.Printf("[track] ⚠️ VerifyToken error: %v", err)
+		} else if payload.IsAdmin {
+			log.Printf("[track] ⚠️ token is admin — skipping customer_id")
 		} else {
-			fmt.Printf("⏱️ [handleGetProductsInfoById] ✅ History saved\n")
+			customerID = pgtype.Int4{Int32: payload.UserID, Valid: true}
+			log.Printf("[track] ✅ customerID=%d", payload.UserID)
 		}
+	} else {
+		log.Printf("[track] customerID=NULL (anonymous)")
 	}
+
+	// ---- 3. пишем в product_view_events ----
+	log.Printf("[track] calling RecordProductView: product=%d session=%s customer_valid=%v",
+		productID, sessionID, customerID.Valid)
+
+	go func(sessionID string, customerID pgtype.Int4, productID int32) {
+		bg, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		err := s.store.RecordProductView(bg, db.RecordProductViewParams{
+			ProductID:  productID,
+			SessionID:  sessionID,
+			CustomerID: customerID,
+		})
+		if err != nil {
+			log.Printf("[track] ❌ RecordProductView ERROR: product=%d session=%s: %v",
+				productID, sessionID, err)
+		} else {
+			log.Printf("[track] ✅ RecordProductView OK: product=%d session=%s",
+				productID, sessionID)
+		}
+	}(sessionID, customerID, productID)
+
+	log.Printf("[track] ========== END (async write queued) ==========")
 }
 
 type ProductsFilterStruct struct {

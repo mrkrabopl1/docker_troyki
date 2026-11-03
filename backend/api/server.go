@@ -90,10 +90,13 @@ func (s *Server) setupRouter() {
 		c.Next()
 		fmt.Printf("Response: %d, Duration: %v\n", c.Writer.Status(), time.Since(start))
 	})
-
+	router.Use(SessionMiddleware(s))
+	router.Use(AuthMiddleware(s))
 	// ==================== ГРУППА /api ====================
 	api := router.Group("/api")
 	{
+		api.POST("/session", s.handleCreateSession)
+		api.POST("/products/:id/view", s.handleRecordProductView)
 		rateLimiter := NewRateLimiter(3, 3)
 		snickersRoute := api.Group("/")
 		snickersRoute.Use(CachedMiddleware(s))
@@ -133,8 +136,6 @@ func (s *Server) setupRouter() {
 		api.POST("/collections/:id/products", s.handleGetCollectionProducts)
 
 		api.POST("/discounts", s.handleGetDiscounts)
-
-		api.GET("/customers/unique", s.handleSetUniqueCustomer)
 
 		api.GET("/cart/count", CartMiddleware(), s.handleGetCartCount)
 		api.GET("/cart", s.handleGetCart)

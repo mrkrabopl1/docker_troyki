@@ -36,10 +36,9 @@ import {
   setUser as setCustomer,
   clearUser as clearCustomer,
 } from 'src/store/reducers/userSlice';
-import { getMe } from 'src/providers/userProvider';
+import { getMe,initSession } from 'src/providers/userProvider';
 
 import { getCookie } from './global';
-import { setUniqueCustomer } from './providers/userProvider';
 import { getCartCount } from './providers/shopProvider';
 import { getInstagramPhotos, getBrandsWithLines } from './providers/instagramProvider';
 
@@ -112,6 +111,7 @@ const AppContent: React.FC<AppContentProps> = ({
     let cancelled = false;
 
     (async () => {
+      await initSession();
       const user = await getMe();
 
       //if (cancelled) return;
@@ -476,9 +476,7 @@ const AppContent: React.FC<AppContentProps> = ({
     // UNIQUE CUSTOMER
     // ----------------------------------------------------------
 
-    if (!getCookie('unique')) {
-      setUniqueCustomer(() => { });
-    }
+
 
     // ----------------------------------------------------------
     // CART

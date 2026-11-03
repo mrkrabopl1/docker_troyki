@@ -1,7 +1,7 @@
 // src/pages/productsInfo/ProductsInfo.tsx
 import React, { useEffect, useState, useRef, useCallback, memo, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { useAppDispatch, useAppSelector,useNavigate } from 'src/store/hooks/redux';
+import { useAppDispatch, useAppSelector, useNavigate } from 'src/store/hooks/redux';
 import { cartCountAction } from 'src/store/reducers/menuSlice';
 import { getMerchInfo } from "src/providers/merchProvider";
 import { createPreorder, updatePreorder } from 'src/providers/orderProvider';
@@ -31,7 +31,7 @@ interface ProductInfo {
     name: string;
     line?: string;
     info: merchType;
-    discount?: Record<string, {discounted_price: number,percent: number }>;
+    discount?: Record<string, { discounted_price: number, percent: number }>;
     store?: Record<string, number>;
     firm?: string;
     id?: string;
@@ -41,7 +41,7 @@ interface ProductInfo {
     line_products?: any[];
     image_extansion: string;
     bodytype: string;
-    brand_slug:string
+    brand_slug: string
 }
 
 interface SizeTable {
@@ -62,26 +62,40 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
     const { widthProps } = useAppSelector(state => state.resize);
     const { cartCount } = useAppSelector(state => state.menu);
     const dispatch = useAppDispatch();
-    const [currentStep,setCurrentStep] = useState(0);
+    const [currentStep, setCurrentStep] = useState(0);
 
-    const [merchInfo, setMerchInfo] = useState<ProductInfo>({ 
-        bodytype: "man", 
-        article: "", 
-        image_path: "", 
-        image_count: 0, 
-        name: "", 
-        info: {}, 
-        type_id: 0, 
-        image_extansion: "webp" ,
-        brand_slug:""
+    const [merchInfo, setMerchInfo] = useState<ProductInfo>({
+        bodytype: "man",
+        article: "",
+        image_path: "",
+        image_count: 0,
+        name: "",
+        info: {},
+        type_id: 0,
+        image_extansion: "webp",
+        brand_slug: ""
     });
-    
+
+    useEffect(() => {
+        if (!product) return;
+
+        const timer = setTimeout(() => {
+            fetch(`${API_URL}/products/${product}/view`, {
+                method: 'POST',
+                credentials: 'include',
+                keepalive: true,
+            }).catch((e) => console.warn('[view]', e));
+        }, 1500);
+
+        return () => clearTimeout(timer);
+    }, [product]);
+
     const [activeModal, setActiveModal] = useState(false);
     const [activeProductsModal, setActiveProductsModal] = useState(false);
     const [local] = useState("ru");
     const [currentPrice, setCurrentPrice] = useState<number>(0);
     const [emptyPage, setEmptyPage] = useState(false);
-    
+
     const currentSize = useRef<string>("");
     const currentDiscount = useRef<number>(0);
     const bodytype = useRef<string>("man");
@@ -117,7 +131,7 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
             setEmptyPage(false);
             currentDiscount.current = discount;
             currentPriceDiscount.current = price;
-            setCurrentPrice(Math.round(price - price * discount / 100 )|| price);
+            setCurrentPrice(Math.round(price - price * discount / 100) || price);
             setMerchInfo(val);
         }
     }, []);
@@ -134,7 +148,7 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
     // 🔥 Если нет SSR данных - загружаем на клиенте (fallback)
     useEffect(() => {
         if (isHydrated.current) return;
-        
+
         if (product) {
             getMerchInfo(product, (data) => {
                 dispatch(finishLoading());
@@ -193,9 +207,9 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
         let content = [];
         while (count <= merchInfo.image_count) {
             content.push(
-                <div onClick={(e)=>{e.stopPropagation()}} key={count} style={{ width: "100%", flexShrink: 0, height: "100%" }}>
-                    <ImagePresantationBlock 
-                        image={merchInfo.image_path + "/img" + count + "." + merchInfo.image_extansion} 
+                <div onClick={(e) => { e.stopPropagation() }} key={count} style={{ width: "100%", flexShrink: 0, height: "100%" }}>
+                    <ImagePresantationBlock
+                        image={merchInfo.image_path + "/img" + count + "." + merchInfo.image_extansion}
                     />
                 </div>
             );
@@ -240,13 +254,14 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
         if (merchInfo.image_count > 0) {
             return widthProps
                 ? <ContentSlider content={imageContent} />
-                : <ImagePresantation 
+                : <ImagePresantation
                     onClick={(ind) => {
                         setCurrentStep(ind)
-                        setActiveProductsModal(true)}} 
-                    image_count={merchInfo.image_count} 
-                    image_path={merchInfo.image_path} 
-                    extansion={merchInfo.image_extansion} 
+                        setActiveProductsModal(true)
+                    }}
+                    image_count={merchInfo.image_count}
+                    image_path={merchInfo.image_path}
+                    extansion={merchInfo.image_extansion}
                 />;
         }
         return null;
@@ -273,7 +288,7 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
                 return <Shoe className={s.sizeLabel} onClick={() => setActiveModal(true)} />;
             case "clothes":
                 return <Clothes className={s.sizeLabel} onClick={() => setActiveModal(true)} />;
-            default: 
+            default:
                 return null;
         }
     }, [merchType.current]);
@@ -284,13 +299,13 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
                 <div className={widthProps ? s.topPart : s.leftPart} style={widthProps ? { width: "100%" } : {}}>
                     {renderImagePresentation()}
                     {widthProps ? null : (
-                        <div 
+                        <div
                             onClick={() => {
                                 const firm = Object.values(firmMap).find(f => f.name === merchInfo.firm);
                                 if (firm) {
                                     navigate(`/search?brand=${firm.slug}`);
                                 }
-                            }} 
+                            }}
                             className={s.firmInfoHolder}
                         >
                             <img className={s.firmImage} src={"/images/brandLogos/" + merchInfo.brand_slug + "/image.png"} alt="" />
@@ -324,7 +339,7 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
                             elems={pricesArr.current}
                         />
                     )}
-                    
+
                     <div>{lineElements}</div>
 
                     {emptyPage ? (
@@ -338,13 +353,13 @@ const ProductsInfo: React.FC<ProductsInfoProps> = ({ initialData }) => {
                                 </div>
                                 <div style={{ display: "flex" }}>
                                     {widthProps ? (
-                                        <div 
+                                        <div
                                             onClick={() => {
                                                 const firm = Object.values(firmMap).find(f => f.name === merchInfo.firm);
                                                 if (firm) {
                                                     navigate(`/search?brand=${firm.slug}`);
                                                 }
-                                            }} 
+                                            }}
                                             className={s.firmInfoHolder}
                                         >
                                             <img className={s.firmImage} src={"/images/brandLogos/" + merchInfo.firm + "/image.png"} alt="" />

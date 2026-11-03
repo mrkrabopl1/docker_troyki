@@ -15,14 +15,13 @@ type Store interface {
 	DB() *pgxpool.Pool
 	BeginTx(ctx context.Context) (*Tx, error)
 	//InsertIntoOrderItems(ctx context.Context, products []types.ProductsInsert, orderID int) error
-	SetProductsHistory(ctx context.Context, productID int32, idCustomer int32) error
+
 	CreatePreorder(ctx context.Context, id int32, size string, price int32, name string, image_path string) (string, error)
 	GetProductsByNameComplex(ctx context.Context, name string, limit int32) ([]types.ProductsSearchResponse, error)
 	UpdatePreorder(ctx context.Context, id int32, size string, price int32, name string, image_path string, hash string) (int32, error)
 	GetSoloCollectionComplex(ctx context.Context, arg GetSoloCollectionParams) ([]types.ProductsSearchResponse1, error)
 	GetMerchCollectionComplex(ctx context.Context, arg GetMerchCollectionParams) ([]types.MerchSearchResponse, error)
 	GetCartCount(ctx context.Context, hash string) (int32, error)
-	SelectHistoryFromUniqueCustomer(ctx context.Context, id int32) ([]int32, error)
 	InsertVerification(ctx context.Context, arg InsertVerificationParams) error
 	RegisterUser(
 		ctx context.Context,

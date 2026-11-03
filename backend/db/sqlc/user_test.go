@@ -118,24 +118,9 @@ func TestCheckCustomerExistence(t *testing.T) {
 	require.NotEmpty(t, data)
 }
 
-func TestSetUniqueCustomer(t *testing.T) {
-	data, err := testStore.CreateUniqueCustomer(context.Background(), pgtype.Date{
-		Time:  time.Now(),
-		Valid: true,
-	})
-	fmt.Println(data)
-	require.NoError(t, err)
-	require.NotEmpty(t, data)
-}
-
 func TestGetSnickersHistoryComplex(t *testing.T) {
 	data, err := testStore.GetSnickersHistoryComplex(context.Background(), 14)
 	fmt.Println(data)
 	require.NoError(t, err)
 	require.NotEmpty(t, data)
-}
-
-func TestSetSnickersHistory(t *testing.T) {
-	err := testStore.SetSnickersHistory(context.Background(), 718, 718)
-	require.NoError(t, err)
 }

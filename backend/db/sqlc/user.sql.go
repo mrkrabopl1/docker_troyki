@@ -188,19 +188,6 @@ func (q *Queries) CreateNewsletterSubscriber(ctx context.Context, arg CreateNews
 	return i, err
 }
 
-const createUniqueCustomer = `-- name: CreateUniqueCustomer :one
-INSERT INTO uniquecustomers (creationTime, history)
-VALUES ($1, '{}')
-RETURNING id
-`
-
-func (q *Queries) CreateUniqueCustomer(ctx context.Context, creationtime pgtype.Date) (int32, error) {
-	row := q.db.QueryRow(ctx, createUniqueCustomer, creationtime)
-	var id int32
-	err := row.Scan(&id)
-	return id, err
-}
-
 const deleteCustomerAddress = `-- name: DeleteCustomerAddress :exec
 DELETE FROM customer_addresses
 WHERE id = $1 AND customer_id = $2
@@ -600,6 +587,65 @@ func (q *Queries) GetUnregisterCustomer(ctx context.Context, id int32) (Unregist
 	return i, err
 }
 
+const getUserHistory = `-- name: GetUserHistory :many
+SELECT p.id,
+       p.name,
+       p.image_path,
+       p.minprice,
+       p.maxprice,
+       MAX(pve.created_at) AS last_viewed
+FROM public.product_view_events pve
+JOIN public.products p ON p.id = pve.product_id
+WHERE pve.customer_id = $1
+  AND pve.event_type = 'view'
+  AND p.status = 'active'
+  AND p.deleted_at IS NULL
+GROUP BY p.id, p.name, p.image_path, p.minprice, p.maxprice
+ORDER BY last_viewed DESC
+LIMIT $2
+`
+
+type GetUserHistoryParams struct {
+	CustomerID pgtype.Int4 `json:"customer_id"`
+	Limit      int32       `json:"limit"`
+}
+
+type GetUserHistoryRow struct {
+	ID         int32       `json:"id"`
+	Name       string      `json:"name"`
+	ImagePath  string      `json:"image_path"`
+	Minprice   int32       `json:"minprice"`
+	Maxprice   int32       `json:"maxprice"`
+	LastViewed interface{} `json:"last_viewed"`
+}
+
+func (q *Queries) GetUserHistory(ctx context.Context, arg GetUserHistoryParams) ([]GetUserHistoryRow, error) {
+	rows, err := q.db.Query(ctx, getUserHistory, arg.CustomerID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserHistoryRow
+	for rows.Next() {
+		var i GetUserHistoryRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ImagePath,
+			&i.Minprice,
+			&i.Maxprice,
+			&i.LastViewed,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getVerification = `-- name: GetVerification :one
 SELECT id,
     expire,
@@ -667,19 +713,6 @@ func (q *Queries) InsertVerification(ctx context.Context, arg InsertVerification
 		arg.Deletetime,
 	)
 	return err
-}
-
-const selectHistoryFromUniqueCustomer = `-- name: SelectHistoryFromUniqueCustomer :one
-SELECT history
-FROM uniquecustomers
-WHERE id = $1
-`
-
-func (q *Queries) SelectHistoryFromUniqueCustomer(ctx context.Context, id int32) ([]int32, error) {
-	row := q.db.QueryRow(ctx, selectHistoryFromUniqueCustomer, id)
-	var history []int32
-	err := row.Scan(&history)
-	return history, err
 }
 
 const setDefaultCustomerAddress = `-- name: SetDefaultCustomerAddress :exec
@@ -868,22 +901,6 @@ type UpdateCustomerProfileParams struct {
 
 func (q *Queries) UpdateCustomerProfile(ctx context.Context, arg UpdateCustomerProfileParams) error {
 	_, err := q.db.Exec(ctx, updateCustomerProfile, arg.Name, arg.Phone, arg.ID)
-	return err
-}
-
-const updateUniqueCustomerHistry = `-- name: UpdateUniqueCustomerHistry :exec
-UPDATE uniquecustomers
-SET history = $1
-WHERE id = $2
-`
-
-type UpdateUniqueCustomerHistryParams struct {
-	History []int32 `json:"history"`
-	ID      int32   `json:"id"`
-}
-
-func (q *Queries) UpdateUniqueCustomerHistry(ctx context.Context, arg UpdateUniqueCustomerHistryParams) error {
-	_, err := q.db.Exec(ctx, updateUniqueCustomerHistry, arg.History, arg.ID)
 	return err
 }
 

@@ -322,16 +322,6 @@ export const changForgetPass = (pass: string, callback: (val: any) => void) => {
 // CUSTOMER (guest)
 // ============================================================
 
-export const setUniqueCustomer = (callback: (val: any) => void) => {
-    axios({
-        withCredentials: true,
-        method: 'get',
-        url: `${API_URL}/customers/unique`,
-    }).then(
-        (res) => callback(res.data),
-        (error) => console.warn('[setUniqueCustomer]', error)
-    );
-};
 
 export const checkCustomerData = (callback: (val: any) => void) => {
     axios({
@@ -463,3 +453,55 @@ export const sendNewsletterBroadcast = (data: BroadcastData, callback: (val: any
     );
 };
 export type AddressInput = Omit<Address, 'id'>;
+
+
+
+// src/providers/sessionProvider.ts
+
+let sessionPromise: Promise<{ sid: string; vid: string } | null> | null = null;
+
+/**
+ * Инициализация сессии. Вызывается ОДИН раз при загрузке приложения.
+ * Возвращает Promise, чтобы можно было await в других местах.
+ * Повторные вызовы возвращают тот же Promise (не дёргают API).
+ */
+export function initSession(): Promise<{ sid: string; vid: string } | null> {
+  // если уже вызвали — возвращаем тот же Promise
+  if (sessionPromise) {
+    return sessionPromise;
+  }
+
+  sessionPromise = (async () => {
+    try {
+      const res = await fetch(`${API_URL}/session`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        console.error('[session] init failed:', res.status);
+        return null;
+      }
+
+      const data = await res.json();
+      console.log('[session] initialized:', data);
+      return data;
+    } catch (err) {
+      console.error('[session] init error:', err);
+      sessionPromise = null; // сбрасываем, чтобы можно было повторить
+      return null;
+    }
+  })();
+
+  return sessionPromise;
+}
+
+/**
+ * Сброс (для тестов / logout).
+ */
+export function resetSession() {
+  sessionPromise = null;
+}

@@ -775,7 +775,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
                     marginBottom: "20px",
                     gap: "10px"
                 }}>
-                    <div style={{ margin: "auto", width: "30%", padding: "5px" }}>
+                    <div  className={s.filterHolder}>
                         {widthProps ? (
                             <Sort
                                 type="button"
@@ -807,7 +807,7 @@ const CollectionPage: React.FC<CollectionPageProps> = ({ initialData, collection
                     />
 
                     {widthProps ? (
-                        <div style={{ margin: "auto", width: "30%", padding: "5px" }}>
+                        <div className={s.filterHolder} >
                             <Filter
                                 className={s.filterBtn}
                                 onClick={() => setShowFiltersPanel(true)}

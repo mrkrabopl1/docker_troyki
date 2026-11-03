@@ -640,6 +640,15 @@ type ProductType struct {
 	EnumKey    string `json:"enum_key"`
 }
 
+type ProductViewEvent struct {
+	ID         int64              `json:"id"`
+	ProductID  int32              `json:"product_id"`
+	SessionID  string             `json:"session_id"`
+	CustomerID pgtype.Int4        `json:"customer_id"`
+	EventType  string             `json:"event_type"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
 type PromoCode struct {
 	ID                 int32              `json:"id"`
 	Code               string             `json:"code"`
@@ -692,9 +701,13 @@ type TmpProductID struct {
 }
 
 type Uniquecustomer struct {
-	ID           int32       `json:"id"`
-	Creationtime pgtype.Date `json:"creationtime"`
-	History      []int32     `json:"history"`
+	ID          int64              `json:"id"`
+	SessionID   string             `json:"session_id"`
+	VisitorID   pgtype.UUID        `json:"visitor_id"`
+	FirstSeenAt pgtype.Timestamptz `json:"first_seen_at"`
+	LastSeenAt  pgtype.Timestamptz `json:"last_seen_at"`
+	IpHash      pgtype.Text        `json:"ip_hash"`
+	UserAgent   pgtype.Text        `json:"user_agent"`
 }
 
 type Unregistercustomer struct {

@@ -75,18 +75,6 @@ SELECT EXISTS (
         WHERE id = $1
             AND mail = $2
     );
--- name: SelectHistoryFromUniqueCustomer :one
-SELECT history
-FROM uniquecustomers
-WHERE id = $1;
--- name: UpdateUniqueCustomerHistry :exec
-UPDATE uniquecustomers
-SET history = $1
-WHERE id = $2;
--- name: CreateUniqueCustomer :one
-INSERT INTO uniquecustomers (creationTime, history)
-VALUES ($1, '{}')
-RETURNING id;
 
 
 -- name: UpdateCustomerProfile :exec
@@ -251,3 +239,21 @@ LEFT JOIN orderitems oi ON oi.orderid = o.id
 WHERE o.customerid = $1
 GROUP BY o.id
 ORDER BY o.orderdate DESC;
+
+
+-- name: GetUserHistory :many
+SELECT p.id,
+       p.name,
+       p.image_path,
+       p.minprice,
+       p.maxprice,
+       MAX(pve.created_at) AS last_viewed
+FROM public.product_view_events pve
+JOIN public.products p ON p.id = pve.product_id
+WHERE pve.customer_id = $1
+  AND pve.event_type = 'view'
+  AND p.status = 'active'
+  AND p.deleted_at IS NULL
+GROUP BY p.id, p.name, p.image_path, p.minprice, p.maxprice
+ORDER BY last_viewed DESC
+LIMIT $2;

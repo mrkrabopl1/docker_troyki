@@ -280,8 +280,8 @@
 
 /* ========== ЛУПА ========== */
 .loupe {
-  width: 36px;
-  height: 36px;
+  width: 42px;
+  height: 42px;
   cursor: pointer;
   transition: all 0.3s ease;
   flex-shrink: 0;
@@ -427,8 +427,8 @@
 .buyButton {
   position: relative;
   cursor: pointer;
-  width: 36px;
-  height: 36px;
+  width: 42px;
+  height: 42px;
   box-sizing: content-box;
 }
 
