@@ -39,11 +39,33 @@ func (s *Server) handleGetMainBanners(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, resp)
 }
 
+// api/main_handler.go (или где у вас MainInfoResponse)
+
+type BrandingFont struct {
+	ID      int32  `json:"id"`
+	Family  string `json:"family"`
+	Slug    string `json:"slug"`
+	URL     string `json:"url"`
+	Weight  int16  `json:"weight"`
+	Style   string `json:"style"`
+	Version int32  `json:"version"`
+}
+
+type Branding struct {
+	LogoURL       string         `json:"logo_url"`
+	LogoAlt       string         `json:"logo_alt"`
+	LogoVersion   int32          `json:"logo_version"`
+	FontBodyID    *int32         `json:"font_body_id"`
+	FontDisplayID *int32         `json:"font_display_id"`
+	Fonts         []BrandingFont `json:"fonts"`
+}
+
 type MainInfoResponse struct {
 	Categories []db.GetCategoriesWithTypesRow `json:"categories"`
 	Firms      []db.GetFirmsRow               `json:"firms"`
 	Discounts  []db.DiscountRule              `json:"discounts"`
 	SizeTables map[string]interface{}         `json:"sizeTables"`
+	Branding   Branding                       `json:"branding"`
 }
 
 func (s *Server) handleGetMainInfo(ctx *gin.Context) {
@@ -104,13 +126,72 @@ func (s *Server) handleGetMainInfo(ctx *gin.Context) {
 	sizeElapsed := time.Since(sizeStart)
 	fmt.Printf("⏱️ [handleGetMainInfo] ✅ SizeTables: %dms, %d entries\n", sizeElapsed.Milliseconds(), len(sizeTables))
 
+	// ============================================================
+	// 5. Get Branding (site settings + fonts)
+	// ============================================================
+	brandingStart := time.Now()
+
+	branding := db.Branding{
+		LogoURL:     "/troyki_logo.svg",
+		LogoAlt:     "TROYKI_BENCH",
+		LogoVersion: 0,
+		Fonts:       []db.BrandingFont{},
+	}
+
+	settings, err := s.store.GetSiteSettings(ctx)
+	if err == nil {
+		branding.LogoURL = settings.LogoUrl
+		branding.LogoAlt = settings.LogoAlt
+		branding.LogoVersion = settings.LogoVersion
+
+		if settings.FontBodyID.Valid {
+			id := settings.FontBodyID.Int32
+			branding.FontBodyID = &id
+		}
+		if settings.FontDisplayID.Valid {
+			id := settings.FontDisplayID.Int32
+			branding.FontDisplayID = &id
+		}
+	} else {
+		fmt.Printf("⏱️ [handleGetMainInfo] ⚠️ GetSiteSettings failed: %v (using defaults)\n", err)
+	}
+
+	fonts, err := s.store.GetAllFonts(ctx)
+	if err == nil {
+		fontsOut := make([]db.BrandingFont, 0, len(fonts))
+		for _, f := range fonts {
+			if !f.IsActive {
+				continue
+			}
+			fontsOut = append(fontsOut, db.BrandingFont{
+				ID:      f.ID,
+				Family:  f.Family,
+				Slug:    f.Slug,
+				URL:     s.fontService.BuildURL(f.Url),
+				Weight:  f.Weight,
+				Style:   f.Style,
+				Version: f.Version,
+			})
+		}
+		branding.Fonts = fontsOut
+	} else {
+		fmt.Printf("⏱️ [handleGetMainInfo] ⚠️ GetAllFonts failed: %v (using empty list)\n", err)
+	}
+
+	brandingElapsed := time.Since(brandingStart)
+	fmt.Printf("⏱️ [handleGetMainInfo] ✅ Branding: %dms, logo=%q, fonts=%d\n",
+		brandingElapsed.Milliseconds(), branding.LogoURL, len(branding.Fonts))
+
+	// ============================================================
 	// Build response
+	// ============================================================
 	buildStart := time.Now()
 	mainInfo := db.MainInfoResponse{
 		Categories: response,
 		Firms:      firms,
 		Discounts:  discounts,
 		SizeTables: sizeTables,
+		Branding:   branding,
 	}
 	buildElapsed := time.Since(buildStart)
 	fmt.Printf("⏱️ [handleGetMainInfo] ✅ Response built in %dms\n", buildElapsed.Milliseconds())
@@ -127,8 +208,8 @@ func (s *Server) handleGetMainInfo(ctx *gin.Context) {
 
 	totalElapsed := time.Since(startTime)
 	fmt.Printf("⏱️ [handleGetMainInfo] 🏁 TOTAL TIME: %dms\n", totalElapsed.Milliseconds())
-	fmt.Printf("⏱️ [handleGetMainInfo] 📊 Data stats: categories=%d, firms=%d, discounts=%d, sizeTables=%d\n",
-		len(response), len(firms), len(discounts), len(sizeTables))
+	fmt.Printf("⏱️ [handleGetMainInfo] 📊 Data stats: categories=%d, firms=%d, discounts=%d, sizeTables=%d, fonts=%d\n",
+		len(response), len(firms), len(discounts), len(sizeTables), len(branding.Fonts))
 
 	ctx.JSON(http.StatusOK, mainInfo)
 }
@@ -169,73 +250,107 @@ func (s *Server) handleGetMenuInfo(ctx *gin.Context) {
 	startTime := time.Now()
 	fmt.Printf("⏱️ [handleGetMenuInfo] START at %s\n", startTime.Format(time.RFC3339Nano))
 
-	// // Try to get from cache first
-	// cacheStart := time.Now()
-	// cachedData, err := s.taskProcessor.GetMenuInfo(ctx)
-	// if err == nil {
-	// 	cacheElapsed := time.Since(cacheStart)
-	// 	fmt.Printf("⏱️ [handleGetMainInfo] ✅ FROM CACHE in %dms\n", cacheElapsed.Milliseconds())
-	// 	ctx.JSON(http.StatusOK, cachedData)
-	// 	return
-	// }
-	// cacheElapsed := time.Since(cacheStart)
-	// fmt.Printf("⏱️ [handleGetMainInfo] ❌ CACHE MISS in %dms\n", cacheElapsed.Milliseconds())
-
-	// // If not in cache, fetch from database
-	// fmt.Printf("⏱️ [handleGetMainInfo] 🔄 Fetching from database...\n")
-
 	// 1. Get Categories with Types
 	categoriesStart := time.Now()
 	response, err := s.store.GetCategoriesWithTypes(ctx)
 	if err != nil {
-		fmt.Printf("⏱️ [handleGetMainInfo] ❌ GetCategoriesWithTypes FAILED after %dms: %v\n", time.Since(categoriesStart).Milliseconds(), err)
+		fmt.Printf("⏱️ [handleGetMenuInfo] ❌ GetCategoriesWithTypes FAILED after %dms: %v\n", time.Since(categoriesStart).Milliseconds(), err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	categoriesElapsed := time.Since(categoriesStart)
-	fmt.Printf("⏱️ [handleGetMainInfo] ✅ GetCategoriesWithTypes: %dms, %d categories\n", categoriesElapsed.Milliseconds(), len(response))
+	fmt.Printf("⏱️ [handleGetMenuInfo] ✅ GetCategoriesWithTypes: %dms, %d categories\n", categoriesElapsed.Milliseconds(), len(response))
 
-	// 3. Get Discounts
+	// 2. Get Discounts
 	discountsStart := time.Now()
 	discounts, err := s.store.GetAllActiveDiscountRules(ctx)
 	if err != nil {
-		fmt.Printf("⏱️ [handleGetMainInfo] ❌ GetAllActiveDiscountRules FAILED after %dms: %v\n", time.Since(discountsStart).Milliseconds(), err)
+		fmt.Printf("⏱️ [handleGetMenuInfo] ❌ GetAllActiveDiscountRules FAILED after %dms: %v\n", time.Since(discountsStart).Milliseconds(), err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	discountsElapsed := time.Since(discountsStart)
-	fmt.Printf("⏱️ [handleGetMainInfo] ✅ GetAllActiveDiscountRules: %dms, %d discounts\n", discountsElapsed.Milliseconds(), len(discounts))
+	fmt.Printf("⏱️ [handleGetMenuInfo] ✅ GetAllActiveDiscountRules: %dms, %d discounts\n", discountsElapsed.Milliseconds(), len(discounts))
 
-	// 4. Get Size Tables
+	// 3. Get Size Tables
 	sizeStart := time.Now()
 	sizeTables := size.GetAll()
 	sizeElapsed := time.Since(sizeStart)
-	fmt.Printf("⏱️ [handleGetMainInfo] ✅ SizeTables: %dms, %d entries\n", sizeElapsed.Milliseconds(), len(sizeTables))
+	fmt.Printf("⏱️ [handleGetMenuInfo] ✅ SizeTables: %dms, %d entries\n", sizeElapsed.Milliseconds(), len(sizeTables))
 
+	// ============================================================
+	// 4. Get Branding (site settings + fonts)
+	// ============================================================
+	brandingStart := time.Now()
+
+	branding := db.Branding{
+		LogoURL:     "/troyki_logo.svg",
+		LogoAlt:     "TROYKI_BENCH",
+		LogoVersion: 0,
+		Fonts:       []db.BrandingFont{},
+	}
+
+	settings, err := s.store.GetSiteSettings(ctx)
+	if err == nil {
+		branding.LogoURL = settings.LogoUrl
+		branding.LogoAlt = settings.LogoAlt
+		branding.LogoVersion = settings.LogoVersion
+
+		if settings.FontBodyID.Valid {
+			id := settings.FontBodyID.Int32
+			branding.FontBodyID = &id
+		}
+		if settings.FontDisplayID.Valid {
+			id := settings.FontDisplayID.Int32
+			branding.FontDisplayID = &id
+		}
+	} else {
+		fmt.Printf("⏱️ [handleGetMenuInfo] ⚠️ GetSiteSettings failed: %v (using defaults)\n", err)
+	}
+
+	fonts, err := s.store.GetAllFonts(ctx)
+	if err == nil {
+		fontsOut := make([]db.BrandingFont, 0, len(fonts))
+		for _, f := range fonts {
+			if !f.IsActive {
+				continue
+			}
+			fontsOut = append(fontsOut, db.BrandingFont{
+				ID:      f.ID,
+				Family:  f.Family,
+				Slug:    f.Slug,
+				URL:     s.fontService.BuildURL(f.Url),
+				Weight:  f.Weight,
+				Style:   f.Style,
+				Version: f.Version,
+			})
+		}
+		branding.Fonts = fontsOut
+	} else {
+		fmt.Printf("⏱️ [handleGetMenuInfo] ⚠️ GetAllFonts failed: %v (using empty list)\n", err)
+	}
+
+	brandingElapsed := time.Since(brandingStart)
+	fmt.Printf("⏱️ [handleGetMenuInfo] ✅ Branding: %dms, logo=%q, fonts=%d\n",
+		brandingElapsed.Milliseconds(), branding.LogoURL, len(branding.Fonts))
+
+	// ============================================================
 	// Build response
+	// ============================================================
 	buildStart := time.Now()
 	menuInfo := db.MainInfoResponse{
 		Categories: response,
 		Discounts:  discounts,
 		SizeTables: sizeTables,
+		Branding:   branding, // 👈 добавили
 	}
 	buildElapsed := time.Since(buildStart)
-	fmt.Printf("⏱️ [handleGetMainInfo] ✅ Response built in %dms\n", buildElapsed.Milliseconds())
+	fmt.Printf("⏱️ [handleGetMenuInfo] ✅ Response built in %dms\n", buildElapsed.Milliseconds())
 
-	// Cache the response (async to not block response)
-	// cacheSetStart := time.Now()
-	// go func() {
-	// 	if err := s.taskProcessor.SetMenuInfo(context.Background(), mainInfo); err != nil {
-	// 		fmt.Printf("⏱️ [handleGetMainInfo] ❌ Failed to cache: %v\n", err)
-	// 	} else {
-	// 		fmt.Printf("⏱️ [handleGetMainInfo] 💾 Cached in %dms\n", time.Since(cacheSetStart).Milliseconds())
-	// 	}
-	// }()
-
-	// totalElapsed := time.Since(startTime)
-	// fmt.Printf("⏱️ [handleGetMainInfo] 🏁 TOTAL TIME: %dms\n", totalElapsed.Milliseconds())
-	fmt.Printf("⏱️ [handleGetMainInfo] 📊 Data stats: categories=%d, firms=%d, discounts=%d, sizeTables=%d\n",
-		len(response), len(discounts), len(sizeTables))
+	totalElapsed := time.Since(startTime)
+	fmt.Printf("⏱️ [handleGetMenuInfo] 🏁 TOTAL TIME: %dms\n", totalElapsed.Milliseconds())
+	fmt.Printf("⏱️ [handleGetMenuInfo] 📊 Data stats: categories=%d, discounts=%d, sizeTables=%d, fonts=%d\n",
+		len(response), len(discounts), len(sizeTables), len(branding.Fonts))
 
 	ctx.JSON(http.StatusOK, menuInfo)
 }

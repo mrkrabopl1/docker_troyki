@@ -75,7 +75,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, isMobile, onClose }
                     Редактор новостей
                 </NavLink>
 
-              
+
 
                 {/* ===== ПРОМОКОДЫ ===== */}
                 <NavLink href="/admin/promocodes">
@@ -97,6 +97,13 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, isMobile, onClose }
                     <NavLink href="/admin/logs">
                         <span className={s.icon}>👥</span>
                         Администраторы
+                    </NavLink>
+                )}
+
+                {user?.role === 'superadmin' && (
+                    <NavLink href="/admin/site-settings">
+                        <span className={s.icon}>⚙️</span>
+                        Настройки сайта
                     </NavLink>
                 )}
 

@@ -1,3 +1,4 @@
+// components/menu/Menu.tsx
 import React, { useState, useRef, useCallback, useMemo, memo } from 'react';
 import { useRouter } from 'next/router';
 import { useAppSelector, useAppDispatch, useNavigate } from 'src/store/hooks/redux';
@@ -12,8 +13,7 @@ import StyledSearch from 'src/components/search/StyledSearch';
 import { ReactComponent as Loupe } from "/public/loupe.svg";
 import s from "./style.module.css";
 import ss from "src/pages/search/style.module.css";
-import logo from "/public/troyki_logo.svg";
-import { setShowBrandsModal,setActiveCart } from 'src/store/reducers/menuSlice';
+import { setShowBrandsModal, setActiveCart } from 'src/store/reducers/menuSlice';
 import ssa from "/public/firm_images.svg";
 import ComplexDropVertical from 'src/components/complexDrop/ComplexDropVertical';
 import AlphabetNavigation from 'src/components/alphabetNavigation/AlphabetNavigation';
@@ -41,12 +41,12 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
     const router = useRouter();
 
     const { isLog, isAuthChecked } = useAppSelector(state => state.user);
-    const { show, sticky, typesVal, categories,showBrandsModal,activeCart } = useAppSelector(state => state.menu);
+    const { show, sticky, typesVal, categories, showBrandsModal, activeCart, branding } = useAppSelector(state => state.menu);
     const { isVerified } = useAppSelector(state => state.menu);
 
     const menuWrap = useRef<HTMLDivElement>(null);
     const [active, setActive] = useState(false);
-    
+
     const { setSearchData } = searchSlice.actions;
     const [showBurgerMenu, setShowBurgerMenu] = useState(false);
     const activeBurger = useRef(false);
@@ -157,11 +157,11 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
                     closeAuthModal();
                 } else {
                     setIsAuthLoading(false);
-                    if(res.status === 401){
+                    if (res.status === 401) {
                         setAuthError('Неверный email или пароль');
-                    }else if(res.status === 429){
+                    } else if (res.status === 429) {
                         setAuthError('Слишком много попыток, попробуйте позже');
-                    }else{
+                    } else {
                         setAuthError('Ошибка входа, попробуйте позже');
                     }
                 }
@@ -203,9 +203,13 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
 
             <div onClick={handleLogoClick} className={`${s.logoWrapStyle} ${isSearchExpanded ? s.displayStyle : ''}`}>
                 <div className={s.imageWrapStyle}>
-                    <img className={s.imgStyle} src={logo} alt="troyki" />
+                    <img
+                        className={s.imgStyle}
+                        src={`${branding.logo_url}?v=${branding.logo_version}`}
+                        alt={branding.logo_alt}
+                    />
                 </div>
-                <div className={s.textLogo}>TROYKI_BENCH</div>
+                <div className={s.textLogo}>{branding.logo_alt}</div>
             </div>
 
             <div className={s.navContainer}>
@@ -270,7 +274,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
             {/* ============================================================ */}
             {/* МОДАЛКА: ФИРМЫ */}
             {/* ============================================================ */}
-            <Modal onChange={()=>{dispatch(setShowBrandsModal(false))}} active={showBrandsModal}>
+            <Modal onChange={() => { dispatch(setShowBrandsModal(false)) }} active={showBrandsModal}>
                 <div style={{ height: "100%" }} onClick={(e) => e.stopPropagation()} className={s.modalWrap1}>
                     <AlphabetNavigation
                         onChange={(name) => {
@@ -284,7 +288,7 @@ const Menu: React.FC<MenuProps> = memo(({ onChange, firms }) => {
             {/* ============================================================ */}
             {/* МОДАЛКА: КОРЗИНА */}
             {/* ============================================================ */}
-            <Modal onChange={()=>{dispatch(setActiveCart(false))}} active={activeCart}>
+            <Modal onChange={() => { dispatch(setActiveCart(false)) }} active={activeCart}>
                 <div onClick={(e) => e.stopPropagation()} className={s.cartModalWrap}>
                     <Scroller onlyVertical={true}>
                         <BuyPage onActivate={() => dispatch(setActiveCart(false))} />

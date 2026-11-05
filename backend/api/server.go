@@ -28,9 +28,15 @@ type Server struct {
 	taskDistributor worker.TaskDistributor
 	taskProcessor   worker.TaskProcessor
 	imageService    *services.ImageService
+	fontService     *services.FontService
 }
 
-func NewServer(config util.Config, store db.Store, taskDistributor worker.TaskDistributor, taskProcessor worker.TaskProcessor, imageService *services.ImageService) (*Server, error) {
+func NewServer(config util.Config,
+	store db.Store,
+	taskDistributor worker.TaskDistributor,
+	taskProcessor worker.TaskProcessor,
+	imageService *services.ImageService,
+	fontService *services.FontService) (*Server, error) {
 	tokenMaker, err := token.NewPasetoMaker(config.TokenSymmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create token maker: %w", err)
@@ -43,6 +49,7 @@ func NewServer(config util.Config, store db.Store, taskDistributor worker.TaskDi
 		taskProcessor:   taskProcessor,
 		tokenMaker:      tokenMaker,
 		imageService:    imageService,
+		fontService:     fontService,
 	}
 
 	server.setupRouter()
@@ -204,6 +211,7 @@ func (s *Server) setupRouter() {
 		api.GET("/main/info", s.handleGetMainInfo)
 		api.GET("/menu", s.handleGetMenuInfo)
 		api.GET("/brands/lines", s.handleGetBrandsWithLines)
+		api.GET("/site-settings", s.handleGetSiteSettings)
 
 		api.POST("/admin/auth/login", s.handleAdminLogin)
 		api.POST("/admin/auth/forgot-password", s.handleAdminForgotPass)
@@ -261,6 +269,23 @@ func (s *Server) setupRouter() {
 			adminGroup.POST("/lines/:id", s.handleAdminUpdateLine)
 			adminGroup.DELETE("/lines/:id", s.handleAdminDeleteLine)
 			adminGroup.PUT("/lines/bulk-active", s.handleAdminBulkUpdateLineActive)
+
+			// ===== site settings (брендинг) =====
+			adminGroup.POST("/site-settings/logo",
+				MaxBodySizeMiddleware(2<<20), // 2 MiB, внутри SaveLogo ещё лимит 200 KB на SVG
+				s.handleAdminUploadLogo)
+			adminGroup.PATCH("/site-settings/logo-alt", s.handleAdminUpdateLogoAlt)
+
+			// ===== шрифты =====
+			adminGroup.GET("/fonts", s.handleAdminGetFonts) // 👈
+			adminGroup.POST("/fonts",
+				MaxBodySizeMiddleware(2<<20),
+				s.handleAdminCreateFont) // 👈
+			adminGroup.POST("/fonts/:id",
+				MaxBodySizeMiddleware(2<<20),
+				s.handleAdminUpdateFont) // 👈
+			adminGroup.DELETE("/fonts/:id", s.handleAdminDeleteFont) // 👈
+			adminGroup.PATCH("/site-settings/fonts", s.handleAdminSetFontRoles)
 
 			adminGroup.POST("/sql/execute", s.handleAdminExecuteSQL)
 

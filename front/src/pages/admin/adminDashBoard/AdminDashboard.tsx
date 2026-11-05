@@ -203,7 +203,11 @@ const AdminDashboard: React.FC = () => {
                             📋 Просмотр заказов
                         </button>
                     )}
-
+                    {user?.role === 'superadmin' && (
+                        <button onClick={() => navigateTo('/admin/site-settings')}>
+                            ⚙️ Настройки сайта
+                        </button>
+                    )}
                     {user?.role === 'superadmin' && (
                         <button onClick={() => navigateTo('/admin/page-blocks')}>
                             🧩 Управление блоками

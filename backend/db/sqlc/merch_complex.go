@@ -13,12 +13,32 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type BrandingFont struct {
+	ID      int32  `json:"id"`
+	Family  string `json:"family"`
+	Slug    string `json:"slug"`
+	URL     string `json:"url"`
+	Weight  int16  `json:"weight"`
+	Style   string `json:"style"`
+	Version int32  `json:"version"`
+}
+
+type Branding struct {
+	LogoURL       string         `json:"logo_url"`
+	LogoAlt       string         `json:"logo_alt"`
+	LogoVersion   int32          `json:"logo_version"`
+	FontBodyID    *int32         `json:"font_body_id"`
+	FontDisplayID *int32         `json:"font_display_id"`
+	Fonts         []BrandingFont `json:"fonts"`
+}
+
 // ==================== СТРУКТУРЫ ОТВЕТОВ ====================
 type MainInfoResponse struct {
 	Categories []GetCategoriesWithTypesRow `json:"categories"`
 	Firms      []GetFirmsRow               `json:"firms"`
 	Discounts  []DiscountRule              `json:"discounts"`
 	SizeTables map[string]interface{}      `json:"sizeTables"`
+	Branding   Branding                    `json:"branding"`
 }
 type ProductsPageAndFilters struct {
 	ProductsPageInfo []types.ProductsSearch

@@ -1,3 +1,4 @@
+// src/AppContent.tsx
 import React, {
   useEffect,
   useRef,
@@ -6,7 +7,7 @@ import React, {
 } from 'react';
 import { useRouter } from 'next/router';
 
-import { useAppDispatch } from 'src/store/hooks/redux';
+import { useAppDispatch, useAppSelector } from 'src/store/hooks/redux';
 import { useRouteChange } from 'src/store/hooks/redux';
 import { setHydrated } from 'src/store/reducers/loadingSlice';
 import {
@@ -21,6 +22,7 @@ import {
   setFirms,
   collections,
   setLineMap,
+  setBranding,
 } from 'src/store/reducers/menuSlice';
 
 import { setFooter } from 'src/store/reducers/dispetcherSlice';
@@ -36,7 +38,7 @@ import {
   setUser as setCustomer,
   clearUser as clearCustomer,
 } from 'src/store/reducers/userSlice';
-import { getMe,initSession } from 'src/providers/userProvider';
+import { getMe, initSession } from 'src/providers/userProvider';
 
 import { getCookie } from './global';
 import { getCartCount } from './providers/shopProvider';
@@ -78,6 +80,9 @@ const AppContent: React.FC<AppContentProps> = ({
   const dispatch = useAppDispatch();
   const router = useRouter();
   const contRef = useRef<HTMLDivElement>(null);
+
+  // 👇 BRANDING из Redux (для логотипа и @font-face)
+  const branding = useAppSelector(state => state.menu.branding);
 
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -287,6 +292,14 @@ const AppContent: React.FC<AppContentProps> = ({
 
       if (data.sizeTables) {
         dispatch(setSizeTables(data.sizeTables));
+      }
+
+      // --------------------------------------------------------
+      // BRANDING (лого + шрифты)
+      // --------------------------------------------------------
+
+      if (data.branding) {
+        dispatch(setBranding(data.branding));
       }
     },
     [dispatch]
@@ -645,11 +658,58 @@ const AppContent: React.FC<AppContentProps> = ({
   );
 
   // ============================================================
+  // @FONT-FACE + CSS-ПЕРЕМЕННЫЕ
+  // ============================================================
+
+  const fontFaceCss = useMemo(() => {
+    if (!branding?.fonts?.length) return '';
+
+    const faces = branding.fonts
+      .map(
+        (f) => `
+        @font-face {
+          font-family: '${f.family}';
+          src: url('../fonts${f.url}?v=${f.version}') format('woff');
+          font-weight: ${f.weight};
+          font-style: ${f.style};
+          font-display: swap;
+        }`
+      )
+      .join('\n');
+
+    const bodyFont = branding.fonts.find(
+      (f) => f.id === branding.font_body_id
+    );
+    const displayFont = branding.fonts.find(
+      (f) => f.id === branding.font_display_id
+    );
+
+    const vars = `
+      :root {
+        --font-body: ${bodyFont ? `'${bodyFont.family}'` : 'system-ui'}, sans-serif;
+        --font-display: ${
+          displayFont
+            ? `'${displayFont.family}'`
+            : bodyFont
+            ? `'${bodyFont.family}'`
+            : 'system-ui'
+        }, sans-serif;
+      }
+    `;
+
+    return faces + '\n' + vars;
+  }, [branding]);
+
+  // ============================================================
   // RENDER
   // ============================================================
 
   return (
     <>
+      {fontFaceCss && (
+        <style dangerouslySetInnerHTML={{ __html: fontFaceCss }} />
+      )}
+
       <ScrollToTop />
 
       <Preloader />

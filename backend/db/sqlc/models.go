@@ -432,6 +432,18 @@ type DiscountRuleItem struct {
 	ItemID   int32  `json:"item_id"`
 }
 
+type Font struct {
+	ID        int32              `json:"id"`
+	Family    string             `json:"family"`
+	Slug      string             `json:"slug"`
+	Url       string             `json:"url"`
+	Weight    int16              `json:"weight"`
+	Style     string             `json:"style"`
+	IsActive  bool               `json:"is_active"`
+	Version   int32              `json:"version"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type InstagramPost struct {
 	ID        int32              `json:"id"`
 	ImageUrl  string             `json:"image_url"`
@@ -679,6 +691,16 @@ type PromoCodeUsage struct {
 	PromoCodeSnapshot []byte             `json:"promo_code_snapshot"`
 	DiscountAmount    int32              `json:"discount_amount"`
 	UsedAt            pgtype.Timestamptz `json:"used_at"`
+}
+
+type SiteSetting struct {
+	ID            int32              `json:"id"`
+	LogoUrl       string             `json:"logo_url"`
+	LogoAlt       string             `json:"logo_alt"`
+	LogoVersion   int32              `json:"logo_version"`
+	FontBodyID    pgtype.Int4        `json:"font_body_id"`
+	FontDisplayID pgtype.Int4        `json:"font_display_id"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
 type StoreHouse struct {

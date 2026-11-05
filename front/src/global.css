@@ -1,41 +1,40 @@
-@font-face {
-    font-family: 'Quicksand';
-    src: url('../fonts/Quicksand-Regular.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
-    font-display: swap;
+/* ============================================================
+   БРЕНДИНГ: ШРИФТЫ
+   ------------------------------------------------------------
+   @font-face и значения --font-body / --font-display
+   генерируются динамически в AppContent (из branding.fonts).
+   Здесь — только применение + fallback на system-ui.
+   ============================================================ */
+
+body {
+    font-family: var(--font-body, system-ui), -apple-system, BlinkMacSystemFont,
+        'Segoe UI', Roboto, sans-serif;
+    background-color: #fff;
 }
 
-@font-face {
-    font-family: 'SegoePro';
-    src: url('../fonts/SegoePro-Light.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
-    font-display: swap;
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display, var(--font-body, system-ui)), -apple-system,
+        BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-@font-face {
-    font-family: 'Open Sans Condensed';
-    src: url('../fonts/OpenSansCondensed-Regular.eot');
-    src: url('../fonts/OpenSansCondensed-Regular.eot?#iefix') format('embedded-opentype'),
-        url('../fonts/OpenSansCondensed-Regular.woff2') format('woff2'),
-        url('../fonts/OpenSansCondensed-Regular.woff') format('woff'),
-        url('../fonts/OpenSansCondensed-Regular.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-    font-display: swap;
+button, input, select, textarea {
+    font-family: inherit;
 }
+
+/* ============================================================
+   RESET
+   ============================================================ */
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Open Sans Condensed';
 }
 
-body {
-    background-color: #fff;
-}
+/* ============================================================
+   PRELOADER
+   ============================================================ */
+
 .preloader-wrapper {
     position: fixed !important;
     top: 0 !important;
@@ -50,6 +49,11 @@ body {
     background: #ffffff !important;
     z-index: 999999 !important;
 }
+
+/* ============================================================
+   LINKS
+   ============================================================ */
+
 .link {
     text-decoration: none;
     padding-left: 10px;
@@ -75,6 +79,10 @@ body {
     }
 }
 
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+
 .flex {
     display: flex;
 }
@@ -96,6 +104,10 @@ body {
     width: 100%;
     height: 100%;
 }
+
+/* ============================================================
+   FONT SIZES
+   ============================================================ */
 
 .fontSizeH {
     font-size: 18px;
@@ -128,6 +140,10 @@ body {
         display: block;
     }
 }
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
 
 .btnStyle.dark {
     background: #2a2a2a;

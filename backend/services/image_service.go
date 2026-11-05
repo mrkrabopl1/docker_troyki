@@ -563,3 +563,73 @@ func (s *ImageService) DeleteCollectionCoverImage(imagePath string) error {
 	}
 	return nil
 }
+
+// SaveLogo сохраняет логотип. Пока поддерживается только SVG.
+func (s *ImageService) SaveLogo(file *multipart.FileHeader) (string, error) {
+	const maxSVGSize = 200 * 1024 // 200 KB
+
+	// 1. расширение
+	if strings.ToLower(filepath.Ext(file.Filename)) != ".svg" {
+		return "", fmt.Errorf("logo must be SVG")
+	}
+
+	// 2. размер
+	if file.Size > maxSVGSize {
+		return "", fmt.Errorf("SVG too large: max %d KB", maxSVGSize/1024)
+	}
+
+	// 3. MIME
+	if file.Header.Get("Content-Type") != "image/svg+xml" {
+		return "", fmt.Errorf("invalid SVG content-type")
+	}
+
+	// 4. открываем, проверяем что это похоже на SVG
+	f, err := file.Open()
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	head := make([]byte, 512)
+	n, _ := f.Read(head)
+	lower := strings.ToLower(string(head[:n]))
+	if !strings.Contains(lower, "<svg") && !strings.Contains(lower, "<?xml") {
+		return "", fmt.Errorf("file is not a valid SVG")
+	}
+
+	// 5. сохраняем
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return "", err
+	}
+
+	filename := fmt.Sprintf("logo_%d.svg", time.Now().UnixNano())
+	relativePath := filepath.Join("branding", filename)
+	fullPath := filepath.Join(s.BaseDir, relativePath)
+
+	fmt.Println(fullPath, "fmldkfdlskfmsd")
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+		return "", fmt.Errorf("не удалось создать папку: %w", err)
+	}
+
+	out, err := os.Create(fullPath)
+	if err != nil {
+		return "", err
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, f); err != nil {
+		return "", err
+	}
+
+	return relativePath, nil
+}
+func (s *ImageService) DeleteLogo(relativePath string) error {
+	if relativePath == "" {
+		return nil
+	}
+	fullPath := filepath.Join(s.BaseDir, relativePath)
+	if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}

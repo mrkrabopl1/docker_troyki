@@ -69,6 +69,7 @@ func main() {
 		cfg1.UseCDN,
 		cfg1.MaxImageSizeMB,
 	)
+	fontService := services.NewFontService(cfg1.FontBaseDir, cfg1.FontBasePath)
 
 	// СОЗДАЕМ Store с ImageService
 	store := db.NewStore(connPool, imageService.ImagePathBuilder)
@@ -83,7 +84,7 @@ func main() {
 	waitGroup, ctx := errgroup.WithContext(ctx)
 
 	taskProcessor := runTaskProcessor(ctx, waitGroup, cfg1, redisOpt, store)
-	runGinServer(cfg1, store, taskDistributor, taskProcessor, imageService)
+	runGinServer(cfg1, store, taskDistributor, taskProcessor, imageService, fontService)
 	//postgres_db
 
 	// dbPath := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", "localhost", "5432", cfg.PgUser, cfg.PgPass, cfg.PgBase)
@@ -104,8 +105,8 @@ func main() {
 
 }
 
-func runGinServer(config util.Config, store db.Store, taskDistributor worker.TaskDistributor, taskProcessor worker.TaskProcessor, imageService *services.ImageService) {
-	server, err := api.NewServer(config, store, taskDistributor, taskProcessor, imageService)
+func runGinServer(config util.Config, store db.Store, taskDistributor worker.TaskDistributor, taskProcessor worker.TaskProcessor, imageService *services.ImageService, fontService *services.FontService) {
+	server, err := api.NewServer(config, store, taskDistributor, taskProcessor, imageService, fontService)
 	if err != nil {
 		fmt.Println(err, "Error while creating server")
 		//log.Fatal().Err(err).Msg("cannot create server")

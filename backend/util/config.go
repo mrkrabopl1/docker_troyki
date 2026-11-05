@@ -35,6 +35,8 @@ type Config struct {
 	SMTPAuthAddress      string        `mapstructure:"SMTP_AUTH_ADDRESS"` // smtp.timeweb.ru
 	SMTPServerAddress    string        `mapstructure:"SMTP_SERVER_ADDRESS"`
 	SessionSalt          string        `mapstructure:"SESSION_SALT"`
+	FontBaseDir          string        `mapstructure:"FONT_BASE_DIR"`
+	FontBasePath         string        `mapstructure:"FONT_BASE_PATH"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
@@ -80,8 +82,9 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.BindEnv("APP_URL")
 	viper.BindEnv("MAX_IMAGE_SIZE_MB")
 	viper.BindEnv("SMTP_SERVER_ADDRESS")
-	viper.BindEnv("SMTP_SERVER_ADDRESS")
 	viper.BindEnv("SESSION_SALT")
+	viper.BindEnv("FONT_BASE_DIR")
+	viper.BindEnv("FONT_BASE_PATH")
 	// 5. Распаковываем в структуру
 	err = viper.Unmarshal(&config)
 	return

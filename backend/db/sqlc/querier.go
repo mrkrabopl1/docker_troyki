@@ -84,6 +84,7 @@ type Querier interface {
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (int32, error)
 	CreateCustomerAddress(ctx context.Context, arg CreateCustomerAddressParams) (CustomerAddress, error)
 	CreateDiscountRule(ctx context.Context, arg CreateDiscountRuleParams) (DiscountRule, error)
+	CreateFont(ctx context.Context, arg CreateFontParams) (Font, error)
 	CreateInstagramPost(ctx context.Context, imageUrl string) (InstagramPost, error)
 	CreateNewsBlock(ctx context.Context, arg CreateNewsBlockParams) (NewsBlock, error)
 	CreateNewsItem(ctx context.Context, arg CreateNewsItemParams) (NewsItem, error)
@@ -110,6 +111,7 @@ type Querier interface {
 	DeleteCustomerAddress(ctx context.Context, arg DeleteCustomerAddressParams) error
 	DeleteDiscount(ctx context.Context, productid int32) error
 	DeleteDiscountRule(ctx context.Context, id int32) error
+	DeleteFont(ctx context.Context, id int32) error
 	DeleteFromVerifivation(ctx context.Context, id int32) error
 	DeleteHardProduct(ctx context.Context, id int32) (DeleteHardProductRow, error)
 	DeleteInstagramPost(ctx context.Context, id int32) error
@@ -161,6 +163,8 @@ type Querier interface {
 	GetAllBrandsWithLines(ctx context.Context) ([]GetAllBrandsWithLinesRow, error)
 	GetAllCollections(ctx context.Context) ([]Collection, error)
 	GetAllFiltersForAdmin(ctx context.Context) (GetAllFiltersForAdminRow, error)
+	// queries/fonts.sql
+	GetAllFonts(ctx context.Context) ([]Font, error)
 	GetAllLines(ctx context.Context, brandIds []int32) ([]GetAllLinesRow, error)
 	GetAllPageWidgets(ctx context.Context) ([]GetAllPageWidgetsRow, error)
 	GetAllProductsForAdmin(ctx context.Context, arg GetAllProductsForAdminParams) ([]GetAllProductsForAdminRow, error)
@@ -226,6 +230,8 @@ type Querier interface {
 	GetFiltersByNameCategoryAndTypeWithSlugs(ctx context.Context, arg GetFiltersByNameCategoryAndTypeWithSlugsParams) (GetFiltersByNameCategoryAndTypeWithSlugsRow, error)
 	GetFiltersForCollection(ctx context.Context, arg GetFiltersForCollectionParams) (GetFiltersForCollectionRow, error)
 	GetFirms(ctx context.Context) ([]GetFirmsRow, error)
+	GetFontByID(ctx context.Context, id int32) (Font, error)
+	GetFontsByFamily(ctx context.Context, family string) ([]Font, error)
 	GetFullFiltersForCollection(ctx context.Context, arg GetFullFiltersForCollectionParams) (GetFullFiltersForCollectionRow, error)
 	GetFullFiltersForManualCollection(ctx context.Context, collectionID int32) (GetFullFiltersForManualCollectionRow, error)
 	GetFullPreorderCount(ctx context.Context, orderid int32) (interface{}, error)
@@ -336,6 +342,7 @@ type Querier interface {
 	GetRuleItemsByType(ctx context.Context, arg GetRuleItemsByTypeParams) ([]DiscountRuleItem, error)
 	GetSession(ctx context.Context, sessionID string) (Uniquecustomer, error)
 	GetSessionHistory(ctx context.Context, arg GetSessionHistoryParams) ([]GetSessionHistoryRow, error)
+	GetSiteSettings(ctx context.Context) (SiteSetting, error)
 	GetSizeStatsByKey(ctx context.Context, sizeKey string) (GetSizeStatsByKeyRow, error)
 	GetSizesCount(ctx context.Context, dollar_1 string) (int32, error)
 	GetSnickersByFirmName(ctx context.Context, name string) ([]GetSnickersByFirmNameRow, error)
@@ -385,6 +392,7 @@ type Querier interface {
 	SelectMainCategories(ctx context.Context) (interface{}, error)
 	SelectQuantityFromPreorderItems(ctx context.Context, arg SelectQuantityFromPreorderItemsParams) (int32, error)
 	SetDefaultCustomerAddress(ctx context.Context, arg SetDefaultCustomerAddressParams) error
+	SetFontRole(ctx context.Context, arg SetFontRoleParams) (SiteSetting, error)
 	SetOrderAddress(ctx context.Context, arg SetOrderAddressParams) (int32, error)
 	SetPreorderAddress(ctx context.Context, arg SetPreorderAddressParams) (int32, error)
 	SetUnregisterCustomer(ctx context.Context, arg SetUnregisterCustomerParams) (int32, error)
@@ -411,6 +419,7 @@ type Querier interface {
 	UpdateCustomerPass(ctx context.Context, arg UpdateCustomerPassParams) error
 	UpdateCustomerProfile(ctx context.Context, arg UpdateCustomerProfileParams) error
 	UpdateDiscountRule(ctx context.Context, arg UpdateDiscountRuleParams) (DiscountRule, error)
+	UpdateFont(ctx context.Context, arg UpdateFontParams) (Font, error)
 	UpdateLine(ctx context.Context, arg UpdateLineParams) error
 	UpdateNewsBlock(ctx context.Context, arg UpdateNewsBlockParams) (NewsBlock, error)
 	UpdateNewsItem(ctx context.Context, arg UpdateNewsItemParams) (NewsItem, error)
@@ -423,6 +432,8 @@ type Querier interface {
 	UpdateProductStatus(ctx context.Context, arg UpdateProductStatusParams) error
 	UpdateProductStock(ctx context.Context, arg UpdateProductStockParams) (pgconn.CommandTag, error)
 	UpdatePromoCode(ctx context.Context, arg UpdatePromoCodeParams) (PromoCode, error)
+	UpdateSiteLogo(ctx context.Context, arg UpdateSiteLogoParams) (UpdateSiteLogoRow, error)
+	UpdateSiteLogoAlt(ctx context.Context, logoAlt string) (UpdateSiteLogoAltRow, error)
 	ValidatePromoCode(ctx context.Context, arg ValidatePromoCodeParams) (ValidatePromoCodeRow, error)
 	VerifyNewsletterSubscriber(ctx context.Context, verificationToken string) error
 }
