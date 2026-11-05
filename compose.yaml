@@ -11,6 +11,7 @@ services:
       - "80:80"
     volumes:
       - ./front/images:/app/public/images:ro
+      - ./front/fonts:/app/front/fonts:ro
       - ./front/htpasswd:/etc/nginx/.htpasswd:ro
     environment:
       - API_URL=${API_URL}
