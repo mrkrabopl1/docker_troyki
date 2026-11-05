@@ -32,6 +32,7 @@ services:
     image: goapp1:1.0.0
     volumes:
       - ./front/images:/app/front/images
+      - ./front/fonts:/app/front/fonts
     build:
       context: ./backend
       dockerfile: go.dockerfile
