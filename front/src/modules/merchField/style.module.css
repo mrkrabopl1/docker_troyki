@@ -11,16 +11,18 @@
 
 .firmName {
     font-size: 30px;
- 
+
 }
 
 .littlePrice {
     white-space: nowrap;
 }
-.sliderHeader{
+
+.sliderHeader {
     font-size: 120px;
-      padding:10px;
+    padding: 10px;
 }
+
 .merchLine {
     display: flex;
     height: 140px;
@@ -111,6 +113,7 @@
     display: flex;
     height: 100%;
 }
+
 .discountBadge {
     background: #ff4444;
     color: white;
@@ -121,6 +124,7 @@
     display: inline-block;
     vertical-align: middle;
 }
+
 .discountMarker {
     position: absolute;
     top: 0;
@@ -562,6 +566,11 @@
         width: 80px;
     }
 
+    .sliderHeader {
+        font-size: 70px;
+        padding: 10px;
+    }
+
     .buyImg {
         width: 64px;
         height: 64px;
@@ -593,6 +602,11 @@
 @media (max-width: 480px) {
     .merchFormLine {
         height: 90px;
+    }
+
+    .sliderHeader {
+        font-size:50px;
+
     }
 
     .imageWrapper {

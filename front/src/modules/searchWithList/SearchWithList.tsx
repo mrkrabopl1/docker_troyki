@@ -1,23 +1,9 @@
-import React, { useRef, useState, useCallback, memo } from 'react';
+import React, { useRef, useState, useCallback, memo, useEffect } from 'react';
 import Search from 'src/components/search/Search';
 import DropDownList from 'src/components/dropComponents/DropDownList';
 import MerchLine from 'src/modules/merchField/MerchLine';
 import s from './style.module.css';
-
-interface SearchWithListProps {
-    className?: {
-        main?: string;
-        search?: string;
-        dropList?: string;
-        input?: string
-        searchHolder?:string
-    };
-    searchCallback: (data: any) => void;
-    onDataRecieve?: (data: any) => void;
-    onChange?: (value: string) => void;
-    val?: string;
-    selectList?: (data: any) => void;
-}
+import Scroller from 'src/components/scroller/Scroller';
 
 interface MerchItem {
     name: string;
@@ -28,9 +14,27 @@ interface MerchItem {
     [key: string]: any;
 }
 
+interface SearchWithListProps {
+    className?: {
+        main?: string;
+        search?: string;
+        dropList?: string;
+        input?: string
+        searchHolder?: string
+    };
+    searchCallback: (data: any) => void;
+    onDataRecieve?: (data: any) => void;
+    onChange?: (value: string) => void;
+    val?: string;
+    listData?: MerchItem[];
+    selectList?: (data: any) => void;
+}
+
+
 const SearchWithList: React.FC<SearchWithListProps> = memo(({
     className = {},
     val,
+    listData,
     onDataRecieve,
     searchCallback,
     onChange,
@@ -44,7 +48,6 @@ const SearchWithList: React.FC<SearchWithListProps> = memo(({
     const handleSelect = useCallback((data: any) => {
         selectList?.(data);
     }, [selectList]);
-
     const createDropList = useCallback((data: MerchItem[]) => {
         onDataRecieve?.(data);
         setDropDownList(
@@ -57,6 +60,13 @@ const SearchWithList: React.FC<SearchWithListProps> = memo(({
             ))
         );
     }, [onDataRecieve, handleSelect]);
+    useEffect(() => {
+        if (listData && listData.length > 0) {
+            createDropList(listData);
+        }
+    }, [listData, createDropList]);
+
+
 
     const handleFocus = useCallback(() => {
         setTimeout(() => setActive(true), 0);
@@ -84,7 +94,7 @@ const SearchWithList: React.FC<SearchWithListProps> = memo(({
             onClick={handleClick}
             style={{ position: "relative" }}
             className={`${s.searchHolder} ${className.main}`}
-            
+
         >
             <div className={`${className.searchHolder}`}>
                 <Search
@@ -95,7 +105,7 @@ const SearchWithList: React.FC<SearchWithListProps> = memo(({
                     searchCallback={handleSearch}
                 />
                 {(activeList && dropDownListData.length) ? <DropDownList
-                    className={className.dropList}
+                    // className={className.dropList}
                     active={true}
                 >
                     {dropDownListData}

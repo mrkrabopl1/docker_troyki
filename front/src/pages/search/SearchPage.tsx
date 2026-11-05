@@ -6,7 +6,7 @@ import Button from 'src/components/Button'
 import MerchSliderField from 'src/modules/merchField/MerchFieldWithPageSwitcher'
 import s from "./style1.module.css"
 import { useAppDispatch, useAppSelector, useNavigate } from 'src/store/hooks/redux'
-import { getProductsAndFiltersByCategoryAndType, getProductsAndFiltersByString, getProductsByCategoriesAndFilters } from "src/providers/searchProvider"
+import { getProductsAndFiltersByCategoryAndType, getProductsAndFiltersByString, getProductsByCategoriesAndFilters, searchNames } from "src/providers/searchProvider"
 import { ReactComponent as FoureGrid } from '/public/foureGrid.svg'
 import { ReactComponent as SixGrid } from '/public/sixGrid.svg'
 import RadioGroup from 'src/components/radio/RadioGroup'
@@ -16,7 +16,7 @@ import Combobox from 'src/components/combobox/Combobox';
 import { finishLoading } from 'src/store/reducers/loadingSlice';
 import { CheckBoxType } from 'src/types/modules';
 import { BODY_TYPES } from 'src/constants/bodytypes'
-
+import {MerchItem} from 'src/types/merchType'
 interface FiltersInfoRequest {
   sizes: string[]
   price: number[]
@@ -56,6 +56,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
   const dispatch = useAppDispatch()
   const router = useRouter();
   const searchParams = router.query;
+  const [searchDebounceItems,setsearchDebounceItems]  = useState<MerchItem[]>([])
   const { typesVal, categories, discountRules, firmMap, lineMap } = useAppSelector(state => state.menu);
   const [isFirmMapReady, setIsFirmMapReady] = useState(false);
   useEffect(() => {
@@ -248,6 +249,13 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
     searchWord.current = name
     searchData()
   }, [])
+
+
+  const searchDebounceCallback = useCallback((name: string) => {
+    searchWord.current = name
+    searchNames(name,15,setsearchDebounceItems)
+  }, [])
+
 
   const searchCallback = useCallback((searchDataStr: string) => {
     searchWord.current = searchDataStr
@@ -705,7 +713,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
           marginBottom: "20px",
           gap: "10px"
         }}>
-          <div  className={s.filterHolder}>
+          <div className={s.filterHolder}>
             {widthProps ? <Sort style={{
               color: hoverSettings ? 'white' : 'black',
               fill: hoverSettings ? 'white' : 'white',
@@ -731,11 +739,13 @@ const SearchPage: React.FC<SearchPageProps> = ({ initialData, searchParams: ssrP
             className={{
               main: s.searchInput,
             }}
+            listData={searchDebounceItems}
             val={searchWord.current}
+            onChange={searchDebounceCallback}
             searchCallback={searchNameCallback}
             selectList={(data) => { navigate('/product/' + data); }}
           />
-          {widthProps ? <div  className={s.filterHolder}>
+          {widthProps ? <div className={s.filterHolder}>
             <Filter
               className={s.filterBtn}
               onClick={() => setShowFiltersPanel(true)}

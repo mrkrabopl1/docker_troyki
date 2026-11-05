@@ -1052,7 +1052,9 @@ func (store *SQLStore) GetProductsByNameComplex(ctx context.Context, name string
 
 func (store *SQLStore) buildProductsSearchResponse(products []GetProductsByNameRow) []types.ProductsSearchResponse {
 	result := make([]types.ProductsSearchResponse, 0, len(products))
+	fmt.Println("Products found:", len(products))
 	for _, p := range products {
+		fmt.Printf("Processing product: ID=%d, Name=%s, Price=%d, ImagePath=%s , Price=%d\n", p.GlobalID, p.Name, p.MinPrice, p.ImagePath, p.MinPrice)
 		result = append(result, types.ProductsSearchResponse{
 			Image: store.getProductMainImage(p.ImagePath),
 			Price: int(p.MinPrice),

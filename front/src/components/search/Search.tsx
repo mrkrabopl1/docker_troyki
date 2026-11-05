@@ -24,7 +24,7 @@ const Search: React.FC<Props> = ({
 }) => {
     const text = useRef<string>(val)
     const [isFocused, setIsFocused] = useState(false)
-    
+    const throttlingTimerId = useRef<ReturnType<typeof setTimeout> | null>(null);
     const classNameSearch = className || s.search
     
     const handleEnter = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -34,8 +34,13 @@ const Search: React.FC<Props> = ({
     }, [searchCallback])
 
     const createSearchRequest = useCallback((val: string) => {
-        onChange?.(val)
+        if (throttlingTimerId.current) {
+            clearTimeout(throttlingTimerId.current);
+        }
         text.current = val
+        throttlingTimerId.current = setTimeout(() => {
+            onChange?.(val)
+        }, 1000);
     }, [onChange])
 
     const handleSearchClick = useCallback(() => {

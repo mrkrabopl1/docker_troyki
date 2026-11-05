@@ -1,7 +1,7 @@
 import React, { memo, useMemo } from 'react';
 import MerchBlock from "./MerchBlock";
 import NameBorder from 'src/components/wraps/NameBorder';
-import ContentSlider from 'src/components/contentSlider/ContentSliderWithScroll';
+import ContentSlider from 'src/components/contentSlider/ContentSliderMixed';
 import s from "./style.module.css";
 
 
