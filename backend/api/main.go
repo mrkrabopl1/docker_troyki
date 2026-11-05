@@ -292,7 +292,7 @@ func (s *Server) handleGetMenuInfo(ctx *gin.Context) {
 
 	settings, err := s.store.GetSiteSettings(ctx)
 	if err == nil {
-		branding.LogoURL = settings.LogoUrl
+		branding.LogoURL = s.imageService.ImagePathBuilder.GetImageURLFromPath(settings.LogoUrl)
 		branding.LogoAlt = settings.LogoAlt
 		branding.LogoVersion = settings.LogoVersion
 

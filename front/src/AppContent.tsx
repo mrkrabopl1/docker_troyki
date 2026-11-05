@@ -669,7 +669,7 @@ const AppContent: React.FC<AppContentProps> = ({
         (f) => `
         @font-face {
           font-family: '${f.family}';
-          src: url('../fonts${f.url}?v=${f.version}') format('woff');
+          src: url('${f.url}?v=${f.version}') format('woff');
           font-weight: ${f.weight};
           font-style: ${f.style};
           font-display: swap;
