@@ -1,179 +1,212 @@
+/* components/newsLetter/style.module.css */
+
+/* ============================================================
+   NEWSLETTER MODULE — прозрачный, с подчёркиванием
+   ============================================================ */
+
 .newsletterModule {
     width: 100%;
-    border-radius: 4px;           /* почти прямые углы — как в старых газетах */
-    padding: 10px 14px;
     box-sizing: border-box;
-    font-family: Georgia, "Times New Roman", Times, serif;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Тёмная тема (для FooterDark #0E0E0E) */
+.dark {
+    color: #ffffff;
+}
+
+/* Светлая тема (для обычного Footer) */
+.light {
     color: #111111;
 }
 
-.newsletterContent {
-    max-width: 760px;
-    margin: 0 auto;
-    text-align: center;
-}
-
-.newsletterIcon {
-    display: none;                /* убираем иконку — газеты редко используют крупные эмодзи/иконки */
-}
-
-.newsletterText {
-    margin-bottom: 20px;
-}
-
-.newsletterTitle {
-    font-size: 26px;
-    font-weight: 700;
-    line-height: 1.15;
-    margin: 0 0 8px 0;
-    color: #000000;
-    letter-spacing: -0.4px;
-}
-
-.newsletterDescription {
-    font-size: 15px;
-    line-height: 1.45;
-    color: #444444;
-    margin: 0;
-}
-
 .newsletterForm {
-    margin-bottom: 16px;
+    width: 100%;
 }
 
+/* ===== ПОЛЕ + КНОПКА ===== */
 .inputWrapper {
     display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
     max-width: 480px;
-    margin-left: auto;
-    margin-right: auto;
 }
 
+/* Прозрачное поле с подчёркиванием */
 .newsletterInput {
     flex: 1;
-    padding: 11px 16px;
-    font-size: 15px;
-    font-family: -apple-system, BlinkMacOSystemFont, "Segoe UI", Roboto, sans-serif;
-    border: 1px solid #888;
-    border-radius: 3px;
-    background: #fff;
-    color: #111;
+    min-width: 0;
+    padding: 12px 0;
+    font-size: 16px;
+    font-family: inherit;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+    color: #ffffff;
     transition: border-color 0.2s ease;
+    outline: none;
+}
+
+.newsletterInput::placeholder {
+    color: rgba(255, 255, 255, 0.4);
 }
 
 .newsletterInput:focus {
-    border-color: #333;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
+    border-bottom-color: #ffffff;
 }
 
 .newsletterInput.inputError {
-    border-color: #8b0000;
+    border-bottom-color: #ff5555;
 }
 
-.newsletterInput:disabled,
-.newsletterInput.inputLoading {
-    background: #f8f8f8;
-    color: #777;
+.newsletterInput:disabled {
+    opacity: 0.5;
     cursor: not-allowed;
 }
 
+/* Светлая тема — поле */
+.light .newsletterInput {
+    border-bottom-color: rgba(0, 0, 0, 0.2);
+    color: #111111;
+}
+
+.light .newsletterInput::placeholder {
+    color: rgba(0, 0, 0, 0.4);
+}
+
+.light .newsletterInput:focus {
+    border-bottom-color: #111111;
+}
+
+.light .newsletterInput.inputError {
+    border-bottom-color: #c00;
+}
+
+/* ===== КНОПКА (стрелка) ===== */
 .newsletterButton {
-    padding: 11px 26px;
-    background: #1a1a1a;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: transparent;
     color: #ffffff;
-    border: none;
-    border-radius: 3px;
-    font-size: 15px;
-    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 50%;
     cursor: pointer;
-    transition: all 0.18s ease;
-    white-space: nowrap;
-    letter-spacing: 0.3px;
-    display:flex;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
 }
 
 .newsletterButton:hover:not(:disabled) {
-    background: #000000;
-    transform: none;           /* убираем lift-эффект — слишком современно */
+    background: #ffffff;
+    color: #0E0E0E;
+    border-color: #ffffff;
+    transform: translateX(2px);
 }
 
 .newsletterButton:active:not(:disabled) {
-    background: #333;
+    transform: translateX(0);
 }
 
 .newsletterButton:disabled {
-    background: #888;
+    opacity: 0.4;
     cursor: not-allowed;
 }
 
-.newsletterButton.buttonLoading {
-    opacity: 0.75;
+/* Светлая тема — кнопка */
+.light .newsletterButton {
+    color: #111111;
+    border-color: rgba(0, 0, 0, 0.2);
 }
 
+.light .newsletterButton:hover:not(:disabled) {
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
+}
+
+/* ===== SPINNER ===== */
 .spinner {
-    width: 14px;
-    height: 14px;
-    border: 2px solid rgba(255,255,255,0.4);
-    border-top-color: #fff;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #ffffff;
     border-radius: 50%;
-    animation: spin 0.9s linear infinite;
+    animation: spin 0.8s linear infinite;
+}
+
+.light .spinner {
+    border-color: rgba(0, 0, 0, 0.2);
+    border-top-color: #111111;
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
+/* ===== СООБЩЕНИЯ ===== */
 .errorMessage,
 .successMessage {
     font-size: 13px;
-    margin: 6px 0 0 0;
-    text-align: left;
+    margin: 8px 0 0 0;
     line-height: 1.4;
+    max-width: 480px;
 }
 
 .errorMessage {
-    color: #8b0000;
+    color: #ff5555;
+}
+
+.light .errorMessage {
+    color: #c00;
 }
 
 .successMessage {
-    color: #006400;
+    color: #4ade80;
 }
 
-.newsletterNote {
-    font-size: 12px;
-    color: #666;
-    margin: 12px 0 0;
-    line-height: 1.5;
+.light .successMessage {
+    color: #16a34a;
 }
 
-/* Адаптивность */
+/* ============================================================
+   АДАПТИВНОСТЬ
+   ============================================================ */
+
 @media (max-width: 768px) {
-    .newsletterModule {
-        padding: 20px 16px;
-    }
-    .newsletterTitle {
-        font-size: 22px;
-    }
-    .newsletterDescription {
-        font-size: 14px;
-    }
     .inputWrapper {
-        flex-direction: column;
         max-width: 100%;
+        gap: 10px;
     }
+
+    .newsletterInput {
+        font-size: 15px;
+        padding: 10px 0;
+    }
+
     .newsletterButton {
-        width: 100%;
-        justify-content: center;
+        width: 38px;
+        height: 38px;
     }
 }
 
 @media (max-width: 480px) {
-    .newsletterTitle {
-        font-size: 20px;
+    .newsletterInput {
+        font-size: 14px;
+        padding: 9px 0;
     }
-    .newsletterModule {
-        padding: 18px 14px;
+
+    .newsletterButton {
+        width: 36px;
+        height: 36px;
+    }
+
+    .newsletterInput::placeholder {
+        font-size: 14px;
     }
 }

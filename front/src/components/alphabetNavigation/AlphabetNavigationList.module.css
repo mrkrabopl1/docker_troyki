@@ -1,0 +1,178 @@
+/* components/alphabetNavigation/AlphabetNavigationList.module.css */
+
+.wrapper {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-height: 400px;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* ============================================================
+   ЛЕВАЯ ЧАСТЬ: БУКВЫ СЕТКОЙ
+   ============================================================ */
+
+.letterColumn {
+    width: 200px;
+    flex-shrink: 0;
+    background: #f5f5f5;
+    border-right: 1px solid #e0e0e0;
+    height: 100%;
+    overflow: hidden;
+    padding: 8px;
+}
+
+.letterGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+}
+
+.letterBtn {
+    padding: 8px 0;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s ease;
+    font-family: inherit;
+    width: 100%;
+}
+
+.letterBtn:hover {
+    background: #ebebeb;
+    color: #000;
+}
+
+.letterBtnActive {
+    background: #000;
+    color: #fff;
+    font-weight: 700;
+}
+
+.letterBtnActive:hover {
+    background: #000;
+    color: #fff;
+}
+
+/* ============================================================
+   ПРАВАЯ ЧАСТЬ: ЗАГОЛОВОК + ФИРМЫ
+   ============================================================ */
+
+.firmColumn {
+    flex: 1;
+    height: 100%;
+    overflow: hidden;
+    min-width: 0;
+    padding: 8px 16px 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Заголовок с выбранной буквой — слева, без подчёркивания */
+.firmHeader {
+    padding: 12px 0 8px 0;
+    font-size: 32px;
+    font-weight: 700;
+    color: #000;
+    line-height: 1;
+    flex-shrink: 0;
+    font-family: inherit;
+    text-align: left;
+}
+
+.firmScroll {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.firmGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px 12px;
+}
+
+.firmItem {
+    padding: 10px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    color: #222;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s ease;
+    font-family: inherit;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.firmItem:hover {
+    background: #f5f5f5;
+    color: #000;
+    padding-left: 16px;
+}
+
+.empty {
+    padding: 40px 16px;
+    color: #999;
+    font-size: 14px;
+    text-align: center;
+}
+
+/* ============================================================
+   МОБИЛЬНАЯ АДАПТАЦИЯ
+   ============================================================ */
+
+@media (max-width: 900px) {
+    .letterColumn {
+        width: 160px;
+    }
+
+    .firmGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .letterColumn {
+        width: 120px;
+        padding: 6px;
+    }
+
+    .letterGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .letterBtn {
+        padding: 6px 0;
+        font-size: 13px;
+    }
+
+    .firmColumn {
+        padding: 6px 10px 10px;
+    }
+
+    .firmHeader {
+        font-size: 24px;
+        padding: 8px 0 6px 0;
+    }
+
+    .firmGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .firmItem {
+        font-size: 14px;
+        padding: 8px 10px;
+    }
+}

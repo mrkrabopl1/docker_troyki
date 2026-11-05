@@ -54,7 +54,7 @@ import Preloader from './components/preloader/Preloader';
 import CookieInfo from './components/cookieInfo/CookieInfo';
 import ComplexDropMenuWithRequest from './modules/menu/ComplexDropMenuWithRequest';
 import StickyDispetcherButton from 'src/modules/stickyDispetcherButton/StickyDispetcherButton';
-import Footer from './modules/footer/Footer';
+import Footer from './modules/footer/FooterDark';
 
 import { Firm, Line } from 'src/types/modules';
 

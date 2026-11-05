@@ -11,12 +11,16 @@
 
 .firmName {
     font-size: 30px;
+ 
 }
 
 .littlePrice {
     white-space: nowrap;
 }
-
+.sliderHeader{
+    font-size: 120px;
+      padding:10px;
+}
 .merchLine {
     display: flex;
     height: 140px;

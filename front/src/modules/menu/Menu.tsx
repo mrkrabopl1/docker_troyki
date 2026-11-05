@@ -16,7 +16,7 @@ import ss from "src/pages/search/style.module.css";
 import { setShowBrandsModal, setActiveCart } from 'src/store/reducers/menuSlice';
 import ssa from "/public/firm_images.svg";
 import ComplexDropVertical from 'src/components/complexDrop/ComplexDropVertical';
-import AlphabetNavigation from 'src/components/alphabetNavigation/AlphabetNavigation';
+import AlphabetNavigation from 'src/components/alphabetNavigation/AlphabetNavigationList';
 import BuyPage from 'src/pages/buyPage/BuyPage';
 import Scroller from 'src/components/scroller/Scroller';
 

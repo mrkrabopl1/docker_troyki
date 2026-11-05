@@ -36,11 +36,14 @@ const MerchSliderField: React.FC<MerchInterface> = memo(({ name, merchInfo,onCli
 
     return (
         <div>
-            <NameBorder 
+            <h2 className={s.sliderHeader}>{name}</h2>
+            {/* <ContentSlider className={s.gridHeight6} content={sliderContent} /> */}
+            <ContentSlider className={s.gridHeight6} content={sliderContent} />
+            {/* <NameBorder 
                 content={<ContentSlider className={s.gridHeight6} content={sliderContent} />} 
                 name={name} 
                 onClick={onClick}
-            />
+            /> */}
         </div>
     );
 });

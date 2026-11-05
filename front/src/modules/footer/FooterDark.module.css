@@ -1,0 +1,332 @@
+/* components/footer/FooterDark.module.css */
+
+/* ===== FOOTER ===== */
+.footer {
+  width: 100%;
+  max-width: 1440px;
+  /* min-height: 700px; */
+  margin: 0 auto;
+  background: #0E0E0E;
+  color: #ffffff;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+
+.container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 80px 32px 40px;
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================================
+   ВЕРХНИЙ БЛОК: 2 КОЛОНКИ (слева текст+лого, справа newsletter+ссылки)
+   ============================================================ */
+
+.topBlock {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 64px;
+  margin-bottom: 64px;
+  flex: 1;
+}
+
+/* ----- ЛЕВАЯ КОЛОНКА: заголовок + описание + лого ----- */
+.leftColumn {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.newsletterTitle {
+  font-size: 3rem;           /* ×3 от 16px */
+  font-weight: 700;
+  line-height: 1.1;
+  color: #ffffff;
+  margin: 0 0 20px 0;
+  letter-spacing: -0.5px;
+}
+
+.newsletterDescription {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #a0a0a0;
+  margin: 0;
+  max-width: 480px;
+}
+
+/* Лого — внизу левой колонки */
+.logoBlock {
+  margin-top: auto;          /* 👈 прижимает лого к низу */
+  padding-top: 40px;
+}
+
+.logo {
+  display: block;
+  width: auto;
+  max-width: 600px;
+  height: auto;
+  max-height:400px;
+  object-fit: contain;
+  transform: rotate(-15deg);
+}
+
+/* ----- ПРАВАЯ КОЛОНКА: newsletter + колонки ссылок ----- */
+.rightColumn {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 48px;
+}
+
+.newsletterForm {
+  width: 100%;
+}
+
+/* Колонки ссылок + контакты + соцсети */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 40px 24px;
+}
+
+.column {
+  min-width: 0;
+}
+
+.columnHeader {
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  position: relative;
+  display: inline-block;
+  padding-bottom: 8px;
+}
+
+.columnHeader::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 24px;
+  height: 2px;
+  background: #ffffff;
+  border-radius: 2px;
+}
+
+/* ===== ССЫЛКИ ===== */
+.link,
+.linkActive {
+  display: block;
+  color: #a0a0a0;
+  font-size: 0.875rem;
+  line-height: 1.8;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 6px;
+  position: relative;
+  width: fit-content;
+}
+
+.link:hover {
+  color: #ffffff;
+  transform: translateX(4px);
+}
+
+.linkActive {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* ===== ПРАВАЯ ВНУТРЕННЯЯ КОЛОНКА (контакты + соцсети) ===== */
+.rightColumnInner {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.contactItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8125rem;
+  color: #a0a0a0;
+  transition: transform 0.2s ease;
+}
+
+.contactItem:hover {
+  transform: translateX(4px);
+}
+
+.contactIcon {
+  width: 18px;
+  height: 18px;
+  color: #ffffff;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.contactItem:hover .contactIcon {
+  transform: scale(1.1);
+}
+
+.contactText {
+  color: #a0a0a0;
+  line-height: 1.4;
+}
+
+/* ===== СОЦСЕТИ ===== */
+.socials {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.socialLink {
+  color: #a0a0a0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  transition: all 0.3s ease;
+}
+
+.socialLink:hover {
+  color: #0E0E0E;
+  background: #ffffff;
+  transform: translateY(-2px);
+}
+
+.socialIcon {
+  width: 18px;
+  height: 18px;
+}
+
+/* ===== COPYRIGHT ===== */
+.copyright {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #666666;
+  padding-top: 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  letter-spacing: 0.3px;
+  margin-top: auto;
+}
+
+/* ============================================================
+   АДАПТИВНОСТЬ
+   ============================================================ */
+
+@media (max-width: 1024px) {
+  .container {
+    padding: 64px 24px 36px;
+  }
+
+  .topBlock {
+    grid-template-columns: 1fr 1.2fr;
+    gap: 40px;
+  }
+
+  .newsletterTitle {
+    font-size: 2.5rem;
+  }
+
+  .grid {
+    gap: 32px 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .footer {
+    min-height: auto;
+  }
+
+  .container {
+    padding: 56px 20px 32px;
+  }
+
+  .topBlock {
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
+
+  .newsletterTitle {
+    font-size: 2rem;
+  }
+
+  .logoBlock {
+    padding-top: 32px;
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px 24px;
+  }
+
+  .copyright {
+    margin-top: 48px;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 40px 16px 28px;
+  }
+
+  .newsletterTitle {
+    font-size: 1.75rem;
+  }
+
+  .newsletterDescription {
+    font-size: 0.9375rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .columnHeader {
+    margin-bottom: 16px;
+  }
+
+  .rightColumnInner {
+    gap: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 32px 16px 24px;
+  }
+
+  .newsletterTitle {
+    font-size: 1.5rem;
+  }
+
+  .logo {
+    max-width: 140px;
+    max-height: 40px;
+  }
+}
